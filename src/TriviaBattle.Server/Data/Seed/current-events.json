@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "Current Events",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "In 2024, which city hosted the Summer Olympics?",
+          "answers": [
+            "Los Angeles",
+            "London",
+            "Rome",
+            "Paris"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "The Summer Olympics originally scheduled for 2020 were held in 2021 in which city?",
+          "answers": [
+            "Beijing",
+            "Tokyo",
+            "Seoul",
+            "Sydney"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which country won the 2022 FIFA World Cup held in Qatar?",
+          "answers": [
+            "Argentina",
+            "France",
+            "Brazil",
+            "Croatia"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which 2023 film starring Margot Robbie was the highest-grossing movie worldwide that year?",
+          "answers": [
+            "Oppenheimer",
+            "Wonka",
+            "Barbie",
+            "Wish"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In 2023, Taylor Swift began which record-breaking concert tour?",
+          "answers": [
+            "The Reputation Tour",
+            "The Eras Tour",
+            "The 1989 World Tour",
+            "The Red Tour"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In November 2022, OpenAI released which AI chatbot that quickly became a worldwide sensation?",
+          "answers": [
+            "Siri",
+            "Alexa",
+            "Cortana",
+            "ChatGPT"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "On April 8, 2024, a total solar eclipse passed across parts of which continent?",
+          "answers": [
+            "Europe",
+            "Australia",
+            "North America",
+            "Africa"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In February 2021, which NASA rover landed on Mars?",
+          "answers": [
+            "Perseverance",
+            "Curiosity",
+            "Opportunity",
+            "Spirit"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In 2023, soccer star Lionel Messi joined which Major League Soccer team?",
+          "answers": [
+            "LA Galaxy",
+            "Inter Miami",
+            "Seattle Sounders",
+            "New York City FC"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In 2020, which Nintendo Switch game about life on a deserted island became a huge hit?",
+          "answers": [
+            "Super Mario Odyssey",
+            "Pokemon Sword and Shield",
+            "Animal Crossing: New Horizons",
+            "Luigi's Mansion 3"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In December 2021, which giant space telescope launched as a successor to Hubble?",
+          "answers": [
+            "James Webb Space Telescope",
+            "Kepler Space Telescope",
+            "Spitzer Space Telescope",
+            "Chandra X-ray Observatory"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which team won its first-ever NBA championship in 2023?",
+          "answers": [
+            "Miami Heat",
+            "Phoenix Suns",
+            "Denver Nuggets",
+            "Milwaukee Bucks"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which team won the 2024 World Series?",
+          "answers": [
+            "New York Yankees",
+            "Houston Astros",
+            "Atlanta Braves",
+            "Los Angeles Dodgers"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In 2022, which NASA mission deliberately crashed a spacecraft into an asteroid to test planetary defense?",
+          "answers": [
+            "Artemis",
+            "DART",
+            "Juno",
+            "OSIRIS-REx"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In 2023, Apple announced which mixed-reality headset?",
+          "answers": [
+            "Vision Pro",
+            "Quest Pro",
+            "HoloLens",
+            "Reality One"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which country won the men's Euro 2024 soccer tournament?",
+          "answers": [
+            "England",
+            "France",
+            "Germany",
+            "Spain"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which animated movie was the second-highest-grossing film worldwide in 2023?",
+          "answers": [
+            "Elemental",
+            "The Super Mario Bros. Movie",
+            "Wish",
+            "Spider-Man: Across the Spider-Verse"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In 2022, The New York Times bought which popular daily word-guessing game?",
+          "answers": [
+            "Scrabble GO",
+            "Words With Friends",
+            "Wordle",
+            "Boggle"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In February 2021, Tom Brady won Super Bowl LV as quarterback of which team?",
+          "answers": [
+            "New England Patriots",
+            "Kansas City Chiefs",
+            "Los Angeles Rams",
+            "Tampa Bay Buccaneers"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which film won Best Picture at the 2024 Academy Awards?",
+          "answers": [
+            "Oppenheimer",
+            "Barbie",
+            "Poor Things",
+            "Killers of the Flower Moon"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which team won the NHL's Stanley Cup in 2024?",
+          "answers": [
+            "Edmonton Oilers",
+            "Vegas Golden Knights",
+            "Florida Panthers",
+            "Colorado Avalanche"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In 2024, Beyonce released which country-inspired album?",
+          "answers": [
+            "Cowboy Carter",
+            "Renaissance",
+            "Lemonade",
+            "Rodeo Queen"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In 2023, India's Chandrayaan-3 mission landed near which region of the Moon?",
+          "answers": [
+            "The north pole",
+            "The south pole",
+            "The Sea of Tranquility",
+            "The far side"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who won the 2023 Wimbledon men's singles title?",
+          "answers": [
+            "Novak Djokovic",
+            "Jannik Sinner",
+            "Daniil Medvedev",
+            "Carlos Alcaraz"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In 2021, what was the name of the small NASA helicopter that made the first powered flight on another planet?",
+          "answers": [
+            "Dragonfly",
+            "Curiosity",
+            "Ingenuity",
+            "Phoenix"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which film won Best Picture at the 2023 Academy Awards?",
+          "answers": [
+            "The Fabelmans",
+            "Everything Everywhere All at Once",
+            "Top Gun: Maverick",
+            "Avatar: The Way of Water"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which team won Super Bowl LVI in February 2022?",
+          "answers": [
+            "Cincinnati Bengals",
+            "Kansas City Chiefs",
+            "Philadelphia Eagles",
+            "Los Angeles Rams"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In 2022, NASA launched the uncrewed Artemis I mission on which new rocket?",
+          "answers": [
+            "Space Launch System",
+            "Falcon Heavy",
+            "Saturn V",
+            "Atlas V"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In 2023, which band played the first concert residency at the Sphere in Las Vegas?",
+          "answers": [
+            "Coldplay",
+            "Imagine Dragons",
+            "Metallica",
+            "U2"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In 2021, which country won the delayed Euro 2020 soccer tournament?",
+          "answers": [
+            "England",
+            "Italy",
+            "Spain",
+            "Portugal"
+          ],
+          "correct": "B"
+        }
+      ]
+    }
+  ]
+}

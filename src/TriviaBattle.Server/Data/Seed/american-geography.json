@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "American Geography",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "What is the capital of Texas?",
+          "answers": [
+            "Dallas",
+            "Houston",
+            "Austin",
+            "San Antonio"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which state is nicknamed the \"Sunshine State\"?",
+          "answers": [
+            "Florida",
+            "California",
+            "Arizona",
+            "Hawaii"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which river carved the Grand Canyon?",
+          "answers": [
+            "Rio Grande",
+            "Colorado River",
+            "Snake River",
+            "Columbia River"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which US state is made up entirely of islands?",
+          "answers": [
+            "Alaska",
+            "Florida",
+            "Hawaii",
+            "Rhode Island"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In which state is Mount Rushmore located?",
+          "answers": [
+            "North Dakota",
+            "Wyoming",
+            "Montana",
+            "South Dakota"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which Great Lake lies entirely within the United States?",
+          "answers": [
+            "Lake Superior",
+            "Lake Michigan",
+            "Lake Erie",
+            "Lake Huron"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which city is nicknamed \"The Big Apple\"?",
+          "answers": [
+            "New York City",
+            "Chicago",
+            "Boston",
+            "Philadelphia"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which is the largest US state by area?",
+          "answers": [
+            "Texas",
+            "California",
+            "Alaska",
+            "Montana"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In which city is the Golden Gate Bridge?",
+          "answers": [
+            "Los Angeles",
+            "Seattle",
+            "San Diego",
+            "San Francisco"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is the capital of California?",
+          "answers": [
+            "Los Angeles",
+            "Sacramento",
+            "San Francisco",
+            "San Diego"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which was the first national park in the United States?",
+          "answers": [
+            "Yellowstone",
+            "Yosemite",
+            "Grand Canyon",
+            "Glacier"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which state is nicknamed the \"Land of 10,000 Lakes\"?",
+          "answers": [
+            "Wisconsin",
+            "Michigan",
+            "Minnesota",
+            "Maine"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which river forms much of the border between Texas and Mexico?",
+          "answers": [
+            "Colorado River",
+            "Red River",
+            "Pecos River",
+            "Rio Grande"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the capital of New York State?",
+          "answers": [
+            "Buffalo",
+            "Albany",
+            "Rochester",
+            "Syracuse"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which state is nicknamed the \"Keystone State\"?",
+          "answers": [
+            "Pennsylvania",
+            "Ohio",
+            "Virginia",
+            "New Jersey"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which is the smallest US state by area?",
+          "answers": [
+            "Delaware",
+            "Connecticut",
+            "Rhode Island",
+            "New Jersey"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "The Appalachian Trail runs from Georgia to which state?",
+          "answers": [
+            "Vermont",
+            "New York",
+            "New Hampshire",
+            "Maine"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which state is nicknamed the \"Show Me State\"?",
+          "answers": [
+            "Kansas",
+            "Missouri",
+            "Arkansas",
+            "Iowa"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which state meets Arizona, New Mexico, and Colorado at the Four Corners?",
+          "answers": [
+            "Utah",
+            "Nevada",
+            "Wyoming",
+            "Texas"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the capital of Florida?",
+          "answers": [
+            "Miami",
+            "Orlando",
+            "Tallahassee",
+            "Jacksonville"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which is the only US state whose name has just one syllable?",
+          "answers": [
+            "Utah",
+            "Ohio",
+            "Texas",
+            "Maine"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is the capital of Vermont?",
+          "answers": [
+            "Burlington",
+            "Montpelier",
+            "Concord",
+            "Augusta"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Crater Lake, the deepest lake in the United States, is in which state?",
+          "answers": [
+            "Oregon",
+            "Washington",
+            "Idaho",
+            "California"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is the capital of South Dakota?",
+          "answers": [
+            "Sioux Falls",
+            "Rapid City",
+            "Pierre",
+            "Bismarck"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which state is nicknamed the \"Old Line State\"?",
+          "answers": [
+            "Virginia",
+            "Delaware",
+            "Connecticut",
+            "Maryland"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Lake Tahoe straddles the border of California and which other state?",
+          "answers": [
+            "Nevada",
+            "Oregon",
+            "Arizona",
+            "Utah"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which is the only Great Lake that does not touch the state of Michigan?",
+          "answers": [
+            "Lake Erie",
+            "Lake Ontario",
+            "Lake Superior",
+            "Lake Huron"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Hoover Dam sits on the border between Nevada and which other state?",
+          "answers": [
+            "California",
+            "Utah",
+            "Arizona",
+            "New Mexico"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Badwater Basin in Death Valley, the lowest point in North America, is in which state?",
+          "answers": [
+            "Nevada",
+            "Arizona",
+            "Utah",
+            "California"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is the capital of Kentucky?",
+          "answers": [
+            "Frankfort",
+            "Louisville",
+            "Lexington",
+            "Bowling Green"
+          ],
+          "correct": "A"
+        }
+      ]
+    }
+  ]
+}

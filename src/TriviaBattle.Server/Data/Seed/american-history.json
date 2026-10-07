@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "American History",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "Who was the first President of the United States?",
+          "answers": [
+            "George Washington",
+            "John Adams",
+            "Thomas Jefferson",
+            "Benjamin Franklin"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In what year was the Declaration of Independence adopted?",
+          "answers": [
+            "1765",
+            "1776",
+            "1787",
+            "1812"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who was the first person to walk on the Moon?",
+          "answers": [
+            "Buzz Aldrin",
+            "John Glenn",
+            "Neil Armstrong",
+            "Alan Shepard"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which president issued the Emancipation Proclamation?",
+          "answers": [
+            "Ulysses S. Grant",
+            "Andrew Johnson",
+            "Thomas Jefferson",
+            "Abraham Lincoln"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who received the first US patent for the telephone in 1876?",
+          "answers": [
+            "Alexander Graham Bell",
+            "Thomas Edison",
+            "Nikola Tesla",
+            "Samuel Morse"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who gave the famous \"I Have a Dream\" speech in 1963?",
+          "answers": [
+            "Malcolm X",
+            "Martin Luther King Jr.",
+            "Frederick Douglass",
+            "John Lewis"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which country gave the Statue of Liberty to the United States?",
+          "answers": [
+            "England",
+            "Spain",
+            "France",
+            "Italy"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In the Civil War, the Union fought against which side?",
+          "answers": [
+            "The Loyalists",
+            "The Redcoats",
+            "The Federalists",
+            "The Confederacy"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What was the name of the ship that carried the Pilgrims to America in 1620?",
+          "answers": [
+            "Mayflower",
+            "Santa Maria",
+            "Endeavour",
+            "Speedwell"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which American is famous for a 1752 kite experiment with lightning?",
+          "answers": [
+            "Thomas Edison",
+            "Benjamin Franklin",
+            "Paul Revere",
+            "Samuel Adams"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In which state did the Wright brothers make their first powered flight in 1903?",
+          "answers": [
+            "Ohio",
+            "Virginia",
+            "North Carolina",
+            "Kentucky"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which president completed the Louisiana Purchase in 1803?",
+          "answers": [
+            "James Madison",
+            "John Adams",
+            "James Monroe",
+            "Thomas Jefferson"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In what year did Japan attack Pearl Harbor?",
+          "answers": [
+            "1941",
+            "1939",
+            "1942",
+            "1945"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In which city did Rosa Parks refuse to give up her bus seat in 1955?",
+          "answers": [
+            "Birmingham",
+            "Montgomery",
+            "Selma",
+            "Atlanta"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which founding document begins with the words \"We the People\"?",
+          "answers": [
+            "Declaration of Independence",
+            "Bill of Rights",
+            "US Constitution",
+            "Articles of Confederation"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which president was the only one elected to more than two terms?",
+          "answers": [
+            "Theodore Roosevelt",
+            "Woodrow Wilson",
+            "Dwight D. Eisenhower",
+            "Franklin D. Roosevelt"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "The 1848 discovery of gold at Sutter's Mill started a gold rush in which present-day state?",
+          "answers": [
+            "California",
+            "Alaska",
+            "Colorado",
+            "Nevada"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Civil War battle was fought in Pennsylvania in July 1863?",
+          "answers": [
+            "Antietam",
+            "Gettysburg",
+            "Bull Run",
+            "Shiloh"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What was the name of the NASA program that landed astronauts on the Moon?",
+          "answers": [
+            "Gemini",
+            "Mercury",
+            "Apollo",
+            "Voyager"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which inventor was known as \"The Wizard of Menlo Park\"?",
+          "answers": [
+            "Nikola Tesla",
+            "George Westinghouse",
+            "Henry Ford",
+            "Thomas Edison"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which president died about a month after taking office, the shortest presidency?",
+          "answers": [
+            "William Henry Harrison",
+            "James Garfield",
+            "Zachary Taylor",
+            "Warren G. Harding"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which state was the first to ratify the US Constitution?",
+          "answers": [
+            "Pennsylvania",
+            "Delaware",
+            "New Jersey",
+            "Virginia"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who was the first American astronaut to orbit the Earth?",
+          "answers": [
+            "Alan Shepard",
+            "Gus Grissom",
+            "John Glenn",
+            "Scott Carpenter"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In what year was the Erie Canal completed?",
+          "answers": [
+            "1803",
+            "1812",
+            "1849",
+            "1825"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What was the first permanent English settlement in North America, founded in 1607?",
+          "answers": [
+            "Jamestown",
+            "Plymouth",
+            "Roanoke",
+            "St. Augustine"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which 1954 Supreme Court case ruled that school segregation was unconstitutional?",
+          "answers": [
+            "Plessy v. Ferguson",
+            "Brown v. Board of Education",
+            "Marbury v. Madison",
+            "Miranda v. Arizona"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who was the first woman to serve as a justice on the US Supreme Court?",
+          "answers": [
+            "Ruth Bader Ginsburg",
+            "Sonia Sotomayor",
+            "Sandra Day O'Connor",
+            "Elena Kagan"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which 1783 treaty officially ended the American Revolutionary War?",
+          "answers": [
+            "Treaty of Ghent",
+            "Treaty of Versailles",
+            "Treaty of Guadalupe Hidalgo",
+            "Treaty of Paris"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which president signed the Civil Rights Act of 1964 into law?",
+          "answers": [
+            "Lyndon B. Johnson",
+            "John F. Kennedy",
+            "Dwight D. Eisenhower",
+            "Richard Nixon"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "The 1867 purchase nicknamed \"Seward's Folly\" added which territory to the US?",
+          "answers": [
+            "Hawaii",
+            "Alaska",
+            "Oregon Territory",
+            "Washington Territory"
+          ],
+          "correct": "B"
+        }
+      ]
+    }
+  ]
+}

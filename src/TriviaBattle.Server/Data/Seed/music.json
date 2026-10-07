@@ -26,50 +26,6 @@
           "correct": "A"
         },
         {
-          "difficulty": "Medium",
-          "text": "Who is known as the \"King of Pop\"?",
-          "answers": [
-            "Elvis Presley",
-            "Prince",
-            "Michael Jackson",
-            "Justin Timberlake"
-          ],
-          "correct": "C"
-        },
-        {
-          "difficulty": "Medium",
-          "text": "Which singer is nicknamed \"Queen Bey\"?",
-          "answers": [
-            "Rihanna",
-            "Beyonce",
-            "Adele",
-            "Lady Gaga"
-          ],
-          "correct": "B"
-        },
-        {
-          "difficulty": "Medium",
-          "text": "Which Queen song begins \"Is this the real life?\"",
-          "answers": [
-            "Bohemian Rhapsody",
-            "We Will Rock You",
-            "Somebody to Love",
-            "Don't Stop Me Now"
-          ],
-          "correct": "A"
-        },
-        {
-          "difficulty": "Hard",
-          "text": "Which musician was born Reginald Dwight?",
-          "answers": [
-            "David Bowie",
-            "Elton John",
-            "Sting",
-            "Freddie Mercury"
-          ],
-          "correct": "B"
-        },
-        {
           "difficulty": "Easy",
           "text": "Which keyboard instrument makes its sound by pushing air through pipes?",
           "answers": [
@@ -158,26 +114,37 @@
           "correct": "C"
         },
         {
-          "difficulty": "Easy",
-          "text": "Which K-pop group released the 2020 hit \"Dynamite\"?",
+          "difficulty": "Medium",
+          "text": "Who is known as the \"King of Pop\"?",
           "answers": [
-            "Blackpink",
-            "EXO",
-            "Twice",
-            "BTS"
+            "Elvis Presley",
+            "Prince",
+            "Michael Jackson",
+            "Justin Timberlake"
           ],
-          "correct": "D"
+          "correct": "C"
         },
         {
-          "difficulty": "Easy",
-          "text": "In \"The Sound of Music\", which song begins \"Let's start at the very beginning\"?",
+          "difficulty": "Medium",
+          "text": "Which singer is nicknamed \"Queen Bey\"?",
           "answers": [
-            "Edelweiss",
-            "My Favorite Things",
-            "Sixteen Going on Seventeen",
-            "Do-Re-Mi"
+            "Rihanna",
+            "Beyonce",
+            "Adele",
+            "Lady Gaga"
           ],
-          "correct": "D"
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Queen song begins \"Is this the real life?\"",
+          "answers": [
+            "Bohemian Rhapsody",
+            "We Will Rock You",
+            "Somebody to Love",
+            "Don't Stop Me Now"
+          ],
+          "correct": "A"
         },
         {
           "difficulty": "Medium",
@@ -257,37 +224,15 @@
           "correct": "A"
         },
         {
-          "difficulty": "Medium",
-          "text": "Who sang \"Purple Rain\"?",
+          "difficulty": "Hard",
+          "text": "Which musician was born Reginald Dwight?",
           "answers": [
-            "Stevie Wonder",
-            "Prince",
-            "Lionel Richie",
-            "Michael Jackson"
+            "David Bowie",
+            "Elton John",
+            "Sting",
+            "Freddie Mercury"
           ],
           "correct": "B"
-        },
-        {
-          "difficulty": "Medium",
-          "text": "Which band recorded \"Don't Stop Believin'\"?",
-          "answers": [
-            "Boston",
-            "Foreigner",
-            "Styx",
-            "Journey"
-          ],
-          "correct": "D"
-        },
-        {
-          "difficulty": "Medium",
-          "text": "Although usually made of brass, the saxophone belongs to which instrument family?",
-          "answers": [
-            "Woodwind",
-            "Brass",
-            "Percussion",
-            "Strings"
-          ],
-          "correct": "A"
         },
         {
           "difficulty": "Hard",
@@ -385,17 +330,6 @@
             "Hank Williams",
             "Merle Haggard",
             "Johnny Cash"
-          ],
-          "correct": "D"
-        },
-        {
-          "difficulty": "Hard",
-          "text": "How many semitones (half steps) are there in one octave?",
-          "answers": [
-            "8",
-            "10",
-            "11",
-            "12"
           ],
           "correct": "D"
         }

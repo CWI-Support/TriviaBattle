@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "Movies",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "What is the name of the cowboy toy in \"Toy Story\"?",
+          "answers": [
+            "Buzz",
+            "Woody",
+            "Jessie",
+            "Rex"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"The Lion King\", what is Simba's father's name?",
+          "answers": [
+            "Scar",
+            "Rafiki",
+            "Timon",
+            "Mufasa"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What kind of creature is Shrek?",
+          "answers": [
+            "Ogre",
+            "Troll",
+            "Giant",
+            "Goblin"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"Frozen\", what is the snowman's name?",
+          "answers": [
+            "Sven",
+            "Kristoff",
+            "Olaf",
+            "Hans"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"Finding Nemo\", what kind of fish is Nemo?",
+          "answers": [
+            "Angelfish",
+            "Pufferfish",
+            "Clownfish",
+            "Goldfish"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"The Wizard of Oz\", what is the name of Dorothy's dog?",
+          "answers": [
+            "Toto",
+            "Benji",
+            "Lassie",
+            "Spot"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In the Pixar film \"Up\", what lifts Carl's house into the sky?",
+          "answers": [
+            "Kites",
+            "Rockets",
+            "A tornado",
+            "Balloons"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In Disney's \"Aladdin\", what is the name of Aladdin's pet monkey?",
+          "answers": [
+            "Iago",
+            "Abu",
+            "Rajah",
+            "Pascal"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"Monsters, Inc.\", what nickname does Sulley give the little girl?",
+          "answers": [
+            "Boo",
+            "Dot",
+            "Lilo",
+            "Agnes"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is the name of the red race car star of Pixar's \"Cars\"?",
+          "answers": [
+            "Mater",
+            "Doc Hudson",
+            "Lightning McQueen",
+            "Sally"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which movie series features the famous line \"May the Force be with you\"?",
+          "answers": [
+            "Star Trek",
+            "Star Wars",
+            "Guardians of the Galaxy",
+            "Dune"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who directed the 1993 film \"Jurassic Park\"?",
+          "answers": [
+            "James Cameron",
+            "George Lucas",
+            "Ridley Scott",
+            "Steven Spielberg"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In the \"Harry Potter\" films, which house is Harry sorted into?",
+          "answers": [
+            "Slytherin",
+            "Hufflepuff",
+            "Ravenclaw",
+            "Gryffindor"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"Back to the Future\", how fast must the DeLorean go to travel through time?",
+          "answers": [
+            "66 mph",
+            "88 mph",
+            "77 mph",
+            "99 mph"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In Disney's \"Frozen\", what is the name of the kingdom ruled by Elsa?",
+          "answers": [
+            "Corona",
+            "Agrabah",
+            "Arendelle",
+            "DunBroch"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In which city does Pixar's \"Ratatouille\" take place?",
+          "answers": [
+            "Paris",
+            "Lyon",
+            "Rome",
+            "Marseille"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which actor played Captain Jack Sparrow in the \"Pirates of the Caribbean\" films?",
+          "answers": [
+            "Johnny Depp",
+            "Orlando Bloom",
+            "Russell Crowe",
+            "Jude Law"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who directed the 2009 film \"Avatar\"?",
+          "answers": [
+            "Peter Jackson",
+            "Ridley Scott",
+            "Christopher Nolan",
+            "James Cameron"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the family's last name in Pixar's \"The Incredibles\"?",
+          "answers": [
+            "Best",
+            "Mode",
+            "Parr",
+            "Dicker"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Pixar film follows a lonely robot cleaning up a trash-covered Earth?",
+          "answers": [
+            "Up",
+            "WALL-E",
+            "Inside Out",
+            "Ratatouille"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which film won the very first Academy Award for Best Picture?",
+          "answers": [
+            "Sunrise",
+            "The Jazz Singer",
+            "Wings",
+            "Metropolis"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What was Disney's first full-length animated feature film?",
+          "answers": [
+            "Pinocchio",
+            "Snow White and the Seven Dwarfs",
+            "Fantasia",
+            "Bambi"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In what year was the first \"Star Wars\" film released?",
+          "answers": [
+            "1975",
+            "1979",
+            "1981",
+            "1977"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "How many Academy Awards did \"Titanic\" (1997) win?",
+          "answers": [
+            "11",
+            "9",
+            "10",
+            "12"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which actor was the first to play James Bond in the official film series?",
+          "answers": [
+            "Roger Moore",
+            "Sean Connery",
+            "David Niven",
+            "George Lazenby"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What was the first feature-length film made entirely with computer animation?",
+          "answers": [
+            "Toy Story",
+            "Antz",
+            "A Bug's Life",
+            "Shrek"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"Citizen Kane\", what turns out to be \"Rosebud\"?",
+          "answers": [
+            "A horse",
+            "A boat",
+            "A sled",
+            "A woman"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is Indiana Jones's real first name?",
+          "answers": [
+            "Howard",
+            "Walter",
+            "Robert",
+            "Henry"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which actor provided the voice of Darth Vader in the original \"Star Wars\" films?",
+          "answers": [
+            "Morgan Freeman",
+            "David Prowse",
+            "Christopher Lee",
+            "James Earl Jones"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"Back to the Future\", what is Doc Brown's first name?",
+          "answers": [
+            "Edward",
+            "Elliott",
+            "Emmett",
+            "Ernest"
+          ],
+          "correct": "C"
+        }
+      ]
+    }
+  ]
+}

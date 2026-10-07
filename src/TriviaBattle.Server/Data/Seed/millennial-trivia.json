@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "Millennial Trivia",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "In \"Harry Potter\", which house is Harry sorted into?",
+          "answers": [
+            "Slytherin",
+            "Hufflepuff",
+            "Ravenclaw",
+            "Gryffindor"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"Twilight\", what kind of creature is Edward Cullen?",
+          "answers": [
+            "Werewolf",
+            "Vampire",
+            "Wizard",
+            "Ghost"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"The Hunger Games\", which district is Katniss Everdeen from?",
+          "answers": [
+            "District 12",
+            "District 1",
+            "District 4",
+            "District 11"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In the movie \"Shrek\", what kind of creature is Shrek?",
+          "answers": [
+            "Troll",
+            "Goblin",
+            "Ogre",
+            "Giant"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"High School Musical\", which sport does Troy Bolton play?",
+          "answers": [
+            "Football",
+            "Basketball",
+            "Baseball",
+            "Soccer"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which Disney Channel show starred Miley Cyrus as a girl with a secret life as a pop star?",
+          "answers": [
+            "Lizzie McGuire",
+            "That's So Raven",
+            "Sonny with a Chance",
+            "Hannah Montana"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which yellow electric Pokemon is Ash Ketchum's famous partner?",
+          "answers": [
+            "Raichu",
+            "Jolteon",
+            "Pikachu",
+            "Electabuzz"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which Nickelodeon cartoon character lives in a pineapple under the sea?",
+          "answers": [
+            "SpongeBob SquarePants",
+            "Patrick Star",
+            "Squidward Tentacles",
+            "Sandy Cheeks"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which pocket-sized Apple music player first launched in 2001?",
+          "answers": [
+            "iPhone",
+            "iPod",
+            "iPad",
+            "iMac"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What did the popular chat program AIM stand for?",
+          "answers": [
+            "Apple Internet Mail",
+            "Active Internet Messaging",
+            "AOL Instant Messenger",
+            "America Instant Mail"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"Lizzie McGuire\", what nickname does Lizzie's best friend David Gordon go by?",
+          "answers": [
+            "Gordo",
+            "Davey",
+            "Gordy",
+            "D.G."
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which boy band featured Justin Timberlake and JC Chasez?",
+          "answers": [
+            "Backstreet Boys",
+            "98 Degrees",
+            "*NSYNC",
+            "O-Town"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "The Tamagotchi digital pet toy originally came from which country?",
+          "answers": [
+            "United States",
+            "South Korea",
+            "China",
+            "Japan"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "On MySpace, who was automatically every new user's first friend?",
+          "answers": [
+            "Mark",
+            "Tom",
+            "Steve",
+            "Chris"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "On \"That's So Raven\", what special ability does Raven Baxter have?",
+          "answers": [
+            "Seeing visions of the future",
+            "Reading minds",
+            "Turning invisible",
+            "Talking to animals"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"Kim Possible\", what kind of animal is Ron Stoppable's pet Rufus?",
+          "answers": [
+            "Hamster",
+            "Ferret",
+            "Guinea pig",
+            "Naked mole-rat"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"Shrek 2\", what is the name of the kingdom ruled by Fiona's parents?",
+          "answers": [
+            "Duloc",
+            "Far Far Away",
+            "Once Upon a Time",
+            "Happily Ever After"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"The Hunger Games\", what is the last name of the president of Panem?",
+          "answers": [
+            "Coin",
+            "Crane",
+            "Snow",
+            "Trinket"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Nickelodeon sketch comedy show featured both Kenan Thompson and Amanda Bynes in its cast?",
+          "answers": [
+            "The Amanda Show",
+            "Kenan & Kel",
+            "Figure It Out",
+            "All That"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"Twilight\", Bella Swan moves to which small rainy town in Washington?",
+          "answers": [
+            "Forks",
+            "Spokane",
+            "Port Angeles",
+            "Tacoma"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"Harry Potter\", what is the name of the Weasley family's home?",
+          "answers": [
+            "Shell Cottage",
+            "Grimmauld Place",
+            "The Burrow",
+            "The Leaky Cauldron"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"High School Musical\", what is the name of the school Troy and Gabriella attend?",
+          "answers": [
+            "East High",
+            "West High",
+            "North Shore High",
+            "Ridgemont High"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"The Hunger Games\", what is the name of Katniss's stylist who designs her flaming costumes?",
+          "answers": [
+            "Haymitch",
+            "Cinna",
+            "Effie",
+            "Caesar"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"Twilight\", what is the first name of Edward Cullen's adoptive father, a doctor?",
+          "answers": [
+            "Jasper",
+            "Emmett",
+            "Aro",
+            "Carlisle"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which Pokemon is number 001 in the original Pokedex?",
+          "answers": [
+            "Pikachu",
+            "Charmander",
+            "Bulbasaur",
+            "Mew"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In the Disney Channel movie \"Halloweentown\", what is the first name of Marnie's witch grandmother?",
+          "answers": [
+            "Gwen",
+            "Aggie",
+            "Sophie",
+            "Marjorie"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On \"Hannah Montana\", what is the name of Lilly Truscott's disguised alter ego?",
+          "answers": [
+            "Mikayla",
+            "Ashley",
+            "Amber",
+            "Lola"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In \"Harry Potter\", Platform 9 3/4 is located at which London train station?",
+          "answers": [
+            "King's Cross",
+            "Paddington",
+            "Victoria",
+            "Waterloo"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which actor played Louis Stevens on the Disney Channel show \"Even Stevens\"?",
+          "answers": [
+            "Frankie Muniz",
+            "Drake Bell",
+            "Zac Efron",
+            "Shia LaBeouf"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On the virtual pet website Neopets, what is the name of the world where the pets live?",
+          "answers": [
+            "Petpetia",
+            "Neopia",
+            "Neoland",
+            "Altador"
+          ],
+          "correct": "B"
+        }
+      ]
+    }
+  ]
+}
