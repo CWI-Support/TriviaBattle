@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "Food & Drink",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "What is the main ingredient in traditional hummus?",
+          "answers": [
+            "Lentils",
+            "Chickpeas",
+            "Black beans",
+            "Green peas"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Sushi is most closely associated with which country?",
+          "answers": [
+            "China",
+            "Korea",
+            "Japan",
+            "Thailand"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Cheddar, brie and gouda are all types of what?",
+          "answers": [
+            "Cheese",
+            "Bread",
+            "Pasta",
+            "Sausage"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which vegetable is used to make french fries?",
+          "answers": [
+            "Carrot",
+            "Parsnip",
+            "Turnip",
+            "Potato"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Popcorn is made from which grain?",
+          "answers": [
+            "Rice",
+            "Wheat",
+            "Corn",
+            "Oats"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is the main ingredient in an omelette?",
+          "answers": [
+            "Milk",
+            "Eggs",
+            "Flour",
+            "Cheese"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which fruit is dried to make raisins?",
+          "answers": [
+            "Plums",
+            "Grapes",
+            "Figs",
+            "Cherries"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Pizza Margherita comes from which country?",
+          "answers": [
+            "Italy",
+            "Greece",
+            "Spain",
+            "France"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is the main ingredient in traditional guacamole?",
+          "answers": [
+            "Avocado",
+            "Pea",
+            "Cucumber",
+            "Green pepper"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which fruit is famous for having its seeds on the outside?",
+          "answers": [
+            "Raspberry",
+            "Blueberry",
+            "Kiwi",
+            "Strawberry"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which nut is the main ingredient in marzipan?",
+          "answers": [
+            "Walnut",
+            "Hazelnut",
+            "Almond",
+            "Cashew"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Paella is a traditional rice dish from which country?",
+          "answers": [
+            "Portugal",
+            "Spain",
+            "Mexico",
+            "Italy"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Kimchi, a spicy fermented cabbage dish, is traditional in which country?",
+          "answers": [
+            "Japan",
+            "China",
+            "Thailand",
+            "Korea"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which spice gives most curry powders their bright yellow color?",
+          "answers": [
+            "Saffron",
+            "Turmeric",
+            "Paprika",
+            "Cumin"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is tofu made from?",
+          "answers": [
+            "Soybeans",
+            "Rice",
+            "Chickpeas",
+            "Wheat"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which type of pasta is shaped like a bow tie?",
+          "answers": [
+            "Penne",
+            "Rigatoni",
+            "Farfalle",
+            "Fusilli"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the main herb in classic Genovese pesto?",
+          "answers": [
+            "Spinach",
+            "Parsley",
+            "Mint",
+            "Basil"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which spiky Southeast Asian fruit is famous for its very strong smell?",
+          "answers": [
+            "Jackfruit",
+            "Durian",
+            "Mangosteen",
+            "Lychee"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Poutine, fries topped with cheese curds and gravy, comes from which country?",
+          "answers": [
+            "Belgium",
+            "France",
+            "United States",
+            "Canada"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Greek tzatziki is made with yogurt, garlic and which vegetable?",
+          "answers": [
+            "Cucumber",
+            "Tomato",
+            "Onion",
+            "Zucchini"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which pasta's name means \"little tongues\" in Italian?",
+          "answers": [
+            "Fettuccine",
+            "Orecchiette",
+            "Linguine",
+            "Tagliatelle"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "The spice saffron comes from which part of the crocus flower?",
+          "answers": [
+            "Petal",
+            "Stigma",
+            "Root",
+            "Seed"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What Japanese word describes the savory \"fifth taste\"?",
+          "answers": [
+            "Miso",
+            "Dashi",
+            "Wasabi",
+            "Umami"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Gouda cheese is named after a town in which country?",
+          "answers": [
+            "Netherlands",
+            "Belgium",
+            "Denmark",
+            "Switzerland"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which vegetable gives borscht soup its deep red color?",
+          "answers": [
+            "Red cabbage",
+            "Beetroot",
+            "Red pepper",
+            "Tomato"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Japanese soba noodles are traditionally made from which kind of flour?",
+          "answers": [
+            "Rice flour",
+            "Corn flour",
+            "Buckwheat flour",
+            "Potato flour"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Hollandaise sauce is made from butter, lemon juice and what?",
+          "answers": [
+            "Egg yolks",
+            "Cream",
+            "Mustard",
+            "Flour"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Tahini is a paste made from which ground ingredient?",
+          "answers": [
+            "Chickpeas",
+            "Sunflower seeds",
+            "Peanuts",
+            "Sesame seeds"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which spice is made from the dried flower buds of a tree?",
+          "answers": [
+            "Nutmeg",
+            "Cinnamon",
+            "Cloves",
+            "Allspice"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Arborio rice is most commonly used to make which dish?",
+          "answers": [
+            "Risotto",
+            "Paella",
+            "Biryani",
+            "Jambalaya"
+          ],
+          "correct": "A"
+        }
+      ]
+    }
+  ]
+}

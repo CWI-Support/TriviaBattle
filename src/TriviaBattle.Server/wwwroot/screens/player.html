@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Player Screen</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+</head>
+<body>
+    <div class="theme-backdrop"></div>
+    <!-- URL: /display/player/{station number}[?room=A]. player-screen.js does the rest. -->
+    <video id="intro-video" class="synced-video" playsinline hidden></video>
+
+    <div class="player-screen">
+        <header class="player-header">
+            <span class="station-label" id="station-label"></span>
+            <span class="player-name" id="player-name"></span>
+            <span class="player-score" id="player-score"></span>
+        </header>
+        <main class="player-body" id="player-body"></main>
+    </div>
+
+    <script src="/lib/signalr/signalr.min.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/screen-connection.js"></script>
+    <script src="/js/station-keypad.js"></script>
+    <script src="/js/synced-video.js"></script>
+    <script src="/js/player-screen.js"></script>
+</body>
+</html>

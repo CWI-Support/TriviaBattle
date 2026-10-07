@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Make placeholder intro video</title>
+    <style>
+        body { background: #111; color: #eee; font-family: sans-serif; padding: 20px; }
+        canvas { width: 640px; border: 1px solid #444; display: block; margin: 12px 0; }
+        button { font-size: 18px; padding: 8px 16px; }
+    </style>
+</head>
+<body>
+    <!--
+        Generates the PLACEHOLDER intro video (wwwroot/media/intro.webm) until the real one is made.
+        Open this file in Chrome, click "Record", then save the downloaded file as
+        src/TriviaBattle.Server/wwwroot/media/intro.webm.
+
+        The big timecode and the sweeping bar make it easy to check that every screen is in sync:
+        hold a phone camera up to two screens and compare the numbers.
+        The real intro can be any length. Set Game:IntroSeconds to (Media:IntroVideoDelaySeconds + its length).
+    -->
+    <h1>Placeholder intro video</h1>
+    <p>Length: <span id="length"></span> seconds, 1280&times;720, silent.</p>
+    <button id="record">Record</button> <span id="status"></span>
+    <canvas id="canvas" width="1280" height="720"></canvas>
+
+    <script>
+        const LENGTH_S = 6;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        document.getElementById('length').textContent = LENGTH_S;
+
+        // Draws the frame for time t (seconds since the start of the video).
+        function drawFrame(t) {
+            const w = canvas.width, h = canvas.height;
+            ctx.fillStyle = '#07060f';
+            ctx.fillRect(0, 0, w, h);
+
+            // Title grows in over the first second.
+            const grow = Math.min(1, t / 1);
+            ctx.save();
+            ctx.translate(w / 2, h * 0.32);
+            ctx.scale(0.6 + 0.4 * grow, 0.6 + 0.4 * grow);
+            ctx.font = 'bold 120px Impact, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#ffd400';
+            ctx.shadowBlur = 40;
+            ctx.fillStyle = '#ffd400';
+            ctx.fillText('TRIVIA BATTLE', 0, 0);
+            ctx.restore();
+
+            // Countdown 3, 2, 1, BATTLE! over the last 4 seconds.
+            const remaining = LENGTH_S - t;
+            const word = remaining > 3 ? '' : remaining > 2 ? '3' : remaining > 1 ? '2' : remaining > 0.5 ? '1' : 'BATTLE!';
+            ctx.font = 'bold 160px Impact, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(word, w / 2, h * 0.68);
+
+            // Sync helpers: a sweeping bar and a big timecode.
+            ctx.fillStyle = '#2a8cff';
+            ctx.fillRect((t / LENGTH_S) * w - 20, h - 90, 40, 20);
+            ctx.font = '48px monospace';
+            ctx.fillStyle = '#9d9bc4';
+            ctx.fillText(`PLACEHOLDER  t = ${t.toFixed(2)}s`, w / 2, h - 30);
+        }
+
+        // Records LENGTH_S seconds of the animation and resolves with a webm Blob.
+        function recordIntro() {
+            return new Promise(resolve => {
+                const recorder = new MediaRecorder(canvas.captureStream(30), { mimeType: 'video/webm' });
+                const chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+
+                const start = performance.now();
+                recorder.start();
+                (function frame() {
+                    const t = (performance.now() - start) / 1000;
+                    drawFrame(Math.min(t, LENGTH_S));
+                    if (t < LENGTH_S) requestAnimationFrame(frame);
+                    else recorder.stop();
+                })();
+            });
+        }
+
+        document.getElementById('record').addEventListener('click', async () => {
+            document.getElementById('status').textContent = 'Recording…';
+            const blob = await recordIntro();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'intro.webm';
+            link.click();
+            document.getElementById('status').textContent = 'Done: save it as wwwroot/media/intro.webm';
+        });
+
+        drawFrame(0);
+    </script>
+</body>
+</html>

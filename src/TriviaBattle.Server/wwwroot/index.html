@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Screens</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+    <style>
+        body { overflow: auto; padding: 32px; }
+        .launcher { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+        .launcher h1 { font-size: 64px; color: var(--accent); }
+        .launcher h2 { font-size: 32px; }
+        .launcher a { color: var(--text); display: inline-block; margin: 6px 12px 6px 0; padding: 10px 16px;
+                      background: var(--panel); border-radius: 8px; text-decoration: none; border-left: 6px solid var(--link-color, var(--accent)); }
+        .launcher a:hover { background: var(--panel-light); }
+    </style>
+</head>
+<body>
+    <!-- Operator launcher: links to every screen. Each screen gets its role from its URL,
+         so these links work the same on one PC or across machines on the LAN. -->
+    <div class="launcher">
+        <h1>Trivia Battle</h1>
+        <p class="dim">Open each screen in its own window (or on its own device). Add <code>?devkeys=1</code> to a
+           screen to drive the buttons from that window's keyboard.</p>
+        <div id="rooms"></div>
+    </div>
+
+    <script src="/js/ui.js"></script>
+    <script>
+        fetch('/api/rooms').then(r => r.json()).then(({ devToolsEnabled, rooms }) => {
+            document.getElementById('rooms').innerHTML = rooms.map(room => {
+                const q = rooms.length > 1 ? `?room=${room.id}` : '';
+                const players = room.stations
+                    .map(s => `<a href="/display/player/${s.number}${q}" style="--link-color:${s.color}">${UI.escape(s.label)}</a>`)
+                    .join('');
+                const dev = devToolsEnabled
+                    ? `<p><a href="/dev/buttons${q}">Dev buttons (keyboard)</a>
+                          <a href="/display/main${q ? q + '&' : '?'}devkeys=1">Main screen + keyboard buttons</a>
+                          <a href="/kiosk${q ? q + '&' : '?'}dev=1">Kiosk + simulated cards</a></p>`
+                    : '';
+                return `
+                    <h2>${UI.escape(room.name)} (room ${UI.escape(room.id)})</h2>
+                    <p><a href="/kiosk${q}">Kiosk</a><a href="/display/main${q}">Main screen</a></p>
+                    <p>${players}</p>
+                    ${dev}`;
+            }).join('');
+        });
+    </script>
+</body>
+</html>

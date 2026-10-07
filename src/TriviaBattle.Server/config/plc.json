@@ -1,0 +1,42 @@
+{
+  "_comment": "PLC (AutomationDirect Productivity, Modbus TCP). ALL REGISTER NUMBERS BELOW ARE PLACEHOLDERS until the real register map exists. Registers are 0-based holding-register offsets (Modbus 400001 = 0), 16-bit each. Protocol: docs/PLC-PROTOCOL.md. Set Enabled to true to use the PLC instead of the keyboard/console stand-ins.",
+  "Plc": {
+    "Enabled": false,
+    "Host": "192.168.1.10",
+    "Port": 502,
+    "UnitId": 1,
+    "PollIntervalMs": 10,
+    "ReconnectDelayMs": 2000,
+    "TimeoutMs": 1000,
+    "ClockTickMs": 1,
+
+    "Registers": {
+      "EventCounter": 0,
+      "EventBufferStart": 10,
+      "EventSlots": 32,
+      "Ack": 100,
+      "Heartbeat": 101
+    },
+
+    "_ButtonCodes": "Button id (buttons.json) -> the code the PLC writes into an event slot. Placeholder: code = button id.",
+    "ButtonCodes": {
+      "10": 10, "11": 11, "12": 12, "13": 13,
+      "14": 14, "15": 15, "16": 16, "17": 17,
+      "18": 18, "19": 19, "20": 20, "21": 21,
+      "22": 22, "23": 23, "24": 24, "25": 25
+    },
+
+    "_LedRegisters": "Button id -> holding register for its LED. Values written: 0 off, 1 on, 2 blink. Placeholder: 200 + (button id - 10).",
+    "LedRegisters": {
+      "10": 200, "11": 201, "12": 202, "13": 203,
+      "14": 204, "15": 205, "16": 206, "17": 207,
+      "18": 208, "19": 209, "20": 210, "21": 211,
+      "22": 212, "23": 213, "24": 214, "25": 215
+    },
+
+    "_LightingCueRegisters": "Room id -> holding register for its lighting scene. Values: 0 Idle, 1 Intro, 2 Question, 3 Reveal, 4 Standings, 5 Results.",
+    "LightingCueRegisters": {
+      "A": 220
+    }
+  }
+}

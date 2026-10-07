@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Leaderboards</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+</head>
+<body>
+    <div class="theme-backdrop"></div>
+    <!-- Stand-alone leaderboard display, e.g. for a TV in the lobby. Doesn't need a connection:
+         it just re-reads the boards every rotation. -->
+    <div class="center-stack">
+        <h1 class="big-title" id="title"></h1>
+        <div id="leaderboard"></div>
+    </div>
+
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/leaderboard-view.js"></script>
+    <script>
+        Theme.load().then(() => {
+            document.getElementById('title').innerHTML = Theme.text('brand.title');
+            LeaderboardView.startRotation(document.getElementById('leaderboard'));
+        });
+    </script>
+</body>
+</html>

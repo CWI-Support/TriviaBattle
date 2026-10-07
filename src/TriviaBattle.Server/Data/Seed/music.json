@@ -1,0 +1,405 @@
+{
+  "categories": [
+    {
+      "name": "Music",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "Which band sang \"Hey Jude\"?",
+          "answers": [
+            "The Beatles",
+            "The Rolling Stones",
+            "Queen",
+            "The Who"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many strings does a violin have?",
+          "answers": [
+            "4",
+            "5",
+            "6",
+            "3"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who is known as the \"King of Pop\"?",
+          "answers": [
+            "Elvis Presley",
+            "Prince",
+            "Michael Jackson",
+            "Justin Timberlake"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which singer is nicknamed \"Queen Bey\"?",
+          "answers": [
+            "Rihanna",
+            "Beyonce",
+            "Adele",
+            "Lady Gaga"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Queen song begins \"Is this the real life?\"",
+          "answers": [
+            "Bohemian Rhapsody",
+            "We Will Rock You",
+            "Somebody to Love",
+            "Don't Stop Me Now"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which musician was born Reginald Dwight?",
+          "answers": [
+            "David Bowie",
+            "Elton John",
+            "Sting",
+            "Freddie Mercury"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which keyboard instrument makes its sound by pushing air through pipes?",
+          "answers": [
+            "Accordion",
+            "Pipe organ",
+            "Harpsichord",
+            "Piano"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "To which section of the orchestra does the trumpet belong?",
+          "answers": [
+            "Brass",
+            "Woodwind",
+            "Percussion",
+            "Strings"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which singer is known as the \"King of Rock and Roll\"?",
+          "answers": [
+            "Chuck Berry",
+            "Little Richard",
+            "Elvis Presley",
+            "Buddy Holly"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many musicians are in a quartet?",
+          "answers": [
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which Disney film features the song \"Let It Go\"?",
+          "answers": [
+            "Tangled",
+            "Moana",
+            "Encanto",
+            "Frozen"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which Disney film features the song \"Under the Sea\"?",
+          "answers": [
+            "The Little Mermaid",
+            "Moana",
+            "Finding Nemo",
+            "Lilo & Stitch"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which instrument was Jimi Hendrix famous for playing?",
+          "answers": [
+            "Drums",
+            "Electric guitar",
+            "Bass guitar",
+            "Saxophone"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which singer's fans are known as \"Swifties\"?",
+          "answers": [
+            "Selena Gomez",
+            "Katy Perry",
+            "Taylor Swift",
+            "Ariana Grande"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which K-pop group released the 2020 hit \"Dynamite\"?",
+          "answers": [
+            "Blackpink",
+            "EXO",
+            "Twice",
+            "BTS"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In \"The Sound of Music\", which song begins \"Let's start at the very beginning\"?",
+          "answers": [
+            "Edelweiss",
+            "My Favorite Things",
+            "Sixteen Going on Seventeen",
+            "Do-Re-Mi"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "How many lines are on a standard musical staff?",
+          "answers": [
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the highest standard female singing voice?",
+          "answers": [
+            "Alto",
+            "Mezzo-soprano",
+            "Soprano",
+            "Contralto"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which instrument is Yo-Yo Ma famous for playing?",
+          "answers": [
+            "Violin",
+            "Viola",
+            "Piano",
+            "Cello"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Italian musical term tells a musician to play loudly?",
+          "answers": [
+            "Piano",
+            "Forte",
+            "Allegro",
+            "Largo"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Broadway musical features the song \"Defying Gravity\"?",
+          "answers": [
+            "Wicked",
+            "Hamilton",
+            "Rent",
+            "Dear Evan Hansen"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which composer wrote the \"Moonlight Sonata\"?",
+          "answers": [
+            "Mozart",
+            "Bach",
+            "Beethoven",
+            "Chopin"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which singer released the 2011 album \"21\"?",
+          "answers": [
+            "Adele",
+            "Amy Winehouse",
+            "Duffy",
+            "Florence Welch"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who sang \"Purple Rain\"?",
+          "answers": [
+            "Stevie Wonder",
+            "Prince",
+            "Lionel Richie",
+            "Michael Jackson"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which band recorded \"Don't Stop Believin'\"?",
+          "answers": [
+            "Boston",
+            "Foreigner",
+            "Styx",
+            "Journey"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Although usually made of brass, the saxophone belongs to which instrument family?",
+          "answers": [
+            "Woodwind",
+            "Brass",
+            "Percussion",
+            "Strings"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which composer wrote the set of violin concertos called \"The Four Seasons\"?",
+          "answers": [
+            "Handel",
+            "Vivaldi",
+            "Bach",
+            "Haydn"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What was the first music video ever played on MTV?",
+          "answers": [
+            "Thriller",
+            "Take On Me",
+            "Money for Nothing",
+            "Video Killed the Radio Star"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "How many symphonies did Ludwig van Beethoven complete?",
+          "answers": [
+            "7",
+            "9",
+            "10",
+            "12"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is Lady Gaga's real first name?",
+          "answers": [
+            "Robyn",
+            "Katheryn",
+            "Stefani",
+            "Alicia"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which orchestral instrument typically has 47 strings and 7 pedals?",
+          "answers": [
+            "Harp",
+            "Harpsichord",
+            "Zither",
+            "Lute"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who composed the music for the ballet \"The Nutcracker\"?",
+          "answers": [
+            "Stravinsky",
+            "Rachmaninoff",
+            "Tchaikovsky",
+            "Prokofiev"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What was the name of Elvis Presley's mansion in Memphis, Tennessee?",
+          "answers": [
+            "Graceland",
+            "Neverland",
+            "Paisley Park",
+            "Sun Studio"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which rock band released the 1973 album \"The Dark Side of the Moon\"?",
+          "answers": [
+            "Led Zeppelin",
+            "The Who",
+            "Pink Floyd",
+            "Genesis"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which country music legend was nicknamed \"The Man in Black\"?",
+          "answers": [
+            "Willie Nelson",
+            "Hank Williams",
+            "Merle Haggard",
+            "Johnny Cash"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "How many semitones (half steps) are there in one octave?",
+          "answers": [
+            "8",
+            "10",
+            "11",
+            "12"
+          ],
+          "correct": "D"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Dev Buttons</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+    <style> body { overflow: auto; } header { padding: 20px; } </style>
+</head>
+<body>
+    <!-- Stand-in for the 16 physical buttons. Click them, or press the keys shown
+         (mapping in config/keyboard.json). Presses go through the same path as real buttons. -->
+    <header>
+        <h1 style="color: var(--accent); font-size: 48px">Dev buttons</h1>
+        <p class="dim" id="match-status">No match running</p>
+    </header>
+    <div class="dev-pads" id="pads"></div>
+
+    <script src="/lib/signalr/signalr.min.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/screen-connection.js"></script>
+    <script src="/js/dev-keys.js"></script>
+    <script src="/js/dev-buttons.js"></script>
+</body>
+</html>

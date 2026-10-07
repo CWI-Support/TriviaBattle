@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio local state
+.vs/
+*.csproj.user
+
+# Runtime data
+*.db
+*.db-wal
+*.db-shm
+logs/
+
+# Local / secret configuration
+appsettings.Production.json
+appsettings.Development.json
+appsettings_Development.json
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Question images/videos uploaded through the admin page (venue data, not source)
+src/TriviaBattle.Server/wwwroot/media/questions/

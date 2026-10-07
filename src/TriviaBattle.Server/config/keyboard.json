@@ -1,0 +1,11 @@
+{
+  "_comment": "Development stand-in for the physical buttons: keyboard key -> button id (see buttons.json). One keyboard row per player, left to right = answers A-D.",
+  "KeyboardInput": {
+    "Keys": {
+      "1": 10, "2": 11, "3": 12, "4": 13,
+      "q": 14, "w": 15, "e": 16, "r": 17,
+      "a": 18, "s": 19, "d": 20, "f": 21,
+      "z": 22, "x": 23, "c": 24, "v": 25
+    }
+  }
+}

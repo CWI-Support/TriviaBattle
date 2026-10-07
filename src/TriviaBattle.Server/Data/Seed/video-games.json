@@ -1,0 +1,41 @@
+{
+  "categories": [
+    {
+      "name": "Video Games",
+      "questions": [
+        { "difficulty": "Easy", "text": "What is the name of Mario's brother?", "answers": ["Wario", "Luigi", "Toad", "Yoshi"], "correct": "B" },
+        { "difficulty": "Easy", "text": "What color is Sonic the Hedgehog?", "answers": ["Red", "Green", "Blue", "Yellow"], "correct": "C" },
+        { "difficulty": "Easy", "text": "In Pac-Man, what does Pac-Man eat so he can chase and eat the ghosts?", "answers": ["Power pellets", "Cherries", "Keys", "Bells"], "correct": "A" },
+        { "difficulty": "Easy", "text": "Which company makes the PlayStation consoles?", "answers": ["Nintendo", "Microsoft", "Sega", "Sony"], "correct": "D" },
+        { "difficulty": "Easy", "text": "In Minecraft, what is the name of the green creature that sneaks up on players and explodes?", "answers": ["Zombie", "Creeper", "Enderman", "Slime"], "correct": "B" },
+        { "difficulty": "Easy", "text": "What is the name of the princess of the Mushroom Kingdom whom Mario often rescues?", "answers": ["Daisy", "Zelda", "Peach", "Rosalina"], "correct": "C" },
+        { "difficulty": "Easy", "text": "Which yellow electric Pokemon is Ash Ketchum's partner in the Pokemon anime?", "answers": ["Pikachu", "Raichu", "Pichu", "Jolteon"], "correct": "A" },
+        { "difficulty": "Easy", "text": "What is the name of the hero in The Legend of Zelda series?", "answers": ["Zelda", "Ganon", "Navi", "Link"], "correct": "D" },
+        { "difficulty": "Easy", "text": "Which company makes the Xbox consoles?", "answers": ["Sony", "Microsoft", "Nintendo", "Valve"], "correct": "B" },
+        { "difficulty": "Easy", "text": "In Tetris, what happens when you completely fill a horizontal row with blocks?", "answers": ["It is cleared", "It turns to stone", "It changes color", "It moves up"], "correct": "A" },
+
+        { "difficulty": "Medium", "text": "In Super Mario games, which item makes Mario grow bigger?", "answers": ["Fire Flower", "Super Star", "Super Mushroom", "Super Leaf"], "correct": "C" },
+        { "difficulty": "Medium", "text": "Which Nintendo home console was released in North America in 1985?", "answers": ["Super Nintendo", "Game Boy", "Virtual Boy", "Nintendo Entertainment System"], "correct": "D" },
+        { "difficulty": "Medium", "text": "In Pokemon Red and Blue, which three Pokemon can you choose as your starter?", "answers": ["Bulbasaur, Charmander, Squirtle", "Chikorita, Cyndaquil, Totodile", "Treecko, Torchic, Mudkip", "Turtwig, Chimchar, Piplup"], "correct": "A" },
+        { "difficulty": "Medium", "text": "What is the name of Sonic the Hedgehog's two-tailed fox friend?", "answers": ["Knuckles", "Tails", "Shadow", "Amy"], "correct": "B" },
+        { "difficulty": "Medium", "text": "Who is the main villain in most games of The Legend of Zelda series?", "answers": ["Bowser", "Ridley", "Ganon", "King Dedede"], "correct": "C" },
+        { "difficulty": "Medium", "text": "In Minecraft, which block is used to build the frame of a Nether portal?", "answers": ["Cobblestone", "Bedrock", "Netherrack", "Obsidian"], "correct": "D" },
+        { "difficulty": "Medium", "text": "What is the name of the round pink hero from Dream Land who can inhale enemies?", "answers": ["Kirby", "Jigglypuff", "Meta Knight", "Waddle Dee"], "correct": "A" },
+        { "difficulty": "Medium", "text": "Who is the crocodile villain of the Donkey Kong Country series?", "answers": ["Bowser", "King K. Rool", "Dr. Eggman", "Wario"], "correct": "B" },
+        { "difficulty": "Medium", "text": "In Mario Kart, which item flies ahead to hit the racer in first place?", "answers": ["Red Shell", "Green Shell", "Spiny (Blue) Shell", "Bullet Bill"], "correct": "C" },
+        { "difficulty": "Medium", "text": "Which video game company created Sonic the Hedgehog?", "answers": ["Nintendo", "Capcom", "Konami", "Sega"], "correct": "D" },
+
+        { "difficulty": "Hard", "text": "In what year was the original Super Mario Bros. released in Japan?", "answers": ["1983", "1985", "1987", "1989"], "correct": "B" },
+        { "difficulty": "Hard", "text": "What was Mario called in the original 1981 arcade game Donkey Kong?", "answers": ["Jumpman", "Hammer Hero", "Climber", "Barrel Boy"], "correct": "A" },
+        { "difficulty": "Hard", "text": "In the original Pac-Man, what color is the ghost named Blinky?", "answers": ["Pink", "Cyan", "Orange", "Red"], "correct": "D" },
+        { "difficulty": "Hard", "text": "Which handheld system did Nintendo release in 1989?", "answers": ["Game Gear", "Lynx", "Game Boy", "Game Boy Color"], "correct": "C" },
+        { "difficulty": "Hard", "text": "In The Legend of Zelda: Ocarina of Time, what is the name of Link's fairy companion?", "answers": ["Tatl", "Navi", "Midna", "Fi"], "correct": "B" },
+        { "difficulty": "Hard", "text": "What is the name of the scientist who created Mega Man?", "answers": ["Dr. Light", "Dr. Wily", "Dr. Cossack", "Dr. Robotnik"], "correct": "A" },
+        { "difficulty": "Hard", "text": "Which Pokemon is number 001 in the National Pokedex?", "answers": ["Pikachu", "Mew", "Charmander", "Bulbasaur"], "correct": "D" },
+        { "difficulty": "Hard", "text": "In Tetris, how many squares make up each falling piece?", "answers": ["Three", "Five", "Four", "Six"], "correct": "C" },
+        { "difficulty": "Hard", "text": "In Super Mario 64, what items does Mario collect to unlock new areas of the castle?", "answers": ["Shine Sprites", "Power Moons", "Power Stars", "Star Coins"], "correct": "C" },
+        { "difficulty": "Hard", "text": "What is the name of the woman Mario rescues in the original Donkey Kong arcade game?", "answers": ["Peach", "Pauline", "Daisy", "Rosalina"], "correct": "B" }
+      ]
+    }
+  ]
+}

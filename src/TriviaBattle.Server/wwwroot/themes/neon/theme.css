@@ -1,0 +1,22 @@
+/* NEON: the default look, taken from the room photo. Dark room, glowing station colours.
+   The full list of tokens (and what each does) is at the top of /css/screens.css.
+   Everything here is scoped to [data-theme="neon"] so themes never leak into each other. */
+
+:root[data-theme="neon"] {
+    --bg: #07060f;
+    --bg-image:
+        radial-gradient(ellipse at 50% -20%, rgba(176, 77, 255, 0.25), transparent 60%),
+        radial-gradient(ellipse at 50% 120%, rgba(42, 140, 255, 0.18), transparent 60%);
+    --title-shadow: 0 0 2vmin rgba(255, 212, 0, 0.6), 0 0 6vmin rgba(255, 212, 0, 0.35);
+    --panel-shadow: 0 0 2vmin rgba(42, 140, 255, 0.15);
+}
+
+/* Answers glow in their button colour. */
+[data-theme="neon"] .answer {
+    box-shadow: 0 0 1.5vmin color-mix(in srgb, var(--answer-color) 40%, transparent);
+}
+
+/* Station-coloured glow around each player screen, like the LED strips in the room. */
+[data-theme="neon"] .player-screen {
+    box-shadow: inset 0 0 4vmin color-mix(in srgb, var(--station-color) 45%, transparent);
+}

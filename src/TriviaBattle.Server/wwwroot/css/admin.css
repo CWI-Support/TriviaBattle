@@ -1,0 +1,97 @@
+/* Admin page: an ordinary desktop web page (scrolling, forms, tables), using the colour tokens from screens.css. */
+
+body.admin {
+    overflow: auto;
+    user-select: text;
+    font-size: 15px;
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 12px 24px;
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.admin-header h1 { font-size: 28px; color: var(--accent); }
+.admin-header nav { display: flex; gap: 4px; }
+.admin-header nav button { background: transparent; color: var(--text-dim); border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 15px; }
+.admin-header nav button.is-active { background: var(--panel-light); color: var(--text); }
+
+.admin main { padding: 20px 24px; max-width: 1400px; }
+.admin h2 { font-size: 24px; margin: 20px 0 8px; }
+.admin h3 { font-size: 18px; margin: 16px 0 6px; }
+
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+.spacer { flex: 1; }
+
+.admin input, .admin select, .admin textarea {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--panel-light);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font: inherit;
+}
+
+.admin input[type="search"] { min-width: 280px; }
+
+.admin button {
+    background: var(--panel-light);
+    color: var(--text);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.admin button.primary { background: var(--accent); color: #000; }
+.admin button.danger { background: var(--wrong); color: #fff; }
+.admin button:hover { filter: brightness(1.15); }
+
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th { text-align: left; color: var(--text-dim); font-weight: normal; padding: 6px 8px; border-bottom: 1px solid var(--panel-light); }
+.admin-table td { padding: 6px 8px; border-bottom: 1px solid var(--panel); vertical-align: middle; }
+.admin-table tr:hover td { background: var(--panel); }
+.admin-table tr.is-inactive td { opacity: 0.5; }
+.admin-table input { width: 100%; }
+
+.status-pill { padding: 2px 8px; border-radius: 10px; font-size: 13px; background: var(--panel-light); }
+.status-pill.ok { background: var(--correct); color: #000; }
+.status-pill.bad { background: var(--wrong); color: #fff; }
+
+pre.help { background: var(--panel); padding: 12px; border-radius: 6px; overflow-x: auto; }
+
+/* Dialogs (question editor, admin key) */
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--panel-light); border-radius: 10px; padding: 20px 24px; width: min(760px, 95vw); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+dialog form { display: flex; flex-direction: column; gap: 12px; }
+dialog label { display: flex; flex-direction: column; gap: 4px; }
+dialog label.checkbox { flex-direction: row; align-items: center; }
+dialog fieldset { border: 1px solid var(--panel-light); border-radius: 6px; display: flex; flex-direction: column; gap: 6px; }
+.form-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+.form-actions { display: flex; gap: 10px; margin-top: 8px; }
+
+.answer-row { display: flex; gap: 8px; align-items: center; }
+.answer-row input[type="text"] { flex: 1; }
+.answer-row .answer-letter { width: 28px; height: 28px; font-size: 16px; }
+.answer-row[data-letter="A"] { --answer-color: var(--answer-a); }
+.answer-row[data-letter="B"] { --answer-color: var(--answer-b); }
+.answer-row[data-letter="C"] { --answer-color: var(--answer-c); }
+.answer-row[data-letter="D"] { --answer-color: var(--answer-d); }
+
+.import-problems { text-align: left; }
+
+#qf-media-preview img, #qf-media-preview video { max-width: 280px; max-height: 160px; border-radius: 6px; }
+
+.live-match { background: var(--panel); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+.live-match header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+/* Error text: screens.css makes .problems big for TVs; keep it normal-sized here. */
+.admin .problems { font-size: 14px; text-align: left; min-height: 0; }
+.admin a { color: var(--accent); }

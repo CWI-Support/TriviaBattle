@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Admin</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin">
+    <!-- Operator admin page. One <section> per tab; each tab's code is in /js/admin/<tab>-tab.js. -->
+    <header class="admin-header">
+        <h1>Trivia Battle Admin</h1>
+        <nav id="tabs">
+            <button data-tab="questions" class="is-active">Questions</button>
+            <button data-tab="categories">Categories</button>
+            <button data-tab="transfer">Import / Export</button>
+            <button data-tab="players">Players</button>
+            <button data-tab="live">Live</button>
+        </nav>
+    </header>
+
+    <main>
+        <section id="tab-questions" class="tab">
+            <div class="toolbar">
+                <select id="q-category"><option value="">All categories</option></select>
+                <select id="q-difficulty">
+                    <option value="">All difficulties</option>
+                    <option>Easy</option><option>Medium</option><option>Hard</option>
+                </select>
+                <input id="q-search" type="search" placeholder="Search questions and answers">
+                <label><input id="q-inactive" type="checkbox" checked> Show inactive</label>
+                <span class="spacer"></span>
+                <button id="q-new" class="primary">+ New question</button>
+            </div>
+            <p id="q-count" class="dim"></p>
+            <table class="admin-table">
+                <thead><tr><th>Question</th><th>Category</th><th>Difficulty</th><th>Correct answer</th><th>Status</th><th></th></tr></thead>
+                <tbody id="q-rows"></tbody>
+            </table>
+        </section>
+
+        <section id="tab-categories" class="tab" hidden>
+            <p class="dim">Inactive categories are hidden from the kiosk. Counts are active questions; a match needs 10, and if a difficulty is short it borrows from the others.</p>
+            <table class="admin-table">
+                <thead><tr><th>Name</th><th>Active</th><th>Easy</th><th>Medium</th><th>Hard</th><th>All questions</th><th></th></tr></thead>
+                <tbody id="c-rows"></tbody>
+            </table>
+            <div class="toolbar">
+                <input id="c-new-name" placeholder="New category name" maxlength="40">
+                <button id="c-add" class="primary">Add category</button>
+            </div>
+        </section>
+
+        <section id="tab-transfer" class="tab" hidden>
+            <h2>Export</h2>
+            <p class="dim">Download every question, e.g. to edit in a spreadsheet or back up.</p>
+            <div class="toolbar">
+                <button id="t-export-csv">Download CSV (spreadsheet)</button>
+                <button id="t-export-json">Download JSON</button>
+            </div>
+
+            <h2>Import</h2>
+            <p class="dim">Adds questions from a .csv or .json file. Categories that don't exist yet are created.
+               Questions that already exist (same text in the same category) are skipped, so re-importing is safe.
+               If any row has a problem, nothing is imported and every problem is listed.</p>
+            <div class="toolbar">
+                <input id="t-file" type="file" accept=".csv,.json">
+                <button id="t-import" class="primary">Import</button>
+            </div>
+            <div id="t-result"></div>
+
+            <h3>CSV format</h3>
+            <pre class="help">Category,Difficulty,Question,A,B,C,D,Correct,MediaUrl,Active
+Geography,Easy,What is the capital of France?,London,Paris,Rome,Berlin,B,,yes
+Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argon,Helium,B,,yes</pre>
+            <p class="dim">Difficulty: Easy, Medium or Hard. Correct: A-D. MediaUrl and Active are optional (blank = active).
+               Wrap text containing commas in double quotes. Excel: "Save as CSV UTF-8".</p>
+        </section>
+
+        <section id="tab-players" class="tab" hidden>
+            <div class="toolbar">
+                <input id="p-search" type="search" placeholder="Search by name or card id">
+            </div>
+            <table class="admin-table">
+                <thead><tr><th>Name</th><th>Card id</th><th>First seen</th><th>Last seen</th><th></th></tr></thead>
+                <tbody id="p-rows"></tbody>
+            </table>
+        </section>
+
+        <section id="tab-live" class="tab" hidden>
+            <h2>Theme</h2>
+            <p class="dim">Changes every screen at once (looks and wording). Themes live in wwwroot/themes/; see docs/THEMES.md.</p>
+            <div class="toolbar">
+                <select id="l-theme"></select>
+                <button id="l-theme-apply" class="primary">Use on all screens</button>
+                <span id="l-theme-preview" class="dim"></span>
+            </div>
+            <h2>Hardware</h2>
+            <div id="l-hardware"></div>
+            <h2>Running matches</h2>
+            <div id="l-matches"></div>
+        </section>
+    </main>
+
+    <!-- Question editor (opened by "New question" / "Edit") -->
+    <dialog id="question-dialog">
+        <form id="question-form" method="dialog">
+            <h2 id="qf-title">Edit question</h2>
+            <div class="form-row">
+                <label>Category <select id="qf-category"></select></label>
+                <label>Difficulty
+                    <select id="qf-difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select>
+                </label>
+                <label class="checkbox"><input id="qf-active" type="checkbox"> Active (can be picked for matches)</label>
+            </div>
+            <label>Question <span id="qf-count" class="dim"></span>
+                <textarea id="qf-text" rows="3" maxlength="250"></textarea>
+            </label>
+            <fieldset>
+                <legend>Answers: pick the correct one</legend>
+                <div id="qf-answers"></div>
+            </fieldset>
+            <label>Picture or video (optional)
+                <div class="form-row">
+                    <input id="qf-media" placeholder="/media/questions/... or https://...">
+                    <input id="qf-media-file" type="file" accept="image/*,video/mp4,video/webm">
+                </div>
+            </label>
+            <div id="qf-media-preview"></div>
+            <div id="qf-problems" class="problems"></div>
+            <div class="form-actions">
+                <button type="button" id="qf-delete" class="danger">Delete</button>
+                <span class="spacer"></span>
+                <button type="button" id="qf-cancel">Cancel</button>
+                <button type="submit" class="primary">Save</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Shown only if the server has an AdminApiKey and we don't have it yet -->
+    <dialog id="key-dialog">
+        <form method="dialog">
+            <h2>Admin key</h2>
+            <p class="dim">This server requires the admin key (AdminApiKey in appsettings.json).</p>
+            <input id="key-input" type="password" autocomplete="off">
+            <p id="key-error" class="problems"></p>
+            <div class="form-actions"><span class="spacer"></span><button class="primary">Continue</button></div>
+        </form>
+    </dialog>
+
+    <script src="/js/ui.js"></script>
+    <script src="/js/admin/admin-api.js"></script>
+    <script src="/js/admin/questions-tab.js"></script>
+    <script src="/js/admin/categories-tab.js"></script>
+    <script src="/js/admin/transfer-tab.js"></script>
+    <script src="/js/admin/players-tab.js"></script>
+    <script src="/js/admin/live-tab.js"></script>
+    <script src="/js/admin/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,559 @@
+{
+  "categories": [
+    {
+      "name": "General Knowledge",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "How many days are in a leap year?",
+          "answers": [
+            "365",
+            "366",
+            "364",
+            "360"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What color do you get by mixing blue and yellow?",
+          "answers": [
+            "Purple",
+            "Orange",
+            "Green",
+            "Brown"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many sides does a hexagon have?",
+          "answers": [
+            "6",
+            "5",
+            "8",
+            "7"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which animal is known as the \"King of the Jungle\"?",
+          "answers": [
+            "Tiger",
+            "Elephant",
+            "Gorilla",
+            "Lion"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many minutes are in an hour?",
+          "answers": [
+            "100",
+            "60",
+            "30",
+            "90"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is the opposite of north?",
+          "answers": [
+            "East",
+            "West",
+            "South",
+            "Up"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which planet do we live on?",
+          "answers": [
+            "Earth",
+            "Mars",
+            "Venus",
+            "Jupiter"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "How many players does one soccer team have on the field?",
+          "answers": [
+            "9",
+            "10",
+            "11",
+            "12"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the largest ocean on Earth?",
+          "answers": [
+            "Atlantic",
+            "Pacific",
+            "Indian",
+            "Arctic"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In which country did the ancient Olympic Games begin?",
+          "answers": [
+            "Italy",
+            "Egypt",
+            "Greece",
+            "Turkey"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the hardest natural substance?",
+          "answers": [
+            "Diamond",
+            "Gold",
+            "Iron",
+            "Quartz"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "How many strings does a standard guitar have?",
+          "answers": [
+            "4",
+            "5",
+            "7",
+            "6"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which language has the most native speakers?",
+          "answers": [
+            "English",
+            "Spanish",
+            "Mandarin Chinese",
+            "Hindi"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the currency of Japan?",
+          "answers": [
+            "Won",
+            "Yen",
+            "Yuan",
+            "Ringgit"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In what year did the Titanic sink?",
+          "answers": [
+            "1905",
+            "1912",
+            "1918",
+            "1923"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who painted \"The Starry Night\"?",
+          "answers": [
+            "Claude Monet",
+            "Pablo Picasso",
+            "Vincent van Gogh",
+            "Salvador Dali"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is the smallest prime number?",
+          "answers": [
+            "0",
+            "1",
+            "2",
+            "3"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "How many keys are on a standard piano?",
+          "answers": [
+            "76",
+            "88",
+            "92",
+            "104"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who wrote the novel \"1984\"?",
+          "answers": [
+            "Aldous Huxley",
+            "George Orwell",
+            "Ray Bradbury",
+            "H.G. Wells"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which letter does not appear in any U.S. state name?",
+          "answers": [
+            "Q",
+            "X",
+            "Z",
+            "J"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In which sport would you score a touchdown?",
+          "answers": [
+            "Soccer",
+            "American football",
+            "Baseball",
+            "Ice hockey"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many letters are in the English alphabet?",
+          "answers": [
+            "26",
+            "24",
+            "28",
+            "25"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many cents are in one U.S. dollar?",
+          "answers": [
+            "10",
+            "50",
+            "100",
+            "1000"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many cards are in a standard deck, not counting jokers?",
+          "answers": [
+            "48",
+            "50",
+            "54",
+            "52"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which holiday is celebrated on October 31?",
+          "answers": [
+            "Thanksgiving",
+            "Halloween",
+            "Valentine's Day",
+            "Easter"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is a baby frog called?",
+          "answers": [
+            "Cub",
+            "Tadpole",
+            "Kit",
+            "Larva"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What is the main ingredient in guacamole?",
+          "answers": [
+            "Cucumber",
+            "Pea",
+            "Green pepper",
+            "Avocado"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which shape has exactly three sides?",
+          "answers": [
+            "Square",
+            "Triangle",
+            "Circle",
+            "Pentagon"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which month of the year has the fewest days?",
+          "answers": [
+            "April",
+            "June",
+            "February",
+            "November"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "How many wheels does a tricycle have?",
+          "answers": [
+            "2",
+            "4",
+            "1",
+            "3"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What shape is a standard U.S. stop sign?",
+          "answers": [
+            "Hexagon",
+            "Octagon",
+            "Pentagon",
+            "Circle"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is the main language spoken in Brazil?",
+          "answers": [
+            "Portuguese",
+            "Spanish",
+            "French",
+            "Italian"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is a word that reads the same forwards and backwards called?",
+          "answers": [
+            "Anagram",
+            "Acrostic",
+            "Palindrome",
+            "Homophone"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What is a word that means the opposite of another word called?",
+          "answers": [
+            "Synonym",
+            "Homonym",
+            "Acronym",
+            "Antonym"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In \"Peter Pan\", what is the name of the tiny fairy?",
+          "answers": [
+            "Tinker Bell",
+            "Wendy",
+            "Tiger Lily",
+            "Nana"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "What number does the Roman numeral L represent?",
+          "answers": [
+            "5",
+            "100",
+            "500",
+            "50"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "How many degrees are in a right angle?",
+          "answers": [
+            "90",
+            "45",
+            "180",
+            "100"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who painted the \"Mona Lisa\"?",
+          "answers": [
+            "Michelangelo",
+            "Raphael",
+            "Leonardo da Vinci",
+            "Rembrandt"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which scientist developed the theory of relativity?",
+          "answers": [
+            "Isaac Newton",
+            "Albert Einstein",
+            "Galileo Galilei",
+            "Niels Bohr"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In Greek mythology, who is the king of the gods?",
+          "answers": [
+            "Zeus",
+            "Apollo",
+            "Poseidon",
+            "Hermes"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which of the Seven Wonders of the Ancient World is still standing today?",
+          "answers": [
+            "Hanging Gardens of Babylon",
+            "Colossus of Rhodes",
+            "Great Pyramid of Giza",
+            "Lighthouse of Alexandria"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "How many squares are on a standard chessboard?",
+          "answers": [
+            "36",
+            "49",
+            "64",
+            "81"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is the national animal of Scotland?",
+          "answers": [
+            "Unicorn",
+            "Lion",
+            "Red deer stag",
+            "Golden eagle"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which planet in our solar system has the shortest day?",
+          "answers": [
+            "Mercury",
+            "Jupiter",
+            "Earth",
+            "Mars"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "What is the total number of dots on a standard six-sided die?",
+          "answers": [
+            "18",
+            "20",
+            "24",
+            "21"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which blood type is known as the universal donor for red blood cells?",
+          "answers": [
+            "AB positive",
+            "O negative",
+            "A positive",
+            "B negative"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which U.S. state has a name with only one syllable?",
+          "answers": [
+            "Ohio",
+            "Utah",
+            "Maine",
+            "Texas"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "How many sides does a dodecagon have?",
+          "answers": [
+            "10",
+            "12",
+            "14",
+            "20"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "The abbreviation \"e.g.\" comes from which Latin phrase?",
+          "answers": [
+            "Ex gratia",
+            "Exempli gratia",
+            "Et genera",
+            "Ego gratia"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which metal is a liquid at normal room temperature?",
+          "answers": [
+            "Lead",
+            "Tin",
+            "Aluminum",
+            "Mercury"
+          ],
+          "correct": "D"
+        }
+      ]
+    }
+  ]
+}

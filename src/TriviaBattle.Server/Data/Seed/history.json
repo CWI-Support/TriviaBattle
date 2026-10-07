@@ -1,0 +1,339 @@
+{
+  "categories": [
+    {
+      "name": "History",
+      "questions": [
+        {
+          "difficulty": "Easy",
+          "text": "Who was the first President of the United States?",
+          "answers": [
+            "Abraham Lincoln",
+            "George Washington",
+            "Thomas Jefferson",
+            "John Adams"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In which country are the ancient Pyramids of Giza?",
+          "answers": [
+            "Egypt",
+            "Mexico",
+            "Peru",
+            "Iraq"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who was the first person to walk on the Moon?",
+          "answers": [
+            "Buzz Aldrin",
+            "Yuri Gagarin",
+            "Neil Armstrong",
+            "John Glenn"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In what year did Christopher Columbus first reach the Americas?",
+          "answers": [
+            "1066",
+            "1776",
+            "1620",
+            "1492"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which ancient civilization built the Colosseum?",
+          "answers": [
+            "The Greeks",
+            "The Romans",
+            "The Egyptians",
+            "The Persians"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which country gave the Statue of Liberty to the United States?",
+          "answers": [
+            "England",
+            "Spain",
+            "France",
+            "Italy"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which ship carried the Pilgrims to North America in 1620?",
+          "answers": [
+            "Santa Maria",
+            "Mayflower",
+            "Endeavour",
+            "Victory"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which U.S. president appears on the one-cent coin, the penny?",
+          "answers": [
+            "George Washington",
+            "Thomas Jefferson",
+            "Benjamin Franklin",
+            "Abraham Lincoln"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which famous queen was the last active pharaoh of ancient Egypt?",
+          "answers": [
+            "Nefertiti",
+            "Cleopatra",
+            "Hatshepsut",
+            "Nefertari"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What are the Wright brothers famous for?",
+          "answers": [
+            "Inventing the telephone",
+            "Building the first car",
+            "The first powered airplane flight",
+            "Inventing the light bulb"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In what year did World War II end?",
+          "answers": [
+            "1945",
+            "1939",
+            "1941",
+            "1950"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who was the British Prime Minister for most of World War II?",
+          "answers": [
+            "Neville Chamberlain",
+            "Clement Attlee",
+            "Anthony Eden",
+            "Winston Churchill"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In what year did the Berlin Wall fall?",
+          "answers": [
+            "1979",
+            "1989",
+            "1991",
+            "1985"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who was the main author of the U.S. Declaration of Independence?",
+          "answers": [
+            "Benjamin Franklin",
+            "John Adams",
+            "Thomas Jefferson",
+            "James Madison"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Genghis Khan founded which empire?",
+          "answers": [
+            "Mongol Empire",
+            "Ottoman Empire",
+            "Persian Empire",
+            "Byzantine Empire"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Whose expedition was the first to sail all the way around the world?",
+          "answers": [
+            "Vasco da Gama",
+            "James Cook",
+            "Francis Drake",
+            "Ferdinand Magellan"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which famous English charter did King John agree to in 1215?",
+          "answers": [
+            "Bill of Rights",
+            "Magna Carta",
+            "Domesday Book",
+            "Act of Union"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In what year did the Battle of Hastings take place?",
+          "answers": [
+            "1066",
+            "1215",
+            "1415",
+            "1492"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Who was the first woman to fly solo across the Atlantic Ocean?",
+          "answers": [
+            "Bessie Coleman",
+            "Amy Johnson",
+            "Amelia Earhart",
+            "Harriet Quimby"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Which Roman city was buried by the eruption of Mount Vesuvius in AD 79?",
+          "answers": [
+            "Rome",
+            "Pompeii",
+            "Naples",
+            "Florence"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who was the first emperor of Rome?",
+          "answers": [
+            "Julius Caesar",
+            "Nero",
+            "Caligula",
+            "Augustus"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On which island did Napoleon Bonaparte spend his final exile and die?",
+          "answers": [
+            "Elba",
+            "Corsica",
+            "Saint Helena",
+            "Sardinia"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "From which country did the United States purchase Alaska in 1867?",
+          "answers": [
+            "Russia",
+            "Canada",
+            "Great Britain",
+            "Spain"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who was the first woman to travel into space?",
+          "answers": [
+            "Sally Ride",
+            "Valentina Tereshkova",
+            "Mae Jemison",
+            "Svetlana Savitskaya"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Whose nearly intact tomb did Howard Carter discover in Egypt's Valley of the Kings in 1922?",
+          "answers": [
+            "Ramesses II",
+            "Khufu",
+            "Akhenaten",
+            "Tutankhamun"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "The Hundred Years' War was fought mainly between England and which country?",
+          "answers": [
+            "France",
+            "Spain",
+            "Scotland",
+            "The Netherlands"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which civilization built the mountain city of Machu Picchu?",
+          "answers": [
+            "Aztec",
+            "Maya",
+            "Inca",
+            "Olmec"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who was the first emperor to unify China, in 221 BC?",
+          "answers": [
+            "Kublai Khan",
+            "Qin Shi Huang",
+            "Liu Bang",
+            "Sun Yat-sen"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Who was the last monarch of England's Tudor dynasty?",
+          "answers": [
+            "Mary I",
+            "Anne",
+            "Victoria",
+            "Elizabeth I"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "Which explorer led the first expedition to reach the South Pole?",
+          "answers": [
+            "Robert Falcon Scott",
+            "Ernest Shackleton",
+            "Roald Amundsen",
+            "Richard Byrd"
+          ],
+          "correct": "C"
+        }
+      ]
+    }
+  ]
+}

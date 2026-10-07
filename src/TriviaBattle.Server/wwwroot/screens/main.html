@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Main Screen</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+</head>
+<body>
+    <div class="theme-backdrop"></div>
+    <!-- Synced intro video, drawn on top of everything while it plays (see synced-video.js) -->
+    <video id="intro-video" class="synced-video" playsinline hidden></video>
+
+    <!-- One section per phase. main-screen.js fills them in and shows one at a time. -->
+    <section id="view-lobby" class="view">
+        <div class="center-stack">
+            <h1 class="big-title" id="lobby-title"></h1>
+            <p class="subtitle" id="lobby-subtitle"></p>
+            <div id="lobby-leaderboard"></div>
+        </div>
+    </section>
+
+    <section id="view-intro" class="view" hidden></section>
+    <section id="view-leadin" class="view" hidden></section>
+    <section id="view-question" class="view" hidden></section>
+    <section id="view-standings" class="view" hidden></section>
+    <section id="view-results" class="view" hidden></section>
+
+    <script src="/lib/signalr/signalr.min.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/screen-connection.js"></script>
+    <script src="/js/dev-keys.js"></script>
+    <script src="/js/synced-video.js"></script>
+    <script src="/js/team-colors.js"></script>
+    <script src="/js/leaderboard-view.js"></script>
+    <script src="/js/main-screen.js"></script>
+</body>
+</html>

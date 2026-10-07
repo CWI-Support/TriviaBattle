@@ -1,0 +1,115 @@
+{
+  "_about": "Every line of text the screens show. This is the BASE copy: other themes only list the lines they change. A value can be one string or a list of variants (one is picked per moment). {placeholders} are filled in by the screens. These keys are also the moments a future AI voice-over would hook into. See docs/THEMES.md.",
+
+  "brand": {
+    "title": "Trivia Battle"
+  },
+
+  "modes": {
+    "FreeForAll": { "name": "Free-for-All", "description": "Everyone for themselves. Highest score wins." },
+    "TeamSharedAnswer": { "name": "2v2 Group", "description": "One answer per team. The first teammate to press locks it in!" },
+    "TeamCombinedScore": { "name": "2v2 Combined", "description": "Everyone answers. Your points add up to your team score." }
+  },
+
+  "teams": {
+    "red": "Red Team",
+    "blue": "Blue Team"
+  },
+
+  "lobby": {
+    "subtitle": "Swipe in at the kiosk to start a battle",
+    "leaderboardEmpty": "Play a battle to get on the leaderboard!",
+    "leaderboardToday": "Today's best",
+    "leaderboardAllTime": "All-time best"
+  },
+
+  "intro": {
+    "title": "Get ready to battle!",
+    "startingIn": "Starting in {seconds}",
+    "versus": "VS",
+    "playerTitle": "Get ready, {name}!",
+    "playerTeam": "You're on {team}",
+    "playerTeamWith": "You're on {team} with {teammates}"
+  },
+
+  "leadIn": {
+    "title": "Question {n} of {total}",
+    "playerTitle": "Question {n}",
+    "playerHint": "Get your finger ready…"
+  },
+
+  "question": {
+    "header": "Question {n} / {total} · {category}",
+    "timeUp": "Time!"
+  },
+
+  "status": {
+    "lockedIn": "Locked in!",
+    "points": "+{points}",
+    "wrong": "Wrong",
+    "noAnswer": "No answer"
+  },
+
+  "player": {
+    "idle": "Swipe in at the kiosk to play",
+    "busy": "A battle is in progress",
+    "pressNow": "Press a button!",
+    "lockedIn": "Locked in: {letter}",
+    "teammateLockedIn": "{name} locked in {letter}",
+    "correct": "Correct! +{points}",
+    "wrong": "Wrong!",
+    "timeUp": "Time's up!"
+  },
+
+  "standings": {
+    "title": "Scores",
+    "subtitle": "After question {n} of {total}",
+    "playerYou": "You're in",
+    "playerTeam": "{team} is in",
+    "place": "{place} place",
+    "points": "{points} points"
+  },
+
+  "results": {
+    "winner": "{name} wins!",
+    "tie": "It's a tie!",
+    "playerWon": "{who} won!",
+    "you": "You",
+    "place": "{place} place",
+    "points": "{points} points",
+    "contribution": "You scored {score} of {team}'s {total}",
+    "highScore": "New high score! {names} is #{rank} {when}",
+    "playerHighScore": "You made the leaderboard: #{rank} {when}!",
+    "today": "today",
+    "allTime": "of all time"
+  },
+
+  "kiosk": {
+    "stepOf": "Step {n} of {total}",
+    "back": "Back",
+    "next": "Next",
+    "start": "Start battle!",
+    "modeTitle": "Choose a game mode",
+    "playersTitle": "Who's playing? Swipe your card at your station's slot",
+    "teamsTitle": "Pick teams: tap a player to switch sides",
+    "categoryTitle": "Pick a category",
+    "difficultyTitle": "Difficulty",
+    "confirmTitle": "Ready to battle?",
+    "seatEmpty": "Empty",
+    "seatSwipeNow": "Swipe your card now…",
+    "seatCardRegistered": "Card registered",
+    "seatGuest": "Guest",
+    "swipeCard": "Swipe card",
+    "playAsGuest": "Play as guest",
+    "remove": "Remove",
+    "namePlaceholder": "Your name",
+    "nobodyYet": "Nobody yet",
+    "cardAlreadyIn": "That card is already signed in.",
+    "stationsFull": "All stations are full.",
+    "busyTitle": "Battle in progress",
+    "busyIntro": "Head into the room. The battle is starting!",
+    "busyQuestion": "Question {n} of {total}",
+    "busyResults": "Final results are in!",
+    "busyWait": "The next group can set up when this battle ends."
+  }
+}

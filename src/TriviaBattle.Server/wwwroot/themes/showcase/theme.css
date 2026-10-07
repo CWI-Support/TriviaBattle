@@ -1,0 +1,98 @@
+/* SHOWCASE: a 70s TV game show. Sunburst stage, chasing marquee bulbs, chunky price-tag
+   answers, bouncy 3D titles. Inspired by classic daytime game shows (no real show's branding).
+   The full list of tokens is at the top of /css/screens.css. Scoped to [data-theme="showcase"]. */
+
+:root[data-theme="showcase"] {
+    /* Colours */
+    --bg: #3a0a6b;
+    --bg-image:
+        repeating-conic-gradient(from 0deg at 50% 115%, rgba(255, 255, 255, 0.07) 0deg 7deg, transparent 7deg 14deg),
+        radial-gradient(circle at 50% 115%, #ff7a00 0%, #c4136b 45%, #3a0a6b 80%);
+    --panel: #2b0f5c;
+    --panel-light: #43197f;
+    --panel-border: 0.5vmin solid #ffd23f;
+    --panel-shadow: 0 0.8vmin 0 #12042b;
+    --text: #ffffff;
+    --text-dim: #ffd9a8;
+    --accent: #ffd23f;
+    --accent-text: #3a0a6b;
+    --correct: #19e07f;
+    --wrong: #ff3355;
+
+    /* Brighter, candy-coloured versions of the button colours */
+    --answer-a: #ff3355;
+    --answer-b: #1fa2ff;
+    --answer-c: #ffc400;
+    --answer-d: #19e07f;
+    --answer-text: #2b0f5c;
+
+    /* Type */
+    --font-body: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Segoe UI', sans-serif;
+    --title-color: #ffffff;
+    --title-shadow: 0.4vmin 0.4vmin 0 #ff3e9a, 0.8vmin 0.8vmin 0 #1fa2ff, 1.2vmin 1.2vmin 0 #12042b;
+    --title-transform: uppercase;
+
+    /* Shapes: big, friendly, rounded */
+    --radius: 4vmin;
+    --radius-small: 2vmin;
+}
+
+/* Titles tilt and bounce like a studio sign. */
+[data-theme="showcase"] .big-title {
+    font-style: italic;
+    transform: rotate(-3deg);
+    animation: showcase-bounce 1.6s ease-in-out infinite;
+}
+
+@keyframes showcase-bounce {
+    50% { transform: rotate(-3deg) scale(1.05); }
+}
+
+/* Answers are solid "price tags" in their button colour with a white outline. */
+[data-theme="showcase"] .answer {
+    background: var(--answer-color);
+    color: #fff;
+    border: 0.6vmin solid #fff;
+    box-shadow: 0 0.8vmin 0 #12042b;
+    font-weight: bold;
+    text-shadow: 0.2vmin 0.2vmin 0 rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="showcase"] .answer-letter { background: #fff; color: var(--answer-color); }
+[data-theme="showcase"] .answer.is-correct { box-shadow: 0 0 0 1vmin var(--correct), 0 0 6vmin var(--correct); animation: showcase-ding 0.5s ease-out 3; }
+[data-theme="showcase"] .answer.is-dimmed { opacity: 0.25; filter: grayscale(0.7); }
+
+@keyframes showcase-ding {
+    50% { transform: scale(1.06); }
+}
+
+/* Big starburst-y banners and high scores */
+[data-theme="showcase"] .banner,
+[data-theme="showcase"] .high-score {
+    transform: rotate(-2deg);
+    text-transform: uppercase;
+}
+
+[data-theme="showcase"] .banner.correct { animation: showcase-ding 0.5s ease-out 3; }
+
+/* Chasing marquee bulbs around the edge of every screen: two dotted rings that blink in turn. */
+[data-theme="showcase"] .theme-backdrop::before,
+[data-theme="showcase"] .theme-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 1.2vmin;
+    border-radius: 3vmin;
+    border: 1.4vmin dotted #fff3c4;
+    filter: drop-shadow(0 0 1vmin #ffd23f);
+    animation: showcase-bulbs 0.8s steps(1) infinite;
+}
+
+[data-theme="showcase"] .theme-backdrop::after {
+    inset: 1.9vmin;
+    border-color: #ffb300;
+    animation-delay: 0.4s;
+}
+
+@keyframes showcase-bulbs {
+    50% { opacity: 0.15; }
+}

@@ -1,0 +1,101 @@
+/* DUNGEON: a deadly dungeon game show hosted by a sarcastic system AI. Stone blocks, torchlight,
+   glowing green "system message" boxes, inventory-slot answers, a title that glitches now and then.
+   Inspired by the dungeon-crawler LitRPG genre (no real book/show branding).
+   The full list of tokens is at the top of /css/screens.css. Scoped to [data-theme="dungeon"]. */
+
+:root[data-theme="dungeon"] {
+    /* Colours */
+    --bg: #0a0c0b;
+    --bg-image:
+        radial-gradient(ellipse at 50% 0%, rgba(60, 255, 143, 0.10), transparent 55%),
+        repeating-linear-gradient(0deg, transparent 0 5.6vmin, rgba(0, 0, 0, 0.6) 5.6vmin 6vmin),
+        repeating-linear-gradient(90deg, transparent 0 11.6vmin, rgba(0, 0, 0, 0.6) 11.6vmin 12vmin),
+        linear-gradient(#1b1f1c, #0e110f);
+    --panel: rgba(6, 12, 9, 0.92);
+    --panel-light: #13201a;
+    --panel-border: 0.3vmin solid #3cff8f;
+    --panel-shadow: 0 0 2vmin rgba(60, 255, 143, 0.25), inset 0 0 2vmin rgba(60, 255, 143, 0.08);
+    --text: #d9ffe9;
+    --text-dim: #7fbf9c;
+    --accent: #ffb627;              /* loot gold */
+    --accent-text: #1a1000;
+    --correct: #3cff8f;
+    --wrong: #ff4d4d;
+    /* Answer colours stay as the physical buttons, so players can match them. */
+
+    /* Type: the host speaks in terminal text */
+    --font-body: Consolas, 'Lucida Console', 'Courier New', monospace;
+    --title-color: #3cff8f;
+    --title-shadow: 0 0 1vmin rgba(60, 255, 143, 0.9), 0 0 4vmin rgba(60, 255, 143, 0.5);
+    --title-transform: uppercase;
+
+    /* Shapes: hard-edged, like UI panels in a game */
+    --radius: 0.4vmin;
+    --radius-small: 0.3vmin;
+}
+
+/* The title glitches every few seconds. */
+[data-theme="dungeon"] .big-title { animation: dungeon-glitch 5s infinite; }
+
+@keyframes dungeon-glitch {
+    0%, 90%, 100% { opacity: 1; transform: none; }
+    91% { opacity: 0.4; transform: translateX(0.4vmin) skewX(-6deg); }
+    92% { opacity: 1; transform: translateX(-0.3vmin); }
+    94% { opacity: 0.7; transform: none; }
+}
+
+/* Banners and high scores are "system messages" with a label on top. */
+[data-theme="dungeon"] .banner,
+[data-theme="dungeon"] .high-score {
+    position: relative;
+    padding: 5vh 3vmin 2vh;
+    font-family: var(--font-body);
+    font-size: 4vmin;
+    text-align: left;
+    background: var(--panel);
+    color: var(--text);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
+}
+
+[data-theme="dungeon"] .banner::before,
+[data-theme="dungeon"] .high-score::before {
+    content: '[ SYSTEM MESSAGE ]';
+    position: absolute;
+    top: 1vh;
+    left: 3vmin;
+    font-size: 2vmin;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+}
+
+[data-theme="dungeon"] .high-score::before { content: '[ NEW ACHIEVEMENT ]'; }
+[data-theme="dungeon"] .banner.correct { border-color: var(--correct); color: var(--correct); }
+[data-theme="dungeon"] .banner.wrong { border-color: var(--wrong); color: var(--wrong); box-shadow: 0 0 3vmin rgba(255, 77, 77, 0.4); }
+
+/* Answers are inventory slots. */
+[data-theme="dungeon"] .answer { background: rgba(0, 0, 0, 0.65); border-width: 0.3vmin; }
+[data-theme="dungeon"] .answer.is-correct { animation: dungeon-loot 0.6s ease-out 2; }
+
+@keyframes dungeon-loot {
+    50% { box-shadow: 0 0 8vmin var(--correct); }
+}
+
+/* Torchlight flickering in the bottom corners, and a dark vignette. */
+[data-theme="dungeon"] .theme-backdrop {
+    background:
+        radial-gradient(circle at 0% 100%, rgba(255, 140, 40, 0.28), transparent 35%),
+        radial-gradient(circle at 100% 100%, rgba(255, 140, 40, 0.28), transparent 35%);
+    animation: dungeon-torch 2.2s ease-in-out infinite alternate;
+}
+
+[data-theme="dungeon"] .theme-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.75));
+}
+
+@keyframes dungeon-torch {
+    to { opacity: 0.6; }
+}

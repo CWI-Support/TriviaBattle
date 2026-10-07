@@ -1,0 +1,105 @@
+# Trivia Battle Word Filter
+# One word per line. Lines starting with # are comments.
+# Prefix a word with * to match whole words only.
+#   *ass  = blocks 'ass' as a standalone word, but NOT 'Cassandra' or 'class'
+#   fuck  = blocks 'fuck' anywhere in the name
+#
+# Edit this file directly, or use the Settings tab in admin to add words.
+# Changes take effect within 60 seconds automatically.
+
+# -- Whole-word-only --
+# Short words that could appear inside legitimate names or words.
+# Word-boundary matching prevents false positives (e.g. *cock won't block "Hancock").
+*ass
+*butt
+*balls
+*cock
+*clit
+*coon
+*cum
+*dick
+*dong
+*fart
+*gay
+*gook
+*homo
+*jerk
+*kike
+*knob
+*nut
+*pedo
+*rape
+*sex
+*slag
+*spic
+*tit
+*twat
+*piss
+*crap
+
+# -- Substring match --
+# Unambiguous words blocked anywhere in the name.
+anal
+anus
+arsehole
+asshat
+asshole
+badass
+bastard
+beaner
+bellend
+bitch
+blowjob
+boner
+boobs
+bullshit
+butthole
+buttplug
+cocksucker
+cumshot
+cunt
+dildo
+dipshit
+douchebag
+dumbass
+erection
+fag
+faggot
+fatass
+fuck
+handjob
+hitler
+incest
+jackass
+jizz
+masturbat
+minge
+molest
+nazi
+necro
+nigga
+nigger
+pedo
+pedophil
+penis
+porn
+pussy
+retard
+rimjob
+scrotum
+semen
+shit
+shithead
+skank
+slut
+smegma
+spunk
+tits
+titties
+titty
+tosser
+twatwaffle
+vagina
+vibrator
+wank
+whore

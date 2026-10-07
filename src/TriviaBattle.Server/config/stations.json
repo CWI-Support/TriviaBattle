@@ -1,0 +1,15 @@
+{
+  "_comment": "Rooms and their player stations. Each station's id is RoomId + Number (e.g. A1). Colors match the station's LED strip. Add a second room here later for room-vs-room.",
+  "Rooms": [
+    {
+      "Id": "A",
+      "Name": "Trivia Battle",
+      "Stations": [
+        { "Number": 1, "Label": "Player 1", "Color": "#39ff14" },
+        { "Number": 2, "Label": "Player 2", "Color": "#ff2a3d" },
+        { "Number": 3, "Label": "Player 3", "Color": "#2a8cff" },
+        { "Number": 4, "Label": "Player 4", "Color": "#b04dff" }
+      ]
+    }
+  ]
+}

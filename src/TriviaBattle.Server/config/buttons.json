@@ -1,0 +1,24 @@
+{
+  "_comment": "Every physical answer button, by fixed button id. Rule used: buttonId = 10 + (player - 1) * 4 + answerIndex. Only the input/output layer uses these ids; game logic only sees station + answer. When the PLC register map is final, map these ids to registers in plc.json, not here.",
+  "Buttons": [
+    { "Id": 10, "Station": "A1", "Answer": "A" },
+    { "Id": 11, "Station": "A1", "Answer": "B" },
+    { "Id": 12, "Station": "A1", "Answer": "C" },
+    { "Id": 13, "Station": "A1", "Answer": "D" },
+
+    { "Id": 14, "Station": "A2", "Answer": "A" },
+    { "Id": 15, "Station": "A2", "Answer": "B" },
+    { "Id": 16, "Station": "A2", "Answer": "C" },
+    { "Id": 17, "Station": "A2", "Answer": "D" },
+
+    { "Id": 18, "Station": "A3", "Answer": "A" },
+    { "Id": 19, "Station": "A3", "Answer": "B" },
+    { "Id": 20, "Station": "A3", "Answer": "C" },
+    { "Id": 21, "Station": "A3", "Answer": "D" },
+
+    { "Id": 22, "Station": "A4", "Answer": "A" },
+    { "Id": 23, "Station": "A4", "Answer": "B" },
+    { "Id": 24, "Station": "A4", "Answer": "C" },
+    { "Id": 25, "Station": "A4", "Answer": "D" }
+  ]
+}

@@ -1,0 +1,53 @@
+### Sample requests for the Trivia Battle server.
+### Open in Visual Studio, or VS Code with the "REST Client" extension, and click "Send Request".
+
+@host = http://localhost:5000
+
+### Categories available at the kiosk
+GET {{host}}/api/categories
+
+### Start a free-for-all match
+POST {{host}}/api/matches
+Content-Type: application/json
+
+{
+  "mode": "FreeForAll",
+  "categoryId": 1,
+  "difficulty": "Easy",
+  "seats": [
+    { "stationId": "A1", "playerName": "Ann" },
+    { "stationId": "A2", "playerName": "Bob" },
+    { "stationId": "A3", "playerName": "Cat" },
+    { "stationId": "A4", "playerName": "Dan" }
+  ],
+  "teams": []
+}
+
+### Start a 2v2 Group match (teams can be any stations)
+POST {{host}}/api/matches
+Content-Type: application/json
+
+{
+  "mode": "TeamSharedAnswer",
+  "categoryId": 2,
+  "difficulty": "Medium",
+  "seats": [
+    { "stationId": "A1", "playerName": "Ann" },
+    { "stationId": "A2", "playerName": "Bob" },
+    { "stationId": "A3", "playerName": "Cat" },
+    { "stationId": "A4", "playerName": "Dan" }
+  ],
+  "teams": [
+    { "teamId": "red", "name": "Red", "stationIds": ["A1", "A4"] },
+    { "teamId": "blue", "name": "Blue", "stationIds": ["A2", "A3"] }
+  ]
+}
+
+### All running matches (admin view, includes correct answers)
+GET {{host}}/api/matches
+
+### Press a button (dev only). 10-13 = Player 1 A-D, 14-17 = Player 2, 18-21 = Player 3, 22-25 = Player 4
+POST {{host}}/api/dev/buttons/10
+
+### Abort a match (replace the id)
+POST {{host}}/api/matches/MATCH_ID/abort

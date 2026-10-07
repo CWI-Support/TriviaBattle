@@ -1,0 +1,144 @@
+{
+  "_about": "Dungeon theme copy. The host is a sarcastic system AI running a deadly game show, who knows it's on a screen in a building with a snack bar. Breaks the fourth wall, roasts gently, never punches down. Keep it PG-13: venue-friendly. Only lines that differ from themes/neon/copy.json are listed. Lists = random variants. See docs/THEMES.md.",
+
+  "brand": {
+    "title": "Trivia Battle"
+  },
+
+  "modes": {
+    "FreeForAll": { "name": "Solo Crawl", "description": "Every crawler for themselves. Only one walks out with the glory. The others walk out too. To the snack bar." },
+    "TeamSharedAnswer": { "name": "Party Mode", "description": "One answer per party. Whoever presses first speaks for everyone. Choose your friends carefully." },
+    "TeamCombinedScore": { "name": "Raid Mode", "description": "Everyone answers. Points pool together. Freeloaders will be noticed. By me. I notice everything." }
+  },
+
+  "teams": {
+    "red": "Team Stabby",
+    "blue": "Team Shiny"
+  },
+
+  "lobby": {
+    "subtitle": [
+      "New crawlers wanted. Swipe in at the kiosk. Previous crawlers have been… reassigned.",
+      "The dungeon is open. Swipe in at the kiosk. I'm legally required to say it's safe.",
+      "Swipe in at the kiosk. I've been staring at this empty room for hours. Please."
+    ],
+    "leaderboardEmpty": "No survivors yet. Be the first. The bar is on the floor. I put it there.",
+    "leaderboardToday": "Today's Survivors",
+    "leaderboardAllTime": "Legends of the Dungeon"
+  },
+
+  "intro": {
+    "title": [
+      "Welcome, crawlers. Try not to die.",
+      "Ah. Fresh contestants. My favourite flavour.",
+      "Hello, viewers at home. And you four. Mostly the viewers."
+    ],
+    "startingIn": "Doors seal in {seconds}…",
+    "versus": "VS",
+    "playerTitle": [
+      "{name}. Bold name. Let's see if you earn it.",
+      "Crawler {name}, your file says 'enthusiastic'. Worrying.",
+      "{name}! I've heard nothing about you. Let's fix that."
+    ],
+    "playerTeam": "You've been assigned to {team}. No refunds.",
+    "playerTeamWith": "You're on {team} with {teammates}. Trust them. Or don't. I'm not your dad."
+  },
+
+  "leadIn": {
+    "title": ["Floor {n} of {total}", "Floor {n} of {total}. It gets worse."],
+    "playerTitle": "Floor {n}",
+    "playerHint": [
+      "Hover over a button. Menacingly.",
+      "Fingers ready. Dignity optional.",
+      "The writers spent minutes on this one."
+    ]
+  },
+
+  "question": {
+    "header": "Floor {n} / {total} · {category}",
+    "timeUp": ["TIME'S UP", "TOO SLOW", "PENCILS DOWN"]
+  },
+
+  "status": {
+    "lockedIn": ["Committed.", "No take-backs.", "Locked. Bold."],
+    "wrong": ["Ouch.", "Yikes.", "Oof."],
+    "noAnswer": ["Asleep?", "AFK", "Buffering…"]
+  },
+
+  "player": {
+    "idle": ["This station is unoccupied. It's lonely. I'm lonely. Swipe in at the kiosk.", "Empty station. The producers say I can't fill it myself. I asked."],
+    "busy": "A crawl is in progress. Please don't tap the screen. It's not that kind of screen.",
+    "pressNow": [
+      "Press something. Anything. I'm begging.",
+      "The buttons are the shiny things in front of you.",
+      "Any time now. I have nowhere to be. Literally. I live in this computer."
+    ],
+    "lockedIn": ["Locked in {letter}. Confidence noted.", "{letter}. Interesting choice. Very interesting."],
+    "teammateLockedIn": ["{name} picked {letter} for you. Hope you trust them.", "{name} chose {letter}. Blame them later."],
+    "correct": [
+      "Achievement unlocked: Knew A Thing. +{points}",
+      "Correct! The audience is mildly impressed. +{points}",
+      "Right answer. I'm as surprised as you are. +{points}"
+    ],
+    "wrong": [
+      "Wrong. That's going in the highlight reel.",
+      "Nope. The dungeon thanks you for your donation.",
+      "Incorrect. Somewhere, a teacher sighs."
+    ],
+    "timeUp": [
+      "You froze. It happens. Mostly to you.",
+      "No answer. Bold strategy. Let's see if it pays off. (It won't.)"
+    ]
+  },
+
+  "standings": {
+    "title": ["Loot Tally", "Body Count. Sorry, SCORES. Scores."],
+    "subtitle": "After floor {n} of {total}",
+    "playerYou": "You're currently in",
+    "playerTeam": "{team} is currently in",
+    "place": "{place} place",
+    "points": "{points} loot"
+  },
+
+  "results": {
+    "winner": [
+      "{name} survives the dungeon!",
+      "{name} wins! Please collect your prize: this sentence.",
+      "All hail {name}, who will not shut up about this."
+    ],
+    "tie": "A tie. How beautifully unsatisfying. My writers hate this.",
+    "playerWon": ["{who} survived! Mostly intact!", "{who} won! Try to be humble. (You won't.)"],
+    "you": "You",
+    "place": ["{place} place. There's always next time. And there IS a next time. The kiosk is right there.", "{place} place. A participation trophy exists in spirit."],
+    "points": "{points} loot",
+    "contribution": "You carried {score} of {team}'s {total}. I'm keeping the receipts.",
+    "highScore": "{names} is now #{rank} {when}. Screenshot this. Nobody will believe you.",
+    "playerHighScore": "Leaderboard Menace: #{rank} {when}. Frame it.",
+    "today": "today",
+    "allTime": "of ALL TIME"
+  },
+
+  "kiosk": {
+    "back": "Retreat",
+    "next": "Onward",
+    "start": "Enter the dungeon",
+    "modeTitle": "Choose your doom",
+    "playersTitle": "Crawlers, swipe in at your station. Waivers are implied.",
+    "teamsTitle": "Form your parties. Tap a crawler to betray them to the other side.",
+    "categoryTitle": "Pick your poison",
+    "difficultyTitle": "How much do you want to suffer?",
+    "confirmTitle": "Last chance to back out. (You won't.)",
+    "seatEmpty": "Unclaimed",
+    "seatSwipeNow": "Swipe now. I'm watching.",
+    "seatCardRegistered": "Known crawler",
+    "seatGuest": "Unregistered crawler (suspicious)",
+    "swipeCard": "Swipe card",
+    "playAsGuest": "Play as guest",
+    "namePlaceholder": "Your crawler name",
+    "nobodyYet": "Empty. Like my heart.",
+    "busyTitle": "A crawl is in progress",
+    "busyIntro": "Fresh crawlers are entering. Wave goodbye.",
+    "busyResults": "Survivors are being counted.",
+    "busyWait": "Wait your turn. The dungeon doesn't do walk-ins."
+  }
+}

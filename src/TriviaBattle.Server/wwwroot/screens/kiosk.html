@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Kiosk</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+    <link rel="stylesheet" href="/css/keyboard.css">
+</head>
+<body>
+    <div class="theme-backdrop"></div>
+    <!-- Setup wizard: mode -> players -> teams (team modes only) -> category -> confirm -->
+    <section id="view-setup" class="view">
+        <div class="kiosk">
+            <header class="kiosk-header">
+                <h1 id="kiosk-title"></h1>
+                <span id="step-indicator" class="subtitle"></span>
+            </header>
+            <main id="kiosk-step" class="kiosk-step"></main>
+            <footer class="kiosk-footer">
+                <button id="back-button" class="big-button secondary">Back</button>
+                <div id="problems" class="problems"></div>
+                <button id="next-button" class="big-button">Next</button>
+            </footer>
+        </div>
+    </section>
+
+    <!-- Shown while a match is running in this room -->
+    <section id="view-busy" class="view" hidden></section>
+
+    <script src="/lib/signalr/signalr.min.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/screen-connection.js"></script>
+    <script src="/js/card-reader.js"></script>
+    <script src="/js/keyboard.js"></script>
+    <script src="/js/kiosk.js"></script>
+</body>
+</html>

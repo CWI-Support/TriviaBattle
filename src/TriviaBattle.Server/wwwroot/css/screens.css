@@ -1,0 +1,349 @@
+/* Base layout for every Trivia Battle screen.
+
+   THEMES: this file is the shared layout. It only uses the tokens below for colours, fonts,
+   corners and shadows. Each theme (wwwroot/themes/<name>/theme.css) overrides these tokens and
+   can add its own decorations. See docs/THEMES.md. Change layout here; change looks in a theme.
+
+   Sections: tokens, base, shared pieces (answers, chips, timer), per-screen layouts. */
+
+@font-face {
+    font-family: 'Bebas Neue';
+    src: url('/fonts/BebasNeue-Regular.ttf') format('truetype');
+}
+
+/* ---------- Tokens (defaults; every theme can override any of these) ---------- */
+:root {
+    /* Colours */
+    --bg: #07060f;
+    --bg-image: none;                 /* e.g. a gradient or url(...) behind everything */
+    --panel: #15132a;                 /* cards, chips, answer boxes */
+    --panel-light: #221f40;
+    --panel-border: none;             /* e.g. 2px solid gold */
+    --panel-shadow: none;
+    --text: #f4f3ff;
+    --text-dim: #9d9bc4;
+    --accent: #ffd400;                /* titles, scores, buttons */
+    --accent-text: #000;              /* text on top of --accent */
+    --correct: #2ee66b;
+    --wrong: #ff3b4e;
+
+    /* Answer colours match the physical button pads: A red, B blue, C yellow, D green. */
+    --answer-a: #ff2a3d;
+    --answer-b: #2a8cff;
+    --answer-c: #ffd400;
+    --answer-d: #2ee66b;
+    --answer-text: #000;              /* the A/B/C/D letter on its coloured circle */
+
+    /* Overridden per player screen with the station's color from config/stations.json. */
+    --station-color: var(--accent);
+
+    /* Type */
+    --font-display: 'Bebas Neue', Impact, sans-serif;   /* titles, numbers */
+    --font-body: 'Segoe UI', Roboto, Arial, sans-serif;  /* questions, answers, names */
+    --title-color: var(--accent);
+    --title-shadow: none;             /* e.g. a neon glow or 3D drop */
+    --title-transform: none;          /* e.g. uppercase */
+
+    /* Shapes */
+    --radius: 2vmin;
+    --radius-small: 1vmin;
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg-image), var(--bg);
+    background-attachment: fixed;
+    background-size: cover;
+    color: var(--text);
+    font-family: var(--font-body);
+    overflow: hidden;
+    user-select: none;
+}
+
+h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em; font-weight: normal; margin: 0; }
+
+.view { height: 100%; }
+.view[hidden], [hidden] { display: none !important; }
+
+.center-stack {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2vh;
+    text-align: center;
+    padding: 4vh 4vw;
+}
+
+.big-title { font-size: 12vmin; color: var(--title-color); text-shadow: var(--title-shadow); text-transform: var(--title-transform); }
+.subtitle { font-size: 4vmin; color: var(--text-dim); }
+.dim { color: var(--text-dim); }
+
+#connection-status {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--wrong);
+    color: white;
+    font-size: 14px;
+    z-index: 1000;
+}
+
+/* ---------- Themeable surfaces ----------
+   Everything that's a "card" shares the panel border and shadow tokens, so a theme can give
+   them all a frame (gold trim, stone edges...) in one place. */
+.chip, .score-row, .team-card, .banner, .choice, .player-header, .kiosk-header, .kiosk-footer, .leaderboard .scoreboard .score-row {
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
+}
+
+/* An empty layer behind every screen for theme decorations (marquee lights, torches...). */
+.theme-backdrop { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.view, .player-screen, .kiosk, .center-stack { position: relative; z-index: 1; }
+
+/* ---------- Answers (A-D) ---------- */
+.answer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2vmin;
+}
+
+.answer {
+    display: flex;
+    align-items: center;
+    gap: 2vmin;
+    padding: 2vmin 3vmin;
+    background: var(--panel);
+    border: 0.5vmin solid var(--answer-color);
+    border-radius: var(--radius);
+    font-size: 4vmin;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.answer-letter {
+    flex: none;
+    width: 1.6em;
+    height: 1.6em;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--answer-color);
+    color: var(--answer-text);
+    font-family: var(--font-display);
+}
+
+.answer[data-letter="A"] { --answer-color: var(--answer-a); }
+.answer[data-letter="B"] { --answer-color: var(--answer-b); }
+.answer[data-letter="C"] { --answer-color: var(--answer-c); }
+.answer[data-letter="D"] { --answer-color: var(--answer-d); }
+
+.answer.is-dimmed { opacity: 0.3; }
+.answer.is-chosen { transform: scale(1.03); box-shadow: 0 0 3vmin var(--answer-color); }
+.answer.is-correct { border-color: var(--correct); box-shadow: 0 0 4vmin var(--correct); opacity: 1; }
+
+/* ---------- Timer bar ---------- */
+.timer-bar {
+    height: 1.5vmin;
+    background: var(--panel-light);
+    border-radius: var(--radius-small);
+    overflow: hidden;
+}
+
+.timer-bar-fill { height: 100%; width: 100%; background: var(--accent); }
+.timer-bar-low .timer-bar-fill { background: var(--wrong); }
+
+/* ---------- Player chips (who's playing / who answered) ---------- */
+.chip-row { display: flex; gap: 2vmin; justify-content: center; flex-wrap: wrap; }
+
+.chip {
+    min-width: 18vmin;
+    padding: 1.2vmin 2vmin;
+    border-radius: var(--radius);
+    background: var(--panel);
+    border-top: 0.8vmin solid var(--chip-color, var(--accent));
+    text-align: center;
+}
+
+.chip-name { font-family: var(--font-display); font-size: 3.5vmin; }
+.chip-detail { font-size: 2.4vmin; color: var(--text-dim); min-height: 1.3em; }
+.chip.has-answered .chip-detail { color: var(--accent); }
+.chip.was-correct .chip-detail { color: var(--correct); }
+.chip.was-wrong .chip-detail { color: var(--wrong); }
+
+/* ---------- Scoreboard ---------- */
+.scoreboard { width: min(90vw, 1100px); display: flex; flex-direction: column; gap: 1.5vmin; }
+
+.score-row {
+    display: grid;
+    grid-template-columns: 8vmin 1fr auto;
+    align-items: center;
+    gap: 2vmin;
+    padding: 1.5vmin 3vmin;
+    background: var(--panel);
+    border-left: 1vmin solid var(--row-color, var(--accent));
+    border-radius: var(--radius);
+    font-size: 4.5vmin;
+}
+
+.score-row .rank, .score-row .score { font-family: var(--font-display); }
+.score-row .score { color: var(--accent); }
+.score-row .members { font-size: 2.6vmin; color: var(--text-dim); }
+
+/* ---------- Main screen (landscape) ---------- */
+.main-question {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto auto;
+    gap: 3vh;
+    padding: 4vh 5vw;
+}
+
+.question-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 4vmin; color: var(--text-dim); }
+.question-header .countdown { font-family: var(--font-display); font-size: 9vmin; color: var(--accent); }
+.question-text { font-size: 6vmin; text-align: center; align-self: center; }
+
+.vs-layout { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4vw; width: 90vw; }
+.vs-word { font-family: var(--font-display); font-size: 16vmin; color: var(--title-color); text-shadow: var(--title-shadow); }
+.team-card { background: var(--panel); border-radius: var(--radius); padding: 3vmin; text-align: center; }
+.team-card h2 { font-size: 7vmin; }
+.team-card .members { font-size: 3.5vmin; color: var(--text-dim); }
+
+/* ---------- Player screen (portrait) ---------- */
+.player-screen {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border: 1.2vmin solid var(--station-color);
+}
+
+.player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2vh 4vw;
+    background: var(--panel);
+}
+
+.player-header .station-label { font-family: var(--font-display); font-size: 5vmin; color: var(--station-color); }
+.player-header .player-name { font-size: 4vmin; }
+.player-header .player-score { font-family: var(--font-display); font-size: 6vmin; color: var(--accent); }
+
+.player-body { padding: 3vh 5vw; display: flex; flex-direction: column; gap: 3vh; overflow: hidden; }
+.player-body .question-text { font-size: 5vmin; }
+.player-body .answer-grid { grid-template-columns: 1fr; }
+.player-body .answer { font-size: 5vmin; }
+
+.banner {
+    padding: 2vh;
+    border-radius: var(--radius);
+    background: var(--panel-light);
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 7vmin;
+}
+
+.banner.correct { background: var(--correct); color: var(--accent-text); }
+.banner.wrong { background: var(--wrong); }
+
+/* ---------- Kiosk (touch, landscape) ---------- */
+.kiosk { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+.kiosk-header { padding: 2vh 3vw; display: flex; justify-content: space-between; align-items: center; background: var(--panel); }
+.kiosk-header h1 { font-size: 6vmin; color: var(--accent); }
+.kiosk-step { padding: 3vh 3vw; overflow-y: auto; }
+.kiosk-step h2 { font-size: 6vmin; margin-bottom: 3vh; text-align: center; }
+.kiosk-footer { padding: 2vh 3vw; display: flex; justify-content: space-between; gap: 2vw; background: var(--panel); }
+
+.big-button {
+    font-family: var(--font-display);
+    font-size: 4.5vmin;
+    padding: 2vh 4vw;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--accent-text);
+    cursor: pointer;
+}
+
+.big-button.secondary { background: var(--panel-light); color: var(--text); }
+.big-button:disabled { opacity: 0.35; }
+
+.choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(28vmin, 1fr)); gap: 2vmin; }
+
+.choice {
+    padding: 4vh 2vw;
+    border-radius: var(--radius);
+    border: 0.5vmin solid transparent;
+    background: var(--panel);
+    color: var(--text);
+    text-align: center;
+    cursor: pointer;
+    font-size: 3vmin;
+}
+
+.choice h3 { font-size: 5.5vmin; color: var(--accent); margin-bottom: 1vh; }
+.choice.is-selected { border-color: var(--accent); background: var(--panel-light); }
+
+.seat-card { border-top: 1vmin solid var(--chip-color); display: flex; flex-direction: column; gap: 1.5vh; align-items: stretch; }
+.seat-card input { font-size: 3.5vmin; padding: 1vh 1vw; border-radius: var(--radius-small); border: none; text-align: center; }
+.seat-card .seat-buttons { display: flex; gap: 1vw; justify-content: center; }
+.seat-card button { font-size: 2.6vmin; padding: 1vh 1.5vw; border-radius: var(--radius-small); border: none; cursor: pointer; }
+.seat-card.is-listening { border-color: var(--accent); animation: pulse 1s infinite; }
+
+@keyframes pulse { 50% { box-shadow: 0 0 4vmin var(--accent); } }
+
+.problems { color: var(--wrong); font-size: 3vmin; text-align: center; min-height: 1.5em; }
+
+/* ---------- Dev buttons page ---------- */
+.dev-pads { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; padding: 20px; }
+.dev-pad { background: var(--panel); border-radius: 12px; padding: 16px; border-top: 6px solid var(--chip-color); }
+.dev-pad h3 { font-size: 28px; margin-bottom: 12px; }
+.dev-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.dev-button { aspect-ratio: 1; border-radius: 50%; border: none; font-family: var(--font-display); font-size: 24px; cursor: pointer; background: var(--answer-color); color: #000; }
+.dev-button small { display: block; font-family: var(--font-body); font-size: 12px; }
+.dev-button.is-pressed { transform: scale(0.85); filter: brightness(1.6); }
+.dev-button[data-letter="A"] { --answer-color: var(--answer-a); }
+.dev-button[data-letter="B"] { --answer-color: var(--answer-b); }
+.dev-button[data-letter="C"] { --answer-color: var(--answer-c); }
+.dev-button[data-letter="D"] { --answer-color: var(--answer-d); }
+
+/* ---------- Synced video (intro) ---------- */
+.synced-video {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* fills landscape and portrait screens alike (crops the edges) */
+    background: #000;
+    z-index: 500;
+}
+
+/* ---------- Leaderboards and high scores ---------- */
+.leaderboard { display: flex; flex-direction: column; align-items: center; gap: 2vh; }
+.leaderboard h2 { font-size: 5vmin; color: var(--text-dim); }
+.leaderboard .score-row { font-size: 3.5vmin; padding: 1vmin 3vmin; }
+
+.high-score {
+    font-family: var(--font-display);
+    font-size: 5vmin;
+    color: var(--accent-text);
+    background: var(--accent);
+    padding: 1vh 3vw;
+    border-radius: var(--radius);
+}
+
+/* ---------- Question pictures/videos (added in the admin editor) ---------- */
+.question-text { display: flex; flex-direction: column; align-items: center; gap: 2vh; }
+.question-media { max-width: 60%; max-height: 30vh; border-radius: var(--radius); object-fit: contain; }
+.player-body .question-media { max-width: 90%; max-height: 22vh; }
+
+
+/* Demo keypad mode (station-keypad.js): answers on player screens can be tapped. */
+.keypad-enabled .answer { cursor: pointer; }
+.keypad-enabled .answer:active { transform: scale(0.97); }

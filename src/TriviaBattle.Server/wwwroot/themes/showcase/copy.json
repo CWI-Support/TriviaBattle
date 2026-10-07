@@ -1,0 +1,79 @@
+{
+  "_about": "Showcase theme copy: a big, cheesy, delighted daytime game-show host. Only lines that differ from themes/neon/copy.json are listed. Lists = random variants. See docs/THEMES.md.",
+
+  "brand": {
+    "title": "Trivia Battle!"
+  },
+
+  "modes": {
+    "FreeForAll": { "name": "Every Contestant for Themselves", "description": "Four players, one winner, zero mercy. Highest score takes the prize!" },
+    "TeamSharedAnswer": { "name": "Partner Showdown", "description": "Two teams, one answer each. Fastest finger on your team locks it in!" },
+    "TeamCombinedScore": { "name": "Team Jackpot", "description": "Everybody plays! Your points pile into one big team jackpot." }
+  },
+
+  "lobby": {
+    "subtitle": [
+      "Step right up! Swipe in at the kiosk!",
+      "You could be our next contestant! Swipe in at the kiosk!",
+      "Fabulous prizes!* Swipe in at the kiosk!  (*bragging rights)"
+    ],
+    "leaderboardEmpty": "Our board is empty! Be the first big winner!",
+    "leaderboardToday": "Today's Big Winners",
+    "leaderboardAllTime": "Hall of Fame"
+  },
+
+  "intro": {
+    "title": ["It's showtime!", "Let's play Trivia Battle!", "Contestants, take your places!"],
+    "startingIn": "The lights go up in {seconds}…",
+    "playerTitle": ["{name}, you're our next contestant!", "Give it up for {name}!"]
+  },
+
+  "leadIn": {
+    "title": "Round {n} of {total}!",
+    "playerTitle": "Round {n}!",
+    "playerHint": ["Finger on the buzzer!", "Here it comes, folks!", "Don't blink!"]
+  },
+
+  "question": {
+    "timeUp": "Buzzer!"
+  },
+
+  "status": {
+    "lockedIn": "Final answer!",
+    "wrong": "Bzzt!",
+    "noAnswer": "Asleep!"
+  },
+
+  "player": {
+    "pressNow": ["Hit that button!", "Pick one! Any one! (The right one.)"],
+    "lockedIn": "Final answer: {letter}!",
+    "teammateLockedIn": "{name} slammed {letter}!",
+    "correct": ["DING DING DING! +{points}", "WINNER! +{points}", "You got it! +{points}"],
+    "wrong": ["Ohhh, so close!", "Not today, friend!", "The studio audience groans!"],
+    "timeUp": "Buzzer beater… and you missed it!"
+  },
+
+  "standings": {
+    "title": "The Big Board"
+  },
+
+  "results": {
+    "winner": ["{name} is our BIG WINNER!", "Congratulations, {name}!"],
+    "tie": "A showdown tie! Unbelievable!",
+    "playerWon": "{who} won the whole show!",
+    "highScore": "NEW HIGH SCORE! {names} lands #{rank} {when}!",
+    "playerHighScore": "You're in the Hall of Fame: #{rank} {when}!"
+  },
+
+  "kiosk": {
+    "start": "Let's play!",
+    "modeTitle": "Pick your game!",
+    "playersTitle": "Contestants, swipe in at your station!",
+    "teamsTitle": "Build your teams! Tap a player to switch sides",
+    "categoryTitle": "Choose your category!",
+    "confirmTitle": "Are you ready to play?!",
+    "busyTitle": "We're live on air!",
+    "busyIntro": "Contestants to the stage, please!",
+    "busyWait": "Stay tuned. You're up next!"
+  }
+}
