@@ -4,8 +4,6 @@ A 4-player trivia room for an entertainment venue. Players swipe in at a kiosk o
 pick a category, mode and difficulty, then battle it out on physical answer buttons while a
 main screen and four player screens show the action.
 
-![The room](docs/room-reference.png)
-
 ## Quick start
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
