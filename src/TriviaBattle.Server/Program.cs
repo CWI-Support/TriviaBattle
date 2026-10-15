@@ -6,6 +6,7 @@ using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Questions;
 using TriviaBattle.Hardware.Input;
+using TriviaBattle.Server.Audio;
 using TriviaBattle.Server.Configuration;
 using TriviaBattle.Server.Data;
 using TriviaBattle.Server.Display;
@@ -65,12 +66,18 @@ try
     // ---- Game ----
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton<MatchHost>();
+    builder.Services.AddSingleton<GameRulesService>();
     builder.Services.AddHostedService<MatchTicker>();
     builder.Services.AddSingleton<IMatchBroadcaster, LoggingMatchBroadcaster>();
     builder.Services.AddSingleton<IMatchBroadcaster, SignalRMatchBroadcaster>();
     builder.Services.AddSingleton<ScreenStateFactory>();
     builder.Services.AddSingleton<ThemeService>();
     builder.Services.Configure<MediaSettings>(builder.Configuration.GetSection("Media"));
+    builder.Services.Configure<AudioSettings>(builder.Configuration.GetSection("Audio"));
+    builder.Services.AddSingleton(RoomAudioMap.Load(builder.Configuration));
+    builder.Services.AddSingleton<RoomSoundService>(); // room audio, played by the server on the room's sound card
+    builder.Services.AddSingleton<IMatchBroadcaster>(sp => sp.GetRequiredService<RoomSoundService>());
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<RoomSoundService>());
 
     // ---- Buttons, LEDs and lighting: keyboard/console in dev, the PLC in the venue (see HardwareServices) ----
     builder.Services.AddRoomHardware(builder.Configuration, builder.Environment, buttonMap);
@@ -106,6 +113,7 @@ try
     app.MapFallbackToFile("/kiosk", "screens/kiosk.html");
     app.MapFallbackToFile("/dev/buttons", "screens/dev-buttons.html");
     app.MapFallbackToFile("/admin", "screens/admin.html");
+    app.MapGet("/operator", () => Results.Redirect("/admin#operator")); // the venue staff's screen: sound, rules, theme
 
     var port = app.Configuration.GetValue("Port", 5000);
     Log.Information("Trivia Battle server listening on port {Port}", port);

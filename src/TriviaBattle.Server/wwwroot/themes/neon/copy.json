@@ -7,7 +7,7 @@
 
   "modes": {
     "FreeForAll": { "name": "Free-for-All", "description": "Everyone for themselves. Highest score wins." },
-    "TeamSharedAnswer": { "name": "2v2 Group", "description": "One answer per team. The first teammate to press locks it in!" },
+    "TeamSharedAnswer": { "name": "2v2 Group", "description": "Teammates share one set of questions. Either of you can answer!" },
     "TeamCombinedScore": { "name": "2v2 Combined", "description": "Everyone answers. Your points add up to your team score." }
   },
 
@@ -29,45 +29,28 @@
     "versus": "VS",
     "playerTitle": "Get ready, {name}!",
     "playerTeam": "You're on {team}",
-    "playerTeamWith": "You're on {team} with {teammates}"
+    "playerTeamWith": "You're on {team} with {teammates}",
+    "rules": "{seconds} seconds. Answer as many as you can!"
   },
 
-  "leadIn": {
-    "title": "Question {n} of {total}",
-    "playerTitle": "Question {n}",
-    "playerHint": "Get your finger ready…"
-  },
-
-  "question": {
-    "header": "Question {n} / {total} · {category}",
-    "timeUp": "Time!"
-  },
-
-  "status": {
-    "lockedIn": "Locked in!",
-    "points": "+{points}",
-    "wrong": "Wrong",
-    "noAnswer": "No answer"
+  "playing": {
+    "title": "Answer as many as you can!",
+    "right": "{n} right",
+    "lockedOut": "Locked!"
   },
 
   "player": {
     "idle": "Swipe in at the kiosk to play",
     "busy": "A battle is in progress",
-    "pressNow": "Press a button!",
-    "lockedIn": "Locked in: {letter}",
-    "teammateLockedIn": "{name} locked in {letter}",
     "correct": "Correct! +{points}",
     "wrong": "Wrong!",
-    "timeUp": "Time's up!"
-  },
-
-  "standings": {
-    "title": "Scores",
-    "subtitle": "After question {n} of {total}",
-    "playerYou": "You're in",
-    "playerTeam": "{team} is in",
-    "place": "{place} place",
-    "points": "{points} points"
+    "go": "Go! Answer as fast as you can",
+    "questionNumber": "Question {n}",
+    "itWas": "It was {letter}: {answer}",
+    "lostPoints": "{points}",
+    "lockedOut": "Locked out!",
+    "teammateCorrect": "{name} got it! +{points}",
+    "teammateWrong": "{name} missed it"
   },
 
   "results": {
@@ -94,7 +77,6 @@
     "teamsTitle": "Pick teams: tap a player to switch sides",
     "categoryTitle": "Pick a category",
     "difficultyTitle": "Difficulty",
-    "confirmTitle": "Ready to battle?",
     "seatEmpty": "Empty",
     "seatSwipeNow": "Swipe your card now…",
     "seatCardRegistered": "Card registered",
@@ -108,8 +90,8 @@
     "stationsFull": "All stations are full.",
     "busyTitle": "Battle in progress",
     "busyIntro": "Head into the room. The battle is starting!",
-    "busyQuestion": "Question {n} of {total}",
     "busyResults": "Final results are in!",
-    "busyWait": "The next group can set up when this battle ends."
+    "busyWait": "The next group can set up when this battle ends.",
+    "busyPlaying": "{seconds} seconds left"
   }
 }

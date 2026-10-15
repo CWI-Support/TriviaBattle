@@ -10,7 +10,18 @@ public class RoomConfig
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
+    public RoomAudioConfig Audio { get; set; } = new();
     public List<StationConfig> Stations { get; set; } = new();
+}
+
+/// <summary>The room's shared speakers: outputs on its sound card (0-based, see stations.json). Null = none.</summary>
+public class RoomAudioConfig
+{
+    /// <summary>Part of the sound card's name in Windows, e.g. "StarTech". Empty = Windows default.</summary>
+    public string Device { get; set; } = "";
+    public int? Room { get; set; }
+    public int? Attract { get; set; }
+    public int? Sub { get; set; }
 }
 
 public class StationConfig
@@ -18,6 +29,9 @@ public class StationConfig
     public int Number { get; set; }
     public string Label { get; set; } = "";
     public string Color { get; set; } = "#ffffff";
+
+    /// <summary>The output on the room's sound card for this station's speaker (0-based). Null = none.</summary>
+    public int? AudioOutput { get; set; }
 }
 
 public class ButtonConfig

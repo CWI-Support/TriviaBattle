@@ -1,4 +1,7 @@
-﻿// Custom On-Screen Keyboard - Aggressive Android Keyboard Blocking
+﻿// On-screen keyboard for the kiosk's name boxes (inputs with class "keyboard-input").
+// On touch screens it blocks the device's own keyboard; on a PC typing on a real keyboard also works.
+// Styles: css/keyboard.css. While it's open, body has .keyboard-active and --keyboard-height so the
+// page can keep its content above it.
 
 class OnScreenKeyboard {
     constructor() {
@@ -97,8 +100,8 @@ class OnScreenKeyboard {
                 }
             });
 
-            // Allow normal focus and typing
-            document.addEventListener('focus', (e) => {
+            // Allow normal focus and typing ('focusin' because 'focus' doesn't bubble up to document)
+            document.addEventListener('focusin', (e) => {
                 if (e.target.matches('.keyboard-input, .pin-input')) {
                     this.activeInput = e.target;
                     this.showKeyboard(e.target);
@@ -118,9 +121,6 @@ class OnScreenKeyboard {
     createKeyboard() {
         const keyboardHTML = `
             <div id="onScreenKeyboard" class="on-screen-keyboard hidden">
-                <div class="keyboard-header">
-                    <button class="keyboard-close" onclick="onScreenKeyboard.hideKeyboard()">✕</button>
-                </div>
                 <div class="keyboard-display">
                     <input type="text" class="keyboard-display-input" readonly>
                 </div>
@@ -209,7 +209,7 @@ class OnScreenKeyboard {
         this.keyboardElement.querySelectorAll('.key').forEach(key => {
             key.addEventListener('click', (e) => {
                 e.preventDefault();
-                const value = e.target.getAttribute('data-key');
+                const value = e.currentTarget.getAttribute('data-key');
                 if (value) {
                     this.handleKeyPress(value);
                 }
@@ -221,8 +221,10 @@ class OnScreenKeyboard {
         this.activeInput = inputElement;
         this.keyboardElement.classList.remove('hidden');
 
-        // Add class to body to adjust layout
+        // Tell the page how much room the keyboard takes, so it can keep its content above it
         document.body.classList.add('keyboard-active');
+        document.documentElement.style.setProperty('--keyboard-height', this.keyboardElement.offsetHeight + 'px');
+        inputElement.scrollIntoView({ block: 'nearest' });
 
         // Update display
         const display = this.keyboardElement.querySelector('.keyboard-display-input');
@@ -251,7 +253,8 @@ class OnScreenKeyboard {
     }
 
     hideKeyboard() {
-        if (this.activeInput) {
+        // Skip the events if the page has already redrawn and removed the input
+        if (this.activeInput && this.activeInput.isConnected) {
             // Trigger change event
             this.activeInput.dispatchEvent(new Event('input', { bubbles: true }));
             this.activeInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -303,10 +306,11 @@ class OnScreenKeyboard {
     }
 
     submitAndClose() {
-        if (this.activeInput) {
-            this.activeInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        this.hideKeyboard();
+        this.hideKeyboard(); // also sends the input/change events
+    }
+
+    get isOpen() {
+        return !this.keyboardElement.classList.contains('hidden');
     }
 }
 

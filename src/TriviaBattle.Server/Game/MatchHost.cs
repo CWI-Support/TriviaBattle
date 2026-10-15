@@ -1,9 +1,7 @@
-using Microsoft.Extensions.Options;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Questions;
-using TriviaBattle.Core.Scoring;
 using TriviaBattle.Core.Snapshots;
 using TriviaBattle.Core.Stations;
 using TriviaBattle.Server.Data;
@@ -26,7 +24,7 @@ public sealed record StartMatchResult(string? MatchId, IReadOnlyList<string> Pro
 public sealed class MatchHost(
     IQuestionSource questionSource,
     StationLayout stations,
-    IOptionsMonitor<MatchSettings> settings,
+    GameRulesService gameRules,
     TimeProvider clock,
     IEnumerable<IMatchBroadcaster> broadcasters,
     MatchHistory history,
@@ -43,11 +41,12 @@ public sealed class MatchHost(
         if (problems.Count > 0)
             return new StartMatchResult(null, problems);
 
-        // Read settings once, so a config edit mid-match can't change the rules halfway through.
-        var matchSettings = settings.CurrentValue;
+        // Read settings once, so a config or admin edit mid-match can't change the rules halfway through.
+        var matchSettings = await gameRules.SettingsForNewMatchAsync();
 
         // Load questions before taking the lock; it's the only slow (database) step.
-        var questions = await questionSource.PickQuestionsAsync(setup.CategoryId, setup.Difficulty, matchSettings.QuestionsPerMatch);
+        // The whole category is the pool: nobody knows in advance how many questions a fast player gets through.
+        var questions = await questionSource.PickQuestionsAsync(setup.CategoryId, setup.Difficulty, int.MaxValue);
         if (questions.Count == 0)
             return new StartMatchResult(null, ["That category has no active questions."]);
 
@@ -64,14 +63,14 @@ public sealed class MatchHost(
                 matchId: Guid.NewGuid().ToString("N")[..8],
                 setup,
                 questions,
-                GameModes.Create(setup.Mode, matchSettings.TeamLockIn),
-                ScoringRules.Create(matchSettings.Scoring),
+                GameModes.Create(setup.Mode),
                 matchSettings,
-                clock.GetUtcNow());
+                clock.GetUtcNow(),
+                Random.Shared);
 
             _matches.Add(match.MatchId, match);
-            logger.LogInformation("Match {Id} started: {Mode}, {Players} players, {Questions} questions",
-                match.MatchId, match.Mode.DisplayName, setup.Seats.Count, questions.Count);
+            logger.LogInformation("Match {Id} started: {Mode}, {Players} players, {Seconds}s, {Questions} questions in the pool, wrong answers: {Penalty}",
+                match.MatchId, match.Mode.DisplayName, setup.Seats.Count, matchSettings.MatchSeconds, questions.Count, matchSettings.WrongAnswerPenalty);
 
             Publish(match, [new PhaseChanged(match.Phase)]);
             return new StartMatchResult(match.MatchId, []);

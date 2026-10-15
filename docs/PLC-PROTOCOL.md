@@ -18,7 +18,7 @@ for the PLC programmer. The register numbers are **placeholders**: they live in
 | 100 | server → PLC | Ack | The event counter value the server has processed up to. |
 | 101 | server → PLC | Heartbeat | Server adds 1 every second. If it stops changing, the server is down. |
 | 200–215 | server → PLC | Button LEDs | One per button (button ids 10–25). `0` off, `1` on, `2` blink. |
-| 220 | server → PLC | Lighting cue, room A | `0` Idle, `1` Intro, `2` Question, `3` Reveal, `4` Standings, `5` Results. |
+| 220 | server → PLC | Lighting cue, room A | `0` Idle, `1` Intro, `2` Question (the timed round is running), `5` Results. `3` and `4` (Reveal, Standings) are no longer sent. |
 
 The event counter and PLC clock **must be adjacent** (clock = counter + 1), so one read gets both
 from the same scan.

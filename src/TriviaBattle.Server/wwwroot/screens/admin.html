@@ -9,20 +9,21 @@
     <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body class="admin">
-    <!-- Operator admin page. One <section> per tab; each tab's code is in /js/admin/<tab>-tab.js. -->
+    <!-- Admin page. One <section> per tab; each tab's code is in /js/admin/<tab>-tab.js.
+         The Operator tab (also at /operator) is the venue staff's screen: sound, game rules, theme. -->
     <header class="admin-header">
         <h1>Trivia Battle Admin</h1>
         <nav id="tabs">
-            <button data-tab="questions" class="is-active">Questions</button>
+            <button data-tab="operator" class="is-active">Operator</button>
+            <button data-tab="questions">Questions</button>
             <button data-tab="categories">Categories</button>
             <button data-tab="transfer">Import / Export</button>
             <button data-tab="players">Players</button>
-            <button data-tab="live">Live</button>
         </nav>
     </header>
 
     <main>
-        <section id="tab-questions" class="tab">
+        <section id="tab-questions" class="tab" hidden>
             <div class="toolbar">
                 <select id="q-category"><option value="">All categories</option></select>
                 <select id="q-difficulty">
@@ -89,7 +90,26 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
             </table>
         </section>
 
-        <section id="tab-live" class="tab" hidden>
+        <section id="tab-operator" class="tab">
+            <h2>Sound</h2>
+            <p class="dim">Played by the server on the room's sound card. Volume changes apply instantly and are saved. Outputs are set in config/stations.json; test each speaker after wiring.</p>
+            <div id="l-volumes"></div>
+            <div id="l-audio"></div>
+            <h2>Game rules</h2>
+            <p class="dim">Every match is a timed round: answer as many as you can before the clock runs out. Changes apply from the next match.</p>
+            <form id="l-rules" class="form-row">
+                <label>Round length (seconds) <input id="l-rules-seconds" type="number" min="15" max="600" step="5"></label>
+                <label>Wrong answers
+                    <select id="l-rules-penalty">
+                        <option value="Lockout">Lock the buttons for a moment</option>
+                        <option value="LosePoints">Lose points</option>
+                    </select>
+                </label>
+                <label id="l-rules-lockout-field">Lockout (seconds) <input id="l-rules-lockout" type="number" min="0.5" max="10" step="0.5"></label>
+                <label id="l-rules-points-field">Points lost <input id="l-rules-points" type="number" min="0" max="1000" step="10"></label>
+                <button class="primary">Save rules</button>
+                <span id="l-rules-status" class="dim"></span>
+            </form>
             <h2>Theme</h2>
             <p class="dim">Changes every screen at once (looks and wording). Themes live in wwwroot/themes/; see docs/THEMES.md.</p>
             <div class="toolbar">
@@ -97,10 +117,10 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
                 <button id="l-theme-apply" class="primary">Use on all screens</button>
                 <span id="l-theme-preview" class="dim"></span>
             </div>
-            <h2>Hardware</h2>
-            <div id="l-hardware"></div>
             <h2>Running matches</h2>
             <div id="l-matches"></div>
+            <h2>Hardware</h2>
+            <div id="l-hardware"></div>
         </section>
     </main>
 
@@ -156,7 +176,7 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
     <script src="/js/admin/categories-tab.js"></script>
     <script src="/js/admin/transfer-tab.js"></script>
     <script src="/js/admin/players-tab.js"></script>
-    <script src="/js/admin/live-tab.js"></script>
+    <script src="/js/admin/operator-tab.js"></script>
     <script src="/js/admin/admin.js"></script>
 </body>
 </html>

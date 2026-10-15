@@ -1,33 +1,50 @@
-using TriviaBattle.Core.Modes.LockIn;
-using TriviaBattle.Core.Scoring;
-
 namespace TriviaBattle.Core.Matches;
 
+/// <summary>What happens when someone answers wrong. Chosen by the operator on the admin page.</summary>
+public enum WrongAnswerPenalty
+{
+    /// <summary>That player's (or team's) buttons stop working for <see cref="MatchSettings.LockoutSeconds"/>.</summary>
+    Lockout,
+
+    /// <summary><see cref="MatchSettings.WrongAnswerPoints"/> is taken off the score.</summary>
+    LosePoints,
+}
+
 /// <summary>
-/// Timing and rules for every match. Bound from the "Game" section of appsettings.json,
-/// so operators can tune these without rebuilding. Defaults below are used for anything
-/// missing from config.
+/// Timing and rules for every match. Bound from the "Game" section of appsettings.json; the
+/// admin page can override the game rules (see GameRulesService on the server). Defaults
+/// below are used for anything missing from config.
 /// </summary>
 public sealed class MatchSettings
 {
-    public int QuestionsPerMatch { get; set; } = 10;
+    /// <summary>How long the clock runs: answer as many questions as you can in this time.</summary>
+    public double MatchSeconds { get; set; } = 60;
 
-    // How long each phase lasts, in seconds. See MatchPhase for what each phase is.
-    public double IntroSeconds { get; set; } = 8;
-    public double LeadInSeconds { get; set; } = 3;
-    public double AnswerSeconds { get; set; } = 15;
-    public double RevealSeconds { get; set; } = 5;
-    public double StandingsSeconds { get; set; } = 4;
-    public double ResultsSeconds { get; set; } = 20;
+    // How long the other phases last, in seconds. See MatchPhase for what each phase is.
+    public double IntroSeconds { get; set; } = 7;
+    public double ResultsSeconds { get; set; } = 10;
 
-    /// <summary>Skip the rest of the timer once every player/team has answered.</summary>
-    public bool EndQuestionWhenAllAnswered { get; set; } = true;
+    /// <summary>Points for each correct answer.</summary>
+    public int CorrectPoints { get; set; } = 100;
+
+    public WrongAnswerPenalty WrongAnswerPenalty { get; set; } = WrongAnswerPenalty.Lockout;
+
+    /// <summary>With the Lockout penalty: how long the buttons stay dead after a wrong answer.</summary>
+    public double LockoutSeconds { get; set; } = 2;
+
+    /// <summary>With the LosePoints penalty: points taken off for each wrong answer.</summary>
+    public int WrongAnswerPoints { get; set; } = 50;
+
+    /// <summary>
+    /// Presses this soon after a new question appears are ignored. Stops one press from also
+    /// answering the next question (a bouncing button, or both 2v2 Group teammates pressing at once)
+    /// before anyone has seen it.
+    /// </summary>
+    public double NewQuestionGraceSeconds { get; set; } = 0.3;
 
     /// <summary>Show the four answers in a random order each time a question is used.</summary>
     public bool ShuffleAnswers { get; set; } = true;
 
-    /// <summary>How a team locks in its one answer in 2v2 Group mode.</summary>
-    public LockInRuleKind TeamLockIn { get; set; } = LockInRuleKind.FirstPress;
-
-    public ScoringSettings Scoring { get; set; } = new();
+    /// <summary>A copy, so per-match overrides never change the shared configured instance.</summary>
+    public MatchSettings Copy() => (MatchSettings)MemberwiseClone();
 }

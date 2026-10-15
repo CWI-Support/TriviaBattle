@@ -33,9 +33,9 @@ public sealed record MediaCue(string Id, string Url, long StartAtMs);
 
 /// <summary>
 /// A one-off moment for animations. Deliberately carries no secrets: for example
-/// AnswerLocked says WHO locked in, never WHICH answer (that's in the State, if the screen may see it).
+/// AnswerGiven says WHO answered, never WHICH answer (that's in the State, if the screen may see it).
 /// </summary>
-/// <param name="Type">"PhaseChanged", "AnswerLocked", "RoundRevealed", "MatchFinished" or "LeaderboardPlacement".</param>
+/// <param name="Type">"PhaseChanged", "AnswerGiven", "LockoutEnded", "MatchFinished" or "LeaderboardPlacement".</param>
 /// <param name="Placement">Only for "LeaderboardPlacement": who made which board, at what rank.</param>
 public sealed record ScreenEvent(
     string Type,

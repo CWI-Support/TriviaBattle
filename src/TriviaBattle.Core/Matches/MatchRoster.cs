@@ -5,15 +5,24 @@ public sealed class Tally
 {
     public int Score { get; private set; }
     public int CorrectAnswers { get; private set; }
+    public int WrongAnswers { get; private set; }
 
     /// <summary>Total time taken on correct answers. Used to break ties (faster wins).</summary>
     public TimeSpan TimeOnCorrectAnswers { get; private set; }
 
-    public void AddCorrectAnswer(int points, TimeSpan responseTime)
+    public void Add(GivenAnswer answer)
     {
-        Score += points;
-        CorrectAnswers++;
-        TimeOnCorrectAnswers += responseTime;
+        Score += answer.Points; // negative for a wrong answer with the LosePoints penalty
+
+        if (answer.IsCorrect)
+        {
+            CorrectAnswers++;
+            TimeOnCorrectAnswers += answer.ResponseTime;
+        }
+        else
+        {
+            WrongAnswers++;
+        }
     }
 }
 

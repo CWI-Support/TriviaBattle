@@ -14,6 +14,7 @@
         .launcher a { color: var(--text); display: inline-block; margin: 6px 12px 6px 0; padding: 10px 16px;
                       background: var(--panel); border-radius: 8px; text-decoration: none; border-left: 6px solid var(--link-color, var(--accent)); }
         .launcher a:hover { background: var(--panel-light); }
+        .launcher .operator a { font-size: 20px; padding: 16px 22px; }
     </style>
 </head>
 <body>
@@ -21,6 +22,10 @@
          so these links work the same on one PC or across machines on the LAN. -->
     <div class="launcher">
         <h1>Trivia Battle</h1>
+        <p class="operator">
+            <a href="/operator">Operator: sound &amp; volume, game rules, theme</a>
+            <a href="/admin#questions" style="--link-color: var(--text-dim)">Questions &amp; players</a>
+        </p>
         <p class="dim">Open each screen in its own window (or on its own device). Add <code>?devkeys=1</code> to a
            screen to drive the buttons from that window's keyboard.</p>
         <div id="rooms"></div>

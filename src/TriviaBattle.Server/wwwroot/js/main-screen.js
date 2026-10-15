@@ -1,23 +1,34 @@
-// Main room screen: question, timer, who has answered, scores and results.
+// Main room screen: the match clock and a live leaderboard while everyone races, then results.
+// Questions aren't shown here: each player has their own on their station screen.
 // Like every screen, it only draws the state the server sends. There are no game rules here.
 // All wording comes from the theme's copy.json via Theme.text() (see js/theme.js).
 
 let stationsById = {};
 let lastState = null;
-let placements = []; // leaderboard placements announced for the current match
+let placements = [];   // leaderboard placements announced for the current match
+let answerCounts = {}; // id -> { correct, wrong } as last drawn, to flash a row when it changes
+let roomAudioPlaysIntro = false; // true when the server plays the room audio, intro sound included
 
 const connection = new ScreenConnection({ role: 'main', onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
-connection.start();
+fetch('/api/audio')
+    .then(response => response.ok ? response.json() : null)
+    .then(audio => { roomAudioPlaysIntro = !!audio?.enabled; })
+    .catch(() => {})
+    .finally(() => connection.start());
 UI.startCountdowns(() => connection.serverNow());
 Theme.load().then(() => LeaderboardView.startRotation(document.getElementById('lobby-leaderboard')));
 if (devKeysRequested()) enableDevKeys(connection);
 
 function render(state) {
-    if (state.match?.matchId !== lastState?.match?.matchId) placements = [];
+    if (state.match?.matchId !== lastState?.match?.matchId) {
+        placements = [];
+        answerCounts = {};
+    }
     lastState = state;
     stationsById = Object.fromEntries(state.room.stations.map(s => [s.id, s]));
-    introVideo.follow(state.cue, { muted: false }); // the main screen carries the sound
+    // All room audio comes from the server's sound card; the main screen only plays the intro's sound when that's off.
+    introVideo.follow(state.cue, { muted: roomAudioPlaysIntro });
     const match = state.match;
 
     if (!match) {
@@ -28,13 +39,10 @@ function render(state) {
     }
 
     switch (match.phase) {
-        case 'Intro':          renderIntro(match); break;
-        case 'QuestionLeadIn': renderLeadIn(match); break;
-        case 'QuestionOpen':
-        case 'Reveal':         renderQuestion(match); break;
-        case 'Standings':      renderStandings(match); break;
+        case 'Intro':    renderIntro(match); break;
+        case 'Playing':  renderPlaying(match); break;
         case 'Results':
-        case 'Finished':       renderResults(match); break;
+        case 'Finished': renderResults(match); break;
     }
 }
 
@@ -56,9 +64,10 @@ function renderIntro(match) {
             <h1 class="big-title">${Theme.text('intro.title', {}, momentSeed(match))}</h1>
             <p class="subtitle">${modeName(match)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</p>
             ${lineup}
+            <p class="subtitle">${Theme.text('intro.rules', { seconds: match.matchSeconds }, momentSeed(match))}</p>
             <p class="subtitle">${Theme.text('intro.startingIn', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) })}</p>
         </div>`;
-    UI.showView('view-intro');
+    showFitted('view-intro');
 }
 
 function teamsVersus(match) {
@@ -74,86 +83,55 @@ function teamsVersus(match) {
         : `<div class="chip-row">${match.teams.map(card).join('')}</div>`;
 }
 
-// ---------------------------------------------------------------- Lead-in
+// ---------------------------------------------------------------- Playing (the clock is running)
 
-function renderLeadIn(match) {
-    document.getElementById('view-leadin').innerHTML = `
-        <div class="center-stack">
-            <p class="subtitle">${UI.escape(match.category)}</p>
-            <h1 class="big-title">${Theme.text('leadIn.title', { n: match.roundNumber, total: match.totalRounds }, momentSeed(match))}</h1>
-        </div>`;
-    UI.showView('view-leadin');
-}
-
-// ---------------------------------------------------------------- Question + Reveal
-
-function renderQuestion(match) {
-    const q = match.question;
-    const isOpen = match.phase === 'QuestionOpen';
-    const isRevealed = q.correctIndex !== null;
-
-    const answers = q.answers.map((text, i) => {
-        const classes = ['answer'];
-        if (isRevealed) classes.push(i === q.correctIndex ? 'is-correct' : 'is-dimmed');
-        return `
-            <div class="${classes.join(' ')}" data-letter="${UI.ANSWER_LETTERS[i]}">
-                <span class="answer-letter">${UI.ANSWER_LETTERS[i]}</span>
-                <span>${UI.escape(text)}</span>
-            </div>`;
-    }).join('');
-
-    // In 2v2 Group the TEAM answers, so show team status; otherwise show each player.
-    const statusChips = match.mode === 'TeamSharedAnswer'
-        ? match.teams.map(team => answerChip(match, team.name, teamColor(match, team.id), team)).join('')
-        : match.players.map(p => answerChip(match, p.name, colorOf(p.stationId), p)).join('');
-
-    document.getElementById('view-question').innerHTML = `
-        <div class="main-question">
-            <div class="question-header">
-                <span>${Theme.text('question.header', { n: match.roundNumber, total: match.totalRounds, category: match.category })}</span>
-                ${isOpen ? `<span class="countdown" data-ends-at="${q.closesAtMs}"></span>` : `<span class="countdown">${Theme.text('question.timeUp', {}, momentSeed(match))}</span>`}
+function renderPlaying(match) {
+    document.getElementById('view-playing').innerHTML = `
+        <div class="main-playing">
+            <div class="playing-header">
+                <span>${modeName(match)} &middot; ${UI.escape(match.category)}</span>
+                <span>${Theme.text('playing.title', {}, momentSeed(match))}</span>
             </div>
-            ${isOpen ? `<div class="timer-bar" data-starts-at="${q.openedAtMs}" data-ends-at="${q.closesAtMs}"><div class="timer-bar-fill"></div></div>` : '<div></div>'}
-            <div class="question-text">${UI.questionMedia(q.mediaUrl)}<div>${UI.escape(q.text)}</div></div>
-            <div class="answer-grid">${answers}</div>
-            <div class="chip-row">${statusChips}</div>
+            <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+            <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
+            <div class="race-board">${match.standings.map(s => raceRow(match, s)).join('')}</div>
         </div>`;
-    UI.showView('view-question');
+    showFitted('view-playing');
 }
 
-/** A chip showing whether a player/team has answered, and after reveal, how they did. */
-function answerChip(match, name, color, owner) {
-    const seed = momentSeed(match) + name;
-    let detail = '';
-    let state = '';
+/** One leaderboard line. Flashes green/red when this player/team has just answered. */
+function raceRow(match, standing) {
+    const team = standing.isTeam ? match.teams.find(t => t.id === standing.id) : null;
+    const members = team ? membersOf(match, team) : [match.players.find(p => p.stationId === standing.id)];
+    const counts = team ?? members[0];
+    const color = team ? teamColor(match, team.id) : colorOf(standing.id);
 
-    if (owner.result) {
-        state = owner.result.isCorrect ? 'was-correct' : 'was-wrong';
-        detail = owner.result.isCorrect ? Theme.text('status.points', { points: owner.result.points })
-            : Theme.text(owner.hasAnswered ? 'status.wrong' : 'status.noAnswer', {}, seed);
-    } else if (owner.hasAnswered) {
-        state = 'has-answered';
-        detail = Theme.text('status.lockedIn', {}, seed);
-    }
+    const flash = flashFor(standing.id, counts);
+    const now = connection.serverNow();
+    const lockedOut = members.some(p => p.lockedOutUntilMs && p.lockedOutUntilMs > now);
+    const memberLine = team
+        ? `<div class="members">${members.map(p => `${UI.escape(p.name)} ${p.score.toLocaleString()}`).join(' &middot; ')}</div>`
+        : '';
 
     return `
-        <div class="chip ${state}" style="--chip-color: ${color}">
-            <div class="chip-name">${UI.escape(name)}</div>
-            <div class="chip-detail">${detail}</div>
+        <div class="score-row race-row ${flash}" style="--row-color: ${color}">
+            <span class="rank">${UI.ordinal(standing.rank)}</span>
+            <span>${UI.escape(standing.name)}${lockedOut ? ` <span class="locked-badge">${Theme.text('playing.lockedOut')}</span>` : ''}${memberLine}</span>
+            <span class="right-count">${Theme.text('playing.right', { n: standing.correctAnswers })}</span>
+            <span class="score">${standing.score.toLocaleString()}</span>
         </div>`;
 }
 
-// ---------------------------------------------------------------- Standings + Results
-
-function renderStandings(match) {
-    document.getElementById('view-standings').innerHTML = `
-        <div class="center-stack">
-            <h1 class="big-title">${Theme.text('standings.title', {}, momentSeed(match))}</h1>
-            <p class="subtitle">${Theme.text('standings.subtitle', { n: match.roundNumber, total: match.totalRounds })}</p>
-            ${scoreboard(match)}
-        </div>`;
-    UI.showView('view-standings');
+/** 'flash-correct' / 'flash-wrong' the first time we draw a row after it answered, else ''. */
+function flashFor(id, { correctAnswers, wrongAnswers }) {
+    const before = answerCounts[id] ?? { correct: correctAnswers, wrong: wrongAnswers };
+    answerCounts[id] = { correct: correctAnswers, wrong: wrongAnswers };
+    if (correctAnswers > before.correct) return 'flash-correct';
+    if (wrongAnswers > before.wrong) return 'flash-wrong';
+    return '';
 }
+
+// ---------------------------------------------------------------- Results
 
 function renderResults(match) {
     const winners = match.standings.filter(s => s.rank === 1);
@@ -174,7 +152,7 @@ function renderResults(match) {
             ${highScores}
             ${scoreboard(match)}
         </div>`;
-    UI.showView('view-results');
+    showFitted('view-results');
 }
 
 /** Ranked rows. Team rows also list each teammate's points (their contribution). */
@@ -193,9 +171,10 @@ function scoreboard(match) {
         }
 
         return `
-            <div class="score-row" style="--row-color: ${color}">
+            <div class="score-row race-row" style="--row-color: ${color}">
                 <span class="rank">${UI.ordinal(standing.rank)}</span>
                 <span>${UI.escape(standing.name)}<div class="members">${members}</div></span>
+                <span class="right-count">${Theme.text('playing.right', { n: standing.correctAnswers })}</span>
                 <span class="score">${standing.score.toLocaleString()}</span>
             </div>`;
     }).join('');
@@ -204,6 +183,12 @@ function scoreboard(match) {
 }
 
 // ---------------------------------------------------------------- Helpers
+
+/** Shows a phase's view and shrinks its text if it would run off the bottom of the screen. */
+function showFitted(viewId) {
+    UI.showView(viewId);
+    UI.fitToScreen(document.getElementById(viewId).firstElementChild);
+}
 
 function playerChip(player) {
     return `
@@ -218,9 +203,9 @@ function modeName(match) {
     return Theme.text(`modes.${match.mode}.name`);
 }
 
-/** Keeps a randomly-picked line the same for one moment (this match, question and phase). */
+/** Keeps a randomly-picked line the same for one moment (this match and phase). */
 function momentSeed(match) {
-    return `${match.matchId}:${match.roundNumber}:${match.phase}`;
+    return `${match.matchId}:${match.phase}`;
 }
 
 function membersOf(match, team) {

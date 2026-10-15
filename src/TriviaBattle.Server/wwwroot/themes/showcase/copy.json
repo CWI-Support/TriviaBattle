@@ -7,7 +7,7 @@
 
   "modes": {
     "FreeForAll": { "name": "Every Contestant for Themselves", "description": "Four players, one winner, zero mercy. Highest score takes the prize!" },
-    "TeamSharedAnswer": { "name": "Partner Showdown", "description": "Two teams, one answer each. Fastest finger on your team locks it in!" },
+    "TeamSharedAnswer": { "name": "Partner Showdown", "description": "Two teams racing through the questions. Fastest finger on your team answers!" },
     "TeamCombinedScore": { "name": "Team Jackpot", "description": "Everybody plays! Your points pile into one big team jackpot." }
   },
 
@@ -25,36 +25,20 @@
   "intro": {
     "title": ["It's showtime!", "Let's play Trivia Battle!", "Contestants, take your places!"],
     "startingIn": "The lights go up in {seconds}…",
-    "playerTitle": ["{name}, you're our next contestant!", "Give it up for {name}!"]
+    "playerTitle": ["{name}, you're our next contestant!", "Give it up for {name}!"],
+    "rules": "Beat the clock! {seconds} seconds on the board!"
   },
 
-  "leadIn": {
-    "title": "Round {n} of {total}!",
-    "playerTitle": "Round {n}!",
-    "playerHint": ["Finger on the buzzer!", "Here it comes, folks!", "Don't blink!"]
-  },
-
-  "question": {
-    "timeUp": "Buzzer!"
-  },
-
-  "status": {
-    "lockedIn": "Final answer!",
-    "wrong": "Bzzt!",
-    "noAnswer": "Asleep!"
+  "playing": {
+    "title": ["Beat the clock!", "Lightning round!"]
   },
 
   "player": {
-    "pressNow": ["Hit that button!", "Pick one! Any one! (The right one.)"],
-    "lockedIn": "Final answer: {letter}!",
-    "teammateLockedIn": "{name} slammed {letter}!",
     "correct": ["DING DING DING! +{points}", "WINNER! +{points}", "You got it! +{points}"],
     "wrong": ["Ohhh, so close!", "Not today, friend!", "The studio audience groans!"],
-    "timeUp": "Buzzer beater… and you missed it!"
-  },
-
-  "standings": {
-    "title": "The Big Board"
+    "go": "Lightning round! GO GO GO!",
+    "lockedOut": "Buzzed out! Hold tight!",
+    "teammateCorrect": "{name} nailed it! +{points}"
   },
 
   "results": {
@@ -71,7 +55,6 @@
     "playersTitle": "Contestants, swipe in at your station!",
     "teamsTitle": "Build your teams! Tap a player to switch sides",
     "categoryTitle": "Choose your category!",
-    "confirmTitle": "Are you ready to play?!",
     "busyTitle": "We're live on air!",
     "busyIntro": "Contestants to the stage, please!",
     "busyWait": "Stay tuned. You're up next!"

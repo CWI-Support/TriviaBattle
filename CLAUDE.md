@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Trivia Battle is a 4-station venue trivia room (it started from the DigiStroke mini-golf app, which lives in its own
 separate repo). `README.md` and `docs/ARCHITECTURE.md` are the source of truth
-for structure, terminology (Station, Match, Round, Answer owner, Snapshot) and how to extend things. The
+for structure, terminology (Station, Match, Answer owner, Question stream, Snapshot) and how to extend things. The
 README's status table shows which of the 6 implementation phases are done.
 
 ## Ground rules
@@ -30,7 +30,7 @@ dotnet tool restore; dotnet ef migrations add <Name> --project src/TriviaBattle.
 ```
 
 For manual testing, shorten a match with environment variables (any config key works this way), e.g.
-`Game__IntroSeconds=1 Game__AnswerSeconds=5 Game__QuestionsPerMatch=2 Port=5055`. Dev helpers
+`Game__IntroSeconds=1 Game__MatchSeconds=20 Port=5055` (game rules saved on the admin page override these). Dev helpers
 (`/dev/buttons`, `POST /api/dev/buttons/{id}`, hub `PressKey`) are on only when `DevTools:Enabled` is true,
 which defaults to the Development environment. `src/TriviaBattle.Server/TriviaBattle.http` has sample requests.
 
@@ -51,6 +51,11 @@ Outputs: `RoomOutputCoordinator` (also an `IMatchBroadcaster`) turns match state
 a `LightingCue` per room for each `IRoomOutput` (console in dev, PLC in the venue). `HardwareServices` picks the
 providers from `Plc:Enabled`. PLC protocol: `docs/PLC-PROTOCOL.md`; test without hardware via `tools/PlcSimulator`.
 
+Audio: ALL room sound is played by the server on the room's StarTech 7.1 card, never by the screen PCs. The engine
+(`Hardware/Audio`: `AudioService`, `AudioChannel`) is RangerShack's, ported as-is: keep it in step with RangerShack
+instead of reworking it. `RoomSoundService` (an `IMatchBroadcaster`) maps match events to sounds on zones; outputs are
+0-based (`config/stations.json`). Videos are silent; their sound is a separate file (`Audio:IntroSound`).
+
 Admin: `/admin` page (`js/admin/*`, one file per tab, all via `admin-api.js`) over `/api/admin/*` (`Server/Admin`).
 `QuestionRules` validates questions for both editor and import; `QuestionTransfer` does CSV/JSON packs and also seeds the DB.
 
@@ -69,8 +74,8 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
   Tests drive it with a fake time via `tests/TriviaBattle.Tests/TestMatch.cs`.
 - Broadcasters run inside `MatchHost`'s lock. They must build what they need from the engine there,
   then start network sends without awaiting them (see `SignalRMatchBroadcaster.Send`).
-- Every visibility rule lives in `SnapshotBuilder`: correct answer hidden until Reveal, other players' answers
-  hidden until Reveal, player sees own/team answer. `ScreenEvent`s must never carry answer indexes.
+- Every visibility rule lives in `SnapshotBuilder`: a player sees only its own (or team's) current question, never its
+  correct answer until answered; main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
 - Starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`), not hub
   calls, so the kiosk gets validation problems back as a 400.
 - `MatchSettings` is read once per match at start, so config edits never change a running match.
@@ -84,7 +89,9 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 
 ## Key places
 
-- `Core/Matches/MatchEngine.cs`: phase state machine (Intro → QuestionLeadIn → QuestionOpen → Reveal → Standings … → Results → Finished).
-- `Core/Modes`, `Core/Modes/LockIn`, `Core/Scoring`: strategy classes for game modes, team lock-in, points (selected in `GameModes.Create` / `ScoringRules.Create`).
+- `Core/Matches/MatchEngine.cs`: phase state machine (Intro → Playing → Results → Finished). Every match is a timed round;
+  each answer owner has a `QuestionStream` (answer → next question at once). Wrong answers: lockout or lose points.
+- `Core/Modes`: strategy classes for game modes (selected in `GameModes.Create`).
+- `Server/Game/GameRulesService.cs`: round length + wrong-answer penalty set on the Operator screen, `/operator` = admin's first tab (AppSettings table), laid over `"Game"`.
 - `Server/Game/MatchHost.cs`, `Server/Hubs/` (`GameHub` at `/gamehub`, `ScreenState`, groups per room/station).
-- `Server/config/*.json`: stations, button map, keyboard map. `appsettings.json` `"Game"`: timings, scoring rule, team lock-in rule.
+- `Server/config/*.json`: stations, button map, keyboard map. `appsettings.json` `"Game"`: timings, points, penalty defaults.

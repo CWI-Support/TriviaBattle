@@ -3,11 +3,11 @@
 // so what you see is always fresh from the server.
 
 const ADMIN_TABS = {
+    operator: OperatorTab,
     questions: QuestionsTab,
     categories: CategoriesTab,
     transfer: TransferTab,
     players: PlayersTab,
-    live: LiveTab,
 };
 
 function openTab(name) {
@@ -23,7 +23,7 @@ document.querySelectorAll('#tabs button').forEach(button => {
 });
 
 Object.values(ADMIN_TABS).forEach(tab => tab.init?.());
-openTab(location.hash.slice(1) in ADMIN_TABS ? location.hash.slice(1) : 'questions');
+openTab(location.hash.slice(1) in ADMIN_TABS ? location.hash.slice(1) : 'operator');
 
 /** Small helper used by all tabs: an alert for errors that aren't shown inline. */
 function showError(err) {

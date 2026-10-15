@@ -1,7 +1,6 @@
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Questions;
-using TriviaBattle.Core.Scoring;
 
 namespace TriviaBattle.Core.Matches;
 
@@ -9,9 +8,14 @@ namespace TriviaBattle.Core.Matches;
 /// Runs one match: moves through the phases, accepts button presses, and scores answers.
 /// This is the single source of truth for a match. Screens only display what it says.
 ///
+/// Every match is a timed rapid-fire round. While the clock runs (Playing), each answer owner
+/// (a player, or a team in 2v2 Group) has their own <see cref="QuestionStream"/>: a press answers
+/// their current question and the next one appears straight away. Wrong answers cost a lockout
+/// or points, depending on <see cref="MatchSettings.WrongAnswerPenalty"/>.
+///
 /// How it's driven:
 /// <list type="bullet">
-///   <item><see cref="Tick"/> is called several times a second; it advances the phase when the current one's time is up.</item>
+///   <item><see cref="Tick"/> is called several times a second; it ends lockouts and phases when their time is up.</item>
 ///   <item><see cref="HandlePress"/> is called for each button press at one of this match's stations.</item>
 /// </list>
 /// Both return the <see cref="MatchEvent"/>s that happened (empty if nothing changed).
@@ -25,18 +29,18 @@ public sealed class MatchEngine
 {
     private static readonly IReadOnlyList<MatchEvent> NothingHappened = [];
 
-    private readonly IReadOnlyList<Question> _questions;
-    private readonly IScoringRule _scoring;
-    private readonly List<Round> _rounds = new();
+    private readonly Dictionary<string, QuestionStream> _streams;
 
+    /// <param name="questions">The question pool. Every answer owner gets their own order of it.</param>
+    /// <param name="random">Shuffles each owner's question order. Tests pass a seeded one.</param>
     public MatchEngine(
         string matchId,
         MatchSetup setup,
         IReadOnlyList<Question> questions,
         IGameMode mode,
-        IScoringRule scoring,
         MatchSettings settings,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        Random random)
     {
         if (questions.Count == 0)
             throw new ArgumentException("A match needs at least one question.", nameof(questions));
@@ -47,8 +51,16 @@ public sealed class MatchEngine
         Settings = settings;
         Roster = new MatchRoster(setup);
         StartedAt = now;
-        _questions = questions;
-        _scoring = scoring;
+        CategoryName = questions[0].Category;
+
+        // The chosen difficulty comes first; other difficulties only fill in for the very fast.
+        _streams = Roster.Players
+            .Select(Mode.GetAnswerOwnerId)
+            .Distinct()
+            .ToDictionary(ownerId => ownerId, ownerId => new QuestionStream(ownerId, questions
+                .OrderBy(q => q.Difficulty == setup.Difficulty ? 0 : 1)
+                .ThenBy(_ => random.Next())
+                .ToList()));
 
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
     }
@@ -60,10 +72,13 @@ public sealed class MatchEngine
     public MatchRoster Roster { get; }
     public DateTimeOffset StartedAt { get; }
 
+    /// <summary>The category name, taken from the questions (the setup only has the id).</summary>
+    public string CategoryName { get; }
+
     public MatchPhase Phase { get; private set; }
     public DateTimeOffset PhaseStartedAt { get; private set; }
 
-    /// <summary>When the current phase is scheduled to end. Screens use this for countdowns.</summary>
+    /// <summary>When the current phase is scheduled to end. Screens use this for countdowns (the match clock while Playing).</summary>
     public DateTimeOffset PhaseEndsAt { get; private set; }
 
     /// <summary>Goes up by one every time anything changes. Screens use it to ignore stale updates.</summary>
@@ -71,17 +86,15 @@ public sealed class MatchEngine
 
     public bool WasAborted { get; private set; }
 
-    public int TotalRounds => _questions.Count;
-
-    /// <summary>The category name, taken from the questions (the setup only has the id).</summary>
-    public string CategoryName => _questions[0].Category;
-
-    /// <summary>Questions asked so far, including the current one.</summary>
-    public IReadOnlyList<Round> Rounds => _rounds;
-
-    public Round? CurrentRound => _rounds.Count > 0 ? _rounds[^1] : null;
-
     public bool IsFinished => Phase == MatchPhase.Finished;
+
+    /// <summary>Every answer owner's question stream, in roster order.</summary>
+    public IReadOnlyCollection<QuestionStream> Streams => _streams.Values;
+
+    /// <summary>The stream a player answers in: their own, or their team's in 2v2 Group.</summary>
+    public QuestionStream StreamFor(Player player) => _streams[Mode.GetAnswerOwnerId(player)];
+
+    public QuestionStream? FindStream(string ownerId) => _streams.GetValueOrDefault(ownerId);
 
     public bool HasStation(string stationId) => Roster.FindPlayer(stationId) != null;
 
@@ -91,45 +104,65 @@ public sealed class MatchEngine
     // Inputs
     // ------------------------------------------------------------------
 
-    /// <summary>Advances to the next phase if the current phase's time is up.</summary>
+    /// <summary>Ends any lockouts that have run out, and moves to the next phase when the current one's time is up.</summary>
     public IReadOnlyList<MatchEvent> Tick(DateTimeOffset now)
     {
-        if (IsFinished || now < PhaseEndsAt)
+        if (IsFinished)
             return NothingHappened;
 
-        return AdvanceToNextPhase(now);
-    }
+        var events = new List<MatchEvent>();
 
-    /// <summary>Handles a button press. Presses outside the answer window are ignored.</summary>
-    public IReadOnlyList<MatchEvent> HandlePress(ButtonPress press, DateTimeOffset now)
-    {
-        var round = CurrentRound;
-        var player = Roster.FindPlayer(press.StationId);
+        foreach (var stream in _streams.Values.Where(s => s.LockedOutUntil != null && now >= s.LockedOutUntil))
+        {
+            stream.EndLockout();
+            Version++;
+            events.Add(new LockoutEnded(stream.OwnerId));
+        }
 
-        if (Phase != MatchPhase.QuestionOpen || round == null || player == null)
-            return NothingHappened;
-        if (!round.AcceptsPressAt(press.PressedAt))
-            return NothingHappened;
-
-        var ownerId = Mode.GetAnswerOwnerId(player);
-        var stationsSharingAnswer = Roster.Players
-            .Where(p => Mode.GetAnswerOwnerId(p) == ownerId)
-            .Select(p => p.StationId)
-            .ToList();
-
-        var locked = Mode.LockInRule.TryLock(round, ownerId, stationsSharingAnswer, press);
-        if (locked == null)
-            return NothingHappened;
-
-        round.Lock(locked);
-        Version++;
-
-        var events = new List<MatchEvent> { new AnswerLocked(locked) };
-
-        if (Settings.EndQuestionWhenAllAnswered && EveryoneHasAnswered(round))
+        if (now >= PhaseEndsAt)
             events.AddRange(AdvanceToNextPhase(now));
 
         return events;
+    }
+
+    /// <summary>Handles a button press: answers that owner's current question. Presses outside Playing are ignored.</summary>
+    public IReadOnlyList<MatchEvent> HandlePress(ButtonPress press, DateTimeOffset now)
+    {
+        var player = Roster.FindPlayer(press.StationId);
+        if (Phase != MatchPhase.Playing || player == null || press.PressedAt > PhaseEndsAt)
+            return NothingHappened;
+
+        var stream = StreamFor(player);
+        var shownAt = stream.CurrentShownAt!.Value;
+
+        if (stream.IsLockedOutAt(press.PressedAt))
+            return NothingHappened;
+        if (press.PressedAt < shownAt + TimeSpan.FromSeconds(Settings.NewQuestionGraceSeconds))
+            return NothingHappened; // pressed before the new question could have been read
+
+        var question = stream.CurrentQuestion;
+        var isCorrect = press.AnswerIndex == question.CorrectIndex;
+        var losesPoints = !isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.LosePoints;
+
+        var answer = new GivenAnswer(
+            stream.OwnerId,
+            stream.CurrentNumber,
+            question,
+            press.StationId,
+            press.AnswerIndex,
+            isCorrect,
+            Points: isCorrect ? Settings.CorrectPoints : losesPoints ? -Settings.WrongAnswerPoints : 0,
+            press.PressedAt,
+            ResponseTime: press.PressedAt - shownAt);
+
+        stream.Record(answer, now);
+        Mode.ScoreAnswer(answer, player, Roster);
+
+        if (!isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.Lockout)
+            stream.LockOut(now + TimeSpan.FromSeconds(Settings.LockoutSeconds));
+
+        Version++;
+        return [new AnswerGiven(answer)];
     }
 
     /// <summary>Ends the match immediately (operator abort from the admin page).</summary>
@@ -152,26 +185,13 @@ public sealed class MatchEngine
         switch (Phase)
         {
             case MatchPhase.Intro:
-            case MatchPhase.Standings:
-                StartNextQuestion(now);
+                foreach (var stream in _streams.Values)
+                    stream.Start(now);
+                EnterPhase(MatchPhase.Playing, now, Settings.MatchSeconds);
                 return [new PhaseChanged(Phase)];
 
-            case MatchPhase.QuestionLeadIn:
-                CurrentRound!.Open(now, TimeSpan.FromSeconds(Settings.AnswerSeconds));
-                EnterPhase(MatchPhase.QuestionOpen, now, Settings.AnswerSeconds);
-                return [new PhaseChanged(Phase)];
-
-            case MatchPhase.QuestionOpen:
-                var results = ScoreCurrentQuestion();
-                EnterPhase(MatchPhase.Reveal, now, Settings.RevealSeconds);
-                return [new PhaseChanged(Phase), new RoundRevealed(CurrentRound!.Number, results)];
-
-            case MatchPhase.Reveal:
-                var wasLastQuestion = _rounds.Count >= TotalRounds;
-                if (wasLastQuestion)
-                    EnterPhase(MatchPhase.Results, now, Settings.ResultsSeconds);
-                else
-                    EnterPhase(MatchPhase.Standings, now, Settings.StandingsSeconds);
+            case MatchPhase.Playing:
+                EnterPhase(MatchPhase.Results, now, Settings.ResultsSeconds);
                 return [new PhaseChanged(Phase)];
 
             case MatchPhase.Results:
@@ -183,13 +203,6 @@ public sealed class MatchEngine
         }
     }
 
-    private void StartNextQuestion(DateTimeOffset now)
-    {
-        var number = _rounds.Count + 1;
-        _rounds.Add(new Round(number, _questions[number - 1]));
-        EnterPhase(MatchPhase.QuestionLeadIn, now, Settings.LeadInSeconds);
-    }
-
     /// <param name="seconds">How long the phase lasts; null = no time limit.</param>
     private void EnterPhase(MatchPhase phase, DateTimeOffset now, double? seconds)
     {
@@ -197,42 +210,5 @@ public sealed class MatchEngine
         PhaseStartedAt = now;
         PhaseEndsAt = seconds == null ? DateTimeOffset.MaxValue : now + TimeSpan.FromSeconds(seconds.Value);
         Version++;
-    }
-
-    // ------------------------------------------------------------------
-    // Scoring
-    // ------------------------------------------------------------------
-
-    private List<string> AllAnswerOwnerIds() =>
-        Roster.Players.Select(Mode.GetAnswerOwnerId).Distinct().ToList();
-
-    private bool EveryoneHasAnswered(Round round) =>
-        AllAnswerOwnerIds().All(round.Answers.ContainsKey);
-
-    private IReadOnlyList<RoundResult> ScoreCurrentQuestion()
-    {
-        var round = CurrentRound!;
-        var correctIndex = round.Question.CorrectIndex;
-
-        var correctAnswers = round.Answers.Values.Where(a => a.AnswerIndex == correctIndex).ToList();
-        var pointsByOwner = _scoring.ScoreCorrectAnswers(round, correctAnswers);
-
-        var results = new List<RoundResult>();
-        foreach (var ownerId in AllAnswerOwnerIds())
-        {
-            var answer = round.Answers.GetValueOrDefault(ownerId);
-            var isCorrect = answer != null && answer.AnswerIndex == correctIndex;
-            var points = isCorrect ? pointsByOwner.GetValueOrDefault(ownerId) : 0;
-            var responseTime = answer == null ? (TimeSpan?)null : round.ResponseTimeOf(answer);
-
-            var result = new RoundResult(ownerId, answer, isCorrect, points, responseTime);
-            results.Add(result);
-
-            if (isCorrect)
-                Mode.AwardCorrectAnswer(result, Roster.FindPlayer(answer!.PressedByStationId)!, Roster);
-        }
-
-        round.SetResults(results);
-        return results;
     }
 }

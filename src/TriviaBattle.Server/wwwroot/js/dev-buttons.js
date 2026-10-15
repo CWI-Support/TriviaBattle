@@ -22,7 +22,7 @@ function render(state) {
     lastState = state;
     const match = state.match;
     document.getElementById('match-status').textContent = match
-        ? `${match.modeName} · ${match.phase} · question ${match.roundNumber}/${match.totalRounds}`
+        ? `${match.modeName} · ${match.phase}`
         : 'No match running. Start one from the kiosk.';
     if (keyMap.length) renderPads();
 }

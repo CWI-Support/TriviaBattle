@@ -16,7 +16,7 @@ public class MediaSettings
     /// Gap between the Intro phase starting and the video starting, so every screen has time
     /// to load it. Game:IntroSeconds should be at least this plus the video's length.
     /// </summary>
-    public double IntroVideoDelaySeconds { get; set; } = 1.5;
+    public double IntroVideoDelaySeconds { get; set; } = 1;
 }
 
 /// <summary>

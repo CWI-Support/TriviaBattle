@@ -9,9 +9,11 @@ public abstract record MatchEvent;
 
 public sealed record PhaseChanged(MatchPhase Phase) : MatchEvent;
 
-public sealed record AnswerLocked(LockedAnswer Answer) : MatchEvent;
+/// <summary>Someone answered; their next question is now showing.</summary>
+public sealed record AnswerGiven(GivenAnswer Answer) : MatchEvent;
 
-public sealed record RoundRevealed(int RoundNumber, IReadOnlyList<RoundResult> Results) : MatchEvent;
+/// <summary>A wrong-answer lockout ran out, so that owner's buttons work again.</summary>
+public sealed record LockoutEnded(string OwnerId) : MatchEvent;
 
 public sealed record MatchFinished(bool WasAborted) : MatchEvent;
 

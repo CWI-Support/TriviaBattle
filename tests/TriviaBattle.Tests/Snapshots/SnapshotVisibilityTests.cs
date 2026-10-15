@@ -8,80 +8,95 @@ namespace TriviaBattle.Tests.Snapshots;
 public class SnapshotVisibilityTests
 {
     [Fact]
-    public void Correct_answer_is_hidden_until_reveal_except_from_admin()
+    public void Player_sees_their_question_only_once_the_clock_is_running()
     {
         var match = new TestMatch(GameModeKind.FreeForAll);
-        match.SkipToQuestionOpen();
 
-        Assert.Null(SnapshotBuilder.Build(match.Engine, Viewer.Main).Question!.CorrectIndex);
-        Assert.Null(SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).Question!.CorrectIndex);
-        Assert.Equal(0, SnapshotBuilder.Build(match.Engine, Viewer.Admin).Question!.CorrectIndex);
+        Assert.Null(SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Question);
 
-        match.FinishPhase(); // reveal
+        match.StartPlaying();
+        var you = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!;
 
-        Assert.Equal(0, SnapshotBuilder.Build(match.Engine, Viewer.Main).Question!.CorrectIndex);
+        Assert.Equal(match.StreamOf("A1").CurrentQuestion.Text, you.Question!.Text);
+        Assert.Equal(1, you.Question.Number);
+        Assert.Equal(match.Now.ToUnixTimeMilliseconds(), you.Question.ShownAtMs);
     }
 
     [Fact]
-    public void Main_screen_sees_who_answered_but_not_what_until_reveal()
+    public void Only_admin_is_told_the_answers_to_questions_still_on_screen()
     {
         var match = new TestMatch(GameModeKind.FreeForAll);
-        match.SkipToQuestionOpen();
-        match.Press("A2", 3);
+        match.StartPlaying();
 
-        var before = SnapshotBuilder.Build(match.Engine, Viewer.Main).Players.Single(p => p.StationId == "A2");
-        Assert.True(before.HasAnswered);
-        Assert.Null(before.Answer);
+        Assert.Null(SnapshotBuilder.Build(match.Engine, Viewer.Main).Streams);
+        Assert.Null(SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).Streams);
 
-        match.FinishPhase();
-
-        var after = SnapshotBuilder.Build(match.Engine, Viewer.Main).Players.Single(p => p.StationId == "A2");
-        Assert.Equal(3, after.Answer!.Index);
-        Assert.False(after.Result!.IsCorrect);
+        var admin = SnapshotBuilder.Build(match.Engine, Viewer.Admin).Streams!;
+        Assert.Equal(4, admin.Count);
+        Assert.All(admin, stream => Assert.Equal("Right", stream.CorrectAnswer));
     }
 
     [Fact]
-    public void Player_sees_own_answer_but_not_opponents()
+    public void After_answering_a_player_sees_what_was_right()
     {
         var match = new TestMatch(GameModeKind.FreeForAll);
-        match.SkipToQuestionOpen();
-        match.Press("A1", 1);
-        match.Press("A2", 2);
+        match.StartPlaying();
+        match.Press("A1", 2); // wrong
 
-        var snapshot = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1"));
+        var last = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.LastAnswer!;
 
-        Assert.Equal(1, snapshot.You!.Answer!.Index);
-        Assert.Null(snapshot.Players.Single(p => p.StationId == "A2").Answer);
+        Assert.False(last.IsCorrect);
+        Assert.Equal(2, last.ChosenIndex);
+        Assert.Equal(0, last.CorrectIndex);
+        Assert.Equal("Right", last.CorrectAnswer);
     }
 
     [Fact]
-    public void Group_mode_teammate_sees_locked_team_answer_and_who_pressed_it()
+    public void Main_screen_sees_right_or_wrong_and_scores_but_not_questions()
+    {
+        var match = new TestMatch(GameModeKind.FreeForAll);
+        match.StartPlaying();
+        match.Press("A2", 0);
+
+        var main = SnapshotBuilder.Build(match.Engine, Viewer.Main);
+        var bob = main.Players.Single(p => p.StationId == "A2");
+
+        Assert.Null(main.You);
+        Assert.True(bob.LastAnswer!.IsCorrect);
+        Assert.Equal(1, bob.CorrectAnswers);
+        Assert.Null(main.Players.Single(p => p.StationId == "A1").LastAnswer);
+    }
+
+    [Fact]
+    public void Group_mode_teammates_see_the_team_question_and_who_answered()
     {
         var match = new TestMatch(GameModeKind.TeamSharedAnswer);
-        match.SkipToQuestionOpen();
-        match.Press("A1", 2); // Ann locks Red's answer
+        match.StartPlaying();
+        match.Press("A1", 0); // Ann answers for Red
 
-        var teammate = SnapshotBuilder.Build(match.Engine, Viewer.Player("A3"));
-        Assert.Equal(2, teammate.You!.Answer!.Index);
-        Assert.Equal("Ann", teammate.You.Answer.PressedByName);
+        var ann = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!;
+        var cat = SnapshotBuilder.Build(match.Engine, Viewer.Player("A3")).You!;
 
-        var opponent = SnapshotBuilder.Build(match.Engine, Viewer.Player("A2"));
-        Assert.Null(opponent.You!.Answer);
-        Assert.True(opponent.Teams.Single(t => t.Id == "red").HasAnswered);
-        Assert.Null(opponent.Teams.Single(t => t.Id == "red").Answer);
+        Assert.Equal(ann.Question!.Id, cat.Question!.Id);
+        Assert.Equal(2, cat.Question.Number);
+        Assert.Equal("Ann", cat.LastAnswer!.PressedByName);
+
+        // Team answers show on the team, not the players.
+        var main = SnapshotBuilder.Build(match.Engine, Viewer.Main);
+        Assert.NotNull(main.Teams.Single(t => t.Id == "red").LastAnswer);
+        Assert.Null(main.Players.Single(p => p.StationId == "A1").LastAnswer);
     }
 
     [Fact]
-    public void Combined_mode_teammates_do_not_see_each_others_answers_before_reveal()
+    public void Lockouts_are_shown_with_their_end_time()
     {
-        var match = new TestMatch(GameModeKind.TeamCombinedScore);
-        match.SkipToQuestionOpen();
-        match.Press("A1", 2);
+        var match = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { WrongAnswerPenalty = WrongAnswerPenalty.Lockout, LockoutSeconds = 2 });
+        match.StartPlaying();
+        match.Press("A1", 3);
 
-        var teammate = SnapshotBuilder.Build(match.Engine, Viewer.Player("A3"));
-
-        Assert.Null(teammate.You!.Answer);
-        Assert.Null(teammate.Players.Single(p => p.StationId == "A1").Answer);
+        var expected = match.Now.AddSeconds(2).ToUnixTimeMilliseconds();
+        Assert.Equal(expected, SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.LockedOutUntilMs);
+        Assert.Equal(expected, SnapshotBuilder.Build(match.Engine, Viewer.Main).Players.Single(p => p.StationId == "A1").LockedOutUntilMs);
     }
 
     [Fact]

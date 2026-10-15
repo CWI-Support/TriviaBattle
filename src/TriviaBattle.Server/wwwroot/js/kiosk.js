@@ -33,6 +33,7 @@ function emptySetup() {
 
 const connection = new ScreenConnection({ role: 'kiosk', onState: receiveState });
 connection.start();
+UI.startCountdowns(() => connection.serverNow()); // seconds left in the running match
 loadCategories();
 listenForCardSwipes(cardSwiped);
 setUpIdleReset();
@@ -41,9 +42,14 @@ document.getElementById('back-button').addEventListener('click', goBack);
 document.getElementById('next-button').addEventListener('click', goNext);
 
 async function loadCategories() {
-    const response = await fetch('/api/categories');
-    categories = await response.json();
-    if (step === 'category') renderStep();
+    try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        categories = await response.json();
+        if (step === 'category') renderStep();
+    } catch {
+        setTimeout(loadCategories, 3000); // server not reachable yet: keep trying, or the category step stays empty
+    }
 }
 
 function receiveState(state) {
@@ -51,6 +57,7 @@ function receiveState(state) {
 
     if (state.match) {
         matchRunning = true;
+        if (onScreenKeyboard?.isOpen) onScreenKeyboard.hideKeyboard();
         renderBusy(state.match);
         UI.showView('view-busy');
     } else {
@@ -63,15 +70,21 @@ function receiveState(state) {
 
 // ------------------------------------------------------------------ Step navigation
 
+// The last step's button starts the match (no separate confirm screen: one less tap per group).
 function steps() {
     const mode = MODES.find(m => m.id === setup.mode);
     return mode?.usesTeams
-        ? ['mode', 'players', 'teams', 'category', 'confirm']
-        : ['mode', 'players', 'category', 'confirm'];
+        ? ['mode', 'players', 'teams', 'category']
+        : ['mode', 'players', 'category'];
+}
+
+function isLastStep() {
+    const list = steps();
+    return list.indexOf(step) === list.length - 1;
 }
 
 function goNext() {
-    if (step === 'confirm') {
+    if (isLastStep()) {
         startMatch();
         return;
     }
@@ -94,6 +107,7 @@ function resetKiosk() {
     listeningStationId = null;
     showProblems([]);
     renderStep();
+    loadCategories(); // pick up any category changes made in admin since the last group
 }
 
 function setUpIdleReset() {
@@ -113,9 +127,10 @@ function canContinue() {
         case 'mode':
             return setup.mode !== null;
         case 'players': {
+            // Guests may skip typing (they play as "Player 2" etc.); a new card needs a name to register.
             const mode = MODES.find(m => m.id === setup.mode);
-            const everyoneNamed = seated.every(id => setup.seats[id].name.trim().length > 0);
-            return everyoneNamed && seated.length >= (mode.usesTeams ? 2 : 1);
+            const cardsNamed = seated.every(id => !setup.seats[id].rfidTag || setup.seats[id].name.trim().length > 0);
+            return cardsNamed && seated.length >= (mode.usesTeams ? 2 : 1);
         }
         case 'teams':
             return TEAM_IDS.every(teamId => seated.some(id => setup.teamOf[id] === teamId));
@@ -133,7 +148,7 @@ function updateFooter() {
     back.hidden = step === 'mode';
     back.textContent = Theme.plain('kiosk.back');
     const next = document.getElementById('next-button');
-    next.textContent = Theme.plain(step === 'confirm' ? 'kiosk.start' : 'kiosk.next');
+    next.textContent = Theme.plain(isLastStep() ? 'kiosk.start' : 'kiosk.next');
     next.disabled = !canContinue();
 }
 
@@ -149,9 +164,23 @@ function renderStep() {
         case 'players':  container.innerHTML = playersStep(); break;
         case 'teams':    container.innerHTML = teamsStep(); break;
         case 'category': container.innerHTML = categoryStep(); break;
-        case 'confirm':  container.innerHTML = confirmStep(); break;
     }
     updateFooter();
+    keepKeyboardOnScreenInput();
+}
+
+/**
+ * Redrawing replaces the name boxes, so an open keyboard would be typing into a box that's gone.
+ * Point it at the same seat's new box, or close it if that box isn't on screen any more
+ * (another step, or the seat was removed). Otherwise it covers the next step's buttons.
+ */
+function keepKeyboardOnScreenInput() {
+    if (!onScreenKeyboard?.isOpen || onScreenKeyboard.activeInput?.isConnected) return;
+
+    const stationId = onScreenKeyboard.activeInput?.dataset.stationId;
+    const replacement = stationId && document.querySelector(`.keyboard-input[data-station-id="${stationId}"]`);
+    if (replacement) onScreenKeyboard.showKeyboard(replacement);
+    else onScreenKeyboard.hideKeyboard();
 }
 
 function modeStep() {
@@ -168,8 +197,11 @@ function playersStep() {
         const seat = setup.seats[station.id];
         const listening = listeningStationId === station.id;
 
+        // A guest who doesn't type a name plays as the station's label, shown as the placeholder.
+        const placeholder = seat && !seat.rfidTag ? UI.escape(station.label) : Theme.text('kiosk.namePlaceholder');
+
         const content = seat
-            ? `<input class="keyboard-input" maxlength="${MAX_NAME_LENGTH}" placeholder="${Theme.text('kiosk.namePlaceholder')}"
+            ? `<input class="keyboard-input" data-station-id="${station.id}" maxlength="${MAX_NAME_LENGTH}" placeholder="${placeholder}"
                       value="${UI.escape(seat.name)}" oninput="nameTyped('${station.id}', this.value)">
                <div class="dim">${Theme.text(seat.rfidTag ? 'kiosk.seatCardRegistered' : 'kiosk.seatGuest')}</div>
                <div class="seat-buttons"><button onclick="removeSeat('${station.id}')">${Theme.text('kiosk.remove')}</button></div>`
@@ -200,7 +232,7 @@ function teamsStep() {
             .map(id => {
                 const station = room.stations.find(s => s.id === id);
                 return `<div class="chip" style="--chip-color: ${station.color}" onclick="switchTeam('${id}')">
-                            <div class="chip-name">${UI.escape(setup.seats[id].name)}</div>
+                            <div class="chip-name">${UI.escape(seatName(id))}</div>
                             <div class="chip-detail">${UI.escape(station.label)}</div>
                         </div>`;
             }).join('');
@@ -211,6 +243,7 @@ function teamsStep() {
     return `<h2>${Theme.text('kiosk.teamsTitle')}</h2><div class="choice-grid">${columns}</div>`;
 }
 
+// Compact cards so all categories and the difficulties fit on a 1080p kiosk without scrolling.
 function categoryStep() {
     const categoryCards = categories.map(c => `
         <div class="choice ${setup.categoryId === c.id ? 'is-selected' : ''}" onclick="chooseCategory(${c.id})">
@@ -223,23 +256,8 @@ function categoryStep() {
         </div>`).join('');
 
     return `
-        <h2>${Theme.text('kiosk.categoryTitle')}</h2><div class="choice-grid">${categoryCards}</div>
-        <h2 style="margin-top: 4vh">${Theme.text('kiosk.difficultyTitle')}</h2><div class="choice-grid">${difficultyCards}</div>`;
-}
-
-function confirmStep() {
-    const mode = MODES.find(m => m.id === setup.mode);
-    const category = categories.find(c => c.id === setup.categoryId);
-    const lineup = mode.usesTeams
-        ? TEAM_IDS.map(teamId => `<p><b>${Theme.text(`teams.${teamId}`)}:</b> ${namesOn(teamId)}</p>`).join('')
-        : `<p>${seatedStationIds().map(id => UI.escape(setup.seats[id].name)).join(', ')}</p>`;
-
-    return `
-        <div class="center-stack" style="height:auto">
-            <h2>${Theme.text('kiosk.confirmTitle')}</h2>
-            <p class="subtitle">${Theme.text(`modes.${mode.id}.name`)} &middot; ${UI.escape(category?.name)} &middot; ${setup.difficulty}</p>
-            <div class="subtitle">${lineup}</div>
-        </div>`;
+        <h2>${Theme.text('kiosk.categoryTitle')}</h2><div class="choice-grid compact">${categoryCards}</div>
+        <h2 class="spaced">${Theme.text('kiosk.difficultyTitle')}</h2><div class="choice-grid compact">${difficultyCards}</div>`;
 }
 
 function renderBusy(match) {
@@ -247,7 +265,7 @@ function renderBusy(match) {
         ? Theme.text('kiosk.busyIntro', {}, match.matchId)
         : match.phase === 'Results'
             ? Theme.text('kiosk.busyResults', {}, match.matchId)
-            : Theme.text('kiosk.busyQuestion', { n: match.roundNumber, total: match.totalRounds });
+            : Theme.text('kiosk.busyPlaying', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) });
 
     document.getElementById('view-busy').innerHTML = `
         <div class="center-stack">
@@ -283,6 +301,7 @@ function removeSeat(stationId) {
 }
 
 function nameTyped(stationId, value) {
+    if (!setup.seats[stationId]) return; // seat was removed while the keyboard was open
     setup.seats[stationId].name = value;
     updateFooter(); // don't re-render: that would close the on-screen keyboard
 }
@@ -309,6 +328,9 @@ async function cardSwiped(rfidTag) {
     listeningStationId = null;
     showProblems([]);
     renderStep();
+
+    // A new card needs a name before it can continue, so open the keyboard straight away.
+    if (!known) onScreenKeyboard?.showKeyboard(document.querySelector(`.keyboard-input[data-station-id="${stationId}"]`));
 }
 
 function simulateCardSwipe() {
@@ -353,7 +375,7 @@ async function startMatch() {
         for (const stationId of seatedStationIds()) {
             const seat = setup.seats[stationId];
             const playerProfileId = seat.rfidTag ? await registerCard(seat) : null;
-            seats.push({ stationId, playerName: seat.name.trim(), playerProfileId });
+            seats.push({ stationId, playerName: seatName(stationId), playerProfileId });
         }
 
         const mode = MODES.find(m => m.id === setup.mode);
@@ -401,11 +423,9 @@ function seatedStationIds() {
     return room.stations.map(s => s.id).filter(id => setup.seats[id]);
 }
 
-function namesOn(teamId) {
-    return seatedStationIds()
-        .filter(id => setup.teamOf[id] === teamId)
-        .map(id => UI.escape(setup.seats[id].name))
-        .join(' &amp; ');
+/** The name a seat plays under: what they typed, or the station's label for a guest who skipped it. */
+function seatName(stationId) {
+    return setup.seats[stationId].name.trim() || room.stations.find(s => s.id === stationId).label;
 }
 
 function showProblems(problems) {

@@ -74,8 +74,9 @@ top of the script to match your monitor layout.
 
 ### Intro video
 
-Every room screen plays `wwwroot/media/intro.webm` in sync at the start of a match. The main
-screen plays sound and player screens are muted. The current file is a **placeholder** with an
+Every room screen plays `wwwroot/media/intro.webm` in sync at the start of a match. The screens
+play it silently: its sound comes from the server's room audio (`Audio:IntroSound`, see Room audio
+below). With `Audio:Enabled` false, the main screen plays the video's own sound instead. The current file is a **placeholder** with an
 on-screen timecode, which is handy for checking sync. Regenerate it with
 `tools/placeholder-intro/make-intro.html`. To use the real intro, replace the file (or change
 `Media:IntroVideoUrl`) and set `Game:IntroSeconds` to at least `Media:IntroVideoDelaySeconds` plus
@@ -89,10 +90,8 @@ You can also drive a match with no screens at all, using the requests in
 ```
 src/
   TriviaBattle.Core/      All game rules. No web, database or hardware code, so it is easy to test.
-    Matches/              MatchEngine (the phase state machine), setup, players/teams, rounds, standings
+    Matches/              MatchEngine (the phase state machine), question streams, setup, players/teams, standings
     Modes/                One class per game mode (Free-for-All, 2v2 Group, 2v2 Combined)
-      LockIn/             How a team's shared answer gets locked in (2v2 Group)
-    Scoring/              Points rules (time-remaining, first-correct-buzz)
     Snapshots/            The state each screen receives, and who may see what
     Input/                Button events and the button-id map
     Stations/             Rooms and stations
@@ -118,7 +117,7 @@ docs/                     Architecture notes and reference images
 ```
 
 Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together and how
-to add a game mode, scoring rule, station or button mapping.
+to add a game mode, station or button mapping.
 
 ## Configuration
 
@@ -128,22 +127,26 @@ to add a game mode, scoring rule, station or button mapping.
 | Button id -> station + answer | `src/TriviaBattle.Server/config/buttons.json` |
 | Keyboard key -> button id (dev stand-in for buttons) | `src/TriviaBattle.Server/config/keyboard.json` |
 | PLC on/off, address, register map, button codes, LED registers | `src/TriviaBattle.Server/config/plc.json` (see docs/PLC-PROTOCOL.md) |
-| Timer lengths, questions per match, scoring rule, team lock-in rule | `"Game"` in `appsettings.json` |
+| Round length and wrong-answer penalty (lockout or lose points) | Operator screen, `/operator` (defaults: `"Game"` in `appsettings.json`) |
+| Intro/results timings, points per answer, lockout and grace times | `"Game"` in `appsettings.json` |
 | Intro video file and start delay | `"Media"` in `appsettings.json` |
+| Room audio: sound files, starting volumes, channel count | `"Audio"` in `appsettings.json` |
+| Which speaker is on which sound card output | `config/stations.json` (`AudioOutput`, `Audio`) |
 | Leaderboard size, whether guests count | `"Leaderboards"` in `appsettings.json` |
 | Database file | `ConnectionStrings:TriviaBattle` in `appsettings.json` |
 | Admin API key (empty = admin endpoints open, a warning is logged) | `AdminApiKey` in `appsettings.json` |
 | HTTP port | `Port` in `appsettings.json` |
 | Dev helpers such as `/api/dev/buttons` | `DevTools:Enabled` (defaults to on in Development only) |
 
-Any setting can also be overridden with an environment variable, e.g. `Game__AnswerSeconds=20`.
+Any setting can also be overridden with an environment variable, e.g. `Game__MatchSeconds=30`
+(the admin page's game rules win once they've been saved there).
 
 ## Themes
 
 The screens come in themes: **neon** (default), **showcase** (70s game show) and **dungeon**
 (sarcastic dungeon-AI host). Each theme is a `theme.css` for looks and a `copy.json` for every line
 of on-screen text, so designers and writers can change them without touching code. Switch every
-screen live from Admin → Live, or preview one with `?theme=dungeon` in its URL.
+screen live from the Operator screen (`/operator`), or preview one with `?theme=dungeon` in its URL.
 How to edit or add a theme: [docs/THEMES.md](docs/THEMES.md).
 
 ## Managing questions
@@ -158,9 +161,43 @@ Open **/admin**. If `AdminApiKey` is set in `appsettings.json`, the page asks fo
   the files in `Data/Seed/`). Imports are all-or-nothing, with every problem listed by line.
   Questions that already exist are skipped, so re-importing a file is safe.
 - **Players**: rename or forget RFID cards.
-- **Live**: running matches (with the correct answer, for the operator), abort, and PLC health.
+- **Operator** (the default tab, also at `/operator`, linked from the start page): the venue staff's
+  screen. Sound (volume sliders, sound card status, a test button per speaker), game rules
+  (round length, wrong-answer penalty), theme, running matches (with the correct answers) and abort,
+  and PLC health.
 
 Changes take effect from the next match.
+
+## Room audio
+
+All sound comes from the **server**, through the room's StarTech 7.1 USB sound card (the screen
+PCs play nothing), using RangerShack's audio engine: one 8-output card, three Dayton stereo
+amps and a powered sub. Windows must have the card set to **7.1**.
+
+| Output (0-based) | Jack | Speaker (default wiring) |
+|---|---|---|
+| 0 / 1 | green (front L/R) | amp 1: Player 1, Player 2 |
+| 2 | orange (centre) | powered sub |
+| 4 / 5 | black (rear L/R) | amp 2: Player 3, Player 4 |
+| 6 / 7 | grey (side L/R) | amp 3: Room, Attract (outside) |
+
+What plays where:
+- **Each station's speaker:** a success or fail stinger the moment that station answers (both
+  teammates hear it in 2v2 Group). One is picked at random from the three of each.
+- **Room speaker, plus the same on the sub:** main theme in the lobby, the intro's sound,
+  in-game music while the clock runs, victory music at the results.
+- **Attract:** the main theme, looping all the time.
+
+Wiring and the card's name are in `config/stations.json` (`AudioOutput` per station, `Audio` per
+room). Sound files and volumes are `"Audio"` in `appsettings.json`; the files live in
+`wwwroot/media/audio`. The Operator screen (`/operator`) has a volume slider for each kind of sound (room music, attract,
+stingers, intro, sub; 0-200%), which apply instantly and are saved. After wiring, use **Test**
+next to each speaker there; it also shows how the card opened.
+
+On a PC without the card (a laptop or headset) it runs in RangerShack's stereo test mode by itself:
+every speaker in both ears (except attract and sub, which would just double the room music). At
+the venue, "2ch" or "STEREO FALLBACK" in the status means the card isn't set to 7.1, or the wrong
+device was picked (set `Audio.Device` in stations.json to part of its Windows name).
 
 ## Hardware (PLC)
 

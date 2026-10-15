@@ -13,9 +13,9 @@ public enum LightingCue
 {
     Idle = 0,
     Intro = 1,
-    Question = 2,
-    Reveal = 3,
-    Standings = 4,
+    Question = 2,   // the timed round is running
+    Reveal = 3,     // not used since every match became a timed round; kept so the PLC numbering stays put
+    Standings = 4,  // not used either, same reason
     Results = 5,
 }
 

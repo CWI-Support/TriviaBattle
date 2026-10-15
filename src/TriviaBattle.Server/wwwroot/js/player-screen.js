@@ -1,12 +1,15 @@
 // Player station screen (portrait, next to the 4 answer buttons).
+// While the clock runs, this screen shows the player's own question (their team's in 2v2 Group).
+// Answering moves straight on to the next one, with a right/wrong banner for the last answer.
 // The server sends a "you" section already worked out for the current mode, so this file
-// never needs to know mode rules: you.answer is "the answer that counts for me".
+// never needs to know mode rules.
 // All wording comes from the theme's copy.json via Theme.text() (see js/theme.js).
 
 const stationNumber = Number(location.pathname.match(/\/display\/player\/(\d+)/)?.[1]);
 
 let lastState = null;
-let myPlacement = null; // set if this player/team made a leaderboard this match
+let myPlacement = null;     // set if this player/team made a leaderboard this match
+let lastAnswerShown = null; // number of the last answer we drew feedback for, so new feedback can pop
 
 const connection = new ScreenConnection({ role: 'player', stationNumber, onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
@@ -15,7 +18,10 @@ UI.startCountdowns(() => connection.serverNow());
 enableStationKeypad(connection); // demo: keys 1-4 / A-D or tapping answers press this station's buttons
 
 function render(state) {
-    if (state.match?.matchId !== lastState?.match?.matchId) myPlacement = null;
+    if (state.match?.matchId !== lastState?.match?.matchId) {
+        myPlacement = null;
+        lastAnswerShown = null;
+    }
     lastState = state;
     introVideo.follow(state.cue, { muted: true }); // sound comes from the main screen only
 
@@ -31,18 +37,15 @@ function render(state) {
 
     if (!match || !you) {
         body.innerHTML = idle(state, match);
-        return;
+    } else {
+        switch (match.phase) {
+            case 'Intro':    body.innerHTML = intro(match, you); break;
+            case 'Playing':  body.innerHTML = playing(match, you); break;
+            case 'Results':
+            case 'Finished': body.innerHTML = results(match, you); break;
+        }
     }
-
-    switch (match.phase) {
-        case 'Intro':          body.innerHTML = intro(match, you); break;
-        case 'QuestionLeadIn': body.innerHTML = leadIn(match); break;
-        case 'QuestionOpen':
-        case 'Reveal':         body.innerHTML = question(match, you); break;
-        case 'Standings':      body.innerHTML = standings(match, you); break;
-        case 'Results':
-        case 'Finished':       body.innerHTML = results(match, you); break;
-    }
+    UI.fitToScreen(body); // long questions shrink rather than run off the bottom
 }
 
 /** Leaderboard placements arrive shortly after Results appears; show ours if we got one. */
@@ -76,77 +79,79 @@ function intro(match, you) {
         <div class="center-stack">
             <h1 class="big-title">${Theme.text('intro.playerTitle', { name: you.name }, seedFor(match, you))}</h1>
             <p class="subtitle">${teamLine}</p>
-            <p class="subtitle">${Theme.text(`modes.${match.mode}.name`)} &middot; ${UI.escape(match.category)}</p>
+            <p class="subtitle">${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
             <p class="big-title" data-ends-at="${match.phaseEndsAtMs}"></p>
         </div>`;
 }
 
-function leadIn(match) {
-    return `
-        <div class="center-stack">
-            <h1 class="big-title">${Theme.text('leadIn.playerTitle', { n: match.roundNumber, total: match.totalRounds })}</h1>
-            <p class="subtitle">${Theme.text('leadIn.playerHint', {}, seedFor(match))}</p>
-        </div>`;
-}
+// ---------------------------------------------------------------- Playing
 
-function question(match, you) {
-    const q = match.question;
-    const isRevealed = q.correctIndex !== null;
-    const chosen = you.answer ? you.answer.index : null;
+function playing(match, you) {
+    const q = you.question;
+    const lockedOut = you.lockedOutUntilMs && you.lockedOutUntilMs > connection.serverNow();
 
-    const answers = q.answers.map((text, i) => {
-        const classes = ['answer'];
-        if (isRevealed && i === q.correctIndex) classes.push('is-correct');
-        else if (chosen === i) classes.push('is-chosen');
-        else if (chosen !== null || isRevealed) classes.push('is-dimmed');
-
-        return `
-            <div class="${classes.join(' ')}" data-letter="${UI.ANSWER_LETTERS[i]}">
-                <span class="answer-letter">${UI.ANSWER_LETTERS[i]}</span>
-                <span>${UI.escape(text)}</span>
-            </div>`;
-    }).join('');
+    const answers = q.answers.map((text, i) => `
+        <div class="answer ${lockedOut ? 'is-dimmed' : ''}" data-letter="${UI.ANSWER_LETTERS[i]}">
+            <span class="answer-letter">${UI.ANSWER_LETTERS[i]}</span>
+            <span>${UI.escape(text)}</span>
+        </div>`).join('');
 
     return `
-        ${banner(match, you)}
+        <div class="player-clock">
+            <span>${Theme.text('player.questionNumber', { n: q.number })}</span>
+            <span class="player-clock-seconds" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></span>
+        </div>
+        <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
+        ${lockedOut ? lockoutBanner(match, you) : feedbackBanner(match, you)}
         <div class="question-text">${UI.questionMedia(q.mediaUrl)}<div>${UI.escape(q.text)}</div></div>
-        <div class="answer-grid">${answers}</div>
-        ${match.phase === 'QuestionOpen'
-            ? `<div class="timer-bar" data-starts-at="${q.openedAtMs}" data-ends-at="${q.closesAtMs}"><div class="timer-bar-fill"></div></div>`
-            : ''}`;
+        <div class="answer-grid">${answers}</div>`;
 }
 
-/** The big message above the question: press now / locked in / correct / wrong. */
-function banner(match, you) {
-    const answer = you.answer;
-    const letter = answer ? UI.ANSWER_LETTERS[answer.index] : '';
-    const seed = seedFor(match, you);
+/** How the last answer went ("Correct! +100" / "Wrong! It was B: ..."), or "Go!" before the first one. */
+function feedbackBanner(match, you) {
+    const last = you.lastAnswer;
+    if (!last) return `<div class="banner">${Theme.text('player.go', {}, seedFor(match, you))}</div>`;
 
-    if (you.result) {
-        if (you.result.isCorrect) return `<div class="banner correct">${Theme.text('player.correct', { points: you.result.points }, seed)}</div>`;
-        return `<div class="banner wrong">${Theme.text(answer ? 'player.wrong' : 'player.timeUp', {}, seed)}</div>`;
+    // Pop the banner only when it's new, not on every redraw (other players' answers redraw us too).
+    const pop = last.number !== lastAnswerShown ? 'pop' : '';
+    lastAnswerShown = last.number;
+
+    const seed = `${seedFor(match, you)}:${last.number}`;
+    const byTeammate = last.pressedByStationId !== you.stationId;
+
+    if (last.isCorrect) {
+        const text = byTeammate
+            ? Theme.text('player.teammateCorrect', { name: last.pressedByName, points: last.points }, seed)
+            : Theme.text('player.correct', { points: last.points }, seed);
+        return `<div class="banner correct ${pop}">${text}</div>`;
     }
 
-    if (!answer) {
-        return `<div class="banner">${Theme.text('player.pressNow', {}, seed)} <span data-ends-at="${match.question.closesAtMs}"></span></div>`;
-    }
+    const headline = byTeammate
+        ? Theme.text('player.teammateWrong', { name: last.pressedByName }, seed)
+        : Theme.text('player.wrong', {}, seed);
+    const lost = last.points < 0 ? ` ${Theme.text('player.lostPoints', { points: last.points })}` : '';
+    const itWas = Theme.text('player.itWas', { letter: UI.ANSWER_LETTERS[last.correctIndex], answer: last.correctAnswer });
 
-    // In 2v2 Group a teammate may have locked in for both of you.
-    const pressedByTeammate = answer.pressedByStationId !== you.stationId;
-    return pressedByTeammate
-        ? `<div class="banner">${Theme.text('player.teammateLockedIn', { name: answer.pressedByName, letter }, seed)}</div>`
-        : `<div class="banner">${Theme.text('player.lockedIn', { letter }, seed)}</div>`;
+    return `<div class="banner wrong ${pop}">${headline}${lost}<div class="banner-detail">${itWas}</div></div>`;
 }
 
-function standings(match, you) {
-    const mine = myStanding(match, you);
+/** Wrong answer with the lockout penalty: buttons are dead for a moment. */
+function lockoutBanner(match, you) {
+    const last = you.lastAnswer;
+    const itWas = last
+        ? `<div class="banner-detail">${Theme.text('player.itWas', { letter: UI.ANSWER_LETTERS[last.correctIndex], answer: last.correctAnswer })}</div>`
+        : '';
+    const pop = last && last.number !== lastAnswerShown ? 'pop' : '';
+    lastAnswerShown = last?.number ?? null;
+
     return `
-        <div class="center-stack">
-            <p class="subtitle">${you.teamName ? Theme.text('standings.playerTeam', { team: you.teamName }) : Theme.text('standings.playerYou')}</p>
-            <h1 class="big-title">${Theme.text('standings.place', { place: UI.ordinal(mine.rank) }, seedFor(match, you))}</h1>
-            <p class="subtitle">${Theme.text('standings.points', { points: mine.score.toLocaleString() })}</p>
+        <div class="banner wrong ${pop}">
+            ${Theme.text('player.lockedOut', {}, `${seedFor(match, you)}:${last?.number}`)} <span data-ends-at="${you.lockedOutUntilMs}"></span>
+            ${itWas}
         </div>`;
 }
+
+// ---------------------------------------------------------------- Results
 
 function results(match, you) {
     const mine = myStanding(match, you);
@@ -173,6 +178,7 @@ function results(match, you) {
         <div class="center-stack">
             <h1 class="big-title">${headline}</h1>
             <p class="subtitle">${detail}</p>
+            <p class="subtitle">${Theme.text('playing.right', { n: mine.correctAnswers })}</p>
             ${highScore}
         </div>`;
 }
@@ -185,5 +191,5 @@ function myStanding(match, you) {
 
 /** Keeps a randomly-picked line the same for one moment, but different per station so screens vary. */
 function seedFor(match, you = null) {
-    return `${match.matchId}:${match.roundNumber}:${match.phase}:${you?.stationId ?? ''}`;
+    return `${match.matchId}:${match.phase}:${you?.stationId ?? ''}`;
 }

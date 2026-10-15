@@ -1,22 +1,24 @@
-/* ========================================
-   ON-SCREEN KEYBOARD STYLES
-   Uses CSS variables from siteconfig.css
-   ======================================== */
+/* On-screen keyboard for the kiosk (js/keyboard.js).
+   Uses the same tokens as screens.css, so it follows the current theme. Sized for a
+   1080p touchscreen: keys are big enough for fingers.
+
+   While it's open, body gets .keyboard-active and --keyboard-height (set by keyboard.js),
+   and the kiosk shrinks to the space above it so nothing ends up hidden underneath. */
 
 .on-screen-keyboard {
     position: fixed;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--gray-900);
-    border-top: 2px solid var(--gray-700);
-    box-shadow: none;
     z-index: 10000;
-    padding: 8px 12px 12px 12px;
-    width: 90%;
-    max-width: 600px;
-    border-radius: 0 0 15px 15px;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    width: min(100%, 1200px);
+    padding: 1.5vmin 2vmin 2vmin;
+    background: var(--panel);
+    border: var(--panel-border);
+    border-top: 0.5vmin solid var(--accent);
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: 0 -2vmin 4vmin rgba(0, 0, 0, 0.6);
+    transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .on-screen-keyboard.hidden {
@@ -25,199 +27,85 @@
     pointer-events: none;
 }
 
-/* Desktop/PC - smaller, centered, floats */
-@media (min-width: 769px) {
-    .on-screen-keyboard {
-        max-width: 500px;
-        bottom: 20px;
-        border-radius: 15px;
-        border: 3px solid var(--primary);
-    }
-
-    .on-screen-keyboard.hidden {
-        transform: translateX(-50%) translateY(calc(100% + 20px));
-    }
-}
-
-/* Tablet/Mobile - matches container exactly */
-@media (max-width: 768px) {
-    .on-screen-keyboard {
-        width: calc(100% - 40px);
-        max-width: none;
-        padding: 8px 10px 10px 10px;
-        border-radius: 0 0 15px 15px;
-        left: 50%;
-        margin: 0 20px;
-        border-top: 2px solid var(--gray-700);
-    }
-
-    .on-screen-keyboard.hidden {
-        transform: translateX(-50%) translateY(100%);
-    }
-
-    body.keyboard-active .container {
-        margin-bottom: 320px;
-        transition: margin-bottom 0.3s ease;
-    }
-}
-
-.keyboard-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 5px;
-}
-
-.keyboard-close {
-    background: var(--gray-800);
-    border: 2px solid var(--gray-700);
-    color: var(--text-light);
-    font-size: 1.1rem;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.keyboard-close:hover {
-    background: var(--primary);
+body.keyboard-active .kiosk {
+    height: calc(100% - var(--keyboard-height, 0px));
 }
 
 .keyboard-display {
-    margin-bottom: 6px;
+    display: flex;
+    gap: 1vmin;
+    margin-bottom: 1vmin;
 }
 
 .keyboard-display-input {
-    width: 100%;
-    padding: 8px;
-    font-size: 1.1rem;
+    flex: 1;
+    min-width: 0;
+    padding: 1vmin 2vmin;
+    font-family: var(--font-body);
+    font-size: 4vmin;
     text-align: center;
-    background: var(--gray-800);
-    border: 2px solid var(--gray-700);
-    border-radius: 8px;
-    color: var(--text-light);
-    letter-spacing: 0.3rem;
+    background: var(--bg);
+    color: var(--text);
+    border: none;
+    border-radius: var(--radius-small);
 }
 
-.keyboard-keys {
+.keyboard-keys,
+.letter-keys,
+.number-keys {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 1vmin;
+}
+
+.letter-keys.hidden,
+.number-keys.hidden {
+    display: none;
 }
 
 .keyboard-row {
     display: flex;
-    gap: 5px;
+    gap: 1vmin;
     justify-content: center;
 }
 
 .key {
     flex: 1;
-    min-width: 38px;
-    max-width: 55px;
-    height: 42px;
-    background: var(--gray-800);
-    border: 2px solid var(--gray-700);
-    border-radius: 8px;
-    color: var(--text-light);
-    font-size: 1rem;
-    font-weight: bold;
+    max-width: 10vmin;
+    height: 7vmin;
+    font-family: var(--font-display);
+    font-size: 4vmin;
+    background: var(--panel-light);
+    color: var(--text);
+    border: none;
+    border-radius: var(--radius-small);
     cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: var(--shadow-sm);
+    touch-action: manipulation; /* no double-tap zoom delay */
 }
 
-.key:hover,
 .key:active {
-    background: var(--primary);
-    border-color: var(--primary-dark);
+    background: var(--accent);
+    color: var(--accent-text);
     transform: scale(0.95);
-    box-shadow: var(--shadow-primary);
 }
 
-.key-wide {
-    flex: 1.5;
-    max-width: 80px;
-    font-size: 0.85rem;
-}
-
-.key-space {
-    flex: 3;
-    max-width: none;
-}
+.key-wide { flex: 1.5; max-width: 16vmin; font-size: 3vmin; }
+.key-space { flex: 4; max-width: none; font-size: 3vmin; }
+.key-toggle { max-width: none; font-size: 3vmin; display: flex; align-items: center; justify-content: center; }
+.key-backspace { background: var(--wrong); color: #fff; }
 
 .key-action {
     flex: 2;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    border-color: var(--primary-dark);
-    font-size: 0.95rem;
+    max-width: none;
+    font-size: 4vmin;
+    background: var(--accent);
+    color: var(--accent-text);
 }
 
-.key-toggle {
-    background: var(--gray-700);
-    font-size: 0.85rem;
-}
-
-.key-backspace {
-    background: var(--danger);
-    border-color: var(--danger-dark);
-}
-
-.letter-keys {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 5px;
-}
-
-.letter-keys.hidden {
-    display: none;
-}
-
-.letter-keys .key {
-    min-width: 30px;
-    max-width: 42px;
-    height: 38px;
-    font-size: 0.9rem;
-}
-
-.number-keys {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 5px;
-}
-
-.number-keys.hidden {
-    display: none;
-}
-
-/* Prevent native keyboard on inputs with custom keyboard */
 .keyboard-input {
     cursor: pointer;
 }
 
 .keyboard-input:focus {
-    outline: none;
-}
-
-/* Desktop specific adjustments */
-@media (min-width: 769px) {
-    .key {
-        min-width: 42px;
-        max-width: 60px;
-        height: 48px;
-        font-size: 1.1rem;
-    }
-
-    .keyboard-display-input {
-        font-size: 1.2rem;
-        padding: 10px;
-    }
-
-    .letter-keys .key {
-        height: 42px;
-    }
+    outline: 0.4vmin solid var(--accent);
 }

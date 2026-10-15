@@ -7,9 +7,10 @@ namespace TriviaBattle.Core.Snapshots;
 ///
 /// Visibility rules (all in one place on purpose):
 /// <list type="bullet">
-///   <item>The correct answer is hidden from everyone except Admin until Reveal.</item>
-///   <item>Before Reveal, screens only see THAT someone answered, not WHAT they answered...</item>
-///   <item>...except a player always sees the answer that counts for them: their own, or their team's in 2v2 Group.</item>
+///   <item>A player screen sees only its own current question (its team's in 2v2 Group), and only while Playing.</item>
+///   <item>Nobody but Admin is ever told the correct answer to a question that's still on screen.</item>
+///   <item>After answering, a player screen sees that answer's correct answer (the question is behind them).</item>
+///   <item>Main screen and others see scores and right/wrong, never which answer anyone pressed.</item>
 ///   <item>Admin sees everything, always.</item>
 /// </list>
 /// </summary>
@@ -17,11 +18,8 @@ public static class SnapshotBuilder
 {
     public static MatchSnapshot Build(MatchEngine match, Viewer viewer)
     {
-        var round = match.CurrentRound;
-        var revealed = round?.IsRevealed ?? false;
-
-        var players = match.Roster.Players.Select(p => BuildPlayer(match, p, viewer, revealed)).ToList();
-        var teams = match.Roster.Teams.Select(t => BuildTeam(match, t, viewer, revealed)).ToList();
+        var players = match.Roster.Players.Select(p => BuildPlayer(match, p)).ToList();
+        var teams = match.Roster.Teams.Select(t => BuildTeam(match, t)).ToList();
 
         return new MatchSnapshot(
             match.Version,
@@ -34,78 +32,53 @@ public static class SnapshotBuilder
             match.Mode.UsesTeams,
             match.CategoryName,
             match.Setup.Difficulty.ToString(),
-            round?.Number ?? 0,
-            match.TotalRounds,
-            BuildQuestion(round, viewer, revealed),
+            match.Settings.MatchSeconds,
             players,
             teams,
             match.GetStandings(),
-            viewer.Role == ViewerRole.Player ? BuildYou(match, viewer.StationId!, revealed) : null);
+            viewer.Role == ViewerRole.Player ? BuildYou(match, viewer.StationId!) : null,
+            viewer.Role == ViewerRole.Admin ? match.Streams.Select(BuildStream).ToList() : null);
     }
 
-    private static QuestionView? BuildQuestion(Round? round, Viewer viewer, bool revealed)
+    private static PlayerView BuildPlayer(MatchEngine match, Player player)
     {
-        if (round == null)
-            return null;
-
-        var showCorrect = revealed || viewer.Role == ViewerRole.Admin;
-        var q = round.Question;
-
-        return new QuestionView(
-            q.Id,
-            q.Text,
-            q.Answers,
-            q.MediaUrl,
-            showCorrect ? q.CorrectIndex : null,
-            ToUnixMs(round.OpenedAt),
-            ToUnixMs(round.ClosesAt));
-    }
-
-    private static PlayerView BuildPlayer(MatchEngine match, Player player, Viewer viewer, bool revealed)
-    {
-        // In 2v2 Group, answers belong to teams, so individual players have none of their own.
-        var answer = match.Mode.GetAnswerOwnerId(player) == player.StationId
-            ? match.CurrentRound?.Answers.GetValueOrDefault(player.StationId)
-            : null;
-
-        var canSee = revealed || viewer.Role == ViewerRole.Admin || viewer.StationId == player.StationId;
+        var stream = match.StreamFor(player);
+        var ownsStream = stream.OwnerId == player.StationId; // false in 2v2 Group: the team owns it
 
         return new PlayerView(
             player.StationId,
             player.Name,
             player.TeamId,
             player.Tally.Score,
-            HasAnswered: answer != null,
-            canSee ? ToAnswerView(match, answer) : null,
-            ResultFor(match, player.StationId));
+            player.Tally.CorrectAnswers,
+            player.Tally.WrongAnswers,
+            ownsStream ? ToOutcome(stream.LastAnswer) : null,
+            ToUnixMs(stream.LockedOutUntil));
     }
 
-    private static TeamView BuildTeam(MatchEngine match, Team team, Viewer viewer, bool revealed)
+    private static TeamView BuildTeam(MatchEngine match, Team team)
     {
-        // Only 2v2 Group has team-owned answers.
-        var answer = match.CurrentRound?.Answers.GetValueOrDefault(team.Id);
-        var viewerIsOnTeam = viewer.StationId != null && team.StationIds.Contains(viewer.StationId);
-        var canSee = revealed || viewer.Role == ViewerRole.Admin || viewerIsOnTeam;
+        var stream = match.FindStream(team.Id); // only 2v2 Group has team-owned streams
 
         return new TeamView(
             team.Id,
             team.Name,
             team.StationIds,
             team.Tally.Score,
-            HasAnswered: answer != null,
-            canSee ? ToAnswerView(match, answer) : null,
-            ResultFor(match, team.Id));
+            team.Tally.CorrectAnswers,
+            team.Tally.WrongAnswers,
+            ToOutcome(stream?.LastAnswer));
     }
 
-    private static YouView? BuildYou(MatchEngine match, string stationId, bool revealed)
+    private static YouView? BuildYou(MatchEngine match, string stationId)
     {
         var player = match.Roster.FindPlayer(stationId);
         if (player == null)
             return null; // this station isn't playing in this match
 
         var team = match.Roster.TeamOf(player);
-        var ownerId = match.Mode.GetAnswerOwnerId(player);
-        var answer = match.CurrentRound?.Answers.GetValueOrDefault(ownerId);
+        var stream = match.StreamFor(player);
+        var question = match.Phase == MatchPhase.Playing ? stream.CurrentQuestion : null;
 
         return new YouView(
             player.StationId,
@@ -114,25 +87,46 @@ public static class SnapshotBuilder
             team?.Name,
             player.Tally.Score,
             team?.Tally.Score,
-            ToAnswerView(match, answer),
-            ResultFor(match, ownerId));
+            question == null ? null : new QuestionView(
+                stream.CurrentNumber,
+                question.Id,
+                question.Text,
+                question.Answers,
+                question.MediaUrl,
+                ToUnixMs(stream.CurrentShownAt)),
+            ToUnixMs(stream.LockedOutUntil),
+            ToYourAnswer(match, stream.LastAnswer));
     }
 
-    private static AnswerView? ToAnswerView(MatchEngine match, LockedAnswer? answer)
+    private static StreamView BuildStream(QuestionStream stream)
+    {
+        var question = stream.CurrentQuestion;
+        return new StreamView(
+            stream.OwnerId,
+            stream.CurrentNumber,
+            question.Text,
+            question.Answers[question.CorrectIndex],
+            stream.Answers.Count,
+            stream.Answers.Count(a => a.IsCorrect));
+    }
+
+    private static AnswerOutcomeView? ToOutcome(GivenAnswer? answer) =>
+        answer == null ? null : new AnswerOutcomeView(answer.Number, answer.IsCorrect, answer.Points, answer.PressedByStationId);
+
+    private static YourAnswerView? ToYourAnswer(MatchEngine match, GivenAnswer? answer)
     {
         if (answer == null)
             return null;
 
-        var presser = match.Roster.FindPlayer(answer.PressedByStationId);
-        var responseTime = match.CurrentRound!.ResponseTimeOf(answer);
-
-        return new AnswerView(answer.AnswerIndex, answer.PressedByStationId, presser?.Name ?? "", (int)responseTime.TotalMilliseconds);
-    }
-
-    private static ResultView? ResultFor(MatchEngine match, string ownerId)
-    {
-        var result = match.CurrentRound?.Results.FirstOrDefault(r => r.OwnerId == ownerId);
-        return result == null ? null : new ResultView(result.IsCorrect, result.Points);
+        return new YourAnswerView(
+            answer.Number,
+            answer.AnswerIndex,
+            answer.Question.CorrectIndex,
+            answer.Question.Answers[answer.Question.CorrectIndex],
+            answer.IsCorrect,
+            answer.Points,
+            answer.PressedByStationId,
+            match.Roster.FindPlayer(answer.PressedByStationId)?.Name ?? "");
     }
 
     private static long? ToUnixMs(DateTimeOffset? time) =>

@@ -1,14 +1,25 @@
 {
   "_comment": "Rooms and their player stations. Each station's id is RoomId + Number (e.g. A1). Colors match the station's LED strip. Add a second room here later for room-vs-room.",
+  "_audioComment": [
+    "Speakers on the room's StarTech 7.1 USB card, played by the server (Windows must have the card set to 7.1).",
+    "Device = part of the card's name in Windows Sound settings (e.g. \"StarTech\"); empty = Windows default, skipping HDMI.",
+    "AudioOutput / Room / Attract / Sub = output on the card, 0-7, same numbering as the EscapeEngine (Sonic) AudioConfig:",
+    "  0/1 green jack  (front L/R)   -> amp 1 -> Player 1, Player 2",
+    "  2/3 orange jack (centre/LFE)  -> powered sub on 2 (centre, the plug's tip)",
+    "  4/5 black jack  (rear L/R)    -> amp 2 -> Player 3, Player 4",
+    "  6/7 grey jack   (side L/R)    -> amp 3 -> Room, Attract (outside)",
+    "Leave one out for 'no speaker'. A re-wire only needs these numbers changed; test each speaker on the Operator screen (/operator)."
+  ],
   "Rooms": [
     {
       "Id": "A",
       "Name": "Trivia Battle",
+      "Audio": { "Device": "", "Room": 6, "Attract": 7, "Sub": 2 },
       "Stations": [
-        { "Number": 1, "Label": "Player 1", "Color": "#39ff14" },
-        { "Number": 2, "Label": "Player 2", "Color": "#ff2a3d" },
-        { "Number": 3, "Label": "Player 3", "Color": "#2a8cff" },
-        { "Number": 4, "Label": "Player 4", "Color": "#b04dff" }
+        { "Number": 1, "Label": "Player 1", "Color": "#39ff14", "AudioOutput": 0 },
+        { "Number": 2, "Label": "Player 2", "Color": "#ff2a3d", "AudioOutput": 1 },
+        { "Number": 3, "Label": "Player 3", "Color": "#2a8cff", "AudioOutput": 4 },
+        { "Number": 4, "Label": "Player 4", "Color": "#b04dff", "AudioOutput": 5 }
       ]
     }
   ]

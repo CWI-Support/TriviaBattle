@@ -47,6 +47,11 @@
     /* Shapes */
     --radius: 2vmin;
     --radius-small: 1vmin;
+
+    /* Text scale for screens that must fit without scrolling. UI.fitToScreen() lowers it on a
+       screen whose content would run off the bottom (long question, picture, landscape player
+       screen). Sizes that should shrink are written as calc(<size> * var(--fit)). Not a theme token. */
+    --fit: 1;
 }
 
 /* ---------- Base ---------- */
@@ -80,8 +85,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
     padding: 4vh 4vw;
 }
 
-.big-title { font-size: 12vmin; color: var(--title-color); text-shadow: var(--title-shadow); text-transform: var(--title-transform); }
-.subtitle { font-size: 4vmin; color: var(--text-dim); }
+.big-title { font-size: calc(12vmin * var(--fit)); color: var(--title-color); text-shadow: var(--title-shadow); text-transform: var(--title-transform); }
+.subtitle { font-size: calc(4vmin * var(--fit)); color: var(--text-dim); }
 .dim { color: var(--text-dim); }
 
 #connection-status {
@@ -111,19 +116,20 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 /* ---------- Answers (A-D) ---------- */
 .answer-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2vmin;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* minmax: a long answer wraps instead of widening its column */
+    gap: calc(2vmin * var(--fit));
 }
 
 .answer {
     display: flex;
     align-items: center;
     gap: 2vmin;
-    padding: 2vmin 3vmin;
+    padding: calc(2vmin * var(--fit)) 3vmin;
     background: var(--panel);
     border: 0.5vmin solid var(--answer-color);
     border-radius: var(--radius);
-    font-size: 4vmin;
+    font-size: calc(4vmin * var(--fit));
+    overflow-wrap: anywhere;
     transition: opacity 0.2s, transform 0.2s;
 }
 
@@ -171,8 +177,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
     text-align: center;
 }
 
-.chip-name { font-family: var(--font-display); font-size: 3.5vmin; }
-.chip-detail { font-size: 2.4vmin; color: var(--text-dim); min-height: 1.3em; }
+.chip-name { font-family: var(--font-display); font-size: calc(3.5vmin * var(--fit)); }
+.chip-score { font-family: var(--font-display); font-size: calc(3vmin * var(--fit)); color: var(--accent); }
+.chip-detail { font-size: calc(2.4vmin * var(--fit)); color: var(--text-dim); min-height: 1.3em; }
 .chip.has-answered .chip-detail { color: var(--accent); }
 .chip.was-correct .chip-detail { color: var(--correct); }
 .chip.was-wrong .chip-detail { color: var(--wrong); }
@@ -189,25 +196,52 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
     background: var(--panel);
     border-left: 1vmin solid var(--row-color, var(--accent));
     border-radius: var(--radius);
-    font-size: 4.5vmin;
+    font-size: calc(4.5vmin * var(--fit));
 }
 
 .score-row .rank, .score-row .score { font-family: var(--font-display); }
 .score-row .score { color: var(--accent); }
 .score-row .members { font-size: 2.6vmin; color: var(--text-dim); }
 
-/* ---------- Main screen (landscape) ---------- */
-.main-question {
+/* ---------- Main screen (landscape): match clock + live leaderboard ---------- */
+.main-playing {
     height: 100%;
     display: grid;
-    grid-template-rows: auto auto 1fr auto auto;
-    gap: 3vh;
+    grid-template-rows: auto auto auto 1fr;
+    gap: calc(2.5vh * var(--fit));
     padding: 4vh 5vw;
+    overflow: hidden;
 }
 
-.question-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 4vmin; color: var(--text-dim); }
-.question-header .countdown { font-family: var(--font-display); font-size: 9vmin; color: var(--accent); }
-.question-text { font-size: 6vmin; text-align: center; align-self: center; }
+.playing-header { display: flex; justify-content: space-between; align-items: baseline; gap: 4vw; font-size: calc(4vmin * var(--fit)); color: var(--text-dim); }
+.match-clock {
+    font-family: var(--font-display);
+    font-size: calc(22vmin * var(--fit));
+    line-height: 1;
+    text-align: center;
+    color: var(--title-color);
+    text-shadow: var(--title-shadow);
+}
+.race-board { display: flex; flex-direction: column; gap: calc(1.5vmin * var(--fit)); width: min(100%, 1400px); margin: 0 auto; }
+
+/* Rank, name, "12 right", score. Used live while Playing and on the final results. */
+.score-row.race-row { grid-template-columns: 8vmin 1fr auto 18vmin; }
+.race-row { text-align: left; }
+.race-row .score { text-align: right; }
+.race-row .right-count { font-size: 0.6em; color: var(--text-dim); }
+.locked-badge { font-size: 0.55em; color: var(--wrong); vertical-align: middle; }
+
+/* A row flashes when that player/team answers. */
+.race-row.flash-correct { animation: flash-correct 0.6s ease-out; }
+.race-row.flash-wrong { animation: flash-wrong 0.6s ease-out; }
+@keyframes flash-correct { from { background: var(--correct); transform: scale(1.03); } }
+@keyframes flash-wrong { from { background: var(--wrong); } }
+
+/* Countdowns with data-hurry-at turn red and pulse in the last seconds (UI.updateCountdowns). */
+.is-hurry { color: var(--wrong) !important; animation: hurry 1s ease-in-out infinite; }
+@keyframes hurry { 50% { opacity: 0.6; } }
+
+.question-text { font-size: calc(6vmin * var(--fit)); text-align: center; align-self: center; overflow-wrap: anywhere; }
 
 .vs-layout { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4vw; width: 90vw; }
 .vs-word { font-family: var(--font-display); font-size: 16vmin; color: var(--title-color); text-shadow: var(--title-shadow); }
@@ -219,7 +253,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 .player-screen {
     height: 100%;
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr); /* body gets exactly the space left, so UI.fitToScreen can tell when it overflows */
     border: 1.2vmin solid var(--station-color);
 }
 
@@ -235,22 +269,35 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 .player-header .player-name { font-size: 4vmin; }
 .player-header .player-score { font-family: var(--font-display); font-size: 6vmin; color: var(--accent); }
 
-.player-body { padding: 3vh 5vw; display: flex; flex-direction: column; gap: 3vh; overflow: hidden; }
-.player-body .question-text { font-size: 5vmin; }
-.player-body .answer-grid { grid-template-columns: 1fr; }
-.player-body .answer { font-size: 5vmin; }
+.player-body { padding: 3vh 5vw; display: flex; flex-direction: column; gap: calc(3vh * var(--fit)); overflow: hidden; min-height: 0; }
+.player-body .question-text { font-size: calc(5vmin * var(--fit)); }
+.player-body .answer-grid { grid-template-columns: minmax(0, 1fr); }
+.player-body .answer { font-size: calc(5vmin * var(--fit)); }
+
+/* A player screen on a landscape monitor (not rotated, or the demo windows) has little height:
+   answers go 2 x 2 like the main screen. */
+@media (orientation: landscape) {
+    .player-body .answer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 .banner {
-    padding: 2vh;
+    padding: calc(2vh * var(--fit));
     border-radius: var(--radius);
     background: var(--panel-light);
     text-align: center;
     font-family: var(--font-display);
-    font-size: 7vmin;
+    font-size: calc(7vmin * var(--fit));
 }
 
 .banner.correct { background: var(--correct); color: var(--accent-text); }
 .banner.wrong { background: var(--wrong); }
+.banner-detail { font-family: var(--font-body); font-size: 0.5em; margin-top: 0.5vh; }
+.banner.pop { animation: pop 0.25s ease-out; } /* fresh feedback for the answer just given */
+@keyframes pop { from { transform: scale(1.08); } }
+
+/* Question number and seconds left above each player's question. */
+.player-clock { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: calc(5vmin * var(--fit)); color: var(--text-dim); }
+.player-clock-seconds { font-size: 1.6em; color: var(--accent); }
 
 /* ---------- Kiosk (touch, landscape) ---------- */
 .kiosk { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
@@ -289,6 +336,11 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 
 .choice h3 { font-size: 5.5vmin; color: var(--accent); margin-bottom: 1vh; }
 .choice.is-selected { border-color: var(--accent); background: var(--panel-light); }
+
+/* Category + difficulty step: smaller cards so both grids fit on a 1080p kiosk without scrolling. */
+.choice-grid.compact .choice { padding: 2vh 1vw; }
+.choice-grid.compact .choice h3 { font-size: 4.5vmin; margin-bottom: 0; }
+.kiosk-step h2.spaced { margin-top: 3vh; }
 
 .seat-card { border-top: 1vmin solid var(--chip-color); display: flex; flex-direction: column; gap: 1.5vh; align-items: stretch; }
 .seat-card input { font-size: 3.5vmin; padding: 1vh 1vw; border-radius: var(--radius-small); border: none; text-align: center; }
@@ -331,7 +383,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 
 .high-score {
     font-family: var(--font-display);
-    font-size: 5vmin;
+    font-size: calc(5vmin * var(--fit));
     color: var(--accent-text);
     background: var(--accent);
     padding: 1vh 3vw;
@@ -340,8 +392,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 
 /* ---------- Question pictures/videos (added in the admin editor) ---------- */
 .question-text { display: flex; flex-direction: column; align-items: center; gap: 2vh; }
-.question-media { max-width: 60%; max-height: 30vh; border-radius: var(--radius); object-fit: contain; }
-.player-body .question-media { max-width: 90%; max-height: 22vh; }
+.question-media { max-width: 60%; max-height: calc(30vh * var(--fit)); border-radius: var(--radius); object-fit: contain; }
+.player-body .question-media { max-width: 90%; max-height: calc(22vh * var(--fit)); }
 
 
 /* Demo keypad mode (station-keypad.js): answers on player screens can be tapped. */

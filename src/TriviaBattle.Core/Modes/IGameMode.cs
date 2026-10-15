@@ -1,5 +1,4 @@
 using TriviaBattle.Core.Matches;
-using TriviaBattle.Core.Modes.LockIn;
 
 namespace TriviaBattle.Core.Modes;
 
@@ -8,7 +7,7 @@ public enum GameModeKind
     /// <summary>Everyone answers for themselves; highest score wins.</summary>
     FreeForAll,
 
-    /// <summary>"2v2 Group": each team gives ONE answer per question.</summary>
+    /// <summary>"2v2 Group": each team works through ONE shared stream of questions.</summary>
     TeamSharedAnswer,
 
     /// <summary>"2v2 Combined": everyone answers for themselves; team score = sum of teammates.</summary>
@@ -17,7 +16,7 @@ public enum GameModeKind
 
 /// <summary>
 /// The rules that differ between game modes. The engine handles everything else
-/// (timing, phases, deciding which answers are correct) the same way for every mode.
+/// (the clock, question streams, deciding which answers are correct) the same way for every mode.
 ///
 /// To add a new mode: add a value to <see cref="GameModeKind"/>, write a class implementing
 /// this interface, and add it to <see cref="GameModes.Create"/>. See docs/ARCHITECTURE.md.
@@ -31,18 +30,12 @@ public interface IGameMode
 
     bool UsesTeams { get; }
 
-    /// <summary>Decides when a button press locks in an answer.</summary>
-    ILockInRule LockInRule { get; }
-
     /// <summary>
-    /// Who a player's answer counts for: their own station id (individual answers)
-    /// or their team id (one shared answer per team).
+    /// Who a player's answers count for: their own station id (each player has their own
+    /// question stream) or their team id (teammates share one stream; either can answer).
     /// </summary>
     string GetAnswerOwnerId(Player player);
 
-    /// <summary>
-    /// Adds the points for one correct answer to the right players and/or teams.
-    /// Called once per correct answer at Reveal (Points may be 0 under some scoring rules).
-    /// </summary>
-    void AwardCorrectAnswer(RoundResult result, Player pressedBy, MatchRoster roster);
+    /// <summary>Adds one answer's points (negative for a penalty) to the right players and/or teams.</summary>
+    void ScoreAnswer(GivenAnswer answer, Player pressedBy, MatchRoster roster);
 }

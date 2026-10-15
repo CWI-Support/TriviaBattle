@@ -50,7 +50,7 @@
     position: relative;
     padding: 5vh 3vmin 2vh;
     font-family: var(--font-body);
-    font-size: 4vmin;
+    font-size: calc(4vmin * var(--fit));
     text-align: left;
     background: var(--panel);
     color: var(--text);

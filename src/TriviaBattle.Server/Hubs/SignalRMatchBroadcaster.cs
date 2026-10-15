@@ -43,8 +43,8 @@ public class SignalRMatchBroadcaster(
     private static ScreenEvent ToScreenEvent(MatchEvent e) => e switch
     {
         PhaseChanged p => new ScreenEvent("PhaseChanged", Phase: p.Phase.ToString()),
-        AnswerLocked a => new ScreenEvent("AnswerLocked", OwnerId: a.Answer.OwnerId, StationId: a.Answer.PressedByStationId),
-        RoundRevealed => new ScreenEvent("RoundRevealed"),
+        AnswerGiven a => new ScreenEvent("AnswerGiven", OwnerId: a.Answer.OwnerId, StationId: a.Answer.PressedByStationId),
+        LockoutEnded l => new ScreenEvent("LockoutEnded", OwnerId: l.OwnerId),
         MatchFinished => new ScreenEvent("MatchFinished"),
         LeaderboardPlacement p => new ScreenEvent("LeaderboardPlacement", OwnerId: p.OwnerId, Placement: p),
         _ => new ScreenEvent(e.GetType().Name),

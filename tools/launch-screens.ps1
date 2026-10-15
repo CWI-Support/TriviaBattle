@@ -49,6 +49,16 @@ $Screens = @(
     # @{ Name = 'kiosk'; Path = '/kiosk'; X = 6240; Y = 0 }
 )
 
+# -Demo: small tiled windows on one monitor (positions are worked out below).
+$DemoScreens = @(
+    @{ Name = 'demo-main';    Path = '/display/main' }
+    @{ Name = 'demo-player1'; Path = '/display/player/1' }
+    @{ Name = 'demo-player2'; Path = '/display/player/2' }
+    @{ Name = 'demo-player3'; Path = '/display/player/3' }
+    @{ Name = 'demo-player4'; Path = '/display/player/4' }
+    @{ Name = 'demo-kiosk';   Path = '/kiosk?dev=1' }
+)
+
 $ProfileRoot = Join-Path $env:LOCALAPPDATA 'TriviaBattle\browser-profiles'
 
 function Find-Browser {
@@ -81,7 +91,7 @@ $index = 0
 foreach ($screen in $(if ($Demo) { $DemoScreens } else { $Screens })) {
     $commonArgs = @(
         "--user-data-dir=`"$(Join-Path $ProfileRoot $screen.Name)`"",
-        '--autoplay-policy=no-user-gesture-required',  # intro video may play with sound
+        '--autoplay-policy=no-user-gesture-required',  # intro video may play with sound (when the server isn't playing it)
         '--no-first-run',
         '--no-default-browser-check',
         '--disable-session-crashed-bubble',

@@ -95,3 +95,7 @@ dialog fieldset { border: 1px solid var(--panel-light); border-radius: 6px; disp
 /* Error text: screens.css makes .problems big for TVs; keep it normal-sized here. */
 .admin .problems { font-size: 14px; text-align: left; min-height: 0; }
 .admin a { color: var(--accent); }
+
+/* Room audio volume sliders (Live tab). */
+.volume-row { display: grid; grid-template-columns: 140px minmax(160px, 360px) 50px; align-items: center; gap: 12px; margin: 6px 0; }
+.volume-row input[type="range"] { width: 100%; padding: 0; accent-color: var(--accent); }

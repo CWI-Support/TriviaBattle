@@ -23,7 +23,7 @@ characters out of them, both for trademark/copyright reasons and so the venue ow
 
 ## Switching and previewing
 
-- **Switch every screen:** Admin → Live → Theme → *Use on all screens*. Screens change instantly, even mid-match.
+- **Switch every screen:** Operator screen (`/operator`) → Theme → *Use on all screens*. Screens change instantly, even mid-match.
 - **Preview one screen without changing the room:** add `?theme=<name>` to its URL, e.g.
   `/display/main?theme=dungeon`. The admin page has preview links.
 - The default for a fresh install is `Display:DefaultTheme` in `appsettings.json`.
@@ -81,10 +81,9 @@ Keys are grouped by the moment they belong to. Open `themes/neon/copy.json` for 
 |---|---|
 | `brand`, `lobby` | Attract screen, leaderboard titles |
 | `modes`, `teams` | Mode names/descriptions, team names (saved with the match) |
-| `intro`, `leadIn`, `question` | Match start, "question N", time's up |
-| `status` | Main-screen chips: locked in / wrong / no answer |
-| `player` | Player screen: press now, locked in, correct, wrong, time's up |
-| `standings`, `results` | Scores between questions, winners, high scores |
+| `intro`, `playing` | Match start and rules, the live race on the main screen |
+| `player` | Player screen: go, correct, wrong (and what was right), locked out, a teammate's answer |
+| `results` | Winners, high scores |
 | `kiosk` | Every prompt and button at the kiosk |
 
 **Variants.** Give a list instead of a string, and one line is picked at random for each moment:

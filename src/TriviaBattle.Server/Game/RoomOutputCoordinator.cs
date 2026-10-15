@@ -11,9 +11,8 @@ namespace TriviaBattle.Server.Game;
 ///
 /// LED rules for each seated station's four buttons:
 /// <list type="bullet">
-///   <item>Question open, not answered yet: all four on ("press now").</item>
-///   <item>Answer locked in: only the chosen button stays on (for the whole team in 2v2 Group).</item>
-///   <item>Reveal: the correct button blinks, the rest go off.</item>
+///   <item>Playing: all four on ("press now"), except off during a wrong-answer lockout
+///         (for the whole team in 2v2 Group).</item>
 ///   <item>Results: the winners' buttons blink.</item>
 ///   <item>Anything else, or match over: off.</item>
 /// </list>
@@ -36,7 +35,7 @@ public class RoomOutputCoordinator(
             for (var answer = 0; answer < 4; answer++)
             {
                 if (buttonMap.FindButtonId(player.StationId, answer) is int buttonId)
-                    leds[buttonId] = finished ? LedState.Off : LedFor(match, player, answer);
+                    leds[buttonId] = finished ? LedState.Off : LedFor(match, player);
             }
         }
 
@@ -51,19 +50,13 @@ public class RoomOutputCoordinator(
         }
     }
 
-    private static LedState LedFor(MatchEngine match, Player player, int answerIndex)
+    private static LedState LedFor(MatchEngine match, Player player)
     {
-        var round = match.CurrentRound;
-        var lockedAnswer = round?.Answers.GetValueOrDefault(match.Mode.GetAnswerOwnerId(player));
-
         switch (match.Phase)
         {
-            case MatchPhase.QuestionOpen:
-                if (lockedAnswer == null) return LedState.On;
-                return lockedAnswer.AnswerIndex == answerIndex ? LedState.On : LedState.Off;
-
-            case MatchPhase.Reveal:
-                return round!.Question.CorrectIndex == answerIndex ? LedState.Blink : LedState.Off;
+            case MatchPhase.Playing:
+                // LockoutEnded (from the engine's tick) triggers a fresh update when the lockout runs out.
+                return match.StreamFor(player).LockedOutUntil == null ? LedState.On : LedState.Off;
 
             case MatchPhase.Results:
                 var standingId = match.Mode.UsesTeams ? player.TeamId : player.StationId;
@@ -78,9 +71,7 @@ public class RoomOutputCoordinator(
     private static LightingCue CueFor(MatchPhase phase) => phase switch
     {
         MatchPhase.Intro => LightingCue.Intro,
-        MatchPhase.QuestionLeadIn or MatchPhase.QuestionOpen => LightingCue.Question,
-        MatchPhase.Reveal => LightingCue.Reveal,
-        MatchPhase.Standings => LightingCue.Standings,
+        MatchPhase.Playing => LightingCue.Question,
         MatchPhase.Results => LightingCue.Results,
         _ => LightingCue.Idle,
     };

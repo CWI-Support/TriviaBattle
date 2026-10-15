@@ -14,7 +14,7 @@ public sealed record MatchResult(
     DateTimeOffset StartedAt,
     DateTimeOffset EndedAt,
     bool WasAborted,
-    int QuestionsPlayed,
+    int QuestionsPlayed, // answers given in total, by all players/teams
     IReadOnlyList<ParticipantResult> Participants,
     IReadOnlyList<TeamResult> Teams,
     IReadOnlyList<AnswerResult> Answers)
@@ -40,18 +40,17 @@ public sealed record MatchResult(
             t.Tally.CorrectAnswers,
             RankOf(t.Id))).ToList();
 
-        // Only questions that were actually revealed count (an abort can cut one short).
-        var answers = match.Rounds
-            .Where(r => r.IsRevealed)
-            .SelectMany(r => r.Results.Select(result => new AnswerResult(
-                r.Number,
-                r.Question.Id,
-                result.OwnerId,
-                result.Answer?.PressedByStationId,
-                result.Answer?.AnswerIndex,
-                result.IsCorrect,
-                result.Points,
-                (int?)result.ResponseTime?.TotalMilliseconds)))
+        // Every answer given, by every owner, in the order each owner gave them.
+        var answers = match.Streams
+            .SelectMany(stream => stream.Answers.Select(a => new AnswerResult(
+                a.Number,
+                a.Question.Id,
+                a.OwnerId,
+                a.PressedByStationId,
+                a.AnswerIndex,
+                a.IsCorrect,
+                a.Points,
+                (int?)a.ResponseTime.TotalMilliseconds)))
             .ToList();
 
         return new MatchResult(
@@ -63,7 +62,7 @@ public sealed record MatchResult(
             match.StartedAt,
             endedAt,
             match.WasAborted,
-            match.Rounds.Count(r => r.IsRevealed),
+            answers.Count,
             participants,
             teams,
             answers);
@@ -82,7 +81,9 @@ public sealed record ParticipantResult(
 
 public sealed record TeamResult(string TeamId, string Name, int Score, int CorrectAnswers, int? Rank);
 
+/// <param name="RoundNumber">The owner's 1st, 2nd, 3rd... answer of the match.</param>
 /// <param name="OwnerId">Station id, or team id in 2v2 Group.</param>
+/// <param name="Points">Negative for a wrong answer with the LosePoints penalty.</param>
 public sealed record AnswerResult(
     int RoundNumber,
     int QuestionId,
