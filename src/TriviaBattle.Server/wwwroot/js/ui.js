@@ -42,6 +42,8 @@ const UI = {
         UI.lastFitted = element;
         UI.updateCountdowns(); // a countdown is empty until its first tick, and the number adds height
 
+        // Measure the finished layout, not a moment mid-animation (the intro title starts scaled up).
+        element.classList.add('is-measuring');
         const fitsAt = scale => {
             element.style.setProperty('--fit', scale);
             if (element.scrollHeight > element.clientHeight + 1)
@@ -67,6 +69,7 @@ const UI = {
             }
             fitsAt(fits);
         }
+        element.classList.remove('is-measuring');
 
         // A picture still loading has no height yet: fit again once it has one.
         element.querySelectorAll('img, video').forEach(media => {
@@ -76,6 +79,25 @@ const UI = {
                     () => UI.fitToScreen(element, smallestScale), { once: true });
             }
         });
+    },
+
+    /**
+     * A style that starts an element's CSS animation at server time atMs. Every screen animates in step,
+     * and a screen that draws late (reconnected, or got a second state) joins in at the right point.
+     */
+    animateAt(atMs) {
+        return `animation-delay: ${Math.round(atMs - UI.getServerNow())}ms`;
+    },
+
+    /**
+     * The start-of-game countdown: a big 3, 2, 1, each popping in on its second before endsAtMs.
+     * Each digit is <div class="intro-digit"><b>3</b></div>, so a theme can put something behind the number.
+     */
+    introCountdown(endsAtMs, from = 3) {
+        let digits = '';
+        for (let n = from; n >= 1; n--)
+            digits += `<div class="intro-digit" style="${UI.animateAt(endsAtMs - n * 1000)}"><b>${n}</b></div>`;
+        return `<div class="intro-count">${digits}</div>`;
     },
 
     /** "1st", "2nd", "3rd", "4th"... */

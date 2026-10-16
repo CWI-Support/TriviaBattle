@@ -393,7 +393,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 .problems { color: var(--wrong); font-size: 3vmin; text-align: center; min-height: 1.5em; }
 .notice { color: var(--correct); font-family: var(--font-display); font-size: 4vmin; text-align: center; align-self: center; }
 .seat-card.is-busy { opacity: 0.45; cursor: default; }
-.kiosk-step .category-list { text-align: center; margin: -1.5vh 0 2vh; }
+.kiosk-step .category-bar { display: flex; align-items: center; justify-content: center; gap: 2vw; margin: -1.5vh 0 2vh; }
+.kiosk-step .category-list { text-align: center; margin: 0; }
+.big-button.small { font-size: 2.8vmin; line-height: 1; padding: 0.8vh 2vw; border-radius: var(--radius-small); }
 
 /* ---------- Dev buttons page ---------- */
 .dev-pads { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; padding: 20px; }
@@ -442,3 +444,48 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 /* Demo keypad mode (station-keypad.js): answers on player screens can be tapped. */
 .keypad-enabled .answer { cursor: pointer; }
 .keypad-enabled .answer:active { transform: scale(0.97); }
+
+/* ---------- Start-of-game intro (main and player screens) ----------
+   The title slams in, the line-up arrives, the stage dims and a big 3, 2, 1 counts down.
+   Each piece's start is set from the server clock (UI.animateAt sets animation-delay), and the
+   "both" fill keeps it hidden until its moment. Themes restyle any of these in their theme.css:
+   .intro-slam / .intro-rise / .intro-pop / .intro-from-left / .intro-from-right   how pieces arrive
+   .intro-stage                                    everything but the countdown (dims for the 3, 2, 1)
+   .intro-digit, .intro-digit b, .intro-digit::before   one countdown number, and room for a shape behind it */
+.intro-show { position: relative; height: 100%; }
+.intro-slam { animation: intro-slam 0.7s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.intro-rise { animation: intro-rise 0.6s ease-out both; }
+.intro-pop { animation: intro-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.intro-from-left { animation: intro-from-left 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) both; }
+.intro-from-right { animation: intro-from-right 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) both; }
+.intro-stage { animation: intro-stage-dim 0.4s ease-in both; }
+
+.intro-count { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 2; }
+.intro-digit { grid-area: 1 / 1; display: grid; place-items: center; animation: intro-digit 1s ease-out both; }
+.intro-digit::before { content: ''; grid-area: 1 / 1; }
+.intro-digit b {
+    grid-area: 1 / 1;
+    position: relative; /* always in front of the shape behind it, even while that animates */
+    font-family: var(--font-display);
+    font-weight: normal;
+    font-size: 50vmin;
+    line-height: 1;
+    color: var(--title-color);
+    text-shadow: var(--title-shadow);
+}
+
+@keyframes intro-slam { from { transform: scale(2.5); opacity: 0; filter: blur(1vmin); } 60% { opacity: 1; filter: none; } }
+@keyframes intro-rise { from { transform: translateY(4vh); opacity: 0; } }
+@keyframes intro-pop { from { transform: scale(0.3); opacity: 0; } }
+@keyframes intro-from-left { from { transform: translateX(-60vw); opacity: 0; } }
+@keyframes intro-from-right { from { transform: translateX(60vw); opacity: 0; } }
+@keyframes intro-stage-dim { to { opacity: 0.2; transform: scale(0.94); } }
+@keyframes intro-digit {
+    0% { opacity: 0; transform: scale(2.2); }
+    15% { opacity: 1; transform: scale(1); }
+    80% { opacity: 1; transform: scale(0.92); }
+    100% { opacity: 0; transform: scale(0.6); }
+}
+
+/* UI.fitToScreen measures with animations off, so a title mid-slam doesn't count as too big. */
+.is-measuring, .is-measuring * { animation: none !important; }

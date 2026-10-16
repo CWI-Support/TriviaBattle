@@ -74,15 +74,17 @@ top of the script to match your monitor layout.
 .\tools\launch-screens.ps1 -Close    # close them all
 ```
 
-### Intro video
+### Start-of-game intro
 
-Every room screen plays `wwwroot/media/intro.webm` in sync at the start of a match. The screens
-play it silently: its sound comes from the server's room audio (`Audio:IntroSound`, see Room audio
-below). With `Audio:Enabled` false, the main screen plays the video's own sound instead. The current file is a **placeholder** with an
-on-screen timecode, which is handy for checking sync. Regenerate it with
-`tools/placeholder-intro/make-intro.html`. To use the real intro, replace the file (or change
-`Media:IntroVideoUrl`) and set `Game:IntroSeconds` to at least `Media:IntroVideoDelaySeconds` plus
-the video's length.
+During the Intro phase (`Game:IntroSeconds`, 7 by default) the main screen and the players' station
+screens put on a short show in the active theme: the title slams in, the line-up (or the two teams
+and "VS") arrives, then a big 3, 2, 1. Each theme styles it in its `theme.css` (see
+[docs/THEMES.md](docs/THEMES.md)): neon tubes in Neon, poker chips in Vegas, a light-up sign in
+Showcase. It's timed off the server clock, so every screen in the room moves together.
+
+To play a produced video on top instead, set `Media:IntroVideoUrl` (e.g. `/media/intro.webm`) and
+make `Game:IntroSeconds` at least `Media:IntroVideoDelaySeconds` plus the video's length. Its sound
+comes from the server's room audio (`Audio:IntroSound`, see Room audio below).
 
 You can also drive a match with no screens at all, using the requests in
 `src/TriviaBattle.Server/TriviaBattle.http`.
@@ -114,7 +116,7 @@ src/
       media/              Intro video
       themes/             One folder per theme: theme.css (looks) + copy.json (all on-screen text)
 tests/TriviaBattle.Tests/ Unit tests
-tools/                    launch-screens.ps1 (multi-monitor launcher), PlcSimulator, placeholder intro generator
+tools/                    launch-screens.ps1 (multi-monitor launcher), PlcSimulator
 docs/                     Architecture notes and reference images
 ```
 
@@ -168,6 +170,9 @@ Open **/admin**. If `AdminApiKey` is set in `appsettings.json`, the page asks fo
   screen. Sound (volume sliders, sound card status, a test button per speaker), game rules
   (round length, wrong-answer penalty), theme, running matches (with the correct answers) and abort,
   and PLC health.
+- **Live log**: is anything going wrong right now? Which screens are connected (a missing one shows
+  red), and the server log as it happens: matches, buttons, sound, rejected requests (e.g. a kiosk
+  start the server refused, and why) and errors the screens themselves hit. Refreshes every second.
 
 Changes take effect from the next match.
 

@@ -136,30 +136,45 @@ function panelBody(match) {
 
 // ---------------------------------------------------------------- Intro
 
+// The start-of-game show: the title slams in, the line-up arrives, then a big 3, 2, 1.
+// Every piece is timed off the server clock (UI.animateAt), so all the room's screens move together.
+// The look is the theme's: each theme.css restyles the .intro-* classes (see docs/THEMES.md).
 function renderIntro(match) {
-    const lineup = match.usesTeams ? teamsVersus(match) : `<div class="chip-row">${match.players.map(playerChip).join('')}</div>`;
+    const at = ms => `style="${UI.animateAt(match.phaseStartedAtMs + ms)}"`;
+    const lineup = match.usesTeams
+        ? teamsVersus(match, at)
+        : `<div class="chip-row">${match.players.map((p, i) => `<div class="intro-pop" ${at(900 + i * 150)}>${playerChip(p)}</div>`).join('')}</div>`;
 
     document.getElementById('view-intro').innerHTML = `
-        <div class="center-stack">
-            <h1 class="big-title">${Theme.text('intro.title', {}, momentSeed(match))}</h1>
-            <p class="subtitle">${modeName(match)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</p>
-            ${lineup}
-            <p class="subtitle">${Theme.text('intro.rules', { seconds: match.matchSeconds }, momentSeed(match))}</p>
-            <p class="subtitle">${Theme.text('intro.startingIn', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) })}</p>
+        <div class="intro-show">
+            <div class="center-stack intro-stage" style="${UI.animateAt(match.phaseEndsAtMs - 3000)}">
+                <div class="intro-slam" ${at(0)}><h1 class="big-title">${Theme.text('intro.title', {}, momentSeed(match))}</h1></div>
+                <p class="subtitle intro-rise" ${at(400)}>${modeName(match)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</p>
+                ${lineup}
+                <p class="subtitle intro-rise" ${at(1700)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, momentSeed(match))}</p>
+            </div>
+            ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;
-    showFitted('view-intro');
+    UI.showView('view-intro');
+    UI.fitToScreen(document.querySelector('#view-intro .intro-stage'));
 }
 
-function teamsVersus(match) {
+/** Two team cards with "VS" between. With at (the intro), the cards fly in from the sides and VS slams down. */
+function teamsVersus(match, at = null) {
     const card = team => `
         <div class="team-card" style="border-top: 1vmin solid ${teamColor(match, team.id)}">
             <h2>${UI.escape(team.name)}</h2>
             <div class="members">${membersOf(match, team).map(p => UI.escape(p.name)).join(' &amp; ')}</div>
         </div>`;
+    const timed = (cssClass, ms, html) => at ? `<div class="${cssClass}" ${at(ms)}>${html}</div>` : html;
 
     // Two teams side by side with "VS" between; more teams (future) just line up.
     return match.teams.length === 2
-        ? `<div class="vs-layout">${card(match.teams[0])}<div class="vs-word">${Theme.text('intro.versus')}</div>${card(match.teams[1])}</div>`
+        ? `<div class="vs-layout">
+               ${timed('intro-from-left', 800, card(match.teams[0]))}
+               ${timed('intro-slam', 1300, `<div class="vs-word">${Theme.text('intro.versus')}</div>`)}
+               ${timed('intro-from-right', 800, card(match.teams[1]))}
+           </div>`
         : `<div class="chip-row">${match.teams.map(card).join('')}</div>`;
 }
 

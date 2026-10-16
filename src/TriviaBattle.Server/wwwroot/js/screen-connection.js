@@ -15,6 +15,9 @@
 //   - clock sync: serverNow() gives the server's time, so countdowns match on every screen
 //   - themes: loads the active theme before drawing, and redraws when the admin switches theme
 //     (needs theme.js on the page)
+//   - updates: reloads the page when it reconnects to a restarted server, so it never runs old code
+//   - errors: script errors on this screen go to the server log (admin > Live log); call
+//     connection.reportError(text) for anything else worth seeing there
 
 class ScreenConnection {
     constructor({ role, stationNumber = null, onState, onEvent = () => {} }) {
@@ -28,7 +31,12 @@ class ScreenConnection {
         this.lastMatchId = null;
         this.lastVersion = -1;
         this.lastState = null;
+        this.serverId = null;   // changes when the server restarts (e.g. after an update)
+        this.errorsSent = [];   // times of recent error reports, to cap them
         this.queue = Promise.resolve(); // handles incoming messages strictly one after another
+
+        window.addEventListener('error', e => this.reportError(e.error?.stack || `${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`));
+        window.addEventListener('unhandledrejection', e => this.reportError(String(e.reason?.message || e.reason)));
 
         this.hub = new signalR.HubConnectionBuilder()
             .withUrl('/gamehub')
@@ -75,7 +83,25 @@ class ScreenConnection {
         return this.hub.invoke('PressStationButton', this.roomId, this.stationNumber, answerIndex);
     }
 
+    /** Sends an error to the server log (admin > Live log). At most 10 a minute, so a broken loop can't flood it. */
+    reportError(message) {
+        console.error(message);
+        const now = Date.now();
+        this.errorsSent = this.errorsSent.filter(t => now - t < 60000);
+        if (this.errorsSent.length >= 10 || this.hub.state !== signalR.HubConnectionState.Connected) return;
+        this.errorsSent.push(now);
+        this.hub.invoke('ReportError', String(message)).catch(() => {});
+    }
+
     async joinAndSync() {
+        // A different server id means the server restarted, maybe with new page code: start fresh.
+        const serverId = await this.hub.invoke('ServerId');
+        if (this.serverId && serverId !== this.serverId) {
+            location.reload();
+            return;
+        }
+        this.serverId = serverId;
+
         const state = await this.hub.invoke('Join', this.role, this.roomId, this.stationNumber);
         this.lastVersion = -1; // after a (re)join, always accept the fresh state
         this.receiveState(state);
@@ -113,7 +139,7 @@ class ScreenConnection {
 
     // Loading a theme takes a moment; this keeps messages from overtaking each other meanwhile.
     inOrder(work) {
-        this.queue = this.queue.then(work).catch(err => console.error(err));
+        this.queue = this.queue.then(work).catch(err => this.reportError(err?.stack || String(err)));
     }
 
     // Asks the server for its time a few times and keeps the most accurate answer

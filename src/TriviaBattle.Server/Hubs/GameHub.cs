@@ -3,6 +3,7 @@ using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Snapshots;
 using TriviaBattle.Core.Stations;
 using TriviaBattle.Hardware.Input;
+using TriviaBattle.Server.Diagnostics;
 using TriviaBattle.Server.Game;
 
 namespace TriviaBattle.Server.Hubs;
@@ -13,6 +14,8 @@ namespace TriviaBattle.Server.Hubs;
 /// Screens call:
 ///   Join(role, roomId, stationNumber) -> returns the current ScreenState, then receives "State" pushes.
 ///   Ping(clientTimeMs)                -> returns the server time, used to sync clocks.
+///   ServerId()                        -> changes on every server start; screens reload when it changes.
+///   ReportError(message)              -> a screen's own error (script crash, failed request), into the log.
 ///   PressKey(key)                     -> dev only: simulates a button via the keyboard map.
 ///   PressStationButton(room, n, answer) -> dev only: a player screen pressing its own answer button.
 ///
@@ -26,6 +29,8 @@ public class GameHub(
     ButtonMap buttonMap,
     KeyboardButtonInput keyboard,
     DevToolsSettings devTools,
+    ScreenRegistry screens,
+    ILogger<GameHub> logger,
     TimeProvider clock) : Hub
 {
     /// <param name="role">"main", "kiosk" or "player".</param>
@@ -41,16 +46,19 @@ public class GameHub(
         {
             case "main":
                 await Groups.AddToGroupAsync(Context.ConnectionId, ScreenGroups.MainScreen(roomId));
+                Register($"main:{roomId}", "Main screen");
                 return screenStates.ForRoom(roomId, MatchesInRoom(roomId, Viewer.Main));
 
             case "kiosk":
                 await Groups.AddToGroupAsync(Context.ConnectionId, ScreenGroups.Kiosk(roomId));
+                Register($"kiosk:{roomId}", "Kiosk");
                 return screenStates.ForRoom(roomId, MatchesInRoom(roomId, Viewer.Kiosk));
 
             case "player":
                 var station = stations.Find(roomId, stationNumber ?? 0)
                     ?? throw new HubException($"Room {roomId} has no station {stationNumber}.");
                 await Groups.AddToGroupAsync(Context.ConnectionId, ScreenGroups.PlayerScreen(station.Id));
+                Register($"player:{station.Id}", station.Label);
                 var match = host.GetSnapshotForStations([station.Id], Viewer.Player(station.Id));
                 return screenStates.ForStation(roomId, station, match);
 
@@ -60,6 +68,24 @@ public class GameHub(
     }
 
     public long Ping(long clientTimeMs) => clock.GetUtcNow().ToUnixTimeMilliseconds();
+
+    public string ServerId() => ServerInstance.Id;
+
+    /// <summary>A screen hit an error of its own (script crash, failed request). Goes to the log and the admin Live log.</summary>
+    public void ReportError(string message)
+    {
+        var name = screens.Find(Context.ConnectionId)?.Name ?? "A screen";
+        if (message.Length > 1000) message = message[..1000] + "...";
+        logger.LogWarning("{Screen} error: {Message}", name, message);
+    }
+
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        var screen = screens.Left(Context.ConnectionId);
+        if (screen != null)
+            logger.LogInformation("{Screen} disconnected ({Address})", screen.Name, screen.Address);
+        return base.OnDisconnectedAsync(exception);
+    }
 
     public bool PressKey(string key)
     {
@@ -85,6 +111,15 @@ public class GameHub(
 
         keyboard.PressButton(buttonId.Value);
         return true;
+    }
+
+    // A rejoin after a reconnect replaces the same entry, so only the first join is logged.
+    private void Register(string key, string name)
+    {
+        var address = Context.GetHttpContext()?.Connection.RemoteIpAddress?.MapToIPv4().ToString();
+        if (screens.Find(Context.ConnectionId) == null)
+            logger.LogInformation("{Screen} connected ({Address})", name, address);
+        screens.Joined(Context.ConnectionId, new ConnectedScreen(key, name, address, clock.GetUtcNow()));
     }
 
     private IReadOnlyList<MatchSnapshot> MatchesInRoom(string roomId, Viewer viewer) =>

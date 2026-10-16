@@ -25,7 +25,6 @@
 
   "intro": {
     "title": "Get ready to battle!",
-    "startingIn": "Starting in {seconds}",
     "versus": "VS",
     "playerTitle": "Get ready, {name}!",
     "playerTeam": "You're on {team}",
@@ -78,6 +77,9 @@
     "categoryTitle": "Pick your categories",
     "categoryHint": "Pick one or more",
     "categoriesChosen": "Playing: {list}",
+    "categoriesAllChosen": "Playing: every category",
+    "categoriesAll": "All categories",
+    "categoriesClear": "Clear",
     "difficultyTitle": "Difficulty",
     "seatEmpty": "Empty",
     "seatSwipeNow": "Swipe your card now…",

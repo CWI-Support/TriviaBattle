@@ -45,7 +45,7 @@ function render(state) {
             case 'Finished': body.innerHTML = results(match, you); break;
         }
     }
-    UI.fitToScreen(body); // long questions shrink rather than run off the bottom
+    UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
 }
 
 /** Leaderboard placements arrive shortly after Results appears; show ours if we got one. */
@@ -75,12 +75,16 @@ function intro(match, you) {
             ? Theme.text('intro.playerTeamWith', { team: you.teamName, teammates: teammates.map(p => p.name).join(' & ') }, seedFor(match))
             : Theme.text('intro.playerTeam', { team: you.teamName }, seedFor(match));
 
+    // The same themed show as the main screen, in step with it (see renderIntro in main-screen.js).
+    const at = ms => `style="${UI.animateAt(match.phaseStartedAtMs + ms)}"`;
     return `
-        <div class="center-stack">
-            <h1 class="big-title">${Theme.text('intro.playerTitle', { name: you.name }, seedFor(match, you))}</h1>
-            <p class="subtitle">${teamLine}</p>
-            <p class="subtitle">${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
-            <p class="big-title" data-ends-at="${match.phaseEndsAtMs}"></p>
+        <div class="intro-show">
+            <div class="center-stack intro-stage" style="${UI.animateAt(match.phaseEndsAtMs - 3000)}">
+                <div class="intro-slam" ${at(0)}><h1 class="big-title">${Theme.text('intro.playerTitle', { name: you.name }, seedFor(match, you))}</h1></div>
+                <p class="subtitle intro-rise" ${at(600)}>${teamLine}</p>
+                <p class="subtitle intro-rise" ${at(1100)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
+            </div>
+            ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;
 }
 

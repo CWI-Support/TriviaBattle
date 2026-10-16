@@ -15,6 +15,7 @@
         <h1>Trivia Battle Admin</h1>
         <nav id="tabs">
             <button data-tab="operator" class="is-active">Operator</button>
+            <button data-tab="livelog">Live log</button>
             <button data-tab="questions">Questions</button>
             <button data-tab="categories">Categories</button>
             <button data-tab="transfer">Import / Export</button>
@@ -87,6 +88,31 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
             <table class="admin-table">
                 <thead><tr><th>Name</th><th>Card id</th><th>First seen</th><th>Last seen</th><th></th></tr></thead>
                 <tbody id="p-rows"></tbody>
+            </table>
+        </section>
+
+        <section id="tab-livelog" class="tab" hidden>
+            <h2>Screens</h2>
+            <p class="dim">Every screen the room should have. Red = not connected. Amber = open in more than one place.</p>
+            <div id="ll-screens" class="screen-chips"></div>
+            <h2>Log</h2>
+            <p class="dim">What the server is doing, as it happens (newest first): matches, buttons, sound, rejected requests and errors the screens report. The same lines go to the log file in logs/.</p>
+            <div class="toolbar">
+                <select id="ll-level">
+                    <option value="Information">Everything</option>
+                    <option value="Warning">Warnings and errors</option>
+                    <option value="Error">Errors only</option>
+                </select>
+                <input id="ll-search" type="search" placeholder="Filter">
+                <label><input id="ll-pause" type="checkbox"> Pause</label>
+                <button id="ll-clear">Clear</button>
+                <span class="spacer"></span>
+                <span id="ll-status" class="problems"></span>
+                <span id="ll-count" class="dim"></span>
+            </div>
+            <table class="admin-table log-table">
+                <thead><tr><th>Time</th><th>Level</th><th>From</th><th>Message</th></tr></thead>
+                <tbody id="ll-rows"></tbody>
             </table>
         </section>
 
@@ -177,6 +203,7 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
     <script src="/js/admin/transfer-tab.js"></script>
     <script src="/js/admin/players-tab.js"></script>
     <script src="/js/admin/operator-tab.js"></script>
+    <script src="/js/admin/live-log-tab.js"></script>
     <script src="/js/admin/admin.js"></script>
 </body>
 </html>

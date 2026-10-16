@@ -96,3 +96,35 @@
 @keyframes showcase-bulbs {
     50% { opacity: 0.15; }
 }
+
+/* ---------- Start-of-game intro: each number bounces in on a light-up studio sign ---------- */
+
+[data-theme="showcase"] .intro-digit { animation-name: showcase-digit; }
+[data-theme="showcase"] .intro-digit b {
+    font-size: 40vmin;
+    font-style: italic;
+    color: #3a0a6b;
+    text-shadow: 0.6vmin 0.6vmin 0 #ff3e9a, 1.2vmin 1.2vmin 0 #1fa2ff;
+}
+/* A round yellow sign with a ring of bulbs that blink, like the edge of the screen. */
+[data-theme="showcase"] .intro-digit::before {
+    width: 58vmin;
+    height: 58vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff3c4 0, #ffd23f 55%, #ff9a00 100%);
+    border: 1.6vmin dotted #fff;
+    box-shadow: 0 0 0 1.4vmin #ff3e9a, 0 1.6vmin 0 1.4vmin #12042b, 0 0 8vmin #ffd23f;
+    animation: showcase-sign-bulbs 0.4s steps(1) infinite;
+}
+
+@keyframes showcase-sign-bulbs {
+    50% { border-color: #ff9a00; }
+}
+
+/* Spins up from nothing, overshoots, settles with a tilt, then shrinks away. */
+@keyframes showcase-digit {
+    0% { opacity: 0; transform: scale(0) rotate(-200deg); }
+    20% { opacity: 1; transform: scale(1.12) rotate(-4deg); }
+    30%, 80% { opacity: 1; transform: scale(1) rotate(-6deg); }
+    100% { opacity: 0; transform: scale(0.4) rotate(20deg); }
+}

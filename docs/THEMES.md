@@ -69,6 +69,12 @@ Classes worth knowing:
 - `.answer`, `.answer-letter`, `.is-chosen`, `.is-correct`, `.is-dimmed` (answers)
 - `.banner`, `.banner.correct`, `.banner.wrong` (the player screen message)
 - `.chip`, `.score-row`, `.team-card`, `.high-score`
+- The start-of-game intro (main and player screens): `.intro-slam`, `.intro-rise`, `.intro-pop`,
+  `.intro-from-left/right` (how each piece arrives), `.intro-stage` (dims for the countdown), and
+  `.intro-digit` with its number in `.intro-digit b` and an empty `.intro-digit::before` for a shape
+  behind it (Vegas draws a poker chip there). Each piece's timing is set by the screen, so change
+  `animation-name` and `animation-duration` but not `animation-delay` (use `animation-delay: inherit`
+  on a `::before`). The base animations are at the end of `screens.css`.
 
 **Fonts.** Screens may run offline, so don't link web fonts. Put font files in the theme folder and
 use `@font-face` with a relative `url()`.

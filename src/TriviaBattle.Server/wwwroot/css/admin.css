@@ -99,3 +99,17 @@ dialog fieldset { border: 1px solid var(--panel-light); border-radius: 6px; disp
 /* Room audio volume sliders (Live tab). */
 .volume-row { display: grid; grid-template-columns: 140px minmax(160px, 360px) 50px; align-items: center; gap: 12px; margin: 6px 0; }
 .volume-row input[type="range"] { width: 100%; padding: 0; accent-color: var(--accent); }
+
+/* Live log tab */
+.screen-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.screen-chip { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 8px; background: var(--panel); border-left: 5px solid var(--text-dim); min-width: 170px; }
+.screen-chip span { color: var(--text-dim); font-size: 13px; }
+.screen-chip.is-ok { border-left-color: var(--correct); }
+.screen-chip.is-warning { border-left-color: #f5b301; }
+.screen-chip.is-missing { border-left-color: var(--wrong); }
+.screen-chip.is-missing span { color: var(--wrong); }
+.log-table td { font-family: Consolas, monospace; font-size: 13px; padding: 3px 8px; }
+.log-table .nowrap { white-space: nowrap; }
+.log-table tr.log-warning td { background: rgba(245, 179, 1, 0.12); }
+.log-table tr.log-error td, .log-table tr.log-fatal td { background: rgba(255, 60, 60, 0.18); }
+.log-table pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0 0; }

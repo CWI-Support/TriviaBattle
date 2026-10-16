@@ -9,12 +9,15 @@ namespace TriviaBattle.Server.Hubs;
 /// <summary>Bound from "Media" in appsettings.json.</summary>
 public class MediaSettings
 {
-    /// <summary>Video played on every room screen during the Intro phase. Empty = no video.</summary>
-    public string IntroVideoUrl { get; set; } = "/media/intro.webm";
+    /// <summary>
+    /// Optional video played on top of every room screen during the Intro phase. Empty (the default) = the
+    /// screens' own themed intro (title, line-up, 3-2-1), which needs no video.
+    /// </summary>
+    public string IntroVideoUrl { get; set; } = "";
 
     /// <summary>
-    /// Gap between the Intro phase starting and the video starting, so every screen has time
-    /// to load it. Game:IntroSeconds should be at least this plus the video's length.
+    /// Gap between the Intro phase starting and the video (and Audio:IntroSound) starting, so every
+    /// screen has time to load it. Game:IntroSeconds should be at least this plus the video's length.
     /// </summary>
     public double IntroVideoDelaySeconds { get; set; } = 1;
 }

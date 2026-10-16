@@ -124,6 +124,8 @@ animations. A screen that misses one still shows the right state.
 |---|---|---|
 | screen → server | `Join(role, roomId, stationNumber)` | returns the current `ScreenState` |
 | screen → server | `Ping(clientTimeMs)` | returns server time (clock sync) |
+| screen → server | `ServerId()` | changes on every server start; a screen that reconnects to a different one reloads itself |
+| screen → server | `ReportError(message)` | the screen's own errors, into the server log and the admin Live log |
 | screen → server | `PressKey(key)` | dev only: simulated button |
 | server → screen | `State` | `ScreenState { room, station, match, matches, cue }`. Room screens (main, kiosk): `matches` is every game running in the room, in station order. Player screens: `match` is their own game. Empty/null = lobby. `cue` is synced media to play (or null) |
 | server → screen | `Event` | `ScreenEvent { type, matchId, phase, ownerId, stationId, placement }`, never contains answers |
@@ -180,7 +182,12 @@ function render(state) { /* pick a view from state.match.phase and fill it in */
 ```
 
 - `js/screen-connection.js` handles connecting, re-joining after reconnects, ignoring stale
-  states, and clock sync (`connection.serverNow()`).
+  states, and clock sync (`connection.serverNow()`). It reloads the page when the server has
+  restarted (so screens never keep running old page code after an update), and sends script errors
+  to the server log (`connection.reportError(text)` for anything else).
+- Diagnostics (`Server/Diagnostics`): `LiveLog` keeps the last 500 log lines in memory and
+  `ScreenRegistry` tracks connected screens, for the admin Live log tab (`GET /api/admin/live-log`).
+  Requests the server can't read (an automatic 400) are logged too, so an out-of-date screen shows up.
 - `js/ui.js` has the shared helpers: `UI.escape()` (always use it for names), `UI.showView()`, and
   `UI.startCountdowns()`. Countdowns tick on their own from `data-ends-at` attributes, so render
   code just writes deadlines into the HTML.

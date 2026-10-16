@@ -13,7 +13,7 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/matches")]
-public class MatchesController(MatchHost host, IWordFilterService wordFilter) : ControllerBase
+public class MatchesController(MatchHost host, IWordFilterService wordFilter, ILogger<MatchesController> logger) : ControllerBase
 {
     /// <summary>Starts a match. Returns 400 with a list of plain-English problems if the setup isn't valid.</summary>
     [HttpPost]
@@ -22,12 +22,18 @@ public class MatchesController(MatchHost host, IWordFilterService wordFilter) : 
         foreach (var seat in setup.Seats)
         {
             if (await wordFilter.CheckAsync(seat.PlayerName) != null)
+            {
+                logger.LogInformation("Match not started: the name {Name} was blocked by the word filter", seat.PlayerName);
                 return BadRequest(new { problems = new[] { $"Please choose a different name than '{seat.PlayerName}'." } });
+            }
         }
 
         var result = await host.StartMatchAsync(setup);
         if (!result.Started)
+        {
+            logger.LogWarning("Match not started: {Problems}", string.Join(" ", result.Problems));
             return BadRequest(new { problems = result.Problems });
+        }
 
         return Ok(new { matchId = result.MatchId });
     }

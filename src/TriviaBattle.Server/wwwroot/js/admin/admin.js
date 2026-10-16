@@ -4,6 +4,7 @@
 
 const ADMIN_TABS = {
     operator: OperatorTab,
+    livelog: LiveLogTab,
     questions: QuestionsTab,
     categories: CategoriesTab,
     transfer: TransferTab,

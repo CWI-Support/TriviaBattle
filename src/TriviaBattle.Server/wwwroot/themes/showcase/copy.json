@@ -24,7 +24,6 @@
 
   "intro": {
     "title": ["It's showtime!", "Let's play Trivia Battle!", "Contestants, take your places!"],
-    "startingIn": "The lights go up in {seconds}…",
     "playerTitle": ["{name}, you're our next contestant!", "Give it up for {name}!"],
     "rules": "Beat the clock! {seconds} seconds on the board!"
   },

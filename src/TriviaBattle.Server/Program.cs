@@ -9,6 +9,7 @@ using TriviaBattle.Hardware.Input;
 using TriviaBattle.Server.Audio;
 using TriviaBattle.Server.Configuration;
 using TriviaBattle.Server.Data;
+using TriviaBattle.Server.Diagnostics;
 using TriviaBattle.Server.Display;
 using TriviaBattle.Server.Game;
 using TriviaBattle.Server.Hubs;
@@ -19,12 +20,14 @@ using TriviaBattle.Server.Services;
 // Trivia Battle game server.
 // This file only wires things together; each piece lives in its own folder (see README.md).
 
+var liveLog = new LiveLog(); // the last few hundred log lines, for the admin "Live log" tab
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File("logs/triviabattle-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .WriteTo.Sink(liveLog)
     .CreateLogger();
 
 try
@@ -51,7 +54,23 @@ try
 
     // ---- Web ----
     builder.Services.AddControllers()
-        .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+        .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
+        .ConfigureApiBehaviorOptions(o =>
+        {
+            // Requests the server can't even read (wrong field names, bad JSON) get an automatic 400.
+            // Log them, so a screen running old page code shows up in the log instead of failing quietly.
+            var respond = o.InvalidModelStateResponseFactory;
+            o.InvalidModelStateResponseFactory = context =>
+            {
+                var problems = context.ModelState
+                    .Where(e => e.Value?.Errors.Count > 0)
+                    .Select(e => $"{e.Key}: {string.Join(" ", e.Value!.Errors.Select(err => err.ErrorMessage))}");
+                context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Requests")
+                    .LogWarning("Rejected {Method} {Path}: {Problems}", context.HttpContext.Request.Method,
+                        context.HttpContext.Request.Path.Value, string.Join(" | ", problems));
+                return respond(context);
+            };
+        });
     builder.Services.AddSignalR()
         .AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -83,6 +102,10 @@ try
     builder.Services.AddRoomHardware(builder.Configuration, builder.Environment, buttonMap);
 
     builder.Services.AddSingleton<IWordFilterService, FileWordFilterService>();
+
+    // ---- Diagnostics: the admin "Live log" tab ----
+    builder.Services.AddSingleton(liveLog);
+    builder.Services.AddSingleton<ScreenRegistry>();
 
     var app = builder.Build();
 

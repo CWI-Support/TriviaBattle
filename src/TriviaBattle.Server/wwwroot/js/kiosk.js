@@ -282,9 +282,11 @@ function categoryStep() {
         </div>`).join('');
 
     const chosen = categories.filter(c => setup.categoryIds.includes(c.id)).map(c => c.name);
-    const chosenLine = chosen.length
-        ? Theme.text('kiosk.categoriesChosen', { list: chosen.join(' · ') })
+    const allChosen = categories.length > 0 && chosen.length === categories.length;
+    const chosenLine = allChosen ? Theme.text('kiosk.categoriesAllChosen')
+        : chosen.length ? Theme.text('kiosk.categoriesChosen', { list: chosen.join(' · ') })
         : Theme.text('kiosk.categoryHint');
+    const allButton = `<button class="big-button secondary small" onclick="chooseAllCategories()">${Theme.text(allChosen ? 'kiosk.categoriesClear' : 'kiosk.categoriesAll')}</button>`;
 
     const difficultyCards = DIFFICULTIES.map(d => `
         <div class="choice ${setup.difficulty === d ? 'is-selected' : ''}" onclick="chooseDifficulty('${d}')">
@@ -293,7 +295,7 @@ function categoryStep() {
 
     return `
         <h2>${Theme.text('kiosk.categoryTitle')}</h2>
-        <p class="subtitle category-list">${chosenLine}</p>
+        <div class="category-bar"><p class="subtitle category-list">${chosenLine}</p>${allButton}</div>
         <div class="choice-grid compact">${categoryCards}</div>
         <h2 class="spaced">${Theme.text('kiosk.difficultyTitle')}</h2><div class="choice-grid compact">${difficultyCards}</div>`;
 }
@@ -394,6 +396,12 @@ function chooseCategory(categoryId) {
     renderStep();
 }
 
+/** "All categories" picks every one; with every one picked, the same button clears them. */
+function chooseAllCategories() {
+    setup.categoryIds = setup.categoryIds.length === categories.length ? [] : categories.map(c => c.id);
+    renderStep();
+}
+
 function chooseDifficulty(difficulty) {
     setup.difficulty = difficulty;
     renderStep();
@@ -439,8 +447,10 @@ async function startMatch() {
         });
 
         if (!response.ok) {
-            const body = await response.json();
-            throw new Error((body.problems || [body.message || 'Could not start the match.']).join(' '));
+            // Our own problems list, or ASP.NET's validation errors (e.g. a field it couldn't read).
+            const body = await response.json().catch(() => ({}));
+            const problems = body.problems || Object.values(body.errors || {}).flat();
+            throw new Error((problems.length ? problems : [body.message || `Could not start the match (${response.status}).`]).join(' '));
         }
 
         // They're off. Ready for the next group straight away (on whatever stations are still free).
