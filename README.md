@@ -1,8 +1,10 @@
 # Trivia Battle
 
 A 4-player trivia room for an entertainment venue. Players swipe in at a kiosk outside the room,
-pick a category, mode and difficulty, then battle it out on physical answer buttons while a
-main screen and four player screens show the action.
+pick a mode, one or more categories and a difficulty, then race the clock on physical answer
+buttons while a main screen and four player screens show the action. Several groups can play at
+once (a solo player on one station, a trio on the other three): the kiosk only blocks stations
+that are busy, and the main screen splits into a panel per game.
 
 ## Quick start
 
@@ -51,7 +53,7 @@ Screen URLs and what they show:
 | URL | Screen |
 |---|---|
 | `/kiosk` | Touchscreen setup outside the room |
-| `/display/main` | Main room screen (question, timer, scores; leaderboards between matches) |
+| `/display/main` | Main room screen: clock and live scores, split into halves/quadrants when several groups play at once; leaderboards between matches |
 | `/display/player/{n}` | Player station screen (portrait) |
 | `/display/leaderboard` | Stand-alone rotating leaderboards, e.g. for a lobby TV |
 | `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health |
@@ -143,10 +145,11 @@ Any setting can also be overridden with an environment variable, e.g. `Game__Mat
 
 ## Themes
 
-The screens come in themes: **neon** (default), **showcase** (70s game show) and **dungeon**
-(sarcastic dungeon-AI host). Each theme is a `theme.css` for looks and a `copy.json` for every line
+The screens come in themes: **neon** (default; vaporwave LED: sunset, rolling grid, colour-cycling
+LED strips), **showcase** (70s game show) and **vegas** (blue-and-gold Las Vegas showroom: chasing
+marquee bulbs, gold-foil titles). Each theme is a `theme.css` for looks and a `copy.json` for every line
 of on-screen text, so designers and writers can change them without touching code. Switch every
-screen live from the Operator screen (`/operator`), or preview one with `?theme=dungeon` in its URL.
+screen live from the Operator screen (`/operator`), or preview one with `?theme=vegas` in its URL.
 How to edit or add a theme: [docs/THEMES.md](docs/THEMES.md).
 
 ## Managing questions
@@ -227,4 +230,4 @@ The server applies pending migrations automatically on startup.
 | 3 | Synced intro video, results and leaderboards | Done |
 | 4 | PLC (Modbus TCP) buttons and lighting | Done (register map is a placeholder) |
 | 5 | Admin question editor | Done |
-| 6 | Themes (editable looks + copy), first visual pass | Done: neon, showcase, dungeon (see docs/THEMES.md) |
+| 6 | Themes (editable looks + copy), first visual pass | Done: neon, showcase, vegas (see docs/THEMES.md) |

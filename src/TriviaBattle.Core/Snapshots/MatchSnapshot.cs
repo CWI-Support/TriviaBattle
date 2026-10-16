@@ -78,9 +78,11 @@ public sealed record AnswerOutcomeView(int Number, bool IsCorrect, int Points, s
 
 /// <summary>A question on a player's screen. Never includes which answer is correct.</summary>
 /// <param name="Number">Their 1st, 2nd, 3rd... question.</param>
+/// <param name="Category">The question's own category (a match can mix several).</param>
 public sealed record QuestionView(
     int Number,
     int Id,
+    string Category,
     string Text,
     IReadOnlyList<string> Answers,
     string? MediaUrl,

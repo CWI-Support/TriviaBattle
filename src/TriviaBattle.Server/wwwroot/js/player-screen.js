@@ -96,9 +96,12 @@ function playing(match, you) {
             <span>${UI.escape(text)}</span>
         </div>`).join('');
 
+    // With several categories mixed, say which one this question is from.
+    const category = match.category.includes(',') ? ` <span class="question-category">&middot; ${UI.escape(q.category)}</span>` : '';
+
     return `
         <div class="player-clock">
-            <span>${Theme.text('player.questionNumber', { n: q.number })}</span>
+            <span>${Theme.text('player.questionNumber', { n: q.number })}${category}</span>
             <span class="player-clock-seconds" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></span>
         </div>
         <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>

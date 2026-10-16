@@ -84,7 +84,10 @@ class ScreenConnection {
     }
 
     receiveState(state) {
-        const match = state.match;
+        // Room screens (main, kiosk) get every game in the room, each with its own version number,
+        // so "older than the last one" doesn't apply to them: SignalR already delivers in order.
+        // Player screens follow one game, and skip anything older than what they've shown.
+        const match = state.station ? state.match : null;
         if (match) {
             const sameMatch = match.matchId === this.lastMatchId;
             if (sameMatch && match.version <= this.lastVersion) return; // stale, a newer one already arrived

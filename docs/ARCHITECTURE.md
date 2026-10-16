@@ -125,13 +125,28 @@ animations. A screen that misses one still shows the right state.
 | screen → server | `Join(role, roomId, stationNumber)` | returns the current `ScreenState` |
 | screen → server | `Ping(clientTimeMs)` | returns server time (clock sync) |
 | screen → server | `PressKey(key)` | dev only: simulated button |
-| server → screen | `State` | `ScreenState { room, station, match, cue }`. `match` is the snapshot (null in the lobby); `cue` is synced media to play (or null) |
-| server → screen | `Event` | `ScreenEvent { type, phase, ownerId, stationId, placement }`, never contains answers |
+| server → screen | `State` | `ScreenState { room, station, match, matches, cue }`. Room screens (main, kiosk): `matches` is every game running in the room, in station order. Player screens: `match` is their own game. Empty/null = lobby. `cue` is synced media to play (or null) |
+| server → screen | `Event` | `ScreenEvent { type, matchId, phase, ownerId, stationId, placement }`, never contains answers |
 
 Each screen joins one SignalR group (`ScreenGroups`): one per room for the main screen, one per
 room for the kiosk, and one per player station. `SignalRMatchBroadcaster` builds a personalised
 state for each group whenever a match changes. `ScreenStateFactory` builds every `ScreenState`,
 whether a screen is joining or receiving a push, so the two can't disagree.
+
+### Several groups in one room
+
+A match is just a set of stations, so groups can play side by side (a solo on station 1, a trio on
+2-4). `MatchHost` only refuses a station that's already in a game. Every `IMatchBroadcaster` gets
+all running matches (`runningMatches`), so things the room shares look at the whole room:
+- **Main screen:** one game = full layout; two = halves; three or four = quadrants (with three,
+  the biggest group gets a whole half). Panels sit on the side of their stations.
+- **Kiosk:** never locks; busy stations show their time left. Only "battle in progress" when every
+  station is busy.
+- **Intro video:** full screen everywhere only when the room was empty; otherwise just that
+  group's station screens play it (`ScreenStateFactory.ForRoom` sends no cue to the main screen).
+- **Room speaker:** in-game music while anyone plays, victory only when the last game ends; a
+  group's intro and early victory play on its own station speakers.
+- **Room lights:** the busiest phase in the room wins (Playing, then Results, then Intro).
 
 ### Synced moments (intro video)
 
@@ -169,8 +184,8 @@ function render(state) { /* pick a view from state.match.phase and fill it in */
 - `js/ui.js` has the shared helpers: `UI.escape()` (always use it for names), `UI.showView()`, and
   `UI.startCountdowns()`. Countdowns tick on their own from `data-ends-at` attributes, so render
   code just writes deadlines into the HTML.
-- The kiosk (`js/kiosk.js`) holds only *form* state (choices not yet submitted). Once a match
-  starts, it shows whatever the server says.
+- The kiosk (`js/kiosk.js`) holds only *form* state (choices not yet submitted). After a match
+  starts it resets for the next group straight away; stations in a game show as busy.
 - RFID: `js/card-reader.js` assumes a USB keyboard-wedge reader (it types the card id quickly,
   then Enter). A different reader type only needs that file changed.
 

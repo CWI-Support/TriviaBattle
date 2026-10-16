@@ -185,7 +185,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 .chip.was-wrong .chip-detail { color: var(--wrong); }
 
 /* ---------- Scoreboard ---------- */
-.scoreboard { width: min(90vw, 1100px); display: flex; flex-direction: column; gap: 1.5vmin; }
+.scoreboard { width: min(90vw, 1100px); display: flex; flex-direction: column; gap: calc(1.5vmin * var(--fit)); }
 
 .score-row {
     display: grid;
@@ -201,7 +201,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 
 .score-row .rank, .score-row .score { font-family: var(--font-display); }
 .score-row .score { color: var(--accent); }
-.score-row .members { font-size: 2.6vmin; color: var(--text-dim); }
+.score-row .members { font-size: calc(2.6vmin * var(--fit)); color: var(--text-dim); }
 
 /* ---------- Main screen (landscape): match clock + live leaderboard ---------- */
 .main-playing {
@@ -236,6 +236,45 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 .race-row.flash-wrong { animation: flash-wrong 0.6s ease-out; }
 @keyframes flash-correct { from { background: var(--correct); transform: scale(1.03); } }
 @keyframes flash-wrong { from { background: var(--wrong); } }
+
+/* ---------- Several games at once: one panel per game ----------
+   Halves for two games, quadrants for three or four. Sizes inside a panel use cqmin (a share of the
+   panel's own size), so the same layout works in a half or a quadrant; --fit shrinks it further. */
+.panel-grid { height: 100%; display: grid; gap: 1.4vmin; padding: 1.4vmin; grid-template-columns: 1fr 1fr; }
+.panel-grid.halves { grid-template-rows: 1fr; }
+.panel-grid.quadrants { grid-template-rows: 1fr 1fr; }
+
+.match-panel {
+    container-type: size;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: calc(2.2cqmin * var(--fit));
+    padding: 3.5cqmin 4cqmin;
+    background: var(--panel);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
+    border-radius: var(--radius);
+}
+
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 3cqmin; font-size: calc(4.5cqmin * var(--fit)); }
+.panel-names { font-family: var(--font-display); font-size: 1.5em; color: var(--accent); overflow-wrap: anywhere; }
+.panel-clock, .panel-title {
+    font-family: var(--font-display);
+    text-align: center;
+    color: var(--title-color);
+    text-shadow: var(--title-shadow);
+    text-transform: var(--title-transform);
+    line-height: 1;
+}
+.panel-clock { font-size: calc(24cqmin * var(--fit)); }
+.panel-title { font-size: calc(11cqmin * var(--fit)); }
+.match-panel .race-board, .match-panel .scoreboard { width: 100%; gap: calc(1.5cqmin * var(--fit)); }
+.match-panel .score-row { font-size: calc(6cqmin * var(--fit)); padding: calc(1.5cqmin * var(--fit)) 3cqmin; grid-template-columns: 10cqmin 1fr auto 18cqmin; gap: 2cqmin; }
+.match-panel .score-row .members { font-size: calc(3.6cqmin * var(--fit)); }
+.match-panel.is-free { justify-content: center; align-items: center; opacity: 0.7; }
+.panel-free { font-size: 6cqmin; text-align: center; color: var(--text-dim); }
 
 /* Countdowns with data-hurry-at turn red and pulse in the last seconds (UI.updateCountdowns). */
 .is-hurry { color: var(--wrong) !important; animation: hurry 1s ease-in-out infinite; }
@@ -298,6 +337,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 /* Question number and seconds left above each player's question. */
 .player-clock { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: calc(5vmin * var(--fit)); color: var(--text-dim); }
 .player-clock-seconds { font-size: 1.6em; color: var(--accent); }
+.question-category { color: var(--text); opacity: 0.8; }
 
 /* ---------- Kiosk (touch, landscape) ---------- */
 .kiosk { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
@@ -338,9 +378,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 .choice.is-selected { border-color: var(--accent); background: var(--panel-light); }
 
 /* Category + difficulty step: smaller cards so both grids fit on a 1080p kiosk without scrolling. */
-.choice-grid.compact .choice { padding: 2vh 1vw; }
-.choice-grid.compact .choice h3 { font-size: 4.5vmin; margin-bottom: 0; }
-.kiosk-step h2.spaced { margin-top: 3vh; }
+.choice-grid.compact .choice { padding: 1.6vh 1vw; }
+.choice-grid.compact .choice h3 { font-size: 4.2vmin; margin-bottom: 0; }
+.kiosk-step h2.spaced { margin-top: 2.5vh; }
 
 .seat-card { border-top: 1vmin solid var(--chip-color); display: flex; flex-direction: column; gap: 1.5vh; align-items: stretch; }
 .seat-card input { font-size: 3.5vmin; padding: 1vh 1vw; border-radius: var(--radius-small); border: none; text-align: center; }
@@ -351,6 +391,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 @keyframes pulse { 50% { box-shadow: 0 0 4vmin var(--accent); } }
 
 .problems { color: var(--wrong); font-size: 3vmin; text-align: center; min-height: 1.5em; }
+.notice { color: var(--correct); font-family: var(--font-display); font-size: 4vmin; text-align: center; align-self: center; }
+.seat-card.is-busy { opacity: 0.45; cursor: default; }
+.kiosk-step .category-list { text-align: center; margin: -1.5vh 0 2vh; }
 
 /* ---------- Dev buttons page ---------- */
 .dev-pads { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; padding: 20px; }
@@ -377,9 +420,9 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 }
 
 /* ---------- Leaderboards and high scores ---------- */
-.leaderboard { display: flex; flex-direction: column; align-items: center; gap: 2vh; }
-.leaderboard h2 { font-size: 5vmin; color: var(--text-dim); }
-.leaderboard .score-row { font-size: 3.5vmin; padding: 1vmin 3vmin; }
+.leaderboard { display: flex; flex-direction: column; align-items: center; gap: calc(2vh * var(--fit)); }
+.leaderboard h2 { font-size: calc(5vmin * var(--fit)); color: var(--text-dim); }
+.leaderboard .score-row { font-size: calc(3.5vmin * var(--fit)); padding: calc(1vmin * var(--fit)) 3vmin; }
 
 .high-score {
     font-family: var(--font-display);

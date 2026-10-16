@@ -19,10 +19,17 @@ public sealed record RoomInfo(string Id, string Name, IReadOnlyList<StationInfo>
 
 /// <param name="Room">The room this screen is in, with its stations (labels, colors).</param>
 /// <param name="Station">For player screens: which station this is. Null for other screens.</param>
-/// <param name="Match">The match being played here, as this screen may see it. Null = room is in the lobby.</param>
-/// <param name="Cue">Media that every room screen should play in sync (e.g. the intro video), or null.</param>
+/// <param name="Match">
+/// Player screens: the match at this station, or null. Room screens (main, kiosk): the first of
+/// <paramref name="Matches"/>, kept for simple screens that only show one game.
+/// </param>
+/// <param name="Matches">
+/// Room screens: every match running in the room, in station order (several groups can play at
+/// once). Player screens: just their own match, or empty. Empty = nobody is playing.
+/// </param>
+/// <param name="Cue">Media to play in sync (e.g. the intro video), or null.</param>
 /// <param name="Theme">The active theme folder name (wwwroot/themes/...). Also pushed on its own as "Theme" when it changes.</param>
-public sealed record ScreenState(RoomInfo Room, StationInfo? Station, MatchSnapshot? Match, MediaCue? Cue, string Theme);
+public sealed record ScreenState(RoomInfo Room, StationInfo? Station, MatchSnapshot? Match, IReadOnlyList<MatchSnapshot> Matches, MediaCue? Cue, string Theme);
 
 /// <summary>
 /// "Play this media at exactly this server time." Every screen converts StartAtMs to its own
@@ -36,9 +43,11 @@ public sealed record MediaCue(string Id, string Url, long StartAtMs);
 /// AnswerGiven says WHO answered, never WHICH answer (that's in the State, if the screen may see it).
 /// </summary>
 /// <param name="Type">"PhaseChanged", "AnswerGiven", "LockoutEnded", "MatchFinished" or "LeaderboardPlacement".</param>
+/// <param name="MatchId">Which match it happened in (a room can have several at once).</param>
 /// <param name="Placement">Only for "LeaderboardPlacement": who made which board, at what rank.</param>
 public sealed record ScreenEvent(
     string Type,
+    string MatchId,
     string? Phase = null,
     string? OwnerId = null,
     string? StationId = null,

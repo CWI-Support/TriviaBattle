@@ -46,9 +46,9 @@ public sealed class MatchHost(
 
         // Load questions before taking the lock; it's the only slow (database) step.
         // The whole category is the pool: nobody knows in advance how many questions a fast player gets through.
-        var questions = await questionSource.PickQuestionsAsync(setup.CategoryId, setup.Difficulty, int.MaxValue);
+        var questions = await questionSource.PickQuestionsAsync(setup.CategoryIds, setup.Difficulty, int.MaxValue);
         if (questions.Count == 0)
-            return new StartMatchResult(null, ["That category has no active questions."]);
+            return new StartMatchResult(null, ["Those categories have no active questions."]);
 
         if (matchSettings.ShuffleAnswers)
             questions = questions.Select(q => q.WithShuffledAnswers(Random.Shared)).ToList();
@@ -131,18 +131,30 @@ public sealed class MatchHost(
     }
 
     /// <summary>
-    /// The match being played at any of these stations (e.g. all stations in a room),
+    /// The match being played at any of these stations (e.g. a player's own station),
     /// as that viewer sees it. Null if none of them are in a match.
     /// </summary>
-    public MatchSnapshot? GetSnapshotForStations(IEnumerable<string> stationIds, Viewer viewer)
+    public MatchSnapshot? GetSnapshotForStations(IEnumerable<string> stationIds, Viewer viewer) =>
+        GetSnapshotsForStations(stationIds, viewer).FirstOrDefault();
+
+    /// <summary>
+    /// Every match being played at any of these stations (e.g. all stations in a room: several
+    /// groups can play at once), as that viewer sees them, in station order.
+    /// </summary>
+    public IReadOnlyList<MatchSnapshot> GetSnapshotsForStations(IEnumerable<string> stationIds, Viewer viewer)
     {
         lock (_lock)
         {
             var ids = stationIds.ToList();
-            var match = _matches.Values.FirstOrDefault(m => ids.Any(m.HasStation));
-            return match == null ? null : SnapshotBuilder.Build(match, viewer);
+            return RunningMatchesAt(ids).Select(m => SnapshotBuilder.Build(m, viewer)).ToList();
         }
     }
+
+    /// <summary>Matches with a player at any of these stations, ordered by their first station.</summary>
+    private IEnumerable<MatchEngine> RunningMatchesAt(List<string> stationIds) =>
+        _matches.Values
+            .Where(m => !m.IsFinished && stationIds.Any(m.HasStation))
+            .OrderBy(m => m.Roster.Players.Select(p => stationIds.IndexOf(p.StationId)).Where(i => i >= 0).Min());
 
     public IReadOnlyList<MatchSnapshot> GetAllSnapshots(Viewer viewer)
     {
@@ -209,11 +221,15 @@ public sealed class MatchHost(
         if (events.Count == 0)
             return;
 
+        // Every running match, so outputs shared by a room (main screen, room speaker, room lights)
+        // can take all the groups playing there into account.
+        var running = _matches.Values.Where(m => !m.IsFinished).ToList();
+
         foreach (var broadcaster in broadcasters)
         {
             try
             {
-                broadcaster.MatchChanged(match, events);
+                broadcaster.MatchChanged(match, events, running);
             }
             catch (Exception ex)
             {

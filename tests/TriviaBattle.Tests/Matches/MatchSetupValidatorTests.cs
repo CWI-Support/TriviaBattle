@@ -16,7 +16,7 @@ public class MatchSetupValidatorTests
     ]);
 
     private static MatchSetup Setup(GameModeKind mode, List<SeatSetup> seats, List<TeamSetup>? teams = null) =>
-        new(mode, 1, Difficulty.Easy, seats, teams ?? []);
+        new(mode, [1], Difficulty.Easy, seats, teams ?? []);
 
     private static List<SeatSetup> FourSeats() =>
         [new("A1", "Ann"), new("A2", "Bob"), new("A3", "Cat"), new("A4", "Dan")];
@@ -25,6 +25,14 @@ public class MatchSetupValidatorTests
     public void Valid_free_for_all_has_no_problems()
     {
         Assert.Empty(MatchSetupValidator.Validate(Setup(GameModeKind.FreeForAll, FourSeats()), Layout));
+    }
+
+    [Fact]
+    public void Needs_at_least_one_category()
+    {
+        var setup = Setup(GameModeKind.FreeForAll, FourSeats()) with { CategoryIds = [] };
+
+        Assert.Contains("Pick at least one category.", MatchSetupValidator.Validate(setup, Layout));
     }
 
     [Fact]

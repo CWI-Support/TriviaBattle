@@ -28,17 +28,17 @@ public class RoomOutputCoordinatorTests
     {
         var match = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { WrongAnswerPenalty = WrongAnswerPenalty.Lockout, LockoutSeconds = 2 });
         match.StartPlaying();
-        _coordinator.MatchChanged(match.Engine, [new PhaseChanged(MatchPhase.Playing)]);
+        _coordinator.MatchChanged(match.Engine, [new PhaseChanged(MatchPhase.Playing)], [match.Engine]);
 
         Assert.All(Enumerable.Range(10, 16), id => Assert.Equal(LedState.On, _output.Leds[id]));
         Assert.Equal(LightingCue.Question, _output.Cues["A"]);
 
-        _coordinator.MatchChanged(match.Engine, match.Press("A1", 2)); // Player 1 answers wrong
+        _coordinator.MatchChanged(match.Engine, match.Press("A1", 2), [match.Engine]); // Player 1 answers wrong
 
         Assert.Equal([LedState.Off, LedState.Off, LedState.Off, LedState.Off], Leds(10, 11, 12, 13));
         Assert.Equal(LedState.On, _output.Leds[14]); // Player 2 can still play
 
-        _coordinator.MatchChanged(match.Engine, match.Wait(2)); // lockout over
+        _coordinator.MatchChanged(match.Engine, match.Wait(2), [match.Engine]); // lockout over
 
         Assert.All(Leds(10, 11, 12, 13), led => Assert.Equal(LedState.On, led));
     }
@@ -49,7 +49,7 @@ public class RoomOutputCoordinatorTests
         var match = new TestMatch(GameModeKind.TeamSharedAnswer, new MatchSettings { WrongAnswerPenalty = WrongAnswerPenalty.Lockout }); // Red = A1 + A3
         match.StartPlaying();
 
-        _coordinator.MatchChanged(match.Engine, match.Press("A1", 1));
+        _coordinator.MatchChanged(match.Engine, match.Press("A1", 1), [match.Engine]);
 
         Assert.All(Leds(18, 19, 20, 21), led => Assert.Equal(LedState.Off, led)); // A3's buttons
     }
@@ -60,10 +60,29 @@ public class RoomOutputCoordinatorTests
         var match = new TestMatch(GameModeKind.FreeForAll);
         match.StartPlaying();
         match.Press("A2", 0);
-        _coordinator.MatchChanged(match.Engine, match.FinishPhase());
+        _coordinator.MatchChanged(match.Engine, match.FinishPhase(), [match.Engine]);
 
         Assert.All(Leds(14, 15, 16, 17), led => Assert.Equal(LedState.Blink, led)); // Player 2 won
         Assert.All(Leds(10, 11, 12, 13), led => Assert.Equal(LedState.Off, led));
+        Assert.Equal(LightingCue.Results, _output.Cues["A"]);
+    }
+
+    [Fact]
+    public void With_two_games_in_the_room_the_lights_follow_the_busiest()
+    {
+        var solo = new TestMatch(GameModeKind.FreeForAll, stations: ["A1"], matchId: "solo");
+        var group = new TestMatch(GameModeKind.FreeForAll, stations: ["A2", "A3", "A4"], matchId: "group");
+        solo.StartPlaying();
+        solo.FinishPhase(); // the solo game is on its results...
+        group.StartPlaying(); // ...while the group is still playing
+
+        _coordinator.MatchChanged(group.Engine, [new PhaseChanged(MatchPhase.Playing)], [solo.Engine, group.Engine]);
+        _coordinator.MatchChanged(solo.Engine, [new PhaseChanged(MatchPhase.Results)], [solo.Engine, group.Engine]);
+        Assert.Equal(LightingCue.Question, _output.Cues["A"]);
+        Assert.Equal(LedState.Blink, _output.Leds[10]); // the solo winner's buttons
+        Assert.Equal(LedState.On, _output.Leds[14]);    // the group can still press
+
+        _coordinator.MatchChanged(group.Engine, group.FinishPhase(), [solo.Engine, group.Engine]);
         Assert.Equal(LightingCue.Results, _output.Cues["A"]);
     }
 
@@ -73,7 +92,7 @@ public class RoomOutputCoordinatorTests
         var match = new TestMatch(GameModeKind.FreeForAll);
         match.StartPlaying();
 
-        _coordinator.MatchChanged(match.Engine, match.Engine.Abort(match.Now));
+        _coordinator.MatchChanged(match.Engine, match.Engine.Abort(match.Now), [match.Engine]);
 
         Assert.All(_output.Leds.Values, led => Assert.Equal(LedState.Off, led));
         Assert.Equal(LightingCue.Idle, _output.Cues["A"]);

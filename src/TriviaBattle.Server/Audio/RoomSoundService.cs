@@ -14,9 +14,13 @@ namespace TriviaBattle.Server.Audio;
 /// Plays the room audio from the server, through each room's sound card (see <see cref="RoomSound"/>).
 /// It's an <see cref="IMatchBroadcaster"/>, so it hears every match change and picks the sound:
 ///
-///   Lobby (no match)  lobby music          Intro    the intro's sound (music fades out)
+///   Lobby (no match)  lobby music          Intro    the intro's sound (music stops)
 ///   Playing           in-game music        Results  victory music (once)
 ///   An answer         right/wrong stinger on the speaker of whoever answered (both teammates in 2v2 Group)
+///
+/// Several groups can play in one room at once. The room speaker then follows the whole room
+/// (in-game music while anyone plays; victory only when the last game is on its results), and a
+/// group's intro and victory play on that group's own station speakers instead.
 ///
 /// Sound files are decoded and the cards opened in the background once the server is fully up
 /// (a server that fails to start never makes a sound); until that's done, match changes are not heard.
@@ -137,43 +141,56 @@ public sealed class RoomSoundService(
         _rooms = started;
     }
 
-    public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events)
+    public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {
-        var roomsInMatch = match.Roster.Players
-            .Select(p => stations.Find(p.StationId)?.RoomId)
-            .Distinct()
-            .Select(id => id == null ? null : _rooms.GetValueOrDefault(id))
-            .OfType<RoomSound>()
-            .ToList();
+        var roomIds = match.Roster.Players.Select(p => stations.Find(p.StationId)?.RoomId).OfType<string>().Distinct();
 
-        foreach (var e in events)
+        foreach (var roomId in roomIds)
         {
-            foreach (var room in roomsInMatch)
-                Handle(room, match, e);
+            if (_rooms.GetValueOrDefault(roomId) is not { } room)
+                continue;
+
+            var inRoom = runningMatches.Where(m => !m.IsFinished && IsInRoom(m, roomId)).ToList();
+            var othersPlaying = inRoom.Any(m => m != match);
+            var groupStations = match.Roster.Players.Select(p => p.StationId).Where(id => stations.Find(id)?.RoomId == roomId).ToList();
+
+            foreach (var e in events)
+                Handle(room, match, e, othersPlaying, groupStations);
+
+            UpdateRoomMusic(room, inRoom);
         }
     }
 
-    private void Handle(RoomSound room, MatchEngine match, MatchEvent e)
+    /// <summary>
+    /// One match's moments. When it's the only game in the room, its intro and victory use the room
+    /// speaker; when other groups are playing too, they go to this group's own station speakers instead.
+    /// </summary>
+    private void Handle(RoomSound room, MatchEngine match, MatchEvent e, bool othersPlaying, List<string> groupStations)
     {
+        var introDelay = media.CurrentValue.IntroVideoDelaySeconds; // the screens start the video after the same delay
+
         switch (e)
         {
             case PhaseChanged { Phase: MatchPhase.Intro }:
-                room.SetRoomMusic(null);
-                room.PlayIntro(media.CurrentValue.IntroVideoDelaySeconds); // the screens start the video after the same delay
+                if (othersPlaying)
+                    room.PlayOnStations(groupStations, _settings.IntroSound, room.IntroVolume, introDelay);
+                else
+                    room.PlayIntro(introDelay);
                 break;
 
             case PhaseChanged { Phase: MatchPhase.Playing }:
-                room.StopIntro();
-                room.SetRoomMusic(_settings.PlayingMusic);
+                room.StopOnStations(groupStations);
+                if (!othersPlaying)
+                    room.StopIntro();
                 break;
 
-            case PhaseChanged { Phase: MatchPhase.Results }:
-                room.SetRoomMusic(_settings.VictoryMusic, loop: false);
+            case PhaseChanged { Phase: MatchPhase.Results } when othersPlaying:
+                // A short celebration on their own speakers; the room keeps the music for the others.
+                room.PlayOnStations(groupStations, _settings.VictoryMusic, room.MusicVolume);
                 break;
 
             case MatchFinished:
-                room.StopIntro();
-                room.SetRoomMusic(_settings.LobbyMusic);
+                room.StopOnStations(groupStations);
                 break;
 
             case AnswerGiven { Answer: var answer }:
@@ -183,6 +200,25 @@ public sealed class RoomSoundService(
                 break;
         }
     }
+
+    /// <summary>
+    /// The room speaker follows the whole room: lobby music with nobody playing, in-game music while
+    /// any group plays, victory music once the last game is on its results, silence during an intro.
+    /// </summary>
+    private void UpdateRoomMusic(RoomSound room, List<MatchEngine> inRoom)
+    {
+        if (inRoom.Count == 0)
+            room.SetRoomMusic(_settings.LobbyMusic);
+        else if (inRoom.Any(m => m.Phase == MatchPhase.Playing))
+            room.SetRoomMusic(_settings.PlayingMusic);
+        else if (inRoom.All(m => m.Phase == MatchPhase.Results))
+            room.SetRoomMusic(_settings.VictoryMusic, loop: false);
+        else
+            room.SetRoomMusic(null); // an intro is playing
+    }
+
+    private bool IsInRoom(MatchEngine match, string roomId) =>
+        match.Roster.Players.Any(p => stations.Find(p.StationId)?.RoomId == roomId);
 
     public Task StopAsync(CancellationToken cancellationToken)
     {

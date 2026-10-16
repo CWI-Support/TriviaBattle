@@ -1,12 +1,16 @@
 // Main room screen: the match clock and a live leaderboard while everyone races, then results.
 // Questions aren't shown here: each player has their own on their station screen.
+// Several groups can play in the room at once (state.matches, in station order):
+//   1 game     the full-screen layout
+//   2 games    split down the middle, each on the side its stations are on
+//   3-4 games  quadrants; with 3, the biggest group gets a whole half
 // Like every screen, it only draws the state the server sends. There are no game rules here.
 // All wording comes from the theme's copy.json via Theme.text() (see js/theme.js).
 
 let stationsById = {};
 let lastState = null;
-let placements = [];   // leaderboard placements announced for the current match
-let answerCounts = {}; // id -> { correct, wrong } as last drawn, to flash a row when it changes
+let placements = {};   // matchId -> leaderboard placements announced for that match
+let answerCounts = {}; // "matchId:id" -> { correct, wrong } as last drawn, to flash a row when it changes
 let roomAudioPlaysIntro = false; // true when the server plays the room audio, intro sound included
 
 const connection = new ScreenConnection({ role: 'main', onState: render, onEvent: handleEvent });
@@ -21,23 +25,29 @@ Theme.load().then(() => LeaderboardView.startRotation(document.getElementById('l
 if (devKeysRequested()) enableDevKeys(connection);
 
 function render(state) {
-    if (state.match?.matchId !== lastState?.match?.matchId) {
-        placements = [];
-        answerCounts = {};
-    }
     lastState = state;
     stationsById = Object.fromEntries(state.room.stations.map(s => [s.id, s]));
+    // The server only sends a cue (the intro video) when its game is the only one in the room.
     // All room audio comes from the server's sound card; the main screen only plays the intro's sound when that's off.
     introVideo.follow(state.cue, { muted: roomAudioPlaysIntro });
-    const match = state.match;
 
-    if (!match) {
+    // Forget games that have ended.
+    const live = new Set(state.matches.map(m => m.matchId));
+    Object.keys(placements).filter(id => !live.has(id)).forEach(id => delete placements[id]);
+
+    if (state.matches.length === 0) {
         document.getElementById('lobby-title').innerHTML = Theme.text('brand.title');
         document.getElementById('lobby-subtitle').innerHTML = Theme.text('lobby.subtitle', {}, new Date().toDateString());
-        UI.showView('view-lobby');
+        showFitted('view-lobby');
         return;
     }
 
+    if (state.matches.length > 1) {
+        renderPanels(state.matches);
+        return;
+    }
+
+    const match = state.matches[0];
     switch (match.phase) {
         case 'Intro':    renderIntro(match); break;
         case 'Playing':  renderPlaying(match); break;
@@ -49,8 +59,78 @@ function render(state) {
 /** One-off moments. Leaderboard placements arrive shortly after Results appears. */
 function handleEvent(event) {
     if (event.type === 'LeaderboardPlacement') {
-        placements.push(event.placement);
+        (placements[event.matchId] ??= []).push(event.placement);
         if (lastState) render(lastState);
+    }
+}
+
+// ---------------------------------------------------------------- Several games at once
+
+/**
+ * Two games: halves. Three or four: quadrants, where with three the biggest group takes a whole
+ * half (on the side its stations are, i.e. the right if it's the last in station order).
+ * Games arrive in station order, so the left side always shows the lower-numbered stations.
+ */
+function renderPanels(matches) {
+    // Grid cells: [row, column, rows spanned]. Columns are filled top to bottom, left to right.
+    let cells;
+    let freeQuadrant = false;
+    if (matches.length === 2) {
+        cells = [[1, 1, 1], [1, 2, 1]];
+    } else if (matches.length === 3) {
+        const most = Math.max(...matches.map(m => m.players.length));
+        const big = matches.findIndex(m => m.players.length === most);
+        const clearlyBigger = matches.filter(m => m.players.length === most).length === 1;
+        if (!clearlyBigger) {
+            cells = [[1, 1, 1], [2, 1, 1], [1, 2, 1]]; // three equal games: the last quadrant says "come and play"
+            freeQuadrant = true;
+        } else if (big === 0) cells = [[1, 1, 2], [1, 2, 1], [2, 2, 1]];
+        else if (big === 1) cells = [[1, 1, 1], [1, 2, 2], [2, 1, 1]];
+        else cells = [[1, 1, 1], [2, 1, 1], [1, 2, 2]];
+    } else {
+        cells = [[1, 1, 1], [2, 1, 1], [1, 2, 1], [2, 2, 1]];
+    }
+
+    const panels = matches.slice(0, 4).map((match, i) => {
+        const [row, column, span] = cells[i];
+        return `<div class="match-panel" style="grid-row: ${row} / span ${span}; grid-column: ${column}">${panelBody(match)}</div>`;
+    });
+    if (freeQuadrant) {
+        panels.push(`<div class="match-panel is-free" style="grid-row: 2; grid-column: 2">
+            <p class="panel-free">${Theme.text('lobby.subtitle', {}, new Date().toDateString())}</p></div>`);
+    }
+
+    const view = document.getElementById('view-panels');
+    view.innerHTML = `<div class="panel-grid ${matches.length === 2 ? 'halves' : 'quadrants'}">${panels.join('')}</div>`;
+    UI.showView('view-panels');
+    view.querySelectorAll('.match-panel:not(.is-free)').forEach(panel => UI.fitToScreen(panel));
+}
+
+/** One game's panel: who's playing, then its intro countdown, live race or results. */
+function panelBody(match) {
+    const who = match.usesTeams
+        ? match.teams.map(t => UI.escape(t.name)).join(' vs ')
+        : match.players.map(p => UI.escape(p.name)).join(' &middot; ');
+    const head = `
+        <div class="panel-head">
+            <span class="panel-names">${who}</span>
+            <span class="dim">${modeName(match)} &middot; ${UI.escape(match.category)}</span>
+        </div>`;
+
+    switch (match.phase) {
+        case 'Intro':
+            return `${head}
+                <div class="panel-title">${Theme.text('intro.title', {}, momentSeed(match))}</div>
+                <div class="panel-clock" data-ends-at="${match.phaseEndsAtMs}"></div>`;
+        case 'Playing':
+            return `${head}
+                <div class="panel-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+                <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
+                <div class="race-board">${match.standings.map(s => raceRow(match, s)).join('')}</div>`;
+        default:
+            return `${head}
+                <div class="panel-title">${winnerHeadline(match)}</div>
+                ${scoreboard(match)}`;
     }
 }
 
@@ -106,7 +186,7 @@ function raceRow(match, standing) {
     const counts = team ?? members[0];
     const color = team ? teamColor(match, team.id) : colorOf(standing.id);
 
-    const flash = flashFor(standing.id, counts);
+    const flash = flashFor(`${match.matchId}:${standing.id}`, counts);
     const now = connection.serverNow();
     const lockedOut = members.some(p => p.lockedOutUntilMs && p.lockedOutUntilMs > now);
     const memberLine = team
@@ -133,13 +213,17 @@ function flashFor(id, { correctAnswers, wrongAnswers }) {
 
 // ---------------------------------------------------------------- Results
 
-function renderResults(match) {
+function winnerHeadline(match) {
     const winners = match.standings.filter(s => s.rank === 1);
-    const headline = winners.length > 1
+    return winners.length > 1
         ? Theme.text('results.tie', {}, match.matchId)
         : Theme.text('results.winner', { name: winners[0].name }, match.matchId);
+}
 
-    const highScores = placements.map(p => `<div class="high-score">${Theme.text('results.highScore', {
+function renderResults(match) {
+    const headline = winnerHeadline(match);
+
+    const highScores = (placements[match.matchId] ?? []).map(p => `<div class="high-score">${Theme.text('results.highScore', {
         names: p.names,
         rank: p.rank,
         when: Theme.raw(Theme.text(p.board === 'today' ? 'results.today' : 'results.allTime')),

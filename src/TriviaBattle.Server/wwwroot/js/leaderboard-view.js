@@ -23,6 +23,10 @@ const LeaderboardView = {
             element.innerHTML = slides.length
                 ? LeaderboardView.render(slides[index++])
                 : `<p class="subtitle">${Theme.text('lobby.leaderboardEmpty')}</p>`;
+
+            // A full board can be taller than the screen: shrink it rather than push the title off the top.
+            const screen = element.closest('.center-stack');
+            if (screen?.offsetParent) UI.fitToScreen(screen);
         };
 
         showNext();

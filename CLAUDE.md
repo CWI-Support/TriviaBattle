@@ -77,7 +77,10 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 - Every visibility rule lives in `SnapshotBuilder`: a player sees only its own (or team's) current question, never its
   correct answer until answered; main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
 - Starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`), not hub
-  calls, so the kiosk gets validation problems back as a 400.
+  calls, so the kiosk gets validation problems back as a 400. A match takes `categoryIds` (one or more, mixed).
+- Several matches can run in one room at once (one per set of stations). Room-level outputs (main screen, kiosk,
+  room speaker, room lights) must consider every running match: `IMatchBroadcaster.MatchChanged` gets
+  `runningMatches`, and room screens get `ScreenState.Matches`. Never assume one match per room.
 - `MatchSettings` is read once per match at start, so config edits never change a running match.
 - Seed questions (`Data/Seed/*.json`, one file per category) load only into an empty database. Delete
   `src/TriviaBattle.Server/triviabattle.db` to reseed. Migrations apply automatically at startup.

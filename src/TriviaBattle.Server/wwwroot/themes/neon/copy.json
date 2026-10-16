@@ -8,7 +8,7 @@
   "modes": {
     "FreeForAll": { "name": "Free-for-All", "description": "Everyone for themselves. Highest score wins." },
     "TeamSharedAnswer": { "name": "2v2 Group", "description": "Teammates share one set of questions. Either of you can answer!" },
-    "TeamCombinedScore": { "name": "2v2 Combined", "description": "Everyone answers. Your points add up to your team score." }
+    "TeamCombinedScore": { "name": "2v2 Combined", "description": "Everyone gets their own questions. Your points add up to your team score." }
   },
 
   "teams": {
@@ -75,7 +75,9 @@
     "modeTitle": "Choose a game mode",
     "playersTitle": "Who's playing? Swipe your card at your station's slot",
     "teamsTitle": "Pick teams: tap a player to switch sides",
-    "categoryTitle": "Pick a category",
+    "categoryTitle": "Pick your categories",
+    "categoryHint": "Pick one or more",
+    "categoriesChosen": "Playing: {list}",
     "difficultyTitle": "Difficulty",
     "seatEmpty": "Empty",
     "seatSwipeNow": "Swipe your card now…",
@@ -88,10 +90,13 @@
     "nobodyYet": "Nobody yet",
     "cardAlreadyIn": "That card is already signed in.",
     "stationsFull": "All stations are full.",
+    "seatInGame": "In a game · free in {seconds}s",
+    "seatInGameSoon": "In a game · free soon",
+    "started": "You're on! Head to your stations.",
     "busyTitle": "Battle in progress",
     "busyIntro": "Head into the room. The battle is starting!",
     "busyResults": "Final results are in!",
-    "busyWait": "The next group can set up when this battle ends.",
+    "busyWait": "The next group can set up as soon as a station is free.",
     "busyPlaying": "{seconds} seconds left"
   }
 }

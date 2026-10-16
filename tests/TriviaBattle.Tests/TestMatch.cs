@@ -16,7 +16,9 @@ public sealed class TestMatch
 
     private long _nextSequence = 1;
 
-    public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null)
+    /// <param name="stations">Free-for-all only: which stations play (default all four), e.g. a solo game on ["A1"].</param>
+    public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
+        IReadOnlyList<string>? stations = null, string matchId = "test-match")
     {
         Settings = settings ?? new MatchSettings();
         Now = Start;
@@ -25,15 +27,20 @@ public sealed class TestMatch
             ? new List<TeamSetup>()
             : [new TeamSetup("red", "Red", ["A1", "A3"]), new TeamSetup("blue", "Blue", ["A2", "A4"])];
 
+        string[] names = ["Ann", "Bob", "Cat", "Dan"];
+        var seats = (stations ?? ["A1", "A2", "A3", "A4"])
+            .Select(id => new SeatSetup(id, names[int.Parse(id[1..]) - 1]))
+            .ToList();
+
         var setup = new MatchSetup(
             mode,
-            CategoryId: 1,
+            CategoryIds: [1],
             Difficulty.Easy,
-            Seats: [new SeatSetup("A1", "Ann"), new SeatSetup("A2", "Bob"), new SeatSetup("A3", "Cat"), new SeatSetup("A4", "Dan")],
+            Seats: seats,
             Teams: teams);
 
         Engine = new MatchEngine(
-            "test-match",
+            matchId,
             setup,
             questions ?? MakeQuestions(questionCount),
             GameModes.Create(mode),

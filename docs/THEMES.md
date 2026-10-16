@@ -14,9 +14,9 @@ Current themes:
 
 | Theme | Look | Voice |
 |---|---|---|
-| `neon` (default) | The room photo: dark, glowing station colours | Plain and friendly. **This is the base copy; every key lives here.** |
+| `neon` (default) | Vaporwave LED: sunset sky and retro sun, a pink grid floor rolling toward you, colour-cycling LED strips, flickering neon-tube titles | Plain and friendly. **This is the base copy; every key lives here.** |
 | `showcase` | 70s TV game show: sunburst, marquee bulbs, price-tag answers | Cheesy, delighted daytime host |
-| `dungeon` | Dungeon game show: stone, torchlight, green "system message" boxes | A sarcastic system-AI host who breaks the fourth wall |
+| `vegas` | Blue-and-gold Las Vegas showroom: spotlights, chasing gold marquee bulbs, gold-foil titles with a moving shine, poker-chip answer letters | The standard wording (a look only, no copy of its own) |
 
 The themes are *inspired by* their genres. Keep real shows' names, logos, catchphrases and
 characters out of them, both for trademark/copyright reasons and so the venue owns its own voice.
@@ -25,7 +25,7 @@ characters out of them, both for trademark/copyright reasons and so the venue ow
 
 - **Switch every screen:** Operator screen (`/operator`) → Theme → *Use on all screens*. Screens change instantly, even mid-match.
 - **Preview one screen without changing the room:** add `?theme=<name>` to its URL, e.g.
-  `/display/main?theme=dungeon`. The admin page has preview links.
+  `/display/main?theme=vegas`. The admin page has preview links.
 - The default for a fresh install is `Display:DefaultTheme` in `appsettings.json`.
 
 ## Making a new theme
@@ -61,7 +61,7 @@ restyles everything:
 Use `vmin`/`vh` units rather than `px`, so the same theme fits a 4K TV and a small portrait monitor.
 
 **Decorations.** Every screen has an empty `<div class="theme-backdrop">` behind the content, for
-things like marquee bulbs or torchlight (see `showcase` and `dungeon`). You can also restyle any
+things like marquee bulbs or an LED strip (see `showcase`, `vegas` and `neon`). You can also restyle any
 class, e.g. `[data-theme="x"] .banner { ... }`.
 
 Classes worth knowing:
@@ -104,5 +104,6 @@ The copy keys are the moments a voice-over would speak at: `intro.title`, `playe
 `results.winner`, and so on. When the AI voice is added, it can use the same keys and the same
 `{placeholders}`, with a voice line chosen per key, just like text variants.
 
-The `dungeon` copy is written in the intended voice: tongue-in-cheek, aware it's a host on a
-screen in a venue, roasting gently and never punching down. Keep it PG-13 for a family venue.
+Write each theme's copy in its host's voice (see the table above), and keep it PG-13 for a family
+venue. Animations should only fade, move or hue-shift whole layers (opacity, transform, filter), so
+several full-screen windows on one PC stay smooth.

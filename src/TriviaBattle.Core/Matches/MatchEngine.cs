@@ -51,7 +51,7 @@ public sealed class MatchEngine
         Settings = settings;
         Roster = new MatchRoster(setup);
         StartedAt = now;
-        CategoryName = questions[0].Category;
+        CategoryName = string.Join(", ", questions.Select(q => q.Category).Distinct().Order());
 
         // The chosen difficulty comes first; other difficulties only fill in for the very fast.
         _streams = Roster.Players
@@ -72,7 +72,7 @@ public sealed class MatchEngine
     public MatchRoster Roster { get; }
     public DateTimeOffset StartedAt { get; }
 
-    /// <summary>The category name, taken from the questions (the setup only has the id).</summary>
+    /// <summary>The category name(s), taken from the questions (the setup only has ids): "Movies, Music".</summary>
     public string CategoryName { get; }
 
     public MatchPhase Phase { get; private set; }

@@ -8,7 +8,7 @@
   "modes": {
     "FreeForAll": { "name": "Every Contestant for Themselves", "description": "Four players, one winner, zero mercy. Highest score takes the prize!" },
     "TeamSharedAnswer": { "name": "Partner Showdown", "description": "Two teams racing through the questions. Fastest finger on your team answers!" },
-    "TeamCombinedScore": { "name": "Team Jackpot", "description": "Everybody plays! Your points pile into one big team jackpot." }
+    "TeamCombinedScore": { "name": "Team Jackpot", "description": "Everybody gets their own questions! Your points pile into one big team jackpot." }
   },
 
   "lobby": {
@@ -54,7 +54,7 @@
     "modeTitle": "Pick your game!",
     "playersTitle": "Contestants, swipe in at your station!",
     "teamsTitle": "Build your teams! Tap a player to switch sides",
-    "categoryTitle": "Choose your category!",
+    "categoryTitle": "Choose your categories!",
     "busyTitle": "We're live on air!",
     "busyIntro": "Contestants to the stage, please!",
     "busyWait": "Stay tuned. You're up next!"

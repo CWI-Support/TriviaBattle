@@ -16,13 +16,15 @@ namespace TriviaBattle.Server.Game;
 ///   <item>Results: the winners' buttons blink.</item>
 ///   <item>Anything else, or match over: off.</item>
 /// </list>
+/// Several groups can play in one room at once. LEDs belong to each station's own match; the
+/// room's lighting cue follows the busiest match in the room: Playing, then Results, then Intro, else Idle.
 /// </summary>
 public class RoomOutputCoordinator(
     IEnumerable<IRoomOutput> outputs,
     ButtonMap buttonMap,
     StationLayout stations) : IMatchBroadcaster
 {
-    public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events)
+    public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {
         if (events.All(e => e is LeaderboardPlacement))
             return; // a new high score doesn't change the lights
@@ -39,15 +41,28 @@ public class RoomOutputCoordinator(
             }
         }
 
-        var cue = finished ? LightingCue.Idle : CueFor(match.Phase);
         var roomIds = match.Roster.Players.Select(p => stations.Find(p.StationId)!.RoomId).Distinct().ToList();
 
         foreach (var output in outputs)
         {
             output.SetButtonLeds(leds);
             foreach (var roomId in roomIds)
-                output.SetLightingCue(roomId, cue);
+                output.SetLightingCue(roomId, RoomCue(roomId, runningMatches));
         }
+    }
+
+    /// <summary>The cue for the busiest match still running in the room (Idle if there are none).</summary>
+    private LightingCue RoomCue(string roomId, IReadOnlyList<MatchEngine> runningMatches)
+    {
+        var phases = runningMatches
+            .Where(m => !m.IsFinished && m.Roster.Players.Any(p => stations.Find(p.StationId)?.RoomId == roomId))
+            .Select(m => m.Phase)
+            .ToList();
+
+        if (phases.Contains(MatchPhase.Playing)) return LightingCue.Question;
+        if (phases.Contains(MatchPhase.Results)) return LightingCue.Results;
+        if (phases.Contains(MatchPhase.Intro)) return LightingCue.Intro;
+        return LightingCue.Idle;
     }
 
     private static LedState LedFor(MatchEngine match, Player player)
@@ -67,12 +82,4 @@ public class RoomOutputCoordinator(
                 return LedState.Off;
         }
     }
-
-    private static LightingCue CueFor(MatchPhase phase) => phase switch
-    {
-        MatchPhase.Intro => LightingCue.Intro,
-        MatchPhase.Playing => LightingCue.Question,
-        MatchPhase.Results => LightingCue.Results,
-        _ => LightingCue.Idle,
-    };
 }

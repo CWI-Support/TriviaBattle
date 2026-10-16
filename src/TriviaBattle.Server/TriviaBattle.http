@@ -12,7 +12,7 @@ Content-Type: application/json
 
 {
   "mode": "FreeForAll",
-  "categoryId": 1,
+  "categoryIds": [1],
   "difficulty": "Easy",
   "seats": [
     { "stationId": "A1", "playerName": "Ann" },
@@ -29,7 +29,7 @@ Content-Type: application/json
 
 {
   "mode": "TeamSharedAnswer",
-  "categoryId": 2,
+  "categoryIds": [2],
   "difficulty": "Medium",
   "seats": [
     { "stationId": "A1", "playerName": "Ann" },

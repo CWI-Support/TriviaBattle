@@ -1,5 +1,8 @@
-// Kiosk outside the room: players swipe in, enter names, and pick mode, teams, category and difficulty.
+// Kiosk outside the room: players swipe in, enter names, and pick mode, teams, categories and difficulty.
 // This page only collects choices. The server validates them and runs the match.
+// Several groups can play in the room at once: stations already in a game show as busy (with the
+// time left), and the next group sets up on the free ones. Only when every station is busy does
+// the kiosk show "battle in progress".
 // All wording (mode names, team names, prompts) comes from the theme's copy.json via Theme.text().
 
 const MODES = [
@@ -14,7 +17,8 @@ const RESET_AFTER_IDLE_MS = 2 * 60 * 1000; // walk-away protection
 
 let room = null;           // this room and its stations, from the server
 let categories = [];
-let matchRunning = false;
+let busy = {};             // stationId -> the match being played there
+let busyKey = '';          // which stations are busy, to redraw only when that changes
 let step = 'mode';
 let setup = emptySetup();
 let listeningStationId = null; // the player slot waiting for a card swipe
@@ -24,7 +28,7 @@ function emptySetup() {
         mode: null,
         seats: {},     // stationId -> { name, rfidTag (null for guests) }
         teamOf: {},    // stationId -> teamId
-        categoryId: null,
+        categoryIds: [],   // one or more; questions from all of them are mixed
         difficulty: 'Medium',
     };
 }
@@ -53,16 +57,27 @@ async function loadCategories() {
 }
 
 function receiveState(state) {
+    const firstState = room === null;
     room = state.room;
 
-    if (state.match) {
-        matchRunning = true;
+    busy = {};
+    for (const match of state.matches)
+        for (const player of match.players) busy[player.stationId] = match;
+
+    // States arrive with every answer in every running game; only redraw when the busy stations change.
+    const key = Object.entries(busy).map(([id, m]) => `${id}:${m.matchId}:${m.phase}`).sort().join(',');
+    if (!firstState && key === busyKey) return;
+    busyKey = key;
+
+    // Someone else's game started on a station this group had picked: free that seat.
+    for (const stationId of Object.keys(setup.seats).filter(id => busy[id]))
+        removeSeat(stationId);
+
+    if (room.stations.every(s => busy[s.id])) {
         if (onScreenKeyboard?.isOpen) onScreenKeyboard.hideKeyboard();
-        renderBusy(state.match);
+        renderAllBusy(state.matches);
         UI.showView('view-busy');
     } else {
-        if (matchRunning) resetKiosk(); // a match just ended: ready for the next group
-        matchRunning = false;
         UI.showView('view-setup');
         renderStep();
     }
@@ -114,7 +129,7 @@ function setUpIdleReset() {
     let timer;
     const restart = () => {
         clearTimeout(timer);
-        timer = setTimeout(() => { if (!matchRunning && step !== 'mode') resetKiosk(); }, RESET_AFTER_IDLE_MS);
+        timer = setTimeout(() => { if (step !== 'mode') resetKiosk(); }, RESET_AFTER_IDLE_MS);
     };
     ['pointerdown', 'keydown'].forEach(type => document.addEventListener(type, restart));
     restart();
@@ -135,7 +150,7 @@ function canContinue() {
         case 'teams':
             return TEAM_IDS.every(teamId => seated.some(id => setup.teamOf[id] === teamId));
         case 'category':
-            return setup.categoryId !== null;
+            return setup.categoryIds.length > 0;
         default:
             return true;
     }
@@ -194,6 +209,8 @@ function modeStep() {
 
 function playersStep() {
     const cards = room.stations.map(station => {
+        if (busy[station.id]) return busyStationCard(station, busy[station.id]);
+
         const seat = setup.seats[station.id];
         const listening = listeningStationId === station.id;
 
@@ -225,6 +242,19 @@ function playersStep() {
     return `<h2>${Theme.text('kiosk.playersTitle')}</h2><div class="choice-grid">${cards}</div>${devHelper}`;
 }
 
+/** A station another group is playing on: shown, but it can't be picked until their game ends. */
+function busyStationCard(station, match) {
+    const freeAt = match.phase === 'Playing' ? match.phaseEndsAtMs : null;
+    const detail = freeAt
+        ? Theme.text('kiosk.seatInGame', { seconds: Theme.raw(`<span data-ends-at="${freeAt}"></span>`) })
+        : Theme.text('kiosk.seatInGameSoon');
+    return `
+        <div class="choice seat-card is-busy" style="--chip-color: ${station.color}">
+            <h3 style="color: ${station.color}">${UI.escape(station.label)}</h3>
+            <div class="dim">${detail}</div>
+        </div>`;
+}
+
 function teamsStep() {
     const columns = TEAM_IDS.map(teamId => {
         const members = seatedStationIds()
@@ -244,11 +274,17 @@ function teamsStep() {
 }
 
 // Compact cards so all categories and the difficulties fit on a 1080p kiosk without scrolling.
+// Any number of categories can be picked; the chosen ones are listed under the title.
 function categoryStep() {
     const categoryCards = categories.map(c => `
-        <div class="choice ${setup.categoryId === c.id ? 'is-selected' : ''}" onclick="chooseCategory(${c.id})">
+        <div class="choice ${setup.categoryIds.includes(c.id) ? 'is-selected' : ''}" onclick="chooseCategory(${c.id})">
             <h3>${UI.escape(c.name)}</h3>
         </div>`).join('');
+
+    const chosen = categories.filter(c => setup.categoryIds.includes(c.id)).map(c => c.name);
+    const chosenLine = chosen.length
+        ? Theme.text('kiosk.categoriesChosen', { list: chosen.join(' · ') })
+        : Theme.text('kiosk.categoryHint');
 
     const difficultyCards = DIFFICULTIES.map(d => `
         <div class="choice ${setup.difficulty === d ? 'is-selected' : ''}" onclick="chooseDifficulty('${d}')">
@@ -256,23 +292,29 @@ function categoryStep() {
         </div>`).join('');
 
     return `
-        <h2>${Theme.text('kiosk.categoryTitle')}</h2><div class="choice-grid compact">${categoryCards}</div>
+        <h2>${Theme.text('kiosk.categoryTitle')}</h2>
+        <p class="subtitle category-list">${chosenLine}</p>
+        <div class="choice-grid compact">${categoryCards}</div>
         <h2 class="spaced">${Theme.text('kiosk.difficultyTitle')}</h2><div class="choice-grid compact">${difficultyCards}</div>`;
 }
 
-function renderBusy(match) {
-    const progress = match.phase === 'Intro'
-        ? Theme.text('kiosk.busyIntro', {}, match.matchId)
-        : match.phase === 'Results'
-            ? Theme.text('kiosk.busyResults', {}, match.matchId)
-            : Theme.text('kiosk.busyPlaying', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) });
+/** Every station is in a game: show each game and how long it has left. */
+function renderAllBusy(matches) {
+    const lines = matches.map(match => {
+        const who = match.players.map(p => UI.escape(p.name)).join(' &middot; ');
+        const progress = match.phase === 'Intro'
+            ? Theme.text('kiosk.busyIntro', {}, match.matchId)
+            : match.phase === 'Results'
+                ? Theme.text('kiosk.busyResults', {}, match.matchId)
+                : Theme.text('kiosk.busyPlaying', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) });
+        return `<p class="subtitle"><b>${who}</b> &middot; ${progress}</p>`;
+    }).join('');
 
     document.getElementById('view-busy').innerHTML = `
         <div class="center-stack">
-            <h1 class="big-title">${Theme.text('kiosk.busyTitle', {}, match.matchId)}</h1>
-            <p class="subtitle">${progress}</p>
-            <p class="subtitle">${Theme.text(`modes.${match.mode}.name`)} &middot; ${UI.escape(match.category)}</p>
-            <p class="dim">${Theme.text('kiosk.busyWait', {}, match.matchId)}</p>
+            <h1 class="big-title">${Theme.text('kiosk.busyTitle', {}, matches[0]?.matchId)}</h1>
+            ${lines}
+            <p class="dim">${Theme.text('kiosk.busyWait', {}, matches[0]?.matchId)}</p>
         </div>`;
 }
 
@@ -314,8 +356,8 @@ async function cardSwiped(rfidTag) {
         return;
     }
 
-    // Use the slot that asked for a card, or else the first empty one.
-    const stationId = listeningStationId || room.stations.map(s => s.id).find(id => !setup.seats[id]);
+    // Use the slot that asked for a card, or else the first free one.
+    const stationId = listeningStationId || room.stations.map(s => s.id).find(id => !setup.seats[id] && !busy[id]);
     if (!stationId) {
         showProblems([Theme.plain('kiosk.stationsFull')]);
         return;
@@ -344,8 +386,11 @@ function switchTeam(stationId) {
     renderStep();
 }
 
+/** Categories toggle: tap to add, tap again to take it out. */
 function chooseCategory(categoryId) {
-    setup.categoryId = categoryId;
+    setup.categoryIds = setup.categoryIds.includes(categoryId)
+        ? setup.categoryIds.filter(id => id !== categoryId)
+        : [...setup.categoryIds, categoryId];
     renderStep();
 }
 
@@ -390,14 +435,17 @@ async function startMatch() {
         const response = await fetch('/api/matches', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: setup.mode, categoryId: setup.categoryId, difficulty: setup.difficulty, seats, teams }),
+            body: JSON.stringify({ mode: setup.mode, categoryIds: setup.categoryIds, difficulty: setup.difficulty, seats, teams }),
         });
 
         if (!response.ok) {
             const body = await response.json();
             throw new Error((body.problems || [body.message || 'Could not start the match.']).join(' '));
         }
-        // Success: the server pushes the new match state and the kiosk switches to "Battle in progress".
+
+        // They're off. Ready for the next group straight away (on whatever stations are still free).
+        resetKiosk();
+        showNotice(Theme.plain('kiosk.started'));
     } catch (err) {
         showProblems([err.message]);
         nextButton.disabled = false;
@@ -430,4 +478,13 @@ function seatName(stationId) {
 
 function showProblems(problems) {
     document.getElementById('problems').textContent = problems.join(' ');
+}
+
+/** A short, friendly message in the footer (e.g. "You're on!") that clears itself. */
+function showNotice(text) {
+    const notice = document.getElementById('notice');
+    notice.textContent = text;
+    notice.hidden = false;
+    clearTimeout(showNotice.timer);
+    showNotice.timer = setTimeout(() => { notice.hidden = true; }, 5000);
 }

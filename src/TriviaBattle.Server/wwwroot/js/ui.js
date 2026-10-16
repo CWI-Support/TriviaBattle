@@ -44,7 +44,18 @@ const UI = {
 
         const fitsAt = scale => {
             element.style.setProperty('--fit', scale);
-            return element.scrollHeight <= element.clientHeight + 1;
+            if (element.scrollHeight > element.clientHeight + 1)
+                return false;
+            // A vertically centred column spills off the top as well, which scrollHeight doesn't
+            // count, so also check that every child really sits inside the element.
+            // (Inside its padding, so nothing ends up hard against the screen edge.)
+            const box = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            const top = box.top + parseFloat(style.paddingTop) - 1;
+            const bottom = box.bottom - parseFloat(style.paddingBottom) + 1;
+            return [...element.children]
+                .map(child => child.getBoundingClientRect())
+                .every(r => r.height === 0 || (r.top >= top && r.bottom <= bottom));
         };
 
         if (!fitsAt(1)) {

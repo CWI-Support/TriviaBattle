@@ -9,7 +9,7 @@ public sealed record MatchResult(
     string MatchId,
     string Mode,
     int CategoryId,
-    string CategoryName,
+    string CategoryName, // "Movies, Music" when several categories were mixed
     string Difficulty,
     DateTimeOffset StartedAt,
     DateTimeOffset EndedAt,
@@ -56,7 +56,7 @@ public sealed record MatchResult(
         return new MatchResult(
             match.MatchId,
             match.Mode.Kind.ToString(),
-            match.Setup.CategoryId,
+            match.Setup.CategoryIds[0], // history keeps one id; CategoryName lists them all
             match.CategoryName,
             match.Setup.Difficulty.ToString(),
             match.StartedAt,

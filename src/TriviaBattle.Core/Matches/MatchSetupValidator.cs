@@ -17,6 +17,8 @@ public static class MatchSetupValidator
 
         if (setup.Seats.Count == 0)
             problems.Add("At least one player is needed.");
+        if (setup.CategoryIds is not { Count: > 0 })
+            problems.Add("Pick at least one category.");
 
         foreach (var seat in setup.Seats)
         {

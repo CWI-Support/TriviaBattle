@@ -4,19 +4,26 @@ using TriviaBattle.Core.Matches;
 namespace TriviaBattle.Server.Game;
 
 /// <summary>
-/// Tells the outside world (screens, logs, later the room lights) that a match changed.
+/// Tells the outside world (screens, logs, room lights and sound) that a match changed.
 /// MatchHost calls this while it holds its lock, so implementations must be quick:
-/// read what they need from the engine, then hand off any slow work (network sends) without waiting.
+/// read what they need from the engines, then hand off any slow work (network sends) without waiting.
 /// </summary>
 public interface IMatchBroadcaster
 {
-    void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events);
+    /// <param name="match">The match that changed.</param>
+    /// <param name="events">What happened to it.</param>
+    /// <param name="runningMatches">
+    /// Every match still running, on any stations (it no longer includes <paramref name="match"/>
+    /// once that has finished). Several groups can play in one room at once, so anything the room
+    /// shares (main screen, room speaker, room lights) looks at all of them.
+    /// </param>
+    void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches);
 }
 
 /// <summary>Writes match activity to the server log. Handy when there are no screens attached.</summary>
 public class LoggingMatchBroadcaster(ILogger<LoggingMatchBroadcaster> logger) : IMatchBroadcaster
 {
-    public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events)
+    public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {
         foreach (var e in events)
         {

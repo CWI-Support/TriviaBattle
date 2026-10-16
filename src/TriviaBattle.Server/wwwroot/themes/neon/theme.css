@@ -1,22 +1,176 @@
-/* NEON: the default look, taken from the room photo. Dark room, glowing station colours.
+/* NEON: vaporwave LED. A purple-to-sunset sky, a glowing retro sun, a pink grid floor rolling
+   toward you, colour-cycling LED strips around every screen, and neon-tube titles that flicker
+   now and then like a real sign.
    The full list of tokens (and what each does) is at the top of /css/screens.css.
-   Everything here is scoped to [data-theme="neon"] so themes never leak into each other. */
+   Everything here is scoped to [data-theme="neon"] so themes never leak into each other.
+   Animations only move, fade or hue-shift whole layers, so the graphics card does the work
+   (several full-screen windows run on one PC). */
 
 :root[data-theme="neon"] {
-    --bg: #07060f;
+    /* Colours */
+    --bg: #0d0221;
     --bg-image:
-        radial-gradient(ellipse at 50% -20%, rgba(176, 77, 255, 0.25), transparent 60%),
-        radial-gradient(ellipse at 50% 120%, rgba(42, 140, 255, 0.18), transparent 60%);
-    --title-shadow: 0 0 2vmin rgba(255, 212, 0, 0.6), 0 0 6vmin rgba(255, 212, 0, 0.35);
-    --panel-shadow: 0 0 2vmin rgba(42, 140, 255, 0.15);
+        radial-gradient(circle at 50% 62%, #ffd319 0 9vmin, #ff8c42 13vmin, #ff2975 19vmin, transparent 28vmin),
+        linear-gradient(180deg, #0d0221 0%, #261447 38%, #6b1d6e 58%, #ff2975 64%, #0d0221 64.2%, #0d0221 100%);
+    --panel: rgba(18, 6, 46, 0.94);
+    --panel-light: rgba(46, 17, 92, 0.92);
+    --panel-border: 0.3vmin solid rgba(0, 240, 255, 0.75);
+    --panel-shadow: 0 0 1.5vmin rgba(0, 240, 255, 0.45), inset 0 0 1.5vmin rgba(255, 43, 214, 0.25);
+    --text: #f6f0ff;
+    --text-dim: #c7b8ff;
+    --accent: #00f0ff;                /* cyan neon: scores, buttons */
+    --accent-text: #0d0221;
+    --correct: #2bff88;
+    --wrong: #ff2e63;
+
+    /* The physical button colours, as neon tubes */
+    --answer-a: #ff2e63;
+    --answer-b: #2ec5ff;
+    --answer-c: #ffe23d;
+    --answer-d: #2bff88;
+    --answer-text: #0d0221;
+
+    /* Type: hot-pink neon tube titles */
+    --title-color: #ffe9fb;
+    --title-shadow:
+        0 0 0.4vmin #fff,
+        0 0 1.2vmin #ff2bd6,
+        0 0 3vmin #ff2bd6,
+        0 0 6vmin #b84dff;
+    --title-transform: uppercase;
+
+    --radius: 1.6vmin;
+    --radius-small: 0.8vmin;
 }
 
-/* Answers glow in their button colour. */
+/* ---------- The room: sun, grid floor, LED strips ---------- */
+
+/* Retro grid floor, rolling toward you forever. */
+[data-theme="neon"] .theme-backdrop::before {
+    content: '';
+    position: absolute;
+    left: -60%;
+    right: -60%;
+    top: 64%;
+    height: 90%;
+    background-image:
+        linear-gradient(rgba(255, 43, 214, 0.75) 0.25vmin, transparent 0.25vmin),
+        linear-gradient(90deg, rgba(255, 43, 214, 0.75) 0.25vmin, transparent 0.25vmin);
+    background-size: 8vmin 8vmin;
+    transform-origin: 50% 0;
+    transform: perspective(28vh) rotateX(62deg) translateY(0);
+    -webkit-mask-image: linear-gradient(transparent, #000 25%);
+    mask-image: linear-gradient(transparent, #000 25%);
+    opacity: 0.55;
+    animation: neon-grid 1.6s linear infinite;
+}
+
+@keyframes neon-grid {
+    to { transform: perspective(28vh) rotateX(62deg) translateY(8vmin); }
+}
+
+/* An LED strip around the edge of every screen, cycling through the vaporwave colours. */
+[data-theme="neon"] .theme-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0.7vmin;
+    padding: 0.45vmin;
+    border-radius: 2vmin;
+    background: linear-gradient(90deg, #ff2bd6, #00f0ff, #b84dff, #ff2bd6);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    filter: drop-shadow(0 0 1vmin #ff2bd6);
+    animation: neon-cycle 6s linear infinite;
+}
+
+@keyframes neon-cycle {
+    from { filter: drop-shadow(0 0 1vmin #ff2bd6) hue-rotate(0deg); }
+    to { filter: drop-shadow(0 0 1vmin #ff2bd6) hue-rotate(360deg); }
+}
+
+/* ---------- Neon-tube titles ---------- */
+
+[data-theme="neon"] .big-title,
+[data-theme="neon"] .match-clock,
+[data-theme="neon"] .vs-word {
+    animation: neon-flicker 7s linear infinite;
+}
+
+/* Mostly steady, with the odd stutter of a real neon sign. */
+@keyframes neon-flicker {
+    0%, 18%, 20%, 22%, 63%, 65%, 100% { opacity: 1; }
+    19%, 21%, 64% { opacity: 0.55; }
+}
+
+[data-theme="neon"] .match-clock {
+    color: #e9fdff;
+    text-shadow: 0 0 0.5vmin #fff, 0 0 2vmin #00f0ff, 0 0 5vmin #00f0ff, 0 0 9vmin #2ec5ff;
+}
+
+[data-theme="neon"] .kiosk-header h1,
+[data-theme="neon"] .player-header .station-label {
+    text-shadow: 0 0 1vmin currentColor, 0 0 3vmin currentColor;
+}
+
+/* ---------- Answers: glowing outlined tubes in the button colour ---------- */
+
 [data-theme="neon"] .answer {
-    box-shadow: 0 0 1.5vmin color-mix(in srgb, var(--answer-color) 40%, transparent);
+    background: rgba(13, 2, 33, 0.94);
+    box-shadow: 0 0 1.4vmin var(--answer-color), inset 0 0 1.4vmin color-mix(in srgb, var(--answer-color) 35%, transparent);
+    text-shadow: 0 0 1vmin rgba(255, 255, 255, 0.35);
 }
 
-/* Station-coloured glow around each player screen, like the LED strips in the room. */
+[data-theme="neon"] .answer-letter {
+    box-shadow: 0 0 1.5vmin var(--answer-color);
+}
+
+[data-theme="neon"] .answer.is-correct {
+    animation: neon-pop 0.35s ease-out 2;
+}
+
+@keyframes neon-pop {
+    50% { transform: scale(1.04); }
+}
+
+/* ---------- Feedback, scores and the rest ---------- */
+
+[data-theme="neon"] .banner.correct,
+[data-theme="neon"] .banner.wrong {
+    color: #0d0221;
+    text-shadow: none;
+    box-shadow: 0 0 3vmin currentColor;
+}
+
+[data-theme="neon"] .banner.correct { box-shadow: 0 0 4vmin var(--correct); }
+[data-theme="neon"] .banner.wrong { box-shadow: 0 0 4vmin var(--wrong); color: #fff; }
+
+[data-theme="neon"] .timer-bar-fill {
+    background: linear-gradient(90deg, #ff2bd6, #00f0ff);
+    box-shadow: 0 0 1.5vmin #00f0ff;
+}
+
+[data-theme="neon"] .score-row .score,
+[data-theme="neon"] .player-header .player-score {
+    text-shadow: 0 0 1.5vmin var(--accent);
+}
+
+[data-theme="neon"] .high-score {
+    background: linear-gradient(90deg, #ff2bd6, #b84dff, #00f0ff);
+    color: #fff;
+    text-shadow: 0 0 1vmin rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 3vmin #ff2bd6;
+}
+
+[data-theme="neon"] .big-button {
+    box-shadow: 0 0 2vmin var(--accent);
+}
+
+[data-theme="neon"] .choice.is-selected {
+    box-shadow: 0 0 2.5vmin var(--accent), inset 0 0 1.5vmin rgba(0, 240, 255, 0.3);
+}
+
+/* Station-coloured LED glow around each player screen, like the strips in the room. */
 [data-theme="neon"] .player-screen {
-    box-shadow: inset 0 0 4vmin color-mix(in srgb, var(--station-color) 45%, transparent);
+    box-shadow: inset 0 0 4vmin color-mix(in srgb, var(--station-color) 55%, transparent);
 }

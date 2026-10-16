@@ -53,6 +53,10 @@ public sealed class RoomSound : IDisposable
 
     public RoomSpeakers Speakers => _speakers;
 
+    /// <summary>The current slider levels, for sounds played on station speakers.</summary>
+    public float MusicVolume => (float)_volumes.Music;
+    public float IntroVolume => (float)_volumes.Intro;
+
     /// <summary>New slider levels, applied straight away.</summary>
     public void ApplyVolumes(AudioVolumes volumes)
     {
@@ -132,6 +136,35 @@ public sealed class RoomSound : IDisposable
         }
         Zone(RoomZone)?.StopEffect();
         Zone(SubZone)?.StopEffect();
+    }
+
+    /// <summary>
+    /// Plays a sound on these stations' speakers only (a group's intro or victory while other groups
+    /// are using the room speaker). Stop it with <see cref="StopOnStations"/>.
+    /// </summary>
+    public void PlayOnStations(IEnumerable<string> stationIds, string? file, float volume, double delaySeconds = 0)
+    {
+        if (Path(file) is not { } path)
+            return;
+
+        // In stereo test mode every station is in both ears: one copy, not several out of step.
+        var zones = stationIds.Select(Zone).OfType<AudioChannel>().Take(_audio.IsStereoTest ? 1 : int.MaxValue).ToList();
+        if (delaySeconds <= 0)
+        {
+            foreach (var zone in zones) zone.PlayEffect(path, volume);
+            return;
+        }
+        _ = Task.Delay(TimeSpan.FromSeconds(delaySeconds)).ContinueWith(_ =>
+        {
+            foreach (var zone in zones) zone.PlayEffect(path, volume);
+        });
+    }
+
+    /// <summary>Stops whatever <see cref="PlayOnStations"/> (or a stinger) is playing on these stations.</summary>
+    public void StopOnStations(IEnumerable<string> stationIds)
+    {
+        foreach (var zone in stationIds.Select(Zone).OfType<AudioChannel>())
+            zone.StopEffect();
     }
 
     /// <summary>A right/wrong stinger on these stations' speakers.</summary>

@@ -90,6 +90,7 @@ public static class SnapshotBuilder
             question == null ? null : new QuestionView(
                 stream.CurrentNumber,
                 question.Id,
+                question.Category,
                 question.Text,
                 question.Answers,
                 question.MediaUrl,

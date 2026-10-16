@@ -26,8 +26,17 @@ public class MediaSettings
 /// </summary>
 public class ScreenStateFactory(StationLayout stations, IOptionsMonitor<MediaSettings> media, ThemeService themes)
 {
-    public ScreenState Create(string roomId, Station? station, MatchSnapshot? match) =>
-        new(Room(roomId), station == null ? null : StationInfo.From(station), match, CueFor(match), themes.Current);
+    /// <summary>
+    /// For the main screen and kiosk: every match in the room. The intro video only takes over
+    /// the main screen when its match is the only one in the room; otherwise just that group's
+    /// station screens play it, so nobody else's game gets covered.
+    /// </summary>
+    public ScreenState ForRoom(string roomId, IReadOnlyList<MatchSnapshot> matches) =>
+        new(Room(roomId), null, matches.FirstOrDefault(), matches, matches.Count == 1 ? CueFor(matches[0]) : null, themes.Current);
+
+    /// <summary>For a player screen: the match at its station, if any.</summary>
+    public ScreenState ForStation(string roomId, Station station, MatchSnapshot? match) =>
+        new(Room(roomId), StationInfo.From(station), match, match == null ? [] : [match], CueFor(match), themes.Current);
 
     public RoomInfo Room(string roomId) =>
         new(roomId, stations.RoomName(roomId), stations.InRoom(roomId).Select(StationInfo.From).ToList());

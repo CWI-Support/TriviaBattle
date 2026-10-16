@@ -21,7 +21,7 @@ public class ThemeService(
     private const string SettingKey = "Theme";
     private string? _current;
 
-    /// <summary>Theme folder names that have a theme.css, e.g. ["dungeon", "neon", "showcase"].</summary>
+    /// <summary>Theme folder names that have a theme.css, e.g. ["neon", "showcase", "vegas"].</summary>
     public IReadOnlyList<string> Available()
     {
         var folder = Path.Combine(env.WebRootPath, "themes");

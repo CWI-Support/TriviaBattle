@@ -25,6 +25,10 @@ public class SqliteQuestionSourceTests : IDisposable
         AddQuestions(category, Difficulty.Hard, 5);
         category.Questions.Add(NewQuestion(Difficulty.Easy, "Retired question", isActive: false));
         db.Categories.Add(category);
+
+        var other = new CategoryEntity { Name = "Other" };
+        AddQuestions(other, Difficulty.Easy, 2);
+        db.Categories.Add(other);
         db.SaveChanges();
     }
 
@@ -35,7 +39,7 @@ public class SqliteQuestionSourceTests : IDisposable
     {
         var source = new SqliteQuestionSource(new TestDbFactory(_options));
 
-        var picked = await source.PickQuestionsAsync(categoryId: 1, Difficulty.Easy, count: 5);
+        var picked = await source.PickQuestionsAsync(categoryIds: [1], Difficulty.Easy, count: 5);
 
         Assert.Equal(5, picked.Count);
         Assert.Equal(3, picked.Count(q => q.Difficulty == Difficulty.Easy)); // all the easy ones...
@@ -47,10 +51,21 @@ public class SqliteQuestionSourceTests : IDisposable
     {
         var source = new SqliteQuestionSource(new TestDbFactory(_options));
 
-        var picked = await source.PickQuestionsAsync(categoryId: 1, Difficulty.Easy, count: 100);
+        var picked = await source.PickQuestionsAsync(categoryIds: [1], Difficulty.Easy, count: 100);
 
         Assert.Equal(8, picked.Count);
         Assert.DoesNotContain(picked, q => q.Text == "Retired question");
+    }
+
+    [Fact]
+    public async Task Mixes_questions_from_several_categories()
+    {
+        var source = new SqliteQuestionSource(new TestDbFactory(_options));
+
+        var picked = await source.PickQuestionsAsync(categoryIds: [1, 2], Difficulty.Easy, count: 100);
+
+        Assert.Equal(10, picked.Count); // 8 active in "Test" + 2 in "Other"
+        Assert.Equal(["Other", "Test"], picked.Select(q => q.Category).Distinct().Order());
     }
 
     private static void AddQuestions(CategoryEntity category, Difficulty difficulty, int count)

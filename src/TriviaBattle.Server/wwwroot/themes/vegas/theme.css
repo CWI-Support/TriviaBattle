@@ -1,0 +1,186 @@
+/* VEGAS: blue and gold, a Las Vegas showroom. Royal-blue stage under two spotlight beams, a
+   casino-carpet diamond pattern, gold marquee bulbs chasing around every screen, gold-foil
+   titles with a shine sweeping across, and casino-chip answer letters.
+   The full list of tokens is at the top of /css/screens.css. Scoped to [data-theme="vegas"].
+   Animations only fade or move layers (or a small text shine), so several full-screen windows
+   on one PC stay smooth. */
+
+:root[data-theme="vegas"] {
+    /* Colours */
+    --bg: #04103a;
+    --bg-image:
+        /* gold sparkles */
+        radial-gradient(circle at 12% 18%, rgba(255, 228, 140, 0.9) 0 0.15vmin, transparent 0.4vmin),
+        radial-gradient(circle at 83% 12%, rgba(255, 228, 140, 0.8) 0 0.15vmin, transparent 0.4vmin),
+        radial-gradient(circle at 70% 78%, rgba(255, 228, 140, 0.7) 0 0.12vmin, transparent 0.35vmin),
+        radial-gradient(circle at 25% 72%, rgba(255, 228, 140, 0.7) 0 0.12vmin, transparent 0.35vmin),
+        /* two spotlight beams from the top corners */
+        linear-gradient(115deg, transparent 0 18%, rgba(120, 170, 255, 0.10) 24%, transparent 34%),
+        linear-gradient(245deg, transparent 0 18%, rgba(120, 170, 255, 0.10) 24%, transparent 34%),
+        /* stage glow and casino-carpet diamonds */
+        radial-gradient(ellipse at 50% 0%, rgba(80, 130, 255, 0.35), transparent 60%),
+        repeating-conic-gradient(from 45deg, rgba(255, 255, 255, 0.025) 0 25%, transparent 0 50%) 0 0 / 6vmin 6vmin,
+        linear-gradient(180deg, #0a1f6b 0%, #04103a 70%);
+    --panel: rgba(7, 22, 82, 0.92);
+    --panel-light: #10308f;
+    --panel-border: 0.35vmin solid #e2b73c;
+    --panel-shadow: 0 0 0 0.25vmin rgba(4, 16, 58, 0.9), 0 0.8vmin 2vmin rgba(0, 0, 0, 0.45), inset 0 0 2vmin rgba(255, 210, 90, 0.12);
+    --text: #f7f3e6;
+    --text-dim: #b9c7ef;
+    --accent: #f5c542;                /* gold: scores, buttons */
+    --accent-text: #04103a;
+    --correct: #3ee07a;
+    --wrong: #ff4560;
+
+    /* The physical button colours, casino-bright */
+    --answer-a: #ff3b4f;
+    --answer-b: #3d8bff;
+    --answer-c: #ffcc2e;
+    --answer-d: #31d97a;
+    --answer-text: #04103a;
+
+    /* Type */
+    --font-body: 'Segoe UI', Roboto, Arial, sans-serif;
+    --title-color: #f5c542;
+    --title-shadow: 0 0.35vmin 0 #8a5a00, 0 0.8vmin 1.6vmin rgba(0, 0, 0, 0.6);
+    --title-transform: uppercase;
+
+    --radius: 1.4vmin;
+    --radius-small: 0.7vmin;
+}
+
+/* ---------- Marquee bulbs chasing around every screen ---------- */
+/* Two interleaved rows of gold bulbs that light in turn, like a casino sign. */
+
+[data-theme="vegas"] .theme-backdrop::before,
+[data-theme="vegas"] .theme-backdrop::after {
+    --bulb: radial-gradient(circle, #fffbe6 0 0.45vmin, #ffd34d 0.75vmin, rgba(255, 196, 40, 0.35) 1vmin, transparent 1.3vmin);
+    content: '';
+    position: absolute;
+    inset: 0.3vmin;
+    background:
+        var(--bulb) 0 0 / 5vmin 2.6vmin repeat-x,
+        var(--bulb) 0 100% / 5vmin 2.6vmin repeat-x,
+        var(--bulb) 0 0 / 2.6vmin 5vmin repeat-y,
+        var(--bulb) 100% 0 / 2.6vmin 5vmin repeat-y;
+    filter: drop-shadow(0 0 0.8vmin #ffc928);
+    animation: vegas-bulbs 0.9s steps(1) infinite;
+}
+
+/* The second row sits between the first one's bulbs and lights when the first is off. */
+[data-theme="vegas"] .theme-backdrop::after {
+    background-position: 2.5vmin 0, 2.5vmin 100%, 0 2.5vmin, 100% 2.5vmin;
+    animation-delay: -0.45s;
+}
+
+@keyframes vegas-bulbs {
+    0% { opacity: 1; }
+    50% { opacity: 0.12; }
+}
+
+/* ---------- Gold-foil titles with a shine sweeping across ---------- */
+
+[data-theme="vegas"] .big-title,
+[data-theme="vegas"] .match-clock,
+[data-theme="vegas"] .vs-word,
+[data-theme="vegas"] .kiosk-header h1 {
+    background: linear-gradient(100deg, #b8860b 0%, #f5c542 30%, #fff6cf 45%, #f5c542 60%, #b8860b 100%) 0 0 / 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 0.35vmin 0 #6b4300) drop-shadow(0 0.6vmin 1.2vmin rgba(0, 0, 0, 0.55));
+    animation: vegas-shine 3.5s linear infinite;
+}
+
+@keyframes vegas-shine {
+    from { background-position: 100% 0; }
+    to { background-position: -150% 0; }
+}
+
+/* ---------- Answers: gold-rimmed panels with casino-chip letters ---------- */
+
+[data-theme="vegas"] .answer {
+    background: linear-gradient(180deg, #0d2a8a, #071a5c);
+    border: 0.35vmin solid #e2b73c;
+    box-shadow: 0 0 0 0.25vmin var(--answer-color) inset, 0 0.6vmin 1.4vmin rgba(0, 0, 0, 0.45);
+}
+
+/* A poker chip: the button colour with a dashed white ring. */
+[data-theme="vegas"] .answer-letter {
+    border: 0.45vmin dashed #fff;
+    box-shadow: 0 0 0 0.3vmin var(--answer-color);
+    color: #fff;
+    text-shadow: 0 0.2vmin 0 rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="vegas"] .answer.is-correct {
+    border-color: #fff6cf;
+    box-shadow: 0 0 0 0.4vmin var(--correct) inset, 0 0 4vmin #f5c542;
+    animation: vegas-jackpot 0.4s ease-in-out 3;
+}
+
+[data-theme="vegas"] .answer.is-dimmed { opacity: 0.3; filter: saturate(0.4); }
+
+/* A little slot-machine shake for a win. */
+@keyframes vegas-jackpot {
+    25% { transform: translateX(-0.6vmin) rotate(-0.6deg); }
+    75% { transform: translateX(0.6vmin) rotate(0.6deg); }
+}
+
+/* ---------- Feedback, scores and the rest ---------- */
+
+[data-theme="vegas"] .banner {
+    border: 0.35vmin solid #e2b73c;
+    text-transform: uppercase;
+}
+
+[data-theme="vegas"] .banner.correct {
+    background: linear-gradient(180deg, #ffe082, #f5c542 55%, #c9971c);
+    color: #04103a;
+    box-shadow: 0 0 4vmin rgba(245, 197, 66, 0.8);
+    animation: vegas-jackpot 0.4s ease-in-out 2;
+}
+
+[data-theme="vegas"] .banner.wrong {
+    background: linear-gradient(180deg, #ff6b7d, #d81f3a);
+    border-color: #ffd6dc;
+}
+
+[data-theme="vegas"] .high-score {
+    background: linear-gradient(180deg, #ffe082, #f5c542 55%, #c9971c);
+    border: 0.35vmin solid #fff6cf;
+    box-shadow: 0 0 3vmin rgba(245, 197, 66, 0.7);
+}
+
+[data-theme="vegas"] .timer-bar { border: 0.2vmin solid #e2b73c; }
+[data-theme="vegas"] .timer-bar-fill { background: linear-gradient(90deg, #c9971c, #fff0b3, #f5c542); }
+
+[data-theme="vegas"] .score-row .score,
+[data-theme="vegas"] .player-header .player-score {
+    color: #f5c542;
+    text-shadow: 0 0.25vmin 0 #6b4300;
+}
+
+[data-theme="vegas"] .big-button {
+    background: linear-gradient(180deg, #ffe082, #f5c542 55%, #c9971c);
+    box-shadow: 0 0.5vmin 0 #8a5a00;
+    text-transform: uppercase;
+}
+
+[data-theme="vegas"] .big-button.secondary {
+    background: linear-gradient(180deg, #1a43b8, #0d2a8a);
+    box-shadow: 0 0.5vmin 0 #04103a;
+    border: 0.25vmin solid #e2b73c;
+}
+
+[data-theme="vegas"] .choice h3 { color: #f5c542; }
+[data-theme="vegas"] .choice.is-selected {
+    border-color: #fff6cf;
+    background: linear-gradient(180deg, #1a43b8, #0d2a8a);
+    box-shadow: 0 0 3vmin rgba(245, 197, 66, 0.6);
+}
+
+[data-theme="vegas"] .player-screen {
+    box-shadow: inset 0 0 3vmin color-mix(in srgb, var(--station-color) 45%, transparent);
+}

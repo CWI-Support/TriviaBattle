@@ -41,18 +41,18 @@ public class GameHub(
         {
             case "main":
                 await Groups.AddToGroupAsync(Context.ConnectionId, ScreenGroups.MainScreen(roomId));
-                return screenStates.Create(roomId, null, MatchInRoom(roomId, Viewer.Main));
+                return screenStates.ForRoom(roomId, MatchesInRoom(roomId, Viewer.Main));
 
             case "kiosk":
                 await Groups.AddToGroupAsync(Context.ConnectionId, ScreenGroups.Kiosk(roomId));
-                return screenStates.Create(roomId, null, MatchInRoom(roomId, Viewer.Kiosk));
+                return screenStates.ForRoom(roomId, MatchesInRoom(roomId, Viewer.Kiosk));
 
             case "player":
                 var station = stations.Find(roomId, stationNumber ?? 0)
                     ?? throw new HubException($"Room {roomId} has no station {stationNumber}.");
                 await Groups.AddToGroupAsync(Context.ConnectionId, ScreenGroups.PlayerScreen(station.Id));
                 var match = host.GetSnapshotForStations([station.Id], Viewer.Player(station.Id));
-                return screenStates.Create(roomId, station, match);
+                return screenStates.ForStation(roomId, station, match);
 
             default:
                 throw new HubException($"Unknown screen role '{role}'.");
@@ -87,8 +87,8 @@ public class GameHub(
         return true;
     }
 
-    private MatchSnapshot? MatchInRoom(string roomId, Viewer viewer) =>
-        host.GetSnapshotForStations(stations.InRoom(roomId).Select(s => s.Id), viewer);
+    private IReadOnlyList<MatchSnapshot> MatchesInRoom(string roomId, Viewer viewer) =>
+        host.GetSnapshotsForStations(stations.InRoom(roomId).Select(s => s.Id), viewer);
 }
 
 /// <summary>Whether developer helpers (keyboard buttons, /api/dev) are switched on.</summary>

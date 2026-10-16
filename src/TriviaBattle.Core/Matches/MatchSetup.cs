@@ -8,9 +8,10 @@ namespace TriviaBattle.Core.Matches;
 /// A match is just a set of stations (seats). It doesn't belong to a "room";
 /// the rooms involved are whatever rooms the seated stations are in.
 /// </summary>
+/// <param name="CategoryIds">One or more categories; their questions are mixed together.</param>
 public sealed record MatchSetup(
     GameModeKind Mode,
-    int CategoryId,
+    IReadOnlyList<int> CategoryIds,
     Difficulty Difficulty,
     IReadOnlyList<SeatSetup> Seats,
     IReadOnlyList<TeamSetup> Teams);
