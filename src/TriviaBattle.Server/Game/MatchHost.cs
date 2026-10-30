@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
@@ -29,6 +30,7 @@ public sealed class MatchHost(
     IEnumerable<IMatchBroadcaster> broadcasters,
     MatchHistory history,
     LeaderboardService leaderboards,
+    DungeonMap dungeon,
     ILogger<MatchHost> logger)
 {
     private readonly object _lock = new();
@@ -66,11 +68,12 @@ public sealed class MatchHost(
                 GameModes.Create(setup.Mode),
                 matchSettings,
                 clock.GetUtcNow(),
-                Random.Shared);
+                Random.Shared,
+                dungeon);
 
             _matches.Add(match.MatchId, match);
-            logger.LogInformation("Match {Id} started: {Mode}, {Players} players, {Seconds}s, {Questions} questions in the pool, wrong answers: {Penalty}",
-                match.MatchId, match.Mode.DisplayName, setup.Seats.Count, matchSettings.MatchSeconds, questions.Count, matchSettings.WrongAnswerPenalty);
+            logger.LogInformation("Match {Id} started: {Format} {Mode}, {Players} players, {Seconds}s, {Questions} questions in the pool, wrong answers: {Penalty}",
+                match.MatchId, matchSettings.Format, match.Mode.DisplayName, setup.Seats.Count, matchSettings.MatchSeconds, questions.Count, matchSettings.WrongAnswerPenalty);
 
             Publish(match, [new PhaseChanged(match.Phase)]);
             return new StartMatchResult(match.MatchId, []);

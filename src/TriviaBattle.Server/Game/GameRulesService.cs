@@ -7,12 +7,14 @@ using TriviaBattle.Server.Data.Entities;
 
 namespace TriviaBattle.Server.Game;
 
-/// <summary>The game rules the operator can change on the admin page (Live tab).</summary>
+/// <summary>The game rules the operator can change on the admin page (Operator tab).</summary>
+/// <param name="Format">Classic quiz or Dungeon Quiz Quest.</param>
 public sealed record GameRules(
     double MatchSeconds,
     WrongAnswerPenalty WrongAnswerPenalty,
     double LockoutSeconds,
-    int WrongAnswerPoints);
+    int WrongAnswerPoints,
+    GameFormat Format);
 
 /// <summary>
 /// Game rules set on the admin page, saved in the database (AppSettings table). Anything not
@@ -32,6 +34,7 @@ public class GameRulesService(IDbContextFactory<TriviaDbContext> dbFactory, IOpt
         settings.WrongAnswerPenalty = rules.WrongAnswerPenalty;
         settings.LockoutSeconds = rules.LockoutSeconds;
         settings.WrongAnswerPoints = rules.WrongAnswerPoints;
+        settings.Format = rules.Format;
         return settings;
     }
 
@@ -49,7 +52,8 @@ public class GameRulesService(IDbContextFactory<TriviaDbContext> dbFactory, IOpt
             double.TryParse(Saved(nameof(GameRules.MatchSeconds)), CultureInfo.InvariantCulture, out var seconds) ? seconds : defaults.MatchSeconds,
             Enum.TryParse<WrongAnswerPenalty>(Saved(nameof(GameRules.WrongAnswerPenalty)), out var penalty) ? penalty : defaults.WrongAnswerPenalty,
             double.TryParse(Saved(nameof(GameRules.LockoutSeconds)), CultureInfo.InvariantCulture, out var lockout) ? lockout : defaults.LockoutSeconds,
-            int.TryParse(Saved(nameof(GameRules.WrongAnswerPoints)), CultureInfo.InvariantCulture, out var points) ? points : defaults.WrongAnswerPoints);
+            int.TryParse(Saved(nameof(GameRules.WrongAnswerPoints)), CultureInfo.InvariantCulture, out var points) ? points : defaults.WrongAnswerPoints,
+            Enum.TryParse<GameFormat>(Saved(nameof(GameRules.Format)), out var format) ? format : defaults.Format);
     }
 
     /// <summary>Plain-English problems with these rules; empty if they're fine.</summary>
@@ -64,6 +68,8 @@ public class GameRulesService(IDbContextFactory<TriviaDbContext> dbFactory, IOpt
             problems.Add("Points lost must be between 0 and 1000.");
         if (!Enum.IsDefined(rules.WrongAnswerPenalty))
             problems.Add("Unknown wrong-answer penalty.");
+        if (!Enum.IsDefined(rules.Format))
+            problems.Add("Unknown game format.");
         return problems;
     }
 
@@ -75,6 +81,7 @@ public class GameRulesService(IDbContextFactory<TriviaDbContext> dbFactory, IOpt
         await SetAsync(db, nameof(GameRules.WrongAnswerPenalty), rules.WrongAnswerPenalty.ToString());
         await SetAsync(db, nameof(GameRules.LockoutSeconds), rules.LockoutSeconds.ToString(CultureInfo.InvariantCulture));
         await SetAsync(db, nameof(GameRules.WrongAnswerPoints), rules.WrongAnswerPoints.ToString(CultureInfo.InvariantCulture));
+        await SetAsync(db, nameof(GameRules.Format), rules.Format.ToString());
         await db.SaveChangesAsync();
     }
 

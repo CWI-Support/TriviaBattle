@@ -6,6 +6,11 @@ buttons while a main screen and four player screens show the action. Several gro
 once (a solo player on one station, a trio on the other three): the kiosk only blocks stations
 that are busy, and the main screen splits into a panel per game.
 
+The room is becoming **Dungeon Quiz Quest** (design: [docs/DUNGEON-QUIZ-QUEST.md](docs/DUNGEON-QUIZ-QUEST.md)):
+every right answer is an attack on a monster, wrong answers and slow ones get you hit back, and you
+fight your way down floor by floor. It's the default game format; the classic quiz is still one
+switch away on the Operator screen.
+
 ## Quick start
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
@@ -128,6 +133,9 @@ to add a game mode, station or button mapping.
 | What | Where |
 |---|---|
 | Rooms and stations (count, labels, colors) | `src/TriviaBattle.Server/config/stations.json` |
+| Dungeon floors and monsters (HP, damage, hourglass, sprite) | `src/TriviaBattle.Server/config/dungeon.json` |
+| Dungeon combat numbers (adventurer HP, damage per difficulty, crits, combos, downed time) | `"Game:Dungeon"` in `appsettings.json` |
+| Classic quiz or Dungeon Quiz Quest | Operator screen, `/operator` (default: `"Game:Format"` in `appsettings.json`) |
 | Button id -> station + answer | `src/TriviaBattle.Server/config/buttons.json` |
 | Keyboard key -> button id (dev stand-in for buttons) | `src/TriviaBattle.Server/config/keyboard.json` |
 | PLC on/off, address, register map, button codes, LED registers | `src/TriviaBattle.Server/config/plc.json` (see docs/PLC-PROTOCOL.md) |

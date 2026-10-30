@@ -14,7 +14,8 @@ Current themes:
 
 | Theme | Look | Voice |
 |---|---|---|
-| `neon` (default) | Vaporwave LED: sunset sky and retro sun, a pink grid floor rolling toward you, colour-cycling LED strips, flickering neon-tube titles | Plain and friendly. **This is the base copy; every key lives here.** |
+| `dungeon` (default) | Dungeon Quiz Quest: torch-lit brick walls, iron frames, a parchment question scroll, Press Start 2P and VT323 pixel fonts (both OFL, bundled in the theme) | Its own titles, modes and kiosk lines; the Host's fight lines are in the base copy's `dungeon` section |
+| `neon` | Vaporwave LED: sunset sky and retro sun, a pink grid floor rolling toward you, colour-cycling LED strips, flickering neon-tube titles | Plain and friendly. **This is the base copy; every key lives here.** |
 | `showcase` | 70s TV game show: sunburst, marquee bulbs, price-tag answers | Cheesy, delighted daytime host |
 | `vegas` | Blue-and-gold Las Vegas showroom: spotlights, chasing gold marquee bulbs, gold-foil titles with a moving shine, poker-chip answer letters | The standard wording (a look only, no copy of its own) |
 

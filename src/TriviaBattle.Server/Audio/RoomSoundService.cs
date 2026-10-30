@@ -194,9 +194,10 @@ public sealed class RoomSoundService(
                 break;
 
             case AnswerGiven { Answer: var answer }:
-                // In 2v2 Group the team answers as one, so both teammates hear it.
+                // In 2v2 Group the team answers as one, so both teammates hear it. Otherwise the owner is
+                // the player's own station (also when a dungeon monster's hourglass ran out and nobody pressed).
                 var team = match.Roster.FindTeam(answer.OwnerId);
-                room.PlayStinger(team?.StationIds ?? [answer.PressedByStationId], answer.IsCorrect);
+                room.PlayStinger(team?.StationIds ?? [answer.OwnerId], answer.IsCorrect);
                 break;
         }
     }

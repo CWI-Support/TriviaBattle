@@ -122,8 +122,14 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
             <div id="l-volumes"></div>
             <div id="l-audio"></div>
             <h2>Game rules</h2>
-            <p class="dim">Every match is a timed round: answer as many as you can before the clock runs out. Changes apply from the next match.</p>
+            <p class="dim">Every match is a timed round. Dungeon Quiz Quest: answers are attacks on monsters, floor by floor (monsters are in config/dungeon.json). Classic: answer as many as you can. Changes apply from the next match.</p>
             <form id="l-rules" class="form-row">
+                <label>Game
+                    <select id="l-rules-format">
+                        <option value="Dungeon">Dungeon Quiz Quest</option>
+                        <option value="Classic">Classic quiz</option>
+                    </select>
+                </label>
                 <label>Round length (seconds) <input id="l-rules-seconds" type="number" min="15" max="600" step="5"></label>
                 <label>Wrong answers
                     <select id="l-rules-penalty">

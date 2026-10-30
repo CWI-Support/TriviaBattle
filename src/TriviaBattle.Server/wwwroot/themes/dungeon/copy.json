@@ -1,0 +1,68 @@
+{
+  "_about": "Dungeon Quiz Quest: the dungeon look (themes/dungeon/theme.css) and its own wording. The Host's fight lines are in the base copy (themes/neon/copy.json, \"dungeon\") so every theme can run the dungeon; lines here override the base. See docs/DUNGEON-QUIZ-QUEST.md.",
+  "brand": {
+    "title": "Dungeon Quiz Quest"
+  },
+  "modes": {
+    "FreeForAll": {
+      "name": "Free-for-All Delve",
+      "description": "Everyone fights their own monsters. Deepest delver wins."
+    },
+    "TeamSharedAnswer": {
+      "name": "Party Delve",
+      "description": "Your party shares one dungeon and one health bar. Either of you can attack!"
+    },
+    "TeamCombinedScore": {
+      "name": "Party Race",
+      "description": "Everyone fights their own monsters. Your damage adds up for your party."
+    }
+  },
+  "teams": {
+    "red": "Red Party",
+    "blue": "Blue Party"
+  },
+  "lobby": {
+    "subtitle": [
+      "Swipe in at the spellbook to begin your quest",
+      "The dungeon is hungry. Swipe in at the spellbook.",
+      "Knowledge is a weapon. Come and swing it."
+    ],
+    "leaderboardEmpty": "Nobody has survived yet. Be the first!"
+  },
+  "intro": {
+    "title": [
+      "Prepare to quest!",
+      "Welcome to the dungeon!",
+      "Contestants! Into the dungeon!"
+    ],
+    "playerTitle": [
+      "Prepare yourself, {name}!",
+      "Good luck, {name}. You'll need it.",
+      "{name} enters the dungeon!"
+    ],
+    "playerTeam": "You fight with the {team}",
+    "playerTeamWith": "You fight with the {team}, beside {teammates}",
+    "rules": "{seconds} seconds. Every right answer is an attack!"
+  },
+  "player": {
+    "idle": "Swipe in at the spellbook to quest",
+    "busy": "A quest is under way"
+  },
+  "results": {
+    "winner": [
+      "{name} delved deepest!",
+      "{name} wins! The dungeon weeps."
+    ],
+    "playerWon": "{who} delved deepest!"
+  },
+  "kiosk": {
+    "start": "Enter the dungeon!",
+    "modeTitle": "Choose your quest",
+    "playersTitle": "Who dares enter? Swipe your card at your station's slot",
+    "teamsTitle": "Form your parties: tap a hero to switch sides",
+    "categoryTitle": "Choose your realms",
+    "busyTitle": "A quest is under way",
+    "busyIntro": "Into the dungeon. The quest is starting!",
+    "started": "Your quest begins! Head to your stations."
+  }
+}

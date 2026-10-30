@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Matches;
 
 namespace TriviaBattle.Core.Snapshots;
@@ -24,6 +25,7 @@ public static class SnapshotBuilder
         return new MatchSnapshot(
             match.Version,
             match.MatchId,
+            match.Settings.Format.ToString(),
             match.Phase,
             match.PhaseStartedAt.ToUnixTimeMilliseconds(),
             ToUnixMs(match.PhaseEndsAt),
@@ -53,7 +55,8 @@ public static class SnapshotBuilder
             player.Tally.CorrectAnswers,
             player.Tally.WrongAnswers,
             ownsStream ? ToOutcome(stream.LastAnswer) : null,
-            ToUnixMs(stream.LockedOutUntil));
+            ToUnixMs(stream.LockedOutUntil),
+            ownsStream ? ToDelve(match.FindDelve(stream.OwnerId)) : null);
     }
 
     private static TeamView BuildTeam(MatchEngine match, Team team)
@@ -67,7 +70,8 @@ public static class SnapshotBuilder
             team.Tally.Score,
             team.Tally.CorrectAnswers,
             team.Tally.WrongAnswers,
-            ToOutcome(stream?.LastAnswer));
+            ToOutcome(stream?.LastAnswer),
+            ToDelve(stream == null ? null : match.FindDelve(stream.OwnerId)));
     }
 
     private static YouView? BuildYou(MatchEngine match, string stationId)
@@ -96,7 +100,8 @@ public static class SnapshotBuilder
                 question.MediaUrl,
                 ToUnixMs(stream.CurrentShownAt)),
             ToUnixMs(stream.LockedOutUntil),
-            ToYourAnswer(match, stream.LastAnswer));
+            ToYourAnswer(match, stream.LastAnswer),
+            ToDelve(match.FindDelve(stream.OwnerId)));
     }
 
     private static StreamView BuildStream(QuestionStream stream)
@@ -112,7 +117,34 @@ public static class SnapshotBuilder
     }
 
     private static AnswerOutcomeView? ToOutcome(GivenAnswer? answer) =>
-        answer == null ? null : new AnswerOutcomeView(answer.Number, answer.IsCorrect, answer.Points, answer.PressedByStationId);
+        answer == null ? null : new AnswerOutcomeView(answer.Number, answer.IsCorrect, answer.Points, answer.PressedByStationId, answer.TimedOut);
+
+    private static DelveView? ToDelve(Delve? delve)
+    {
+        if (delve == null)
+            return null;
+
+        var encounter = delve.Encounter;
+        return new DelveView(
+            encounter.Floor,
+            encounter.Room,
+            encounter.RoomsOnFloor,
+            encounter.Depth.Id,
+            encounter.Depth.Name,
+            new MonsterView(encounter.Monster.Name, encounter.Monster.Sprite, delve.MonsterHp, encounter.MaxHp, encounter.Monster.IsBoss),
+            delve.Hp,
+            delve.MaxHp,
+            delve.Streak,
+            delve.Kills,
+            ToUnixMs(delve.AttackStartedAt),
+            ToUnixMs(delve.AttackAt),
+            ToUnixMs(delve.DownedUntil),
+            delve.LastDealt,
+            delve.LastTaken,
+            delve.DepthPath()
+                .Select(e => new PathStepView(e.Floor, e.Room, e.Monster.Name, e.Monster.Sprite, e.Monster.IsBoss))
+                .ToList());
+    }
 
     private static YourAnswerView? ToYourAnswer(MatchEngine match, GivenAnswer? answer)
     {
@@ -127,7 +159,8 @@ public static class SnapshotBuilder
             answer.IsCorrect,
             answer.Points,
             answer.PressedByStationId,
-            match.Roster.FindPlayer(answer.PressedByStationId)?.Name ?? "");
+            match.Roster.FindPlayer(answer.PressedByStationId)?.Name ?? "",
+            answer.TimedOut);
     }
 
     private static long? ToUnixMs(DateTimeOffset? time) =>

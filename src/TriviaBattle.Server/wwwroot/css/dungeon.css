@@ -1,0 +1,382 @@
+/* Dungeon Quiz Quest layout: the station screen while fighting and the main screen's lanes.
+   Drawn by js/dungeon-view.js. Both group things the same way: the trail to the boss, the monster
+   with its nameplate (name, red HP, attack timer) right under it, then you (green HP, score, kills).
+
+   Like screens.css, this file is layout: it uses the shared tokens plus the --dg-* tokens below,
+   which a theme can override (themes/dungeon/theme.css does). Pixel art is scaled with
+   image-rendering: pixelated so it stays crisp. */
+
+:root {
+    --dg-frame: #2b2830;              /* iron frames: nameplates, answers, player plate, lanes */
+    --dg-frame-edge: #77727f;
+    --dg-parchment: #ead7a8;          /* the question scroll */
+    --dg-parchment-edge: #6b4a22;
+    --dg-parchment-text: #2a1d0e;
+    --dg-enemy-hp: #d62828;
+    --dg-hero-hp: #3ec94a;
+    --dg-hourglass: #f0b429;
+    --dg-font-pixel: var(--font-display);  /* nameplates, numbers */
+}
+
+.pixel-sprite { image-rendering: pixelated; image-rendering: crisp-edges; }
+.dg-icon { flex: 0 0 auto; width: 1.2em; height: auto; }
+
+/* ---------- Station screen (portrait) ---------- */
+
+/* The dungeon view has its own top line and player plate, so the normal header steps aside. */
+.player-screen.is-dungeon { grid-template-rows: minmax(0, 1fr); }
+.player-screen.is-dungeon .player-header { display: none; }
+.player-screen.is-dungeon .player-body { padding: 1.4vh 3vw; }
+
+.dg-station { height: 100%; display: flex; flex-direction: column; gap: calc(1vh * var(--fit)); }
+
+/* Where you are: floor, Depth, time left, and the trail of monsters to the boss. */
+.dg-top {
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+    padding: 1vh 2vw 1.2vh;
+    background: var(--dg-frame);
+    border: 0.6vmin solid var(--dg-frame-edge);
+    box-shadow: inset 0 0 0 0.4vmin #000;
+}
+.dg-top-line { display: flex; align-items: center; gap: 2vw; }
+.dg-depth-name { flex: 1; min-width: 0; color: var(--text-dim); font-size: 3vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.dg-floor-badge {
+    flex: 0 0 auto;
+    padding: 0.6vmin 1.4vmin;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-family: var(--dg-font-pixel);
+    font-size: 2.6vmin;
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: 0.4vmin 0.4vmin 0 #000;
+}
+
+.dg-clock { display: flex; align-items: baseline; gap: 1vmin; font-family: var(--dg-font-pixel); font-size: 3.4vmin; color: var(--text); }
+.dg-clock small { font-size: 0.55em; color: var(--text-dim); text-transform: uppercase; }
+.dg-clock .is-hurry { color: var(--wrong); animation: dg-blink 0.5s steps(1) infinite; }
+@keyframes dg-blink { 50% { opacity: 0.3; } }
+
+/* The trail: an icon per monster, grouped by floor, stairs between floors. Icons shrink to fit
+   the width (--steps, set by dungeon-view.js, counts them), up to --step-max. */
+.dg-trail { --step-max: 7.5vmin; container-type: inline-size; display: flex; align-items: center; justify-content: center; gap: 1vmin; }
+.dg-trail-floor {
+    display: flex;
+    gap: 0.5vmin;
+    padding: 0.5vmin;
+    background: rgba(0, 0, 0, 0.35);
+    border: 0.3vmin solid transparent;
+}
+.dg-trail-floor.is-here { border-color: var(--accent); }
+.dg-step, .dg-trail-stairs { --step: min(var(--step-max), calc(100cqw / (var(--steps) + 3))); }
+.dg-trail-stairs { display: flex; opacity: 0.8; }
+.dg-trail-stairs .dg-icon { width: calc(var(--step) * 0.45); }
+.dg-step { display: flex; position: relative; }
+.dg-step img { width: var(--step); height: var(--step); }
+.dg-step.is-beaten img { filter: grayscale(1) brightness(0.45); }
+.dg-step.is-beaten::after {
+    /* a red X over beaten monsters */
+    content: '';
+    position: absolute;
+    inset: 15%;
+    background:
+        linear-gradient(45deg, transparent 43%, var(--wrong) 43% 57%, transparent 57%),
+        linear-gradient(-45deg, transparent 43%, var(--wrong) 43% 57%, transparent 57%);
+    opacity: 0.85;
+}
+.dg-step.is-ahead img { filter: brightness(0.8); }
+.dg-step.is-current { outline: 0.5vmin solid var(--accent); background: rgba(240, 180, 41, 0.2); animation: dg-idle 1.2s steps(2) infinite; }
+.dg-step.is-boss { outline: 0.4vmin solid var(--wrong); }
+.dg-step.is-boss.is-current { outline-color: var(--accent); }
+
+.dg-scroll {
+    background: var(--dg-parchment);
+    color: var(--dg-parchment-text);
+    border: 0.6vmin solid var(--dg-parchment-edge);
+    box-shadow: 0 0.8vmin 0 rgba(0, 0, 0, 0.5);
+    padding: calc(1.6vh * var(--fit)) 3vw;
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: calc(5.4vmin * var(--fit));
+    line-height: 1.12;
+}
+.dg-scroll-tag { font-size: 0.55em; opacity: 0.7; text-transform: uppercase; margin-bottom: 0.4vh; }
+.dg-scroll .question-media { max-height: calc(16vh * var(--fit)); display: block; margin: 0 auto 1vh; }
+
+/* The monster's room: takes whatever height is left. */
+.dg-stage { flex: 1 1 0; min-height: 12vh; position: relative; display: flex; justify-content: center; }
+
+.dg-monster-wrap { position: relative; height: 100%; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.dg-monster {
+    height: min(100%, 46vmin);
+    filter: drop-shadow(0 1.5vmin 0 rgba(0, 0, 0, 0.45));
+    animation: dg-idle 1.2s steps(2) infinite;
+}
+.dg-monster.is-boss { height: min(100%, 58vmin); }
+.dg-monster.is-hit { animation: dg-hit 0.45s steps(6), dg-idle 1.2s steps(2) 0.45s infinite; }
+.dg-monster.is-attacking { animation: dg-lunge 0.5s ease-out, dg-idle 1.2s steps(2) 0.5s infinite; }
+.dg-monster.is-new { animation: dg-drop 0.6s cubic-bezier(0.3, 1.5, 0.6, 1), dg-idle 1.2s steps(2) 0.6s infinite; }
+
+@keyframes dg-idle { 50% { transform: translateY(-2%); } }
+@keyframes dg-hit {
+    0%, 100% { transform: none; filter: none; }
+    20% { transform: translateX(-5%); filter: brightness(3); }
+    40% { transform: translateX(5%); }
+    60% { transform: translateX(-2%); filter: brightness(2); }
+}
+@keyframes dg-lunge { 40% { transform: scale(1.25) translateY(8%); } }
+@keyframes dg-drop { from { transform: translateY(-60%); opacity: 0; } }
+
+/* The monster's nameplate, right under it: name, HP (red), and the attack timer. */
+.dg-enemy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8vh;
+    padding: 1vh 2vw 1.2vh;
+    background: var(--dg-frame);
+    border: 0.6vmin solid var(--dg-frame-edge);
+    box-shadow: inset 0 0 0 0.4vmin #000;
+}
+.dg-enemy.is-boss { border-color: var(--wrong); }
+.dg-enemy-name {
+    font-family: var(--dg-font-pixel);
+    text-align: center;
+    text-transform: uppercase;
+    font-size: calc(3.2vmin * var(--fit));
+    color: var(--text);
+}
+.dg-enemy.is-boss .dg-enemy-name { color: var(--wrong); }
+
+/* Hit points: a heart, then the bar with "value / max" on it. */
+.dg-hp { display: flex; align-items: center; gap: 1.2vmin; font-size: 4vmin; }
+.dg-bar { position: relative; flex: 1; height: 4.2vmin; background: #140c0c; border: 0.4vmin solid #000; }
+.dg-bar-fill {
+    height: 100%;
+    background: var(--dg-enemy-hp);
+    box-shadow: inset 0 -0.6vmin 0 rgba(0, 0, 0, 0.35), inset 0 0.5vmin 0 rgba(255, 255, 255, 0.25);
+    transition: width 0.3s steps(6);
+}
+.dg-hp.is-hero .dg-bar-fill { background: var(--dg-hero-hp); }
+.dg-bar-text {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: var(--dg-font-pixel);
+    font-size: 1.9vmin;
+    line-height: 1;
+    color: #fff;
+    text-shadow: 0.25vmin 0.25vmin 0 #000;
+}
+
+/* "Attacks in 7" and the hourglass draining beside it; red in the last few seconds. */
+.dg-attack { display: flex; align-items: center; gap: 1.2vmin; font-size: 4vmin; }
+.dg-attack-label { font-family: var(--font-body); font-size: 3.4vmin; color: var(--text); white-space: nowrap; }
+.dg-attack-label .is-hurry { color: var(--wrong); }
+.dg-attack.is-stopped { opacity: 0.5; }
+.dg-hourglass { flex: 1; height: 2.2vmin; border-radius: 0; background: #1b1408; border: 0.4vmin solid #000; }
+.dg-hourglass .timer-bar-fill { background: var(--dg-hourglass); border-radius: 0; }
+.dg-hourglass.timer-bar-low .timer-bar-fill { background: var(--wrong); }
+
+/* Damage numbers float up off the monster; a crit is bigger and gold. */
+.dg-float {
+    position: absolute;
+    top: 12%;
+    left: 50%;
+    font-family: var(--dg-font-pixel);
+    font-size: 6vmin;
+    color: #fff;
+    text-shadow: 0.4vmin 0.4vmin 0 #000;
+    pointer-events: none;
+    animation: dg-float 1s ease-out forwards;
+}
+.dg-float.is-crit { color: #ffd23f; font-size: 8vmin; }
+.dg-float.is-taken { color: var(--wrong); top: 55%; }
+@keyframes dg-float {
+    from { transform: translate(-50%, 30%); opacity: 1; }
+    to { transform: translate(-50%, -90%); opacity: 0; }
+}
+
+.dg-slain {
+    position: absolute;
+    left: 50%;
+    bottom: 6%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: var(--dg-font-pixel);
+    font-size: 3.6vmin;
+    color: #ffd23f;
+    text-shadow: 0.35vmin 0.35vmin 0 #000;
+    animation: dg-fade 1.8s ease-in forwards;
+}
+@keyframes dg-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Downed / stunned: a box over the monster, sized to its words. */
+.dg-overlay {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: max-content;
+    max-width: 90%;
+    text-align: center;
+    padding: 2vmin 3vmin;
+    font-family: var(--dg-font-pixel);
+    font-size: 4.2vmin;
+    line-height: 1.4;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.8);
+    border: 0.6vmin solid var(--wrong);
+}
+.dg-overlay.is-stunned { border-color: var(--accent); font-size: 3.6vmin; }
+.dg-overlay.small { font-size: 2.2vmin; }
+
+/* Taking a hit flashes the whole screen red and gives it a shake. */
+.dg-station.is-hurt, .dg-lane.is-hurt { animation: dg-hurt 0.45s; }
+@keyframes dg-hurt {
+    0% { box-shadow: inset 0 0 0 3vmin var(--wrong); transform: translateX(-0.8vmin); }
+    30% { transform: translateX(0.8vmin); }
+    100% { box-shadow: inset 0 0 0 0 transparent; transform: none; }
+}
+
+/* The Host's banner: green for a hit, gold for something big, red when you got hurt. */
+.dg-feedback {
+    --tone: var(--text-dim);
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: calc(4.4vmin * var(--fit));
+    line-height: 1.1;
+    padding: 0.8vh 2vw;
+    color: var(--tone);
+    background: color-mix(in srgb, var(--tone) 14%, transparent);
+    border-left: 1vmin solid var(--tone);
+    border-right: 1vmin solid var(--tone);
+}
+.dg-feedback.is-go { --tone: var(--text); background: transparent; border-color: transparent; }
+.dg-feedback.is-good { --tone: var(--correct); }
+.dg-feedback.is-great { --tone: #ffd23f; }
+.dg-feedback.is-bad { --tone: var(--wrong); }
+.dg-feedback.pop { animation: pop 0.4s ease-out; }
+.dg-feedback-detail { font-size: 0.8em; color: var(--text); }
+
+.dg-answers { display: grid; grid-template-columns: minmax(0, 1fr); gap: calc(1.1vh * var(--fit)); }
+@media (orientation: landscape) {
+    .dg-answers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.dg-answer {
+    display: flex;
+    align-items: center;
+    gap: 2vw;
+    padding: calc(1.2vh * var(--fit)) 2vw;
+    background: var(--dg-frame);
+    border: 0.5vmin solid var(--answer-color);
+    box-shadow: inset 0 0 0 0.4vmin #000, 0 0 1.5vmin color-mix(in srgb, var(--answer-color) 35%, transparent);
+    font-family: var(--font-body);
+    font-size: calc(5vmin * var(--fit));
+    line-height: 1.1;
+}
+.dg-answer[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-answer[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-answer[data-letter="C"] { --answer-color: var(--answer-c); }
+.dg-answer[data-letter="D"] { --answer-color: var(--answer-d); }
+.dg-answer.is-dimmed { opacity: 0.35; filter: grayscale(0.6); }
+
+/* The rune box: the answer's letter on its button colour. */
+.dg-rune {
+    flex: 0 0 auto;
+    width: calc(7vmin * var(--fit));
+    height: calc(7vmin * var(--fit));
+    display: grid;
+    place-items: center;
+    background: var(--answer-color);
+    border: 0.5vmin solid #000;
+    color: #000;
+    font-family: var(--dg-font-pixel);
+    font-size: calc(3.4vmin * var(--fit));
+}
+
+/* You: portrait, name, HP (green), score and kills. */
+.dg-plate {
+    display: flex;
+    align-items: center;
+    gap: 2vw;
+    padding: 1vh 2vw;
+    background: var(--dg-frame);
+    border: 0.6vmin solid var(--station-color, var(--dg-frame-edge));
+    box-shadow: inset 0 0 0 0.4vmin #000;
+}
+.dg-portrait { width: 11vmin; height: 11vmin; background: #2a2630; border: 0.5vmin solid #000; }
+.dg-portrait.small { width: 6vmin; height: 6vmin; }
+.dg-plate-info { flex: 1; display: flex; flex-direction: column; gap: 1vh; min-width: 0; }
+.dg-plate-name {
+    font-family: var(--dg-font-pixel);
+    font-size: 3vmin;
+    color: var(--station-color);
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dg-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 0.8vh; font-family: var(--dg-font-pixel); }
+.dg-stat { display: flex; align-items: center; gap: 1.2vmin; }
+.dg-stat small { font-size: 1.8vmin; color: var(--text-dim); text-transform: uppercase; }
+.dg-stat b { font-weight: normal; font-size: 3.6vmin; color: var(--accent); }
+.dg-stat.is-kills { font-size: 3.6vmin; }
+.dg-stat.is-kills b { font-size: 2.8vmin; color: var(--text); }
+
+/* ---------- Main screen: a lane per adventurer (or party) ---------- */
+
+.dg-main { height: 100%; display: flex; flex-direction: column; gap: 1.2vh; padding: 3vh 3vw; }
+.dg-main .match-clock { font-size: 12vmin; line-height: 1; }
+.dg-lanes { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2vw; }
+
+.dg-lane {
+    position: relative;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2vh;
+    padding: 1.5vh 1.2vw;
+    background: var(--dg-frame);
+    border: 0.6vmin solid var(--dg-frame-edge);
+    border-top: 1.2vmin solid var(--lane-color);
+}
+.dg-lane.is-leader { box-shadow: 0 0 0 0.5vmin var(--accent), 0 0 4vmin var(--accent); }
+
+.dg-lane-head { display: flex; align-items: center; gap: 1vw; }
+.dg-rank {
+    flex: 0 0 auto;
+    font-family: var(--dg-font-pixel);
+    font-size: 2.4vmin;
+    padding: 0.5vmin 1vmin;
+    background: #000;
+    color: var(--text);
+    text-transform: uppercase;
+}
+.dg-lane.is-leader .dg-rank { background: var(--accent); color: var(--accent-text); }
+.dg-lane-name { flex: 1; min-width: 0; font-family: var(--dg-font-pixel); font-size: 2.4vmin; color: var(--lane-color); overflow-wrap: anywhere; }
+.dg-lane .dg-floor-badge { font-size: 2.2vmin; }
+
+.dg-lane .dg-trail { --step-max: 4.5vmin; }
+.dg-lane-stage { flex: 1; min-height: 8vh; position: relative; display: flex; justify-content: center; }
+.dg-lane .dg-monster { height: min(100%, 26vmin); }
+.dg-lane .dg-monster.is-boss { height: min(100%, 32vmin); }
+.dg-lane .dg-float { font-size: 4vmin; }
+.dg-lane .dg-float.is-crit { font-size: 5vmin; }
+.dg-lane .dg-slain { font-size: 2vmin; }
+.dg-lane .dg-enemy { padding: 0.8vh 1vw; border-width: 0.4vmin; }
+.dg-lane .dg-enemy-name { font-size: 2vmin; }
+.dg-lane .dg-hp, .dg-lane .dg-attack { font-size: 3vmin; }
+.dg-lane .dg-bar { height: 3.2vmin; }
+.dg-lane .dg-bar-text { font-size: 1.5vmin; }
+.dg-lane .dg-attack-label { font-size: 2.6vmin; }
+.dg-lane .dg-hourglass { height: 1.6vmin; }
+.dg-lane-hero { display: flex; align-items: center; gap: 1vw; }
+.dg-lane-hero .dg-hp { flex: 1; }
+.dg-lane .dg-stats { flex-direction: row; justify-content: space-between; align-items: center; }
+.dg-lane .dg-stat b { font-size: 3.2vmin; }

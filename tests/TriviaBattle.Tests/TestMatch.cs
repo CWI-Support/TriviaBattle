@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
@@ -46,8 +47,20 @@ public sealed class TestMatch
             GameModes.Create(mode),
             Settings,
             Now,
-            new Random(1)); // seeded, so question orders are the same every run
+            new Random(1), // seeded, so question orders are the same every run
+            Settings.Format == GameFormat.Dungeon ? Dungeon : null);
     }
+
+    /// <summary>
+    /// The dungeon for Dungeon-format tests: floor 1 has two rats (40 HP, hit for 10), floor 2 a boss
+    /// (60 HP, hits for 50). Every hourglass is 10 seconds.
+    /// </summary>
+    public static readonly DungeonMap Dungeon = new(
+        [new DepthDef("test", "Test Depth", [new FloorDef(["rat", "rat"]), new FloorDef(["boss"])])],
+        [
+            new MonsterDef("rat", "Rat", "rat", Hp: 40, Damage: 10, AttackSeconds: 10),
+            new MonsterDef("boss", "Boss", "boss", Hp: 60, Damage: 50, AttackSeconds: 10, IsBoss: true),
+        ]);
 
     public MatchSettings Settings { get; }
     public MatchEngine Engine { get; }
@@ -92,6 +105,9 @@ public sealed class TestMatch
     }
 
     public QuestionStream StreamOf(string stationId) => Engine.StreamFor(Engine.Roster.FindPlayer(stationId)!);
+
+    /// <summary>Dungeon format: the delve a player is on (their own, or their team's in 2v2 Group).</summary>
+    public Delve DelveOf(string stationId) => Engine.FindDelve(StreamOf(stationId).OwnerId)!;
 
     public int ScoreOf(string stationId) => Engine.Roster.FindPlayer(stationId)!.Tally.Score;
 

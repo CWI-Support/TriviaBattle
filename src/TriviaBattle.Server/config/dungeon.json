@@ -1,0 +1,28 @@
+{
+  "_about": "Dungeon Quiz Quest content: Depths (runs of floors, top to bottom), the monsters on each floor, and the monsters themselves. Edit freely; the server checks it at startup. Sprite = a built-in placeholder key (see wwwroot/js/pixel-sprites.js) or a picture path like /media/dungeon/goblin.png once the real art exists. Hp = hit points on the first pass (each loop back to the top adds LoopHpBonus). Damage = HP a hit takes off the adventurer. AttackSeconds = the monster's hourglass.",
+
+  "LoopHpBonus": 0.5,
+
+  "Depths": [
+    {
+      "Id": "cellar",
+      "Name": "The Cellar of Common Knowledge",
+      "Floors": [
+        { "Monsters": [ "rat", "slime" ] },
+        { "Monsters": [ "bats", "goblin-bandit" ] },
+        { "Monsters": [ "slime", "skeleton-intern" ] },
+        { "Monsters": [ "goblin-bandit", "skeleton-intern" ] },
+        { "Monsters": [ "goblin-quizmaster" ] }
+      ]
+    }
+  ],
+
+  "Monsters": [
+    { "Id": "rat", "Name": "Cellar Rat", "Sprite": "rat", "Hp": 60, "Damage": 10, "AttackSeconds": 12 },
+    { "Id": "slime", "Name": "Damp Slime", "Sprite": "slime", "Hp": 80, "Damage": 12, "AttackSeconds": 12 },
+    { "Id": "bats", "Name": "Bat Swarm", "Sprite": "bat", "Hp": 70, "Damage": 10, "AttackSeconds": 8 },
+    { "Id": "goblin-bandit", "Name": "Goblin Bandit", "Sprite": "goblin", "Hp": 100, "Damage": 15, "AttackSeconds": 10 },
+    { "Id": "skeleton-intern", "Name": "Skeleton Intern", "Sprite": "skeleton", "Hp": 120, "Damage": 18, "AttackSeconds": 10 },
+    { "Id": "goblin-quizmaster", "Name": "The Goblin Quizmaster", "Sprite": "goblin-boss", "Hp": 300, "Damage": 25, "AttackSeconds": 9, "IsBoss": true }
+  ]
+}

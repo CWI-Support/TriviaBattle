@@ -10,6 +10,10 @@ namespace TriviaBattle.Core.Matches;
 /// <param name="PressedByStationId">The station whose button press gave the answer.</param>
 /// <param name="Points">Points added (or, as a negative number, taken off) for this answer.</param>
 /// <param name="ResponseTime">Time from the question appearing to the press.</param>
+/// <param name="TimedOut">
+/// Dungeon format: nobody answered before the monster's hourglass ran out. There was no press
+/// (<see cref="AnswerIndex"/> is -1) and the question is gone.
+/// </param>
 public sealed record GivenAnswer(
     string OwnerId,
     int Number,
@@ -19,7 +23,8 @@ public sealed record GivenAnswer(
     bool IsCorrect,
     int Points,
     DateTimeOffset PressedAt,
-    TimeSpan ResponseTime);
+    TimeSpan ResponseTime,
+    bool TimedOut = false);
 
 /// <summary>
 /// One answer owner's run through the questions during the Playing phase. Every player has

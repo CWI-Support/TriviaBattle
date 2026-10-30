@@ -21,6 +21,7 @@ function render(state) {
     if (state.match?.matchId !== lastState?.match?.matchId) {
         myPlacement = null;
         lastAnswerShown = null;
+        DungeonView.reset();
     }
     lastState = state;
     introVideo.follow(state.cue, { muted: true }); // sound comes from the main screen only
@@ -34,13 +35,16 @@ function render(state) {
     document.getElementById('player-score').textContent = you ? you.score.toLocaleString() : '';
 
     const body = document.getElementById('player-body');
+    // Dungeon Quiz Quest draws its own enemy bar and player plate, so the header steps aside while fighting.
+    const fighting = match?.format === 'Dungeon' && match.phase === 'Playing' && !!you?.delve;
+    document.querySelector('.player-screen').classList.toggle('is-dungeon', fighting);
 
     if (!match || !you) {
         body.innerHTML = idle(state, match);
     } else {
         switch (match.phase) {
             case 'Intro':    body.innerHTML = intro(match, you); break;
-            case 'Playing':  body.innerHTML = playing(match, you); break;
+            case 'Playing':  body.innerHTML = fighting ? DungeonView.station(match, you, connection.serverNow(), state.station.color) : playing(match, you); break;
             case 'Results':
             case 'Finished': body.innerHTML = results(match, you); break;
         }

@@ -36,6 +36,7 @@ function render(state) {
     Object.keys(placements).filter(id => !live.has(id)).forEach(id => delete placements[id]);
 
     if (state.matches.length === 0) {
+        DungeonView.reset();
         document.getElementById('lobby-title').innerHTML = Theme.text('brand.title');
         document.getElementById('lobby-subtitle').innerHTML = Theme.text('lobby.subtitle', {}, new Date().toDateString());
         showFitted('view-lobby');
@@ -181,6 +182,10 @@ function teamsVersus(match, at = null) {
 // ---------------------------------------------------------------- Playing (the clock is running)
 
 function renderPlaying(match) {
+    if (match.format === 'Dungeon') {
+        renderDungeonPlaying(match);
+        return;
+    }
     document.getElementById('view-playing').innerHTML = `
         <div class="main-playing">
             <div class="playing-header">
@@ -192,6 +197,36 @@ function renderPlaying(match) {
             <div class="race-board">${match.standings.map(s => raceRow(match, s)).join('')}</div>
         </div>`;
     showFitted('view-playing');
+}
+
+/**
+ * Dungeon Quiz Quest: a column per adventurer (or per party in 2v2 Group) showing their place, floor,
+ * the trail to the boss, the monster they're fighting and their HP. The deepest (then highest score) leads.
+ */
+function renderDungeonPlaying(match) {
+    const partyDelves = match.usesTeams && match.teams.some(t => t.delve);
+    const owners = partyDelves
+        ? match.teams.map(t => ({ key: t.id, name: UI.escape(t.name), color: teamColor(match, t.id), delve: t.delve, score: t.score }))
+        : match.players.map(p => ({ key: p.stationId, name: UI.escape(p.name), color: colorOf(p.stationId), delve: p.delve, score: p.score }));
+    const ahead = (a, b) => b.delve.floor - a.delve.floor || b.score - a.score;
+    const rankOf = o => owners.filter(other => ahead(other, o) < 0).length + 1;
+    const anyoneBehind = owners.some(o => rankOf(o) > 1); // nobody glows while it's all square
+    const now = connection.serverNow();
+
+    document.getElementById('view-playing').innerHTML = `
+        <div class="dg-main">
+            <div class="playing-header">
+                <span>${modeName(match)} &middot; ${UI.escape(match.category)}</span>
+                <span>${Theme.text('dungeon.mainTitle', {}, momentSeed(match))}</span>
+            </div>
+            <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+            <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
+            <div class="dg-lanes">${owners.map(o => {
+                const rank = owners.length > 1 ? rankOf(o) : null;
+                return DungeonView.lane({ ...o, rank, isLeader: rank === 1 && anyoneBehind, serverNow: now });
+            }).join('')}</div>
+        </div>`;
+    UI.showView('view-playing');
 }
 
 /** One leaderboard line. Flashes green/red when this player/team has just answered. */

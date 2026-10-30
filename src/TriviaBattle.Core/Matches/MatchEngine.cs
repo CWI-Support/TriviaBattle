@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Questions;
@@ -20,6 +21,9 @@ namespace TriviaBattle.Core.Matches;
 /// </list>
 /// Both return the <see cref="MatchEvent"/>s that happened (empty if nothing changed).
 ///
+/// In <see cref="GameFormat.Dungeon"/> every answer owner also has a <see cref="Delve"/>: correct
+/// answers hit their monster, wrong ones (or its hourglass running out) get them hit back.
+///
 /// The current time is always passed in rather than read from a clock, which keeps the
 /// engine predictable and easy to test.
 ///
@@ -30,9 +34,11 @@ public sealed class MatchEngine
     private static readonly IReadOnlyList<MatchEvent> NothingHappened = [];
 
     private readonly Dictionary<string, QuestionStream> _streams;
+    private readonly Dictionary<string, Delve> _delves = new();
 
     /// <param name="questions">The question pool. Every answer owner gets their own order of it.</param>
     /// <param name="random">Shuffles each owner's question order. Tests pass a seeded one.</param>
+    /// <param name="dungeon">The floors and monsters. Required when <see cref="MatchSettings.Format"/> is Dungeon.</param>
     public MatchEngine(
         string matchId,
         MatchSetup setup,
@@ -40,7 +46,8 @@ public sealed class MatchEngine
         IGameMode mode,
         MatchSettings settings,
         DateTimeOffset now,
-        Random random)
+        Random random,
+        DungeonMap? dungeon = null)
     {
         if (questions.Count == 0)
             throw new ArgumentException("A match needs at least one question.", nameof(questions));
@@ -61,6 +68,14 @@ public sealed class MatchEngine
                 .OrderBy(q => q.Difficulty == setup.Difficulty ? 0 : 1)
                 .ThenBy(_ => random.Next())
                 .ToList()));
+
+        if (settings.Format == GameFormat.Dungeon)
+        {
+            if (dungeon == null)
+                throw new ArgumentException("Dungeon format needs the dungeon map.", nameof(dungeon));
+            foreach (var ownerId in _streams.Keys)
+                _delves[ownerId] = new Delve(ownerId, dungeon, settings.Dungeon);
+        }
 
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
     }
@@ -96,6 +111,11 @@ public sealed class MatchEngine
 
     public QuestionStream? FindStream(string ownerId) => _streams.GetValueOrDefault(ownerId);
 
+    public bool IsDungeon => Settings.Format == GameFormat.Dungeon;
+
+    /// <summary>Dungeon format: an answer owner's trip down the dungeon. Null in Classic format.</summary>
+    public Delve? FindDelve(string ownerId) => _delves.GetValueOrDefault(ownerId);
+
     public bool HasStation(string stationId) => Roster.FindPlayer(stationId) != null;
 
     public IReadOnlyList<Standing> GetStandings() => Standings.Calculate(Roster, Mode.UsesTeams);
@@ -104,7 +124,10 @@ public sealed class MatchEngine
     // Inputs
     // ------------------------------------------------------------------
 
-    /// <summary>Ends any lockouts that have run out, and moves to the next phase when the current one's time is up.</summary>
+    /// <summary>
+    /// Ends any lockouts that have run out, lets monsters whose hourglass ran out attack (Dungeon
+    /// format), and moves to the next phase when the current one's time is up.
+    /// </summary>
     public IReadOnlyList<MatchEvent> Tick(DateTimeOffset now)
     {
         if (IsFinished)
@@ -117,6 +140,22 @@ public sealed class MatchEngine
             stream.EndLockout();
             Version++;
             events.Add(new LockoutEnded(stream.OwnerId));
+
+            if (FindDelve(stream.OwnerId) is { } delve && Phase == MatchPhase.Playing)
+            {
+                if (delve.DownedUntil != null)
+                {
+                    delve.GetUp();
+                    events.Add(new AdventurerGotUp(stream.OwnerId));
+                }
+                delve.StartHourglass(now);
+            }
+        }
+
+        if (Phase == MatchPhase.Playing && now < PhaseEndsAt)
+        {
+            foreach (var delve in _delves.Values.Where(d => d.IsAttackDue(now)))
+                events.AddRange(MonsterAttacks(delve, now));
         }
 
         if (now >= PhaseEndsAt)
@@ -144,6 +183,11 @@ public sealed class MatchEngine
         var isCorrect = press.AnswerIndex == question.CorrectIndex;
         var losesPoints = !isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.LosePoints;
 
+        // Dungeon format: a correct answer is an attack, and its points are the damage it did.
+        var delve = FindDelve(stream.OwnerId);
+        var dealt = isCorrect ? delve?.Strike(question.Difficulty, press.PressedAt - shownAt) : null;
+        var correctPoints = dealt?.Damage ?? Settings.CorrectPoints;
+
         var answer = new GivenAnswer(
             stream.OwnerId,
             stream.CurrentNumber,
@@ -151,7 +195,7 @@ public sealed class MatchEngine
             press.StationId,
             press.AnswerIndex,
             isCorrect,
-            Points: isCorrect ? Settings.CorrectPoints : losesPoints ? -Settings.WrongAnswerPoints : 0,
+            Points: isCorrect ? correctPoints : losesPoints ? -Settings.WrongAnswerPoints : 0,
             press.PressedAt,
             ResponseTime: press.PressedAt - shownAt);
 
@@ -162,7 +206,55 @@ public sealed class MatchEngine
             stream.LockOut(now + TimeSpan.FromSeconds(Settings.LockoutSeconds));
 
         Version++;
-        return [new AnswerGiven(answer)];
+        List<MatchEvent> events = [new AnswerGiven(answer)];
+        if (delve == null)
+            return events;
+
+        if (dealt != null)
+            events.Add(new MonsterHit(stream.OwnerId, dealt));
+        else
+            events.Add(new AdventurerHit(stream.OwnerId, delve.TakeHit(HitReason.WrongAnswer, now)));
+
+        AfterDungeonTurn(stream, delve, now);
+        return events;
+    }
+
+    /// <summary>The monster's hourglass ran out: it attacks, and the question it was guarding is lost.</summary>
+    private IReadOnlyList<MatchEvent> MonsterAttacks(Delve delve, DateTimeOffset now)
+    {
+        var stream = _streams[delve.OwnerId];
+        var lost = new GivenAnswer(
+            stream.OwnerId,
+            stream.CurrentNumber,
+            stream.CurrentQuestion,
+            PressedByStationId: "",
+            AnswerIndex: -1,
+            IsCorrect: false,
+            Points: 0,
+            now,
+            ResponseTime: now - stream.CurrentShownAt!.Value,
+            TimedOut: true);
+        stream.Record(lost, now);
+
+        var hit = delve.TakeHit(HitReason.TooSlow, now);
+        AfterDungeonTurn(stream, delve, now);
+        Version++;
+        return [new AnswerGiven(lost), new AdventurerHit(stream.OwnerId, hit)];
+    }
+
+    /// <summary>
+    /// After an answer or an attack: downed adventurers' buttons go dead until they get up, and the
+    /// hourglass runs for the next question unless the buttons are dead (it restarts when they work again).
+    /// </summary>
+    private static void AfterDungeonTurn(QuestionStream stream, Delve delve, DateTimeOffset now)
+    {
+        if (delve.DownedUntil is { } downedUntil && (stream.LockedOutUntil == null || stream.LockedOutUntil < downedUntil))
+            stream.LockOut(downedUntil);
+
+        if (stream.IsLockedOutAt(now))
+            delve.StopHourglass();
+        else
+            delve.StartHourglass(now);
     }
 
     /// <summary>Ends the match immediately (operator abort from the admin page).</summary>
@@ -187,10 +279,14 @@ public sealed class MatchEngine
             case MatchPhase.Intro:
                 foreach (var stream in _streams.Values)
                     stream.Start(now);
+                foreach (var delve in _delves.Values)
+                    delve.StartHourglass(now);
                 EnterPhase(MatchPhase.Playing, now, Settings.MatchSeconds);
                 return [new PhaseChanged(Phase)];
 
             case MatchPhase.Playing:
+                foreach (var delve in _delves.Values)
+                    delve.StopHourglass();
                 EnterPhase(MatchPhase.Results, now, Settings.ResultsSeconds);
                 return [new PhaseChanged(Phase)];
 

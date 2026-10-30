@@ -7,6 +7,10 @@ separate repo). `README.md` and `docs/ARCHITECTURE.md` are the source of truth
 for structure, terminology (Station, Match, Answer owner, Question stream, Snapshot) and how to extend things. The
 README's status table shows which of the 6 implementation phases are done.
 
+The room is moving to Dungeon Quiz Quest (`docs/DUNGEON-QUIZ-QUEST.md`): Dungeon format is the default
+(`Core/Dungeon`, `config/dungeon.json`, `js/dungeon-view.js`, `css/dungeon.css`, `themes/dungeon`). Keep the
+Classic format working until it's formally dropped.
+
 ## Ground rules
 
 - **Code must stay readable by ordinary developers.** Prefer plain, explicit code over clever abstractions,

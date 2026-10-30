@@ -1,0 +1,138 @@
+/* DUNGEON QUIZ QUEST: a torch-lit stone dungeon in 16-bit pixel style, after ReferenceImages/.
+   Brick walls, iron frames, a parchment question scroll, pixel fonts. The fight screens' layout is in
+   /css/dungeon.css (its --dg-* tokens are set here). Scoped to [data-theme="dungeon"].
+   Fonts: Press Start 2P and VT323, both SIL Open Font License (see fonts/OFL-*.txt). */
+
+@font-face {
+    font-family: 'Press Start 2P';
+    src: url('fonts/PressStart2P-Regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'VT323';
+    src: url('fonts/VT323-Regular.ttf') format('truetype');
+}
+
+:root[data-theme="dungeon"] {
+    /* Colours: dark stone, warm torchlight, parchment text, gold */
+    --bg: #17121a;
+    --bg-image:
+        radial-gradient(ellipse at 6% 28%, rgba(255, 140, 40, 0.22), transparent 26%),
+        radial-gradient(ellipse at 94% 28%, rgba(255, 140, 40, 0.22), transparent 26%),
+        radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(0, 0, 0, 0.65) 100%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='16' shape-rendering='crispEdges'%3E%3Crect width='32' height='16' fill='%23251e27'/%3E%3Crect x='1' y='0' width='14' height='1' fill='%23322935'/%3E%3Crect x='17' y='8' width='14' height='1' fill='%23322935'/%3E%3Crect x='20' y='2' width='6' height='3' fill='%23211a22'/%3E%3Crect x='4' y='10' width='5' height='3' fill='%23211a22'/%3E%3Crect y='7' width='32' height='1' fill='%230d0a0e'/%3E%3Crect y='15' width='32' height='1' fill='%230d0a0e'/%3E%3Crect x='0' y='0' width='1' height='7' fill='%230d0a0e'/%3E%3Crect x='16' y='8' width='1' height='7' fill='%230d0a0e'/%3E%3C/svg%3E") 0 0 / 16vmin 8vmin;
+    --panel: #241e27;
+    --panel-light: #3a3140;
+    --panel-border: 0.5vmin solid #6b6168;
+    --panel-shadow: inset 0 0 0 0.3vmin #000, 0 0.8vmin 0 rgba(0, 0, 0, 0.5);
+    --text: #f3e6c4;
+    --text-dim: #bba98a;
+    --accent: #f0b429;
+    --accent-text: #1a1206;
+    --correct: #57d65a;
+    --wrong: #ff4a3d;
+
+    /* Type: VT323 for reading, Press Start 2P for titles and nameplates */
+    --font-display: 'VT323', 'Courier New', monospace;
+    --font-body: 'VT323', 'Courier New', monospace;
+    --title-color: #f0b429;
+    --title-shadow: 0.6vmin 0.6vmin 0 #3a1d00, 0 0 2.5vmin rgba(255, 170, 40, 0.35);
+    --title-transform: uppercase;
+
+    /* Pixel corners */
+    --radius: 0.6vmin;
+    --radius-small: 0.4vmin;
+
+    /* The fight screens (css/dungeon.css) */
+    --dg-frame: #2a2430;
+    --dg-frame-edge: #8a7f78;
+    --dg-parchment: #e9d5a1;
+    --dg-parchment-edge: #7a5328;
+    --dg-parchment-text: #2a1a0b;
+    --dg-enemy-hp: #d62828;
+    --dg-hero-hp: #3ec94a;
+    --dg-hourglass: #f0b429;
+    --dg-font-pixel: 'Press Start 2P', monospace;
+}
+
+[data-theme="dungeon"] body { image-rendering: pixelated; }
+
+/* VT323 is a narrow terminal font: a touch of spacing reads better on a TV. */
+[data-theme="dungeon"] body { letter-spacing: 0.02em; }
+
+/* Big titles, the clock and "VS" in the chunky pixel font, sized for its wide letters. */
+[data-theme="dungeon"] .big-title,
+[data-theme="dungeon"] .vs-word,
+[data-theme="dungeon"] .match-clock,
+[data-theme="dungeon"] .kiosk-header h1 {
+    font-family: 'Press Start 2P', monospace;
+    line-height: 1.35;
+}
+[data-theme="dungeon"] .big-title { font-size: calc(6.5vmin * var(--fit)); }
+[data-theme="dungeon"] .vs-word { font-size: 9vmin; }
+[data-theme="dungeon"] .kiosk-header h1 { font-size: 3.6vmin; }
+[data-theme="dungeon"] .main-playing .match-clock { font-size: calc(14vmin * var(--fit)); }
+
+/* Subtitles are VT323, which is small for its size: a bit bigger. */
+[data-theme="dungeon"] .subtitle { font-size: calc(4.6vmin * var(--fit)); }
+
+/* ---------- Torches: two warm glows on the walls that flicker ---------- */
+[data-theme="dungeon"] .theme-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 6% 28%, rgba(255, 170, 60, 0.18), transparent 18%),
+        radial-gradient(ellipse at 94% 28%, rgba(255, 170, 60, 0.18), transparent 18%);
+    animation: dungeon-torch 0.9s steps(3) infinite;
+}
+
+@keyframes dungeon-torch {
+    33% { opacity: 0.6; }
+    66% { opacity: 0.9; }
+}
+
+/* ---------- Iron frames and parchment ---------- */
+[data-theme="dungeon"] .chip,
+[data-theme="dungeon"] .score-row,
+[data-theme="dungeon"] .team-card,
+[data-theme="dungeon"] .choice {
+    border-image: none;
+    box-shadow: var(--panel-shadow);
+}
+
+[data-theme="dungeon"] .choice.is-selected {
+    border-color: var(--accent);
+    background: #3b2f1c;
+    box-shadow: inset 0 0 0 0.3vmin #000, 0 0 2.5vmin rgba(240, 180, 41, 0.45);
+}
+[data-theme="dungeon"] .choice h3 { color: var(--accent); }
+
+[data-theme="dungeon"] .kiosk-header,
+[data-theme="dungeon"] .kiosk-footer {
+    background: linear-gradient(#2e2733, #1c171f);
+    border-bottom: 0.5vmin solid #6b6168;
+}
+
+[data-theme="dungeon"] .big-button {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 2.6vmin;
+    box-shadow: inset 0 -0.8vmin 0 rgba(0, 0, 0, 0.35), 0 0.6vmin 0 #000;
+}
+
+[data-theme="dungeon"] .banner { font-family: 'Press Start 2P', monospace; font-size: calc(3.4vmin * var(--fit)); }
+
+/* The classic answer boxes (when the room plays Classic in this theme) as rune panels. */
+[data-theme="dungeon"] .answer { background: var(--dg-frame); color: var(--text); }
+[data-theme="dungeon"] .answer-letter { font-family: 'Press Start 2P', monospace; border-radius: 0; }
+
+[data-theme="dungeon"] .timer-bar { border-radius: 0; }
+[data-theme="dungeon"] .timer-bar-fill { background: var(--accent); }
+
+/* The intro countdown: chunky gold pixel numbers with a hard shadow. */
+[data-theme="dungeon"] .intro-digit b {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 30vmin;
+    color: #f0b429;
+    text-shadow: 1.6vmin 1.6vmin 0 #3a1d00, 0 0 6vmin rgba(255, 140, 40, 0.5);
+}

@@ -38,6 +38,73 @@
     "lockedOut": "Locked!"
   },
 
+  "dungeon": {
+    "_about": "Dungeon Quiz Quest. The Host is a charismatic, unhinged AI game-show host tormenting the adventurers. Roast the play, never the person. {monster} {damage} {streak} {floor} {seconds} are filled in.",
+    "mainTitle": [
+      "Answer to attack!",
+      "Knowledge is a weapon. Swing it.",
+      "Hit them with facts!"
+    ],
+    "floorShort": "Floor {floor}",
+    "attackIn": "Attacks in {seconds}",
+    "attackPaused": "Attack paused",
+    "score": "Score",
+    "time": "Time",
+    "go": [
+      "Answer to attack!",
+      "Hit it with the right answer!",
+      "Go on. Hurt it with facts."
+    ],
+    "hit": [
+      "Hit! {damage} damage.",
+      "You bonk the {monster} for {damage}.",
+      "{damage} damage. The {monster} is mildly inconvenienced."
+    ],
+    "crit": [
+      "CRITICAL HIT! {damage}!",
+      "CRIT! The {monster} felt that one. {damage}!",
+      "Fast AND right? {damage} damage. Show-off."
+    ],
+    "combo": [
+      "COMBO x{streak}! {damage} damage!",
+      "{streak} in a row! {damage}! The ratings are spiking!",
+      "COMBO! {damage}! Okay, I'm a little impressed."
+    ],
+    "kill": [
+      "The {monster} is dead. Next!",
+      "{monster}: slain. Somebody mop that up.",
+      "You killed the {monster}. It had a family. Probably."
+    ],
+    "floorClearedLine": [
+      "Floor cleared! Down you go.",
+      "Floor cleared. The stairs only go down from here.",
+      "Floor cleared! Don't get cocky."
+    ],
+    "wrong": [
+      "WRONG! The {monster} hits you for {damage}.",
+      "Nope. The {monster} hits you for {damage}. Deserved.",
+      "Wrong! {damage} damage, and the audience groans."
+    ],
+    "tooSlow": [
+      "TOO SLOW! The {monster} hits you for {damage}.",
+      "The {monster} got bored waiting. {damage} damage.",
+      "Time's up! {damage} damage for the indecisive."
+    ],
+    "stunned": [
+      "STUNNED!",
+      "Seeing stars...",
+      "Dazed!"
+    ],
+    "downed": [
+      "DOWNED! Back up in {seconds}",
+      "You died. Briefly. Back in {seconds}",
+      "KO! Respawning in {seconds}"
+    ],
+    "downedShort": "DOWNED!",
+    "slain": "SLAIN!",
+    "floorCleared": "FLOOR CLEARED!"
+  },
+
   "player": {
     "idle": "Swipe in at the kiosk to play",
     "busy": "A battle is in progress",

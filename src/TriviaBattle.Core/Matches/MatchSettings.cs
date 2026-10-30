@@ -1,4 +1,16 @@
+using TriviaBattle.Core.Dungeon;
+
 namespace TriviaBattle.Core.Matches;
+
+/// <summary>Which game the room plays. The kiosk, scoring and screens all follow it.</summary>
+public enum GameFormat
+{
+    /// <summary>The rapid-fire quiz: answer as many as you can, most points wins.</summary>
+    Classic,
+
+    /// <summary>Dungeon Quiz Quest: answers are attacks on monsters, floor by floor (see <see cref="Delve"/>).</summary>
+    Dungeon,
+}
 
 /// <summary>What happens when someone answers wrong. Chosen by the operator on the admin page.</summary>
 public enum WrongAnswerPenalty
@@ -17,6 +29,11 @@ public enum WrongAnswerPenalty
 /// </summary>
 public sealed class MatchSettings
 {
+    public GameFormat Format { get; set; } = GameFormat.Classic;
+
+    /// <summary>Combat numbers for <see cref="GameFormat.Dungeon"/>.</summary>
+    public DungeonSettings Dungeon { get; set; } = new();
+
     /// <summary>How long the clock runs: answer as many questions as you can in this time.</summary>
     public double MatchSeconds { get; set; } = 60;
 

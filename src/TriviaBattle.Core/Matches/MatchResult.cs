@@ -47,7 +47,7 @@ public sealed record MatchResult(
                 a.Question.Id,
                 a.OwnerId,
                 a.PressedByStationId,
-                a.AnswerIndex,
+                a.TimedOut ? null : a.AnswerIndex,
                 a.IsCorrect,
                 a.Points,
                 (int?)a.ResponseTime.TotalMilliseconds)))

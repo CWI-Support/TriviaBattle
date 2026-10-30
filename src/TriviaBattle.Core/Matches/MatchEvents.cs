@@ -1,3 +1,5 @@
+using TriviaBattle.Core.Dungeon;
+
 namespace TriviaBattle.Core.Matches;
 
 /// <summary>
@@ -16,6 +18,15 @@ public sealed record AnswerGiven(GivenAnswer Answer) : MatchEvent;
 public sealed record LockoutEnded(string OwnerId) : MatchEvent;
 
 public sealed record MatchFinished(bool WasAborted) : MatchEvent;
+
+/// <summary>Dungeon format: a correct answer hit that owner's monster.</summary>
+public sealed record MonsterHit(string OwnerId, DealtHit Hit) : MatchEvent;
+
+/// <summary>Dungeon format: the monster hit back (a wrong answer, or its hourglass ran out).</summary>
+public sealed record AdventurerHit(string OwnerId, TakenHit Hit) : MatchEvent;
+
+/// <summary>Dungeon format: a downed adventurer is back on their feet.</summary>
+public sealed record AdventurerGotUp(string OwnerId) : MatchEvent;
 
 /// <summary>
 /// A player or team made a leaderboard. Unlike the events above, this one isn't raised by the

@@ -28,6 +28,7 @@ const OperatorTab = {
         document.getElementById('l-rules-penalty').value = rules.wrongAnswerPenalty;
         document.getElementById('l-rules-lockout').value = rules.lockoutSeconds;
         document.getElementById('l-rules-points').value = rules.wrongAnswerPoints;
+        document.getElementById('l-rules-format').value = rules.format;
         OperatorTab.showPenaltyFields();
     },
 
@@ -39,6 +40,7 @@ const OperatorTab = {
                 wrongAnswerPenalty: document.getElementById('l-rules-penalty').value,
                 lockoutSeconds: Number(document.getElementById('l-rules-lockout').value),
                 wrongAnswerPoints: Number(document.getElementById('l-rules-points').value),
+                format: document.getElementById('l-rules-format').value,
             });
             status.textContent = 'Saved. The next match uses these rules.';
         } catch (err) {

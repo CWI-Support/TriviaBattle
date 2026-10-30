@@ -84,6 +84,7 @@ try
 
     // ---- Game ----
     builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddSingleton(DungeonContent.Load(builder.Environment.ContentRootPath)); // config/dungeon.json
     builder.Services.AddSingleton<MatchHost>();
     builder.Services.AddSingleton<GameRulesService>();
     builder.Services.AddHostedService<MatchTicker>();

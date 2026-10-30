@@ -90,6 +90,31 @@ mode doesn't touch the engine. A game mode answers three questions:
    their own, or their team's shared one in 2v2 Group.
 3. Who gets the points (or penalty) for an answer (`ScoreAnswer`)?
 
+### Dungeon format (Dungeon Quiz Quest)
+
+`MatchSettings.Format` picks the game: `Classic` (the rapid-fire quiz) or `Dungeon`. A mode (who
+owns answers, who scores) is independent of the format, so every mode works in both.
+
+In Dungeon format the engine gives every answer owner a `Delve` (`Core/Dungeon`): their own trip down
+the dungeon, with a floor, a monster and hit points. Parties in 2v2 Group share one, like they share
+a question stream.
+- A correct answer is `Delve.Strike`: damage by difficulty, a crit if fast, a combo on a streak. The
+  answer's points are the damage, so scores, results and leaderboards work unchanged.
+- A wrong answer, or the monster's hourglass running out (`Tick`), is `Delve.TakeHit`. A timeout is
+  recorded as a `GivenAnswer` with `TimedOut` (no press) and the question moves on.
+- At 0 HP the owner is downed: their stream is locked out for `DownedSeconds`, then they get up at full
+  HP and the monster heals. Nobody is knocked out of a paid game.
+- The hourglass only runs while their buttons work: it stops during a lockout and restarts after.
+- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp` (alongside the usual `AnswerGiven`).
+
+Floors and monsters are content in `config/dungeon.json`, loaded into a `DungeonMap` at startup (a
+broken file stops the server with the problem spelled out). Past the last floor the dungeon loops
+with tougher monsters. Snapshots carry a `DelveView` (on `PlayerView`, `TeamView` and `YouView`), whose
+`Path` lists every monster of the current Depth down to its boss (the screens' icon trail);
+`js/dungeon-view.js` draws the station fight screen and the main screen's lanes from it, and
+`js/pixel-sprites.js` draws placeholder pixel monsters until real art is dropped in (a monster's
+`Sprite` can be a picture path).
+
 ### Adding a game mode
 
 1. Add a value to `GameModeKind` (`Core/Modes/IGameMode.cs`).
