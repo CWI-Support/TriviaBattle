@@ -416,6 +416,10 @@ through `admin-api.js`. That script adds the key and turns server problems into 
 - Uploaded pictures and videos get random file names under `wwwroot/media/questions/`, which is
   gitignored (it's venue data). The question stores the URL, and screens show it with
   `UI.questionMedia()`.
+- The Insights tab (`GET /api/admin/insights?days=30`) reports the design doc's indicators from the
+  match history: time in use (any game running, side-by-side games counted once), matches and seats
+  filled, and for card holders (guests can't be followed) visits, average dwell time and how many came
+  back on another day. The working-out is `Admin/Insights.cs`, a plain class with its own tests.
 
 ### When results are saved
 

@@ -113,3 +113,11 @@ dialog fieldset { border: 1px solid var(--panel-light); border-radius: 6px; disp
 .log-table tr.log-warning td { background: rgba(245, 179, 1, 0.12); }
 .log-table tr.log-error td, .log-table tr.log-fatal td { background: rgba(255, 60, 60, 0.18); }
 .log-table pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0 0; }
+
+/* Insights tab: a row of stat tiles, and a bar per day for the time in use. */
+.insight-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin: 12px 0 18px; }
+.insight-tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--panel-light); border-radius: 6px; }
+.insight-tile b { font-size: 26px; color: var(--accent); }
+.insight-tile span { font-size: 14px; }
+.insight-tile small { font-size: 12px; color: var(--text-dim); }
+.insight-bar { display: inline-block; height: 10px; margin-right: 8px; background: var(--accent); border-radius: 3px; vertical-align: middle; }

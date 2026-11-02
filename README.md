@@ -65,7 +65,7 @@ Screen URLs and what they show:
 | `/display/main` | Main room screen: clock and live scores, split into halves/quadrants when several groups play at once; leaderboards between matches |
 | `/display/player/{n}` | Player station screen (portrait). The Dungeon fight is drawn in 3D; `?view=2d` for the older CSS version |
 | `/display/leaderboard` | Stand-alone rotating leaderboards, e.g. for a lobby TV |
-| `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health |
+| `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health, and Insights (time in use, dwell time, returning players) |
 | `/dev/buttons` | Dev stand-in for the buttons (only when dev tools are on) |
 | `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
 | `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options |

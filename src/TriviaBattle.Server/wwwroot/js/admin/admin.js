@@ -9,6 +9,7 @@ const ADMIN_TABS = {
     categories: CategoriesTab,
     transfer: TransferTab,
     players: PlayersTab,
+    insights: InsightsTab,
 };
 
 function openTab(name) {
