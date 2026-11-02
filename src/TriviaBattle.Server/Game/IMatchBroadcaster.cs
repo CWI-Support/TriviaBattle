@@ -46,6 +46,9 @@ public class LoggingMatchBroadcaster(ILogger<LoggingMatchBroadcaster> logger) : 
                 case PhotoDeclined p:
                     logger.LogInformation("Match {Id}: {Station} said no to a hero photo", match.MatchId, p.StationId);
                     break;
+                case PhotoTaken p:
+                    logger.LogInformation("Match {Id}: {Station}'s hero photo arrived", match.MatchId, p.StationId);
+                    break;
                 case PowerUpUsed u:
                     logger.LogInformation("Match {Id}: {Owner} used a {PowerUp} on {Target} ({Amount})",
                         match.MatchId, u.OwnerId, u.Use.PowerUp, u.Use.TargetOwnerId, u.Use.Amount);

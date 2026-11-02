@@ -39,6 +39,7 @@
 .photo-offer-title { font-family: var(--font-body); font-size: calc(4vmin * var(--fit)); color: var(--text); }
 .photo-offer-press { font-family: var(--font-display); font-size: calc(6vmin * var(--fit)); color: var(--accent); }
 @keyframes photo-offer-gone { to { opacity: 0; visibility: hidden; } }
+.photo-hint { margin-top: 3vmin; font-size: 3vmin; color: var(--text-dim); }
 
 /* ---------- The camera: the picture with an outline to put your face in, then your knight ---------- */
 .photo-camera {

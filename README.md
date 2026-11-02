@@ -157,7 +157,10 @@ database, and it's forgotten when the match ends.
   first: the intro then offers "Put your face on your hero? Press ACTION", and only those who press get
   one. Some venues and regions need that, especially where children play.
 - A station needs a webcam on its screen. Without one nothing is shown, and no countdown is heard (the
-  station tells the server when its camera is on).
+  station tells the server when its camera is on). The server log (and the admin's Live log) says when
+  a station's camera came on and when its photo arrived, or why a photo couldn't be taken: not an
+  https/localhost page, no camera, the camera refused or busy, no face found. A station page that isn't
+  https or localhost also says so on its intro screen.
 - Browsers only let `https` or `localhost` pages use a camera. A station PC that opens
   `http://<server-ip>:5000/...` needs Chrome started with
   `--unsafely-treat-insecure-origin-as-secure=http://<server-ip>:5000`. A kiosk window also needs

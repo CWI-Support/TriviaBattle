@@ -21,7 +21,7 @@ connection.start();
 UI.startCountdowns(() => connection.serverNow());
 enableStationKeypad(connection, () => lastState?.station.id); // demo: keys 1-4 / A-D or taps answer, Space swipes a card
 const redraw = () => lastState && render(lastState);
-HeroCamera.check(redraw);   // the photo offer only shows on a station with a camera
+HeroCamera.check(redraw, text => connection.reportError(text)); // photos only happen on a station with a camera
 HeroPhoto.onLoad = redraw;  // a face arrived
 
 // The Dungeon fight is drawn in 3D (js/battle3d), unless the URL says ?view=2d or this PC can't do
@@ -126,6 +126,7 @@ function intro(match, you) {
                 <p class="subtitle intro-rise" ${at(1100)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
                 ${match.soloClock ? `<p class="subtitle intro-rise" ${at(1500)}>${Theme.text('intro.soloClock', {}, seedFor(match))}</p>` : ''}
                 ${HeroCamera.offer(you, connection.serverNow())}
+                ${HeroCamera.hint(you)}
             </div>
             ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;

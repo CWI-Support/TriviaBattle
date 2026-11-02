@@ -13,7 +13,9 @@
 // https or localhost pages, so a station on the venue LAN starts Chrome with
 // --unsafely-treat-insecure-origin-as-secure=http://<server>:5000 (README, "Hero photos"). When one PC
 // drives several stations, each station's page names its own camera with ?camera=<part of its name>.
-// Without a camera nothing is shown, and nothing is heard.
+// Without a camera nothing is shown, and nothing is heard. Whenever a photo can't be taken, the station
+// says why in the server's log (and the admin's Live log): not an https/localhost page, no camera,
+// the camera refused or busy, no face found.
 // Needs ui.js, theme.js and face-cutout.js on the page. Styles: css/hero-photo.css.
 
 const HeroCamera = {
@@ -22,21 +24,37 @@ const HeroCamera = {
     COUNT_FROM: 3,     // the digits show for the last seconds only (Game:Dungeon:PhotoCountdownSeconds, 3 by default)
 
     hasCamera: false,
+    noCamera: null,    // why there's no camera, once checked (for the log, and the hint on an insecure page)
+    report: () => {},  // tells the server's log why a photo couldn't be taken
     taken: null,       // `${matchId}/${stationId}` of the photo taken (or tried), so it's only done once
     running: null,     // { key, cancelled } while the camera window is up
     stream: null,      // the camera, while it's on
 
-    /** Finds out once whether this PC has a camera the page may use; then starts loading the face finder and redraws. */
-    async check(redraw) {
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            HeroCamera.hasCamera = devices.some(d => d.kind === 'videoinput');
-        } catch {
-            HeroCamera.hasCamera = false; // no mediaDevices: not an https/localhost page, or an old browser
+    /**
+     * Finds out once whether this PC has a camera the page may use; then starts loading the face finder and
+     * redraws. report(text) puts a line in the server's log (the station's connection.reportError).
+     */
+    async check(redraw, report) {
+        HeroCamera.report = text => report(`Hero photo: ${text}`);
+        if (!window.isSecureContext) {
+            HeroCamera.noCamera = 'this page isn\'t https or localhost, so the browser won\'t give it the camera';
+        } else {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                HeroCamera.hasCamera = devices.some(d => d.kind === 'videoinput');
+                if (!HeroCamera.hasCamera) HeroCamera.noCamera = 'no camera found on this PC';
+            } catch (err) {
+                HeroCamera.noCamera = `the browser won't list cameras (${err.name})`;
+            }
         }
-        if (!HeroCamera.hasCamera) return;
-        FaceCutout.load().catch(err => console.warn('Face finder:', err));
         redraw();
+        if (HeroCamera.hasCamera) FaceCutout.load().catch(err => HeroCamera.report(`the face finder didn't load: ${err.message || err}`));
+    },
+
+    /** On an http page away from localhost: a quiet line in the intro, so a test session knows why there's no photo. */
+    hint(you) {
+        if (!you?.photoAtMs || window.isSecureContext) return '';
+        return `<p class="photo-hint">${Theme.text('dungeon.photoNoHttps')}</p>`;
     },
 
     /** Photos asked for first: the offer, for the intro screen. Nothing without a camera, or once it has passed (it fades out then by itself). */
@@ -54,7 +72,7 @@ const HeroCamera = {
      * (photoAtMs gone), stops. Not after a reload of the page once it has arrived, or long after its moment.
      */
     follow(match, you, clock, color) {
-        if (!HeroCamera.hasCamera || !you) return;
+        if (!you) return;
         const key = `${match.matchId}/${you.stationId}`;
         if (HeroCamera.running?.key === key && !you.photoAtMs)
             HeroCamera.running.cancelled = true;
@@ -62,6 +80,10 @@ const HeroCamera = {
         const player = match.players.find(p => p.stationId === you.stationId);
         if (!you.photoAtMs || HeroCamera.taken === key || player?.photo > 0 || clock() - you.photoAtMs > 10000) return;
         HeroCamera.taken = key;
+        if (!HeroCamera.hasCamera) {
+            if (HeroCamera.noCamera) HeroCamera.report(`none at ${you.stationId}: ${HeroCamera.noCamera}`);
+            return;
+        }
         HeroCamera.run(match.matchId, you.stationId, you.photoAtMs, clock, { color, hero: player?.hero });
     },
 
@@ -89,6 +111,7 @@ const HeroCamera = {
             HeroCamera.stop(video);
             if (run.cancelled) return await HeroCamera.skipped(box, video, line);
             if (!face) {
+                HeroCamera.report(`none at ${stationId}: no face found in the camera picture`);
                 line.innerHTML = Theme.text('dungeon.photoNoFace');
                 box.classList.add('is-failed');
                 await HeroCamera.wait(2200);
@@ -103,7 +126,7 @@ const HeroCamera = {
             await HeroCamera.upload(matchId, stationId, face, portrait);
             await HeroCamera.wait(1800);
         } catch (err) {
-            console.warn('Hero photo:', err);
+            if (!run.cancelled) HeroCamera.report(`failed at ${stationId}: ${err.name || 'Error'}: ${err.message || err}`);
             HeroCamera.stop(video);
             line.innerHTML = Theme.text(run.cancelled ? 'dungeon.photoSkipped' : 'dungeon.photoFailed');
             box.classList.add('is-failed');

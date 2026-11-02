@@ -11,7 +11,7 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/photos")]
-public class PhotosController(PhotoStore photos, MatchHost host) : ControllerBase
+public class PhotosController(PhotoStore photos, MatchHost host, ILogger<PhotosController> logger) : ControllerBase
 {
     /// <summary>
     /// The station sends the photo it took: a form with two PNG files, "face" and "portrait". Only accepted
@@ -36,8 +36,13 @@ public class PhotosController(PhotoStore photos, MatchHost host) : ControllerBas
 
     /// <summary>The station's camera came on for a photo that's coming: the server can play its countdown on the station's speaker.</summary>
     [HttpPost("{matchId}/{stationId}/camera")]
-    public IActionResult CameraOn(string matchId, string stationId) =>
-        host.PhotoCameraOn(matchId, stationId) ? NoContent() : Conflict(new { problems = new[] { "No hero photo is coming at that station." } });
+    public IActionResult CameraOn(string matchId, string stationId)
+    {
+        if (!host.PhotoCameraOn(matchId, stationId))
+            return Conflict(new { problems = new[] { "No hero photo is coming at that station." } });
+        logger.LogInformation("Match {Id}: {Station}'s camera is on for a hero photo", matchId, stationId);
+        return NoContent();
+    }
 
     /// <param name="kind">"face" or "portrait".</param>
     [HttpGet("{matchId}/{stationId}/{kind}")]
