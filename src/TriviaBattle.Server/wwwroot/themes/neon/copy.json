@@ -183,7 +183,12 @@
     "hostBoss": ["{name} meets {monster}. I wrote its lines. They're mostly shouting.", "Boss time, {name}! I've been looking forward to this. For you. Mostly for me."],
     "hostFloor": ["{name} goes deeper! Mind the stairs. I waxed them.", "Floor {floor}, {name}! Further from daylight, closer to ME."],
     "hostRevived": ["{name} is back! Fainting is just a little nap in here.", "Revived! I was going to keep that one, {name}."],
-    "hostPartyCombo": ["A party combo from {name}! Teamwork. Disgusting. Beautiful.", "{name} struck as one! I hate how good that looked."]
+    "hostPartyCombo": ["A party combo from {name}! Teamwork. Disgusting. Beautiful.", "{name} struck as one! I hate how good that looked."],
+    "photoOffer": "Put your face on your hero?",
+    "photoPress": "Press ACTION",
+    "photoLook": ["Look at the camera!", "Face in the circle, hero!", "Your most heroic face. Go!"],
+    "photoDone": ["Looking heroic!", "Legendary.", "That face could slay a dragon."],
+    "photoFailed": "No camera today. Your hero keeps its helmet on."
   },
 
   "player": {

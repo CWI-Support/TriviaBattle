@@ -15,6 +15,7 @@ let roomAudioPlaysIntro = false; // true when the server plays the room audio, i
 
 const connection = new ScreenConnection({ role: 'main', onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
+HeroPhoto.onLoad = () => lastState && render(lastState); // a player's face arrived (js/hero-photo.js)
 fetch('/api/audio')
     .then(response => response.ok ? response.json() : null)
     .then(audio => { roomAudioPlaysIntro = !!audio?.enabled; })
@@ -34,6 +35,7 @@ function render(state) {
     // Forget games that have ended.
     const live = new Set(state.matches.map(m => m.matchId));
     Object.keys(placements).filter(id => !live.has(id)).forEach(id => delete placements[id]);
+    HeroPhoto.keepOnly([...live]);
 
     if (state.matches.length === 0) {
         DungeonView.reset();
@@ -150,7 +152,7 @@ function renderIntro(match) {
     const at = ms => `style="${UI.animateAt(match.phaseStartedAtMs + ms)}"`;
     const lineup = match.usesTeams
         ? teamsVersus(match, at)
-        : `<div class="chip-row">${match.players.map((p, i) => `<div class="intro-pop" ${at(900 + i * 150)}>${playerChip(p)}</div>`).join('')}</div>`;
+        : `<div class="chip-row">${match.players.map((p, i) => `<div class="intro-pop" ${at(900 + i * 150)}>${playerChip(p, match)}</div>`).join('')}</div>`;
 
     document.getElementById('view-intro').innerHTML = `
         <div class="intro-show">
@@ -238,7 +240,7 @@ function renderDungeonPlaying(match) {
             <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
             <div class="dg-lanes">${owners.map(o => {
                 const rank = owners.length > 1 ? rankOf(o) : null;
-                return DungeonView.lane({ ...o, rank, isLeader: rank === 1 && anyoneBehind, serverNow: now });
+                return DungeonView.lane({ ...o, match, rank, isLeader: rank === 1 && anyoneBehind, serverNow: now });
             }).join('')}</div>
             <div class="dg-moments">${DungeonView.activeEffects('moments')}</div>
             ${DungeonHost.box()}
@@ -353,9 +355,11 @@ function showFitted(viewId) {
     UI.fitToScreen(document.getElementById(viewId).firstElementChild);
 }
 
-function playerChip(player) {
+/** A player's name and station. With the match (the intro's line-up), their face too once their hero photo is in. */
+function playerChip(player, match = null) {
     return `
         <div class="chip" style="--chip-color: ${colorOf(player.stationId)}">
+            ${match ? HeroPhoto.face(match, player.stationId, 'chip-face') : ''}
             <div class="chip-name">${UI.escape(player.name)}</div>
             <div class="chip-detail">${UI.escape(stationsById[player.stationId]?.label || '')}</div>
         </div>`;

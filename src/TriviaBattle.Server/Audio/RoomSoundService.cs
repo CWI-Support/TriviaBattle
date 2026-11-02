@@ -231,6 +231,14 @@ public sealed class RoomSoundService(
                 room.PlayEffect([.. StationsOf(match, ownerId), .. StationsOf(match, use.TargetOwnerId)], _settings.Dungeon.PowerUp);
                 break;
 
+            case PhotoAsked { StationId: var stationId }:
+                // In step with the station's "3, 2, 1" (js/hero-camera.js), which takes the photo as the shutter sounds.
+                var countdown = match.Settings.Dungeon.PhotoCountdownSeconds;
+                for (var second = 0; second < countdown; second++)
+                    room.PlayEffect([stationId], _settings.Dungeon.PhotoCountdown, second);
+                room.PlayEffect([stationId], _settings.Dungeon.Photo, countdown);
+                break;
+
             case PowerUpFound { OwnerId: var ownerId } when match.Dungeon?.FindAdventurer(ownerId)?.LastDealt?.Found == null:
                 // Handed over without a hit (the dev tools): no LOOT! card to wait for. Found with a hit,
                 // PlayDungeonHit times it to the card.

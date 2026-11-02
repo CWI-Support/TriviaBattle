@@ -62,7 +62,7 @@ const DungeonEncounter = {
                         ${shown.answers.map((text, i) => DungeonEncounter.answer(text, i, dimmed, shown.hidden?.includes(i))).join('')}
                     </div>
                 </div>
-                ${DungeonView.teammates(delve, you.stationId)}
+                ${DungeonView.teammates(delve, you.stationId, match)}
                 ${plate}
             </div>`;
     },

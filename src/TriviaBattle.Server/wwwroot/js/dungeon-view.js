@@ -227,12 +227,13 @@ const DungeonView = {
         return { html: `${headline}<div class="dg-feedback-detail">${itWas}</div>`, tone: 'is-bad' };
     },
 
-    /** One party member: name, HP, and "DOWN 1/3" while they wait for their teammates to revive them. */
-    member(m, reviveNeeded) {
+    /** One party member: their face (with a hero photo), name, HP, and "DOWN 1/3" while they wait for their teammates to revive them. */
+    member(m, reviveNeeded, match) {
         const down = !!m.downedUntilMs;
         return `
             <div class="dg-member ${down ? 'is-down' : ''}">
                 <div class="dg-member-line">
+                    ${HeroPhoto.face(match, m.ownerId, 'dg-member-face')}
                     <span class="dg-member-name">${UI.escape(m.name)}</span>
                     ${down ? `<span class="dg-member-down">${Theme.text('dungeon.memberDown', { progress: m.reviveProgress, needed: reviveNeeded })}</span>` : ''}
                 </div>
@@ -241,10 +242,10 @@ const DungeonView = {
     },
 
     /** Your teammates on your station screen (not you: your HP is on your plate). Nothing in a party of one. */
-    teammates(delve, stationId) {
+    teammates(delve, stationId, match) {
         if (delve.party.length < 2) return '';
         const others = delve.party.filter(m => m.ownerId !== stationId);
-        return `<div class="dg-party">${others.map(m => DungeonView.member(m, delve.reviveNeeded)).join('')}</div>`;
+        return `<div class="dg-party">${others.map(m => DungeonView.member(m, delve.reviveNeeded, match)).join('')}</div>`;
     },
 
     /** Score and kills, each with its label/icon so neither is just a bare number. */
@@ -281,7 +282,7 @@ const DungeonView = {
             </div>`;
         const plate = `
             <div class="dg-plate">
-                ${PixelSprites.html('knight', 'dg-portrait', { r: stationColor })}
+                ${HeroPhoto.portrait(match, you.stationId, 'dg-portrait', stationColor)}
                 <div class="dg-plate-info">
                     <div class="dg-plate-name">${UI.escape(you.name)}</div>
                     ${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}
@@ -300,7 +301,7 @@ const DungeonView = {
                 <div class="dg-station is-battle">
                     ${top}
                     ${DungeonBattle.scene(match, you, stationColor, serverNow)}
-                    ${DungeonView.teammates(delve, you.stationId)}
+                    ${DungeonView.teammates(delve, you.stationId, match)}
                     ${plate}
                 </div>`;
         }
@@ -311,8 +312,9 @@ const DungeonView = {
     /**
      * One adventurer's (or party's) column on the main screen. rank is 1-based, or null with one lane.
      * A party of separate adventurers (2v2 Combined) shows each member's HP instead of one hero bar.
+     * A player with a hero photo has their face where the knight's portrait would be.
      */
-    lane({ key, name, color, delve, score, rank, isLeader, serverNow }) {
+    lane({ key, name, color, delve, score, rank, isLeader, serverNow, match }) {
         const news = DungeonView.news(`lane:${key}`, delve);
         const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
         const shake = DungeonView.lasting(`lane:${key}:hurt`, news.taken ? 'is-hurt' : null, 450);
@@ -331,8 +333,8 @@ const DungeonView = {
                 ${DungeonView.enemy(delve)}
                 <div class="dg-lane-hero">
                     ${delve.party.length > 1
-                        ? `<div class="dg-party is-lane">${delve.party.map(m => DungeonView.member(m, delve.reviveNeeded)).join('')}</div>`
-                        : `${PixelSprites.html('knight', 'dg-portrait small', { r: color })}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
+                        ? `<div class="dg-party is-lane">${delve.party.map(m => DungeonView.member(m, delve.reviveNeeded, match)).join('')}</div>`
+                        : `${HeroPhoto.portrait(match, key, 'dg-portrait small', color)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
                 </div>
                 ${DungeonView.stats(score, delve.kills)}
             </div>`;

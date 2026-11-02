@@ -148,6 +148,48 @@ export class Actor {
         return this.actions.get(name);
     }
 
+    /**
+     * A player's hero photo on the hero, as a bobblehead: their round pixel face in a ring of their colour,
+     * as big as the head it replaces, fixed to the head bone (so it follows every swing, hit and fall) and
+     * always turned to the camera. url null takes it off and puts the head and helmet back.
+     */
+    async wearPhoto(url, color) {
+        const spec = this.spec.photo;
+        if (!spec || !this.model) return;
+        this.photoUrl = url;
+        if (this.photoSprite) {
+            this.photoSprite.removeFromParent();
+            this.photoSprite.material.map.dispose();
+            this.photoSprite.material.dispose();
+            this.photoSprite = null;
+        }
+        const parts = spec.replaces.map(name => this.model.getObjectByName(name)).filter(Boolean);
+        if (!url) {
+            parts.forEach(part => (part.visible = true));
+            return;
+        }
+
+        const canvas = await framedPhoto(url, color);
+        if (this.photoUrl !== url) return; // another photo (or none) was asked for meanwhile
+
+        // Measured with the head showing, at the pose the model was built in.
+        const bone = this.model.getObjectByName(spec.bone);
+        this.model.updateMatrixWorld(true);
+        const head = new THREE.Box3();
+        parts.forEach(part => head.expandByObject(part, true));
+        const size = head.getSize(new THREE.Vector3());
+        const boneScale = bone.getWorldScale(new THREE.Vector3()).x;
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+        sprite.position.copy(bone.worldToLocal(head.getCenter(new THREE.Vector3())));
+        sprite.scale.setScalar((Math.max(size.x, size.y) * spec.size) / boneScale);
+        bone.add(sprite);
+        parts.forEach(part => (part.visible = false));
+        this.photoSprite = sprite;
+    }
+
     /** Turns it to face this way (radians round the vertical; 0 = the camera). A cut-out always faces the camera. */
     face(angle) {
         if (this.pivot) this.pivot.rotation.y = angle + (this.spec.turn || 0);
@@ -190,6 +232,30 @@ function visibleBox(model) {
         if (part.isMesh && part.visible) box.expandByObject(part, true);
     });
     return box;
+}
+
+/** The round photo in a ring of the player's colour, big enough to stay sharp on screen. Its pixels stay square. */
+async function framedPhoto(url, color) {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const size = 256;
+    const ring = 16;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const g = canvas.getContext('2d');
+    const disc = (radius, fill) => {
+        g.fillStyle = fill;
+        g.beginPath();
+        g.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+        g.fill();
+    };
+    disc(size / 2, '#000');
+    disc(size / 2 - 4, color || '#fff');
+    disc(size / 2 - ring, '#000');
+    g.imageSmoothingEnabled = false;
+    g.drawImage(image, ring + 2, ring + 2, size - 2 * (ring + 2), size - 2 * (ring + 2));
+    return canvas;
 }
 
 let shadowCanvas = null;

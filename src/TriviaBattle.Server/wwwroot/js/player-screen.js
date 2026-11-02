@@ -3,7 +3,8 @@
 // Answering moves straight on to the next one, with a right/wrong banner for the last answer
 // (in Dungeon Quiz Quest, after a battle beat: the fight plays full screen, then the next question).
 // The server sends a "you" section already worked out for the current mode, so this file
-// never needs to know mode rules.
+// never needs to know mode rules. In a Dungeon game's intro the player can put their face on their
+// hero (js/hero-camera.js takes the photo, js/hero-photo.js draws it).
 // All wording comes from the theme's copy.json via Theme.text() (see js/theme.js).
 
 const stationNumber = Number(location.pathname.match(/\/display\/player\/(\d+)/)?.[1]);
@@ -18,6 +19,9 @@ const introVideo = new SyncedVideo(document.getElementById('intro-video'), () =>
 connection.start();
 UI.startCountdowns(() => connection.serverNow());
 enableStationKeypad(connection, () => lastState?.station.id); // demo: keys 1-4 / A-D or taps answer, Space swipes a card
+const redraw = () => lastState && render(lastState);
+HeroCamera.check(redraw);   // the photo offer only shows on a station with a camera
+HeroPhoto.onLoad = redraw;  // a face arrived
 
 // The Dungeon fight is drawn in 3D (js/battle3d), unless the URL says ?view=2d or this PC can't do
 // WebGL 2: then it's the CSS version. That version also shows until three.js has loaded.
@@ -48,6 +52,7 @@ function render(state) {
 
     const match = state.match;
     const you = match?.you;
+    HeroPhoto.keepOnly(match ? [match.matchId] : []);
 
     document.documentElement.style.setProperty('--station-color', state.station.color);
     document.getElementById('station-label').textContent = state.station.label;
@@ -71,6 +76,7 @@ function render(state) {
         }
     }
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
+    if (match && you) HeroCamera.follow(match, you, () => connection.serverNow()); // they said yes to a hero photo
     if (fighting) window.Battle3D?.show({ match, you, color: state.station.color }); // once the 3D has loaded
 
     // A battle beat is playing: the next question appears when it ends, so redraw then.
@@ -115,6 +121,7 @@ function intro(match, you) {
                 <p class="subtitle intro-rise" ${at(600)}>${teamLine}</p>
                 <p class="subtitle intro-rise" ${at(1100)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
                 ${match.soloClock ? `<p class="subtitle intro-rise" ${at(1500)}>${Theme.text('intro.soloClock', {}, seedFor(match))}</p>` : ''}
+                ${HeroCamera.offer(you, connection.serverNow())}
             </div>
             ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;

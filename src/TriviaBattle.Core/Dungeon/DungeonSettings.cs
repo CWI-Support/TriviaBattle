@@ -100,6 +100,15 @@ public sealed class DungeonSettings
     /// <summary>The time a Time Crystal adds to a solo game's clock (up to the hard cap).</summary>
     public double TimeCrystalSeconds { get; set; } = 20;
 
+    /// <summary>
+    /// Hero photos: during the intro, the action button puts your face on your hero (the station's camera
+    /// takes it after a countdown). Off for a venue without station cameras, or one that doesn't want photos.
+    /// </summary>
+    public bool HeroPhotos { get; set; } = true;
+
+    /// <summary>The "3, 2, 1" before the station takes a hero photo.</summary>
+    public double PhotoCountdownSeconds { get; set; } = 3;
+
     public int DamageFor(Difficulty difficulty) => difficulty switch
     {
         Difficulty.Easy => EasyDamage,

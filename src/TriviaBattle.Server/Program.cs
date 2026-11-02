@@ -90,6 +90,8 @@ try
     builder.Services.AddHostedService<MatchTicker>();
     builder.Services.AddSingleton<IMatchBroadcaster, LoggingMatchBroadcaster>();
     builder.Services.AddSingleton<IMatchBroadcaster, SignalRMatchBroadcaster>();
+    builder.Services.AddSingleton<PhotoStore>(); // hero photos, in memory until their match ends
+    builder.Services.AddSingleton<IMatchBroadcaster>(sp => sp.GetRequiredService<PhotoStore>());
     builder.Services.AddSingleton<ScreenStateFactory>();
     builder.Services.AddSingleton<ThemeService>();
     builder.Services.Configure<MediaSettings>(builder.Configuration.GetSection("Media"));

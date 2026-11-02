@@ -59,7 +59,7 @@ const DungeonBattle = {
             <div class="${classes}" data-stage="fight" style="--t0: ${Math.round(beat.startedAtMs - serverNow)}ms; --t1: ${Math.round(beat.endsAtMs - serverNow)}ms">
                 ${DungeonBattle.room()}
                 <div class="dg-arena">
-                    <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}<i class="dg-shadow"></i></div>
+                    <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}${HeroPhoto.face(match, you.stationId, 'dg-actor-face')}<i class="dg-shadow"></i></div>
                     <div class="dg-actor is-foe ${foe.isBoss ? 'is-boss' : ''}">${PixelSprites.html(foe.sprite, 'dg-actor-sprite')}<i class="dg-shadow"></i></div>
                     ${hurt ? DungeonBattle.claws() : '<div class="dg-fx-slash"></div>'}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}

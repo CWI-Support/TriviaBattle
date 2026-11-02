@@ -62,6 +62,7 @@ public sealed record MatchSnapshot(
 /// </param>
 /// <param name="LockedOutUntilMs">Set while a wrong-answer lockout is running for whoever they answer as.</param>
 /// <param name="Delve">Dungeon format: their party's delve and their own HP. Null in Classic, and in 2v2 Group (the team is one adventurer: <see cref="TeamView.Delve"/>).</param>
+/// <param name="Photo">Dungeon format: their hero photo's number (0 = none). Screens fetch it from /api/photos/{matchId}/{stationId}.</param>
 public sealed record PlayerView(
     string StationId,
     string Name,
@@ -71,7 +72,8 @@ public sealed record PlayerView(
     int WrongAnswers,
     AnswerOutcomeView? LastAnswer,
     long? LockedOutUntilMs,
-    DelveView? Delve);
+    DelveView? Delve,
+    int Photo);
 
 /// <param name="LastAnswer">Only in 2v2 Group, where the team answers as one.</param>
 /// <param name="Delve">
@@ -131,6 +133,8 @@ public sealed record YourAnswerView(
 /// <param name="Delve">Dungeon format: their party's delve and their own HP (the team's in 2v2 Group).</param>
 /// <param name="Helping">Dungeon format, while they're downed in a party: a standing teammate's question, so they can shout the answer.</param>
 /// <param name="Beat">Dungeon format: the battle beat after their last answer (the next question waits until it ends).</param>
+/// <param name="PhotoOfferUntilMs">The intro is offering a hero photo ("press the action button to put your face on your hero") until this time. Null once they've said yes, or with no offer.</param>
+/// <param name="PhotoAtMs">They said yes: the station takes their hero photo at this time, after a countdown.</param>
 public sealed record YouView(
     string StationId,
     string Name,
@@ -143,7 +147,9 @@ public sealed record YouView(
     YourAnswerView? LastAnswer,
     DelveView? Delve,
     HelpView? Helping,
-    BeatView? Beat);
+    BeatView? Beat,
+    long? PhotoOfferUntilMs,
+    long? PhotoAtMs);
 
 /// <summary>
 /// The fight shown between two questions. The screen plays it from <see cref="StartedAtMs"/> to

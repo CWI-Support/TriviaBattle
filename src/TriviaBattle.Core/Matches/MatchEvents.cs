@@ -40,6 +40,12 @@ public sealed record PowerUpFound(string OwnerId, PowerUp PowerUp) : MatchEvent;
 /// <summary>Dungeon format: an adventurer used their power-up with the action button.</summary>
 public sealed record PowerUpUsed(string OwnerId, PowerUpUse Use) : MatchEvent;
 
+/// <summary>Dungeon format: in the intro, a player said yes to a hero photo (their station takes it after a countdown).</summary>
+public sealed record PhotoAsked(string StationId) : MatchEvent;
+
+/// <summary>Dungeon format: a player's hero photo arrived, so screens can put their face on their hero.</summary>
+public sealed record PhotoTaken(string StationId) : MatchEvent;
+
 /// <summary>
 /// A player or team made a leaderboard. Unlike the events above, this one isn't raised by the
 /// engine: the server raises it after saving the match result, while Results is on screen.

@@ -12,6 +12,8 @@
 // height  how tall it stands in the room (the knight is about 2.3; a back wall is 4)
 // turn    extra rotation (radians) if the model doesn't face +Z like glTF models should
 // hover   how high it floats (the bat)
+// photo   the hero only: where a player's hero photo goes (the head bone), how big (times the head), and
+//         the parts it stands in for (hidden while it's worn)
 
 export const MODELS = {
     hero: {
@@ -36,6 +38,8 @@ export const MODELS = {
         allGear: ['1H_Sword', '1H_Sword_Offhand', '2H_Sword', 'Badge_Shield', 'Rectangle_Shield', 'Round_Shield', 'Spike_Shield', 'Knight_Helmet', 'Knight_Cape'],
         // The part dyed the station's colour.
         tinted: 'Knight_Cape',
+        // A hero photo is worn as a bobblehead: the player's face, big and round, in place of the head and helmet.
+        photo: { bone: 'head', size: 1.0, replaces: ['Knight_Head', 'Knight_Helmet'] },
     },
     rat: {
         file: '/media/models/characters/rat.glb',

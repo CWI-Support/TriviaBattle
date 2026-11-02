@@ -1,0 +1,64 @@
+/* Hero photos (Dungeon format): a player's face on their hero (js/hero-photo.js), and the station's
+   camera that takes it (js/hero-camera.js). The picture is a small round pixel portrait: its corners are
+   already see-through, and it's drawn with square pixels, like the rest of the game's art. */
+
+.hero-photo { image-rendering: pixelated; border-radius: 50%; background: #000; }
+
+/* Where the knight's portrait would be (the station plate, a main-screen lane): in a ring of their colour. */
+.hero-photo.dg-portrait { border-color: var(--photo-ring, #000); }
+
+/* Beside a party member's name, and on the main screen's line-up in the intro. */
+.dg-member-face { width: 1.5em; height: 1.5em; flex: none; border: 0.3vmin solid #000; }
+.dg-member-face + .dg-member-name { margin-right: auto; }
+.chip-face { display: block; width: 10vmin; height: 10vmin; margin: 0 auto 1vmin; border: 0.5vmin solid var(--chip-color, var(--accent)); }
+
+/* The 2D fight (?view=2d): a bobblehead over the knight's helmet. The hero is 32vmin wide
+   (.dg-actor.is-hero) and its helmet sits about 28% of the way down. */
+.dg-actor-face {
+    position: absolute; z-index: 2; left: 19%; top: calc(32vmin * 0.28 - 8vmin); width: 50%;
+    border: 0.6vmin solid var(--station-color);
+    animation: photo-bob 0.8s steps(2) var(--t0) infinite;
+}
+@keyframes photo-bob { 50% { transform: translateY(-0.45vmin); } }
+
+/* ---------- The offer, in the intro: "Put your face on your hero? Press ACTION" ----------
+   It fades out by itself when the offer ends (its animation-delay is set to that moment). */
+.photo-offer {
+    margin-top: 4vmin; padding: 2vmin 4vmin; border-radius: var(--radius);
+    background: var(--panel); border: 0.6vmin solid var(--station-color); box-shadow: 0 0 3vmin var(--station-color);
+    text-align: center;
+    animation: photo-offer-gone 0.3s ease-in both;
+}
+.photo-offer-title { font-family: var(--font-body); font-size: calc(4vmin * var(--fit)); color: var(--text); }
+.photo-offer-press { font-family: var(--font-display); font-size: calc(6vmin * var(--fit)); color: var(--accent); }
+@keyframes photo-offer-gone { to { opacity: 0; visibility: hidden; } }
+
+/* ---------- The camera: a circle over the screen, then the portrait it took ---------- */
+.photo-camera {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 4vmin;
+    background: rgba(0, 0, 0, 0.8);
+}
+.photo-camera.is-open { display: flex; }
+
+/* The circle shows exactly the part of the picture that's kept (the video's height is set to match). */
+.photo-window {
+    position: relative; width: 72vmin; height: 72vmin; border-radius: 50%; overflow: hidden;
+    border: 1.2vmin solid var(--station-color); box-shadow: 0 0 6vmin var(--station-color); background: #000;
+}
+.photo-window video { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scaleX(-1); opacity: 0; }
+.photo-camera.is-live video { opacity: 1; }
+
+.photo-count {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-family: var(--font-display); font-size: 32vmin; color: #fff; opacity: 0.85; text-shadow: 0 0 2vmin #000;
+}
+.photo-result { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; display: none; }
+.photo-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.photo-camera.is-taken .photo-count { display: none; }
+.photo-camera.is-taken .photo-result { display: block; }
+.photo-camera.is-taken .photo-flash { animation: photo-flash 0.5s ease-out both; }
+@keyframes photo-flash { from { opacity: 1; } to { opacity: 0; } }
+
+.photo-line { padding: 0 6vmin; font-family: var(--font-display); font-size: 7vmin; color: var(--accent); text-align: center; }
+.photo-camera.is-failed .photo-window { display: none; }

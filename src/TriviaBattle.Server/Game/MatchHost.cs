@@ -155,6 +155,20 @@ public sealed class MatchHost(
         }
     }
 
+    /// <summary>A station sent the hero photo its player asked for (<see cref="PhotoStore"/> holds the picture). False if it wasn't asked for.</summary>
+    public bool PhotoTaken(string matchId, string stationId)
+    {
+        lock (_lock)
+        {
+            if (!_matches.TryGetValue(matchId, out var match))
+                return false;
+
+            var events = match.PhotoTaken(stationId);
+            Publish(match, events);
+            return events.Count > 0;
+        }
+    }
+
     /// <summary>The operator gives a continue from the admin page. False if there's no continue on offer.</summary>
     public bool ContinueMatch(string matchId)
     {

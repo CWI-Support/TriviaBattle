@@ -10,6 +10,9 @@
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
 //   /dev/battle3d                    the same, drawn in 3D (js/battle3d); takes the same options
 //
+//   /dev/battle3d?photo=demo         the hero wears a hero photo (a made-up face, pixelated by js/hero-camera.js);
+//                                    ?photo=/path/picture.jpg uses a picture on the server instead
+//
 // Kinds: hit, crit, combo, party, revive, kill, floor, boss, hurt, slow, downed, and with power-ups:
 // fireball (a Fireball hit), loot (a kill that drops a Potion), blocked (a Shield takes the hit; the
 // question after it has a 50/50's answers crossed out). The plate always holds a Shield.
@@ -33,7 +36,48 @@ document.documentElement.style.setProperty('--station-color', COLOR);
 if (frozenAt !== null)
     document.body.classList.add('is-frozen');
 
-Theme.load().then(start);
+Theme.load().then(() => (params.has('photo') ? usePhoto(params.get('photo')) : null)).then(start);
+
+/** ?photo=: a face for the hero, made the way a station makes one from its camera. */
+async function usePhoto(source) {
+    let picture = demoFace();
+    if (source !== 'demo') {
+        picture = new Image();
+        picture.src = source;
+        await picture.decode();
+    }
+    HeroPhoto.use('dev', 'A1', 1, HeroCamera.pixelate(picture).toDataURL('image/png'));
+}
+
+/** A cartoon face in a camera-sized picture, standing in for a player in front of the camera. */
+function demoFace() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const g = canvas.getContext('2d');
+    const oval = (x, y, rx, ry, fill) => {
+        g.fillStyle = fill;
+        g.beginPath();
+        g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        g.fill();
+    };
+    g.fillStyle = '#6b7f99';
+    g.fillRect(0, 0, 640, 480);
+    oval(320, 470, 170, 90, '#2f6f4f');      // shoulders
+    oval(320, 190, 105, 95, '#5a3a22');      // hair
+    oval(320, 245, 90, 110, '#e3b08c');      // face
+    oval(320, 160, 95, 45, '#5a3a22');       // fringe
+    oval(285, 240, 15, 11, '#fff');
+    oval(355, 240, 15, 11, '#fff');
+    oval(287, 242, 7, 7, '#2b1d14');
+    oval(357, 242, 7, 7, '#2b1d14');
+    g.strokeStyle = '#8c3b2e';
+    g.lineWidth = 8;
+    g.beginPath();
+    g.arc(320, 285, 38, 0.15 * Math.PI, 0.85 * Math.PI);
+    g.stroke();
+    return canvas;
+}
 
 function start() {
     window.Battle3D?.start(document.getElementById('stage3d'), devNow);  // only on /dev/battle3d
@@ -148,6 +192,7 @@ function fakeState(kind, startedAt, question) {
         beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', fireball: 'hit', slow: 'hurt', blocked: 'hurt', loot: 'kill' }[kind] || kind,
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
-    const match = { matchId: 'dev', category: 'Movies', soloClock: true, phaseEndsAtMs: Date.now() + 75000 };
+    const match = { matchId: 'dev', category: 'Movies', soloClock: true, phaseEndsAtMs: Date.now() + 75000,
+                    players: [{ stationId: 'A1', photo: params.has('photo') ? 1 : 0 }] };
     return { match, you };
 }

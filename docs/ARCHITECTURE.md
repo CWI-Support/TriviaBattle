@@ -148,8 +148,21 @@ The rules:
   next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
   to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
-- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, and
-  `QuestionShown` from `Tick` when a battle beat ends (alongside the usual `AnswerGiven`).
+- **Hero photos** (a player's face on their hero). In the intro the action button says yes:
+  `MatchEngine` takes it while `PhotoOfferEndsAt` hasn't passed (the whole countdown must still fit in
+  the intro; `DungeonSettings.HeroPhotos` and `PhotoCountdownSeconds`), sets `Player.PhotoAt` and raises
+  `PhotoAsked`. Nobody is photographed without pressing. The snapshot tells the station
+  (`YouView.PhotoOfferUntilMs`, `PhotoAtMs`). `js/hero-camera.js` takes the photo then, turns it into a
+  48-pixel round portrait and sends the PNG to `PUT /api/photos/{matchId}/{stationId}`. `PhotoStore` keeps it
+  in memory only, never on disk or in the database, and forgets it when the match ends (it's an
+  `IMatchBroadcaster` for that). `MatchHost.PhotoTaken` then `MatchEngine.PhotoTaken` count it
+  (`Player.Photo`, sent as `PlayerView.Photo`, raising `PhotoTaken`). Every screen fetches it once per
+  number with `js/hero-photo.js` and keeps it as an in-memory blob URL (the server sends it `no-store`).
+  It shows on the plate, the lanes, the party list and the intro line-up, and as a bobblehead on the 3D
+  knight (`Actor.wearPhoto`, `MODELS.hero.photo`). `RoomSoundService` plays the countdown's blips and the
+  shutter on the station's speaker. A station names its camera with `?camera=` when one PC drives several.
+- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
+  `PhotoTaken`, and `QuestionShown` from `Tick` when a battle beat ends (alongside the usual `AnswerGiven`).
 - **The room joins in.** `RoomSoundService` plays each fight as a timed sequence that lands with the
   beat's picture (the blow at 0.19 s, the burst at 1 s, the floor or boss under the curtain, the loot with
   its card; the moments in `css/dungeon-battle.css`'s table), plus block, loot and power-up sounds, and

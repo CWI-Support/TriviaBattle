@@ -85,7 +85,11 @@ public class DungeonSounds
     public string Loot { get; set; } = "";
     public string PowerUp { get; set; } = "";
 
-    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp];
+    /// <summary>A hero photo: a blip each second of the "3, 2, 1", then the shutter as the station takes it.</summary>
+    public string PhotoCountdown { get; set; } = "";
+    public string Photo { get; set; } = "";
+
+    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp, PhotoCountdown, Photo];
 
     /// <summary>At least one is set, so dungeon games play these instead of the stingers.</summary>
     public bool AnySet => All.Any(file => !string.IsNullOrWhiteSpace(file));

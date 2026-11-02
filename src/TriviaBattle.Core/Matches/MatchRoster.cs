@@ -34,6 +34,19 @@ public sealed class Player(string stationId, string name, int? playerProfileId, 
     public int? PlayerProfileId { get; } = playerProfileId;
     public string? TeamId { get; } = teamId;
     public Tally Tally { get; } = new();
+
+    /// <summary>
+    /// Dungeon format: they said yes to a hero photo (their face on their hero), and their station
+    /// takes it at this time, after a countdown. Null if they haven't asked.
+    /// </summary>
+    public DateTimeOffset? PhotoAt { get; private set; }
+
+    /// <summary>Goes up when their hero photo arrives (0 = none yet). Screens fetch the picture from the server by this number.</summary>
+    public int Photo { get; private set; }
+
+    public void AskForPhoto(DateTimeOffset takeAt) => PhotoAt = takeAt;
+
+    public void PhotoArrived() => Photo++;
 }
 
 /// <summary>A team in a running match.</summary>

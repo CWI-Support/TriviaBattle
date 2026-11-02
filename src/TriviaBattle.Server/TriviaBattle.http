@@ -51,3 +51,6 @@ POST {{host}}/api/dev/buttons/10
 
 ### Abort a match (replace the id)
 POST {{host}}/api/matches/MATCH_ID/abort
+
+### A player's hero photo (a PNG; 404 when they have none). Stations send theirs with PUT to the same address.
+GET {{host}}/api/photos/MATCH_ID/A1

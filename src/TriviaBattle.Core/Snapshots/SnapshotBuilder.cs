@@ -60,7 +60,8 @@ public static class SnapshotBuilder
             player.Tally.WrongAnswers,
             ownsStream ? ToOutcome(stream.LastAnswer) : null,
             ToUnixMs(stream.LockedOutUntil),
-            ownsStream ? ToDelve(match, stream.OwnerId) : null);
+            ownsStream ? ToDelve(match, stream.OwnerId) : null,
+            player.Photo);
     }
 
     private static TeamView BuildTeam(MatchEngine match, Team team)
@@ -100,7 +101,9 @@ public static class SnapshotBuilder
             ToYourAnswer(match, stream.LastAnswer),
             ToDelve(match, stream.OwnerId),
             ToHelping(match, stream),
-            ToBeat(match, stream));
+            ToBeat(match, stream),
+            player.PhotoAt == null ? ToUnixMs(match.PhotoOfferEndsAt) : null,
+            ToUnixMs(player.PhotoAt));
     }
 
     /// <summary>

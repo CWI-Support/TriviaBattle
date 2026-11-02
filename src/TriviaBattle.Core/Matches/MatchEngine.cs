@@ -189,11 +189,14 @@ public sealed class MatchEngine
 
     /// <summary>
     /// Handles a button press: answers that owner's current question, or (the action button, Dungeon
-    /// format) uses their power-up. Presses outside Playing are ignored.
+    /// format) uses their power-up. In the intro, the action button asks for a hero photo.
+    /// Other presses outside Playing are ignored.
     /// </summary>
     public IReadOnlyList<MatchEvent> HandlePress(ButtonPress press, DateTimeOffset now)
     {
         var player = Roster.FindPlayer(press.StationId);
+        if (Phase == MatchPhase.Intro && player != null && press.IsAction)
+            return AskForPhoto(player, now);
         if (Phase != MatchPhase.Playing || player == null || press.PressedAt > PhaseEndsAt)
             return NothingHappened;
 
@@ -289,6 +292,43 @@ public sealed class MatchEngine
         _dungeon.GivePowerUp(ownerId, powerUp);
         Version++;
         return [new PowerUpFound(ownerId, powerUp)];
+    }
+
+    /// <summary>
+    /// Hero photos are on offer in the intro of a Dungeon game, when the venue allows them
+    /// (<see cref="DungeonSettings.HeroPhotos"/>), until this time: the last moment the whole countdown still
+    /// fits in the intro, so the photo never covers the first question. Null when there's no offer.
+    /// Only the player's own press says yes: a photo is never taken unasked.
+    /// </summary>
+    public DateTimeOffset? PhotoOfferEndsAt =>
+        _dungeon != null && Settings.Dungeon.HeroPhotos && Phase == MatchPhase.Intro
+            ? PhaseEndsAt - TimeSpan.FromSeconds(Settings.Dungeon.PhotoCountdownSeconds)
+            : null;
+
+    /// <summary>The player said yes to a hero photo: their station takes it after the countdown. Once per match.</summary>
+    private IReadOnlyList<MatchEvent> AskForPhoto(Player player, DateTimeOffset now)
+    {
+        if (PhotoOfferEndsAt is not { } offerEndsAt || now > offerEndsAt || player.PhotoAt != null)
+            return NothingHappened;
+
+        player.AskForPhoto(now + TimeSpan.FromSeconds(Settings.Dungeon.PhotoCountdownSeconds));
+        Version++;
+        return [new PhotoAsked(player.StationId)];
+    }
+
+    /// <summary>
+    /// The station sent the hero photo it took (the server keeps the picture; the match only counts it, so
+    /// screens know to fetch it). Only for a player who asked for one, once, and not once the match has finished.
+    /// </summary>
+    public IReadOnlyList<MatchEvent> PhotoTaken(string stationId)
+    {
+        var player = Roster.FindPlayer(stationId);
+        if (player?.PhotoAt == null || player.Photo > 0 || IsFinished)
+            return NothingHappened;
+
+        player.PhotoArrived();
+        Version++;
+        return [new PhotoTaken(stationId)];
     }
 
     /// <summary>

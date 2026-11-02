@@ -111,9 +111,17 @@ class Battle {
                     });
             }
         }
+        this.wearPhoto();
         this.turnFoe(dt);
         this.aim(lean);
         this.stage.draw(now / 1000, dt);
+    }
+
+    /** Your hero photo on the knight (js/hero-photo.js has it once it has loaded); the helmet again without one. */
+    wearPhoto() {
+        const view = this.view;
+        const url = view?.you ? HeroPhoto.url(view.match, view.you.stationId) : null;
+        if (this.hero && url !== this.hero.photoUrl) this.hero.wearPhoto(url, view.color);
     }
 
     /** While a question is up the monster turns to face you (the player is the one answering); in a fight it faces the knight. */
