@@ -188,6 +188,8 @@
     "photoPress": "Press ACTION",
     "photoLook": ["Look at the camera!", "Face in the outline, hero!", "Your most heroic face. Go!"],
     "photoDone": ["Looking heroic!", "Legendary.", "That face could slay a dragon."],
+    "photoSkip": "Press ACTION to skip",
+    "photoSkipped": "No photo. Your knight keeps their own face.",
     "photoNoFace": "Couldn't see your face! Your knight keeps their own.",
     "photoFailed": "No camera today. Your knight keeps their own face."
   },

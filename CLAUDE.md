@@ -14,11 +14,12 @@ changeable on the Operator screen). In Dungeon format `MatchEngine` hands every 
 which holds all combat rules: each party (a team, or a solo player) shares one `Delve` (floor, monster), and each answer
 owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
 Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
-Hero photos: in the intro the action button puts the player's face on their hero. `js/hero-camera.js` takes it,
+Hero photos: in the intro the station puts the player's face on their hero (by default; the action button says no,
+or with `PhotoByDefault` off it says yes). `js/hero-camera.js` takes it,
 `js/face-cutout.js` cuts out the face (MediaPipe, vendored in `lib/mediapipe`), `js/battle3d/face.js` paints it on the
 knight's head, `js/battle3d/portrait.js` renders the 2D portrait, `js/hero-photo.js` fetches them, and `PhotoStore` +
-`/api/photos` hold them. Photos are opt-in only and live in server memory until the match ends: never write one to
-disk, the database or a log.
+`/api/photos` hold them. Photos live in server memory until the player says no or the match ends: never write one
+to disk, the database or a log.
 After each answer a battle beat holds the next question back while the station plays the fight full screen
 (`js/dungeon-battle.js`, `css/dungeon-battle.css`, preview at `/dev/battle`). Beat animations are timed from the
 beat's server start (`--t0`) so redraws don't restart them; keep their offsets in step with the beat lengths.

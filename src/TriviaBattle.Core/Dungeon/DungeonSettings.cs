@@ -101,10 +101,17 @@ public sealed class DungeonSettings
     public double TimeCrystalSeconds { get; set; } = 20;
 
     /// <summary>
-    /// Hero photos: during the intro, the action button puts your face on your hero (the station's camera
-    /// takes it after a countdown). Off for a venue without station cameras, or one that doesn't want photos.
+    /// Hero photos: the station's camera puts your face on your hero during the intro. Off for a venue without
+    /// station cameras, or one that doesn't want photos.
     /// </summary>
     public bool HeroPhotos { get; set; } = true;
+
+    /// <summary>
+    /// True: every player's photo is taken unless they press the action button to say no (they see the camera
+    /// and the countdown first). False: only players who press it to say yes get one. Some venues and regions
+    /// need the second (ask first), especially where children play.
+    /// </summary>
+    public bool PhotoByDefault { get; set; } = true;
 
     /// <summary>The "3, 2, 1" before the station takes a hero photo.</summary>
     public double PhotoCountdownSeconds { get; set; } = 3;

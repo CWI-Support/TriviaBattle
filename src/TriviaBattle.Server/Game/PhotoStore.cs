@@ -11,10 +11,10 @@ namespace TriviaBattle.Server.Game;
 public sealed record HeroPicture(byte[] Face, byte[] Portrait);
 
 /// <summary>
-/// Hero photos: a player's face on their hero, taken by their station's camera after they said yes
+/// Hero photos: a player's face on their hero, taken by their station's camera in the intro
 /// (see <see cref="MatchEngine.PhotoTaken"/>). Kept in memory only, never written to disk or the
-/// database, and forgotten as soon as the match ends: a face never outlives the game it was taken for.
-/// It's a broadcaster only to hear about matches ending.
+/// database, and forgotten as soon as the match ends (or the player says no): a face never outlives the
+/// game it was taken for. It's a broadcaster only to hear about those.
 /// </summary>
 public sealed class PhotoStore : IMatchBroadcaster
 {
@@ -31,6 +31,9 @@ public sealed class PhotoStore : IMatchBroadcaster
 
     public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {
+        foreach (var declined in events.OfType<PhotoDeclined>())
+            Forget(match.MatchId, declined.StationId);
+
         if (!events.Any(e => e is MatchFinished))
             return;
         foreach (var player in match.Roster.Players)

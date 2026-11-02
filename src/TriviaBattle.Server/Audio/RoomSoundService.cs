@@ -231,12 +231,9 @@ public sealed class RoomSoundService(
                 room.PlayEffect([.. StationsOf(match, ownerId), .. StationsOf(match, use.TargetOwnerId)], _settings.Dungeon.PowerUp);
                 break;
 
-            case PhotoAsked { StationId: var stationId }:
-                // In step with the station's "3, 2, 1" (js/hero-camera.js), which takes the photo as the shutter sounds.
-                var countdown = match.Settings.Dungeon.PhotoCountdownSeconds;
-                for (var second = 0; second < countdown; second++)
-                    room.PlayEffect([stationId], _settings.Dungeon.PhotoCountdown, second);
-                room.PlayEffect([stationId], _settings.Dungeon.Photo, countdown);
+            case PhotoCountdown { StationId: var stationId, SecondsLeft: var left }:
+                // The station's "3, 2, 1" (js/hero-camera.js), then the shutter as it takes the photo.
+                room.PlayEffect([stationId], left > 0 ? _settings.Dungeon.PhotoCountdown : _settings.Dungeon.Photo);
                 break;
 
             case PowerUpFound { OwnerId: var ownerId } when match.Dungeon?.FindAdventurer(ownerId)?.LastDealt?.Found == null:

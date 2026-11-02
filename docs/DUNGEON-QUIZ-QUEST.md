@@ -310,11 +310,12 @@ permanent and levels you up. Levels unlock things; gold keeps a run tense.
 **Guests** can play without a card. At the end: *"Swipe a card now to save this run."* That's the
 conversion moment.
 
-**Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. In the intro:
-*"Put your face on your hero? Press ACTION"*. A 3, 2, 1 follows. A face finder cuts out just your face
+**Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. When the intro
+starts the camera comes up ("Press ACTION to skip"), a 3, 2, 1 follows, and a face finder cuts out just your face
 and paints it onto the 3D knight's face, inside the helmet, where it moves with every swing. A portrait of
-your knight shows on the plate, the main screen's lane and the line-up. It's opt-in only. The photo stays
-in the server's memory and is gone when the match ends, and nothing is saved yet. The knight now stands
+your knight shows on the plate, the main screen's lane and the line-up. It's on by default with ACTION to skip
+(an Operator could switch to asking first, `PhotoByDefault`). The photo stays in the server's memory and is
+gone when the match ends, and nothing is saved yet. The knight now stands
 three quarters on to the camera in fights, so his face shows. Next steps:
 - Keeping your face on your card or profile, a deliberate second yes (the "continue your journey" QR).
 - Reaction shots: a snap at a crit, a kill or a knockout, for the results screen.
@@ -558,7 +559,8 @@ Writing (Host lines) and art (sprites, UI kit, cutscenes) run alongside from pha
 - **Run length vs throughput:** a great 15-minute run is a bad venue product. Cap the Delve by time.
 - **Host tone** in a family venue: written and reviewed lines only.
 - **The fifth button and a card reader per station** are physical-build work; they can't wait for software.
-- **Face photos of the public, children included.** Opt-in per photo, never stored past the match today.
+- **Face photos of the public, children included.** On by default with a skip (or ask-first, a setting),
+  never stored past the match today.
   Before photos are kept on profiles (or shown anywhere outside the room), get a legal check for each
   venue's region: some places have strict rules on keeping face images.
 
@@ -581,6 +583,6 @@ Writing (Host lines) and art (sprites, UI kit, cutscenes) run alongside from pha
 - [ ] Name: Dungeon Quiz Quest or QUESTions?
 - [ ] Who makes the pixel art, and how many monsters for the slice?
 - [ ] F&B: potion codes on receipts, POS integration, or neither for now?
-- [ ] Hero photos: a webcam in each cabinet? And may a photo ever be kept (on a profile, after a second
-      yes), or is it always forgotten after the match?
+- [ ] Hero photos: a webcam in each cabinet? On by default with a skip, or ask first (per venue or
+      region)? And may a photo ever be kept (on a profile, after a second yes), or always forgotten?
 - [ ] Question supply: buy a licensed bank, write in-house, or AI-assisted and reviewed?

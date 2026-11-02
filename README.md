@@ -103,16 +103,23 @@ You can also drive a match with no screens at all, using the requests in
 
 ### Hero photos (a camera at each station)
 
-In a Dungeon game's intro, a station with a camera offers "Put your face on your hero? Press ACTION".
-A player who presses gets a 3, 2, 1 over their camera picture, with an outline to put their face in.
-The blips and the shutter come from their station's speaker. The station then finds the face
-(MediaPipe's face finder, vendored in `lib/mediapipe`, runs in the browser), cuts out just the face and
-paints it onto the 3D knight's own face, under the helmet. It moves with every swing and hit. A
-portrait of that knight shows on their plate, on their lane and in the line-up on the main screen. If
-no face can be found, nothing is kept. Nobody is photographed without pressing. The photo is kept only
-in the server's memory, never on disk or in the database, and it's forgotten when the match ends.
+When a Dungeon game's intro starts, each station with a camera shows the player's camera picture, with
+an outline to put their face in and "Press ACTION to skip". After a moment there's a 3, 2, 1; the blips
+and the shutter come from their station's speaker. The station then finds the face (MediaPipe's face
+finder, vendored in `lib/mediapipe`, runs in the browser), cuts out just the face and paints it onto
+the 3D knight's own face, under the helmet. It moves with every swing and hit. A portrait of that
+knight shows on their plate, on their lane and in the line-up on the main screen. If no face can be
+found, nothing is kept.
 
-- A station needs a webcam on its screen. Without one there's no offer.
+Pressing ACTION during the intro says no: the camera stops, or a photo already taken comes off again,
+for the rest of the match. The photo is kept only in the server's memory, never on disk or in the
+database, and it's forgotten when the match ends.
+
+- `Game:Dungeon:PhotoByDefault` (`true`) takes everyone's photo unless they skip. Set it to `false` to ask
+  first: the intro then offers "Put your face on your hero? Press ACTION", and only those who press get
+  one. Some venues and regions need that, especially where children play.
+- A station needs a webcam on its screen. Without one nothing is shown, and no countdown is heard (the
+  station tells the server when its camera is on).
 - Browsers only let `https` or `localhost` pages use a camera. A station PC that opens
   `http://<server-ip>:5000/...` needs Chrome started with
   `--unsafely-treat-insecure-origin-as-secure=http://<server-ip>:5000`. A kiosk window also needs
@@ -123,9 +130,9 @@ in the server's memory, never on disk or in the database, and it's forgotten whe
 - One PC driving several stations, with a webcam each: give each station's page part of its camera's
   name, as in `/display/player/2?camera=c920`. A station that doesn't find its camera takes no photo
   rather than using the wrong one.
-- `Game:Dungeon:HeroPhotos` (`false` turns it off) and `Game:Dungeon:PhotoCountdownSeconds` (3).
-  A yes only counts while the whole countdown still fits in the intro, so the 7-second intro gives
-  about 4 seconds to press. A longer `Game:IntroSeconds` gives more.
+- `Game:Dungeon:HeroPhotos` (`false` turns photos off) and `Game:Dungeon:PhotoCountdownSeconds` (3). By
+  default the photo is taken 4 seconds into the 7-second intro. Asking first, a yes only counts while the
+  whole countdown still fits in the intro, about 4 seconds to press. A longer `Game:IntroSeconds` gives more.
 - `/dev/battle3d?photo=/some/picture.jpg` previews the knight wearing the face in any picture on the
   server, without a camera.
 

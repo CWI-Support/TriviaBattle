@@ -87,6 +87,11 @@ public sealed class MatchEngine
 
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
         _lastTickAt = now;
+
+        // Hero photos on by default: everyone's station takes one after a moment and the countdown, unless they say no.
+        if (OffersPhotos && settings.Dungeon.PhotoByDefault)
+            foreach (var player in Roster.Players)
+                player.SchedulePhoto(now + PhotoLead + TimeSpan.FromSeconds(settings.Dungeon.PhotoCountdownSeconds), cameraOn: false);
     }
 
     public string MatchId { get; }
@@ -179,6 +184,17 @@ public sealed class MatchEngine
             foreach (var adventurer in _dungeon.AttacksDue(now))
                 events.AddRange(MonsterAttacks(adventurer.OwnerId, now));
         }
+
+        // Hero photos: each second of the station's countdown, and the moment it's taken (0), where the camera is on.
+        foreach (var player in Roster.Players.Where(p => p.PhotoAt != null && p.PhotoCameraOn && p.Photo == 0))
+        {
+            for (var left = (int)Settings.Dungeon.PhotoCountdownSeconds; left >= 0; left--)
+            {
+                var moment = player.PhotoAt!.Value - TimeSpan.FromSeconds(left);
+                if (moment > _lastTickAt && moment <= now)
+                    events.Add(new PhotoCountdown(player.StationId, left));
+            }
+        }
         _lastTickAt = now;
 
         if (now >= PhaseEndsAt)
@@ -189,14 +205,14 @@ public sealed class MatchEngine
 
     /// <summary>
     /// Handles a button press: answers that owner's current question, or (the action button, Dungeon
-    /// format) uses their power-up. In the intro, the action button asks for a hero photo.
-    /// Other presses outside Playing are ignored.
+    /// format) uses their power-up. In the intro, the action button is for the hero photo (see
+    /// <see cref="PhotoButton"/>). Other presses outside Playing are ignored.
     /// </summary>
     public IReadOnlyList<MatchEvent> HandlePress(ButtonPress press, DateTimeOffset now)
     {
         var player = Roster.FindPlayer(press.StationId);
         if (Phase == MatchPhase.Intro && player != null && press.IsAction)
-            return AskForPhoto(player, now);
+            return PhotoButton(player, now);
         if (Phase != MatchPhase.Playing || player == null || press.PressedAt > PhaseEndsAt)
             return NothingHappened;
 
@@ -294,26 +310,57 @@ public sealed class MatchEngine
         return [new PowerUpFound(ownerId, powerUp)];
     }
 
+    /// <summary>With hero photos on by default, a moment to see yourself on camera before the countdown starts.</summary>
+    public static readonly TimeSpan PhotoLead = TimeSpan.FromSeconds(1);
+
+    /// <summary>Hero photos: a Dungeon game, and the venue allows them (<see cref="DungeonSettings.HeroPhotos"/>).</summary>
+    public bool OffersPhotos => _dungeon != null && Settings.Dungeon.HeroPhotos;
+
     /// <summary>
-    /// Hero photos are on offer in the intro of a Dungeon game, when the venue allows them
-    /// (<see cref="DungeonSettings.HeroPhotos"/>), until this time: the last moment the whole countdown still
-    /// fits in the intro, so the photo never covers the first question. Null when there's no offer.
-    /// Only the player's own press says yes: a photo is never taken unasked.
+    /// When photos are asked for first (<see cref="DungeonSettings.PhotoByDefault"/> off): the intro takes a yes
+    /// until this time, the last moment the whole countdown still fits in it, so the photo never covers the
+    /// first question. Null when there's no such offer.
     /// </summary>
     public DateTimeOffset? PhotoOfferEndsAt =>
-        _dungeon != null && Settings.Dungeon.HeroPhotos && Phase == MatchPhase.Intro
+        OffersPhotos && !Settings.Dungeon.PhotoByDefault && Phase == MatchPhase.Intro
             ? PhaseEndsAt - TimeSpan.FromSeconds(Settings.Dungeon.PhotoCountdownSeconds)
             : null;
 
-    /// <summary>The player said yes to a hero photo: their station takes it after the countdown. Once per match.</summary>
-    private IReadOnlyList<MatchEvent> AskForPhoto(Player player, DateTimeOffset now)
+    /// <summary>
+    /// The action button in the intro. With a photo coming (or already taken) it says no: none this match,
+    /// and any taken is dropped. Otherwise (photos asked for first) it says yes, while the countdown still fits.
+    /// </summary>
+    private IReadOnlyList<MatchEvent> PhotoButton(Player player, DateTimeOffset now)
     {
-        if (PhotoOfferEndsAt is not { } offerEndsAt || now > offerEndsAt || player.PhotoAt != null)
+        if (!OffersPhotos || player.PhotoDeclined)
             return NothingHappened;
 
-        player.AskForPhoto(now + TimeSpan.FromSeconds(Settings.Dungeon.PhotoCountdownSeconds));
+        if (player.PhotoAt != null)
+        {
+            player.DeclinePhoto();
+            Version++;
+            return [new PhotoDeclined(player.StationId)];
+        }
+
+        if (PhotoOfferEndsAt is not { } offerEndsAt || now > offerEndsAt)
+            return NothingHappened;
+        // They pressed to say yes, so they're at a station with a camera: the countdown can be heard straight away.
+        player.SchedulePhoto(now + TimeSpan.FromSeconds(Settings.Dungeon.PhotoCountdownSeconds), cameraOn: true);
         Version++;
         return [new PhotoAsked(player.StationId)];
+    }
+
+    /// <summary>
+    /// The station's camera came on for a photo that's coming, so its countdown can be heard
+    /// (<see cref="PhotoCountdown"/>). False if no photo is coming there.
+    /// </summary>
+    public bool PhotoCameraOn(string stationId)
+    {
+        var player = Roster.FindPlayer(stationId);
+        if (player?.PhotoAt == null || IsFinished)
+            return false;
+        player.CameraOn();
+        return true;
     }
 
     /// <summary>

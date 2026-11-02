@@ -169,6 +169,15 @@ public sealed class MatchHost(
         }
     }
 
+    /// <summary>A station's camera came on for a hero photo, so its countdown can be heard. False if no photo is coming there.</summary>
+    public bool PhotoCameraOn(string matchId, string stationId)
+    {
+        lock (_lock)
+        {
+            return _matches.TryGetValue(matchId, out var match) && match.PhotoCameraOn(stationId);
+        }
+    }
+
     /// <summary>The operator gives a continue from the admin page. False if there's no continue on offer.</summary>
     public bool ContinueMatch(string matchId)
     {

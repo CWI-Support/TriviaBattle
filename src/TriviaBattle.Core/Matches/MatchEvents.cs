@@ -40,8 +40,17 @@ public sealed record PowerUpFound(string OwnerId, PowerUp PowerUp) : MatchEvent;
 /// <summary>Dungeon format: an adventurer used their power-up with the action button.</summary>
 public sealed record PowerUpUsed(string OwnerId, PowerUpUse Use) : MatchEvent;
 
-/// <summary>Dungeon format: in the intro, a player said yes to a hero photo (their station takes it after a countdown).</summary>
+/// <summary>Dungeon format: in the intro, a player said yes to a hero photo (when photos are asked for first).</summary>
 public sealed record PhotoAsked(string StationId) : MatchEvent;
+
+/// <summary>Dungeon format: a player said no to a hero photo (the action button in the intro). Any taken is dropped.</summary>
+public sealed record PhotoDeclined(string StationId) : MatchEvent;
+
+/// <summary>
+/// Dungeon format: a second of the station's hero photo countdown (3, 2, 1), or the moment it's taken (0).
+/// Raised by Tick, only where the camera is on; nothing in the snapshot changes.
+/// </summary>
+public sealed record PhotoCountdown(string StationId, int SecondsLeft) : MatchEvent;
 
 /// <summary>Dungeon format: a player's hero photo arrived, so screens can put their face on their hero.</summary>
 public sealed record PhotoTaken(string StationId) : MatchEvent;

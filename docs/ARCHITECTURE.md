@@ -148,20 +148,25 @@ The rules:
   next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
   to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
-- **Hero photos** (a player's face on their hero). In the intro the action button says yes:
-  `MatchEngine` takes it while `PhotoOfferEndsAt` hasn't passed (the whole countdown must still fit in
-  the intro; `DungeonSettings.HeroPhotos` and `PhotoCountdownSeconds`), sets `Player.PhotoAt` and raises
-  `PhotoAsked`. Nobody is photographed without pressing. The snapshot tells the station
-  (`YouView.PhotoOfferUntilMs`, `PhotoAtMs`). `js/hero-camera.js` takes the photo then and makes two
-  pictures, both sent to `PUT /api/photos/{matchId}/{stationId}` (a form):
+- **Hero photos** (a player's face on their hero; `DungeonSettings.HeroPhotos`, `PhotoByDefault`,
+  `PhotoCountdownSeconds`). By default the engine schedules everyone's photo when the intro starts
+  (`Player.PhotoAt`: `PhotoLead` plus the countdown). The action button in the intro says no
+  (`PhotoButton`: `Player.DeclinePhoto`, `PhotoDeclined`): the photo is off for the match, and one already
+  taken is dropped. Asking first instead (`PhotoByDefault` false), the button says yes while
+  `PhotoOfferEndsAt` hasn't passed (`PhotoAsked`), and a second press says no. The snapshot tells the station
+  (`YouView.PhotoOfferUntilMs`, `PhotoAtMs`). The station tells the server when its camera is on
+  (`POST /api/photos/{matchId}/{stationId}/camera`, `MatchEngine.PhotoCameraOn`); only then does `Tick`
+  raise `PhotoCountdown` (3, 2, 1, then 0 for the shutter), so a station without a camera stays quiet.
+  `js/hero-camera.js` takes the photo at `PhotoAtMs` and makes two pictures, both sent to
+  `PUT /api/photos/{matchId}/{stationId}` (a form):
   - **face**: `js/face-cutout.js` finds the face with MediaPipe's Face Landmarker (vendored in
     `lib/mediapipe`, run in the browser), cuts it out along its outline and lays it out the same way every
     time: eyes level and a set distance apart, with eyes, mouth and chin at set heights.
   - **portrait**: `js/battle3d/portrait.js` renders the knight's head wearing that face, for every screen
     that draws in 2D. No face found: nothing is sent.
 
-  `PhotoStore` keeps both in memory only, never on disk or in the database, and forgets them when the match
-  ends (it's an `IMatchBroadcaster` for that). `MatchHost.PhotoTaken` then `MatchEngine.PhotoTaken` count the
+  `PhotoStore` keeps both in memory only, never on disk or in the database, and forgets them when the player
+  says no or the match ends (it's an `IMatchBroadcaster` for that). `MatchHost.PhotoTaken` then `MatchEngine.PhotoTaken` count the
   photo (`Player.Photo`, sent as `PlayerView.Photo`, raising `PhotoTaken`). Every screen fetches what it needs
   once per number (`GET /api/photos/{matchId}/{stationId}/{face|portrait}`, via `js/hero-photo.js`) and keeps it as
   an in-memory blob URL (the server sends it `no-store`). The portrait shows on the plate, the lanes, the party
@@ -176,7 +181,8 @@ The rules:
   `RoomSoundService` plays the countdown's blips and the shutter on the station's speaker. A station names
   its camera with `?camera=` when one PC drives several.
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
-  `PhotoTaken`, and `QuestionShown` from `Tick` when a battle beat ends (alongside the usual `AnswerGiven`).
+  `PhotoDeclined`, `PhotoTaken`, and from `Tick`: `QuestionShown` when a battle beat ends and `PhotoCountdown`
+  (alongside the usual `AnswerGiven`).
 - **The room joins in.** `RoomSoundService` plays each fight as a timed sequence that lands with the
   beat's picture (the blow at 0.19 s, the burst at 1 s, the floor or boss under the curtain, the loot with
   its card; the moments in `css/dungeon-battle.css`'s table), plus block, loot and power-up sounds, and

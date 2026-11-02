@@ -7,64 +7,111 @@ using TriviaBattle.Server.Game;
 namespace TriviaBattle.Tests.Dungeon;
 
 /// <summary>
-/// Hero photos: in the intro the action button says yes, the station takes it after a countdown, and the
-/// server keeps it until the match ends. The intro is 7 seconds and the countdown 3 (the defaults).
+/// Hero photos. By default everyone's station takes one in the intro (a second to see yourself, then a 3-second
+/// countdown) unless they press the action button to say no; a venue can ask first instead, when the action
+/// button says yes. The server keeps the picture until the match ends. The intro is 7 seconds.
 /// </summary>
 public class HeroPhotoTests
 {
-    private static TestMatch Match(Action<MatchSettings>? configure = null)
+    private static TestMatch Match(bool byDefault = true, Action<MatchSettings>? configure = null)
     {
         var settings = new MatchSettings { Format = GameFormat.Dungeon };
+        settings.Dungeon.PhotoByDefault = byDefault;
         configure?.Invoke(settings);
         return new TestMatch(GameModeKind.FreeForAll, settings, stations: ["A1", "A2"]);
     }
 
-    private static IReadOnlyList<MatchEvent> SayYes(TestMatch match, string stationId, double afterSeconds = 1) =>
+    private static IReadOnlyList<MatchEvent> PressAction(TestMatch match, string stationId, double afterSeconds = 0.5) =>
         match.Press(stationId, ButtonPress.Action, afterSeconds);
 
     private static YouView You(TestMatch match, string stationId) =>
         SnapshotBuilder.Build(match.Engine, Viewer.Player(stationId)).You!;
 
+    private static Player PlayerAt(TestMatch match, string stationId) => match.Engine.Roster.FindPlayer(stationId)!;
+
     [Fact]
-    public void The_action_button_in_the_intro_asks_for_a_photo_taken_after_the_countdown()
+    public void By_default_everyone_s_photo_is_coming_from_the_start_of_the_intro()
     {
         var match = Match();
 
-        var events = SayYes(match, "A1");
+        var takeAt = TestMatch.Start + TimeSpan.FromSeconds(1 + 3);
+        Assert.Equal(takeAt, PlayerAt(match, "A1").PhotoAt);
+        Assert.Equal(takeAt.ToUnixTimeMilliseconds(), You(match, "A2").PhotoAtMs);
+        Assert.Null(You(match, "A1").PhotoOfferUntilMs); // nothing to ask
+    }
 
-        Assert.Equal(new PhotoAsked("A1"), Assert.Single(events));
-        var takeAt = match.Now + TimeSpan.FromSeconds(3);
-        Assert.Equal(takeAt, match.Engine.Roster.FindPlayer("A1")!.PhotoAt);
-        Assert.Equal(takeAt.ToUnixTimeMilliseconds(), You(match, "A1").PhotoAtMs);
-        Assert.Null(You(match, "A1").PhotoOfferUntilMs); // said yes: no more offer
+    [Fact]
+    public void The_action_button_in_the_intro_says_no_and_stays_no()
+    {
+        var match = Match();
 
-        // The other player is still being offered one, until the countdown would no longer fit in the intro.
+        Assert.Equal(new PhotoDeclined("A1"), Assert.Single(PressAction(match, "A1")));
+        Assert.Null(You(match, "A1").PhotoAtMs);
+        Assert.True(PlayerAt(match, "A1").PhotoDeclined);
+        Assert.Empty(match.Engine.PhotoTaken("A1"));  // a photo sent anyway is refused
+        Assert.Empty(PressAction(match, "A1"));        // pressing again doesn't bring it back
+        Assert.NotNull(You(match, "A2").PhotoAtMs);    // the other player's is still coming
+    }
+
+    [Fact]
+    public void Saying_no_after_the_photo_arrived_takes_it_off()
+    {
+        var match = Match();
+        match.Wait(4.5);
+        match.Engine.PhotoTaken("A1");
+        Assert.Equal(1, PlayerAt(match, "A1").Photo);
+
+        Assert.Single(PressAction(match, "A1"));
+
+        Assert.Equal(0, PlayerAt(match, "A1").Photo); // screens go back to the knight's own face
+    }
+
+    [Fact]
+    public void The_countdown_is_heard_only_once_the_camera_is_on_and_stops_on_no()
+    {
+        var match = Match();
+        IReadOnlyList<PhotoCountdown> Wait(double seconds) => match.Wait(seconds).OfType<PhotoCountdown>().ToList();
+
+        // The countdown's seconds fall at 1, 2 and 3 s into the intro, the shutter at 4 s.
+        Assert.Empty(Wait(1.5));                        // no camera reported at A1 yet: quiet (its 3 is missed)
+        Assert.True(match.Engine.PhotoCameraOn("A1"));
+        Assert.Equal([new PhotoCountdown("A1", 2)], Wait(1));
+        Assert.Equal([new PhotoCountdown("A1", 1), new PhotoCountdown("A1", 0)], Wait(1.5));
+
+        var other = Match();
+        other.Engine.PhotoCameraOn("A2");
+        other.Press("A2", ButtonPress.Action, 0);       // said no before anything played
+        Assert.Empty(other.Wait(5).OfType<PhotoCountdown>());
+    }
+
+    [Fact]
+    public void Asked_first_the_action_button_says_yes_while_the_countdown_still_fits()
+    {
+        var match = Match(byDefault: false);
         var offerEnds = match.Engine.PhaseEndsAt - TimeSpan.FromSeconds(3);
-        Assert.Equal(offerEnds.ToUnixTimeMilliseconds(), You(match, "A2").PhotoOfferUntilMs);
-        Assert.Null(You(match, "A2").PhotoAtMs);
+        Assert.Null(You(match, "A1").PhotoAtMs);
+        Assert.Equal(offerEnds.ToUnixTimeMilliseconds(), You(match, "A1").PhotoOfferUntilMs);
+
+        Assert.Equal(new PhotoAsked("A1"), Assert.Single(PressAction(match, "A1", 1)));
+        Assert.Equal(match.Now + TimeSpan.FromSeconds(3), PlayerAt(match, "A1").PhotoAt);
+        Assert.Null(You(match, "A1").PhotoOfferUntilMs);
+
+        Assert.Empty(PressAction(match, "A2", 4.5));     // 5.5 s in: the countdown wouldn't fit any more
+        Assert.Single(PressAction(match, "A1", 0));      // pressed again: no after all
+        Assert.Null(PlayerAt(match, "A1").PhotoAt);
     }
 
     [Fact]
-    public void Too_late_in_the_intro_or_twice_is_ignored()
-    {
-        var match = Match();
-
-        Assert.Single(SayYes(match, "A1"));
-        Assert.Empty(SayYes(match, "A1"));       // once per match
-        Assert.Empty(SayYes(match, "A2", 4.5));  // 5.5 s in: only 1.5 s of intro left, the countdown wouldn't fit
-        Assert.Null(match.Engine.Roster.FindPlayer("A2")!.PhotoAt);
-    }
-
-    [Fact]
-    public void There_is_no_offer_in_Classic_or_with_photos_switched_off()
+    public void There_are_no_photos_in_Classic_or_with_photos_switched_off()
     {
         var classic = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { Format = GameFormat.Classic }, stations: ["A1"]);
-        var off = Match(s => s.Dungeon.HeroPhotos = false);
+        var off = Match(configure: s => s.Dungeon.HeroPhotos = false);
 
         foreach (var match in new[] { classic, off })
         {
+            Assert.Null(You(match, "A1").PhotoAtMs);
             Assert.Null(You(match, "A1").PhotoOfferUntilMs);
-            Assert.Empty(SayYes(match, "A1"));
+            Assert.Empty(PressAction(match, "A1"));
         }
     }
 
@@ -74,17 +121,18 @@ public class HeroPhotoTests
         var match = Match();
         match.StartPlaying();
 
-        Assert.Null(You(match, "A1").PhotoOfferUntilMs);
-        Assert.DoesNotContain(SayYes(match, "A1"), e => e is PhotoAsked);
+        Assert.DoesNotContain(PressAction(match, "A1"), e => e is PhotoDeclined);
+        Assert.NotNull(You(match, "A1").PhotoAtMs);
     }
 
     [Fact]
-    public void A_photo_only_counts_from_a_player_who_asked_and_only_once()
+    public void A_photo_only_counts_while_one_is_coming_and_only_once()
     {
-        var match = Match();
+        var match = Match(byDefault: false);
         Assert.Empty(match.Engine.PhotoTaken("A1")); // never taken unasked
+        Assert.False(match.Engine.PhotoCameraOn("A1"));
 
-        SayYes(match, "A1");
+        PressAction(match, "A1");
         Assert.Equal(new PhotoTaken("A1"), Assert.Single(match.Engine.PhotoTaken("A1")));
         Assert.Empty(match.Engine.PhotoTaken("A1"));
 
@@ -94,17 +142,21 @@ public class HeroPhotoTests
     }
 
     [Fact]
-    public void The_store_forgets_a_match_s_photos_when_it_ends()
+    public void The_store_forgets_a_photo_when_its_player_says_no_and_all_of_a_match_s_when_it_ends()
     {
         var match = Match();
         var store = new PhotoStore();
         byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0];
         store.Keep("test-match", "A1", new HeroPicture(png, png));
+        store.Keep("test-match", "A2", new HeroPicture(png, png));
         store.Keep("other-match", "A1", new HeroPicture(png, png));
 
-        store.MatchChanged(match.Engine, match.Engine.Abort(match.Now), []);
-
+        store.MatchChanged(match.Engine, PressAction(match, "A1"), []);
         Assert.Null(store.Find("test-match", "A1"));
+        Assert.NotNull(store.Find("test-match", "A2"));
+
+        store.MatchChanged(match.Engine, match.Engine.Abort(match.Now), []);
+        Assert.Null(store.Find("test-match", "A2"));
         Assert.NotNull(store.Find("other-match", "A1"));
         Assert.True(PhotoStore.IsPng(png));
         Assert.False(PhotoStore.IsPng("GIF89a..."u8.ToArray()));

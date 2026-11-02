@@ -59,4 +59,6 @@
 @keyframes photo-reveal { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .photo-line { padding: 0 6vmin; font-family: var(--font-display); font-size: 7vmin; color: var(--accent); text-align: center; }
+.photo-skip { margin-top: -2vmin; font-family: var(--font-display); font-size: 4.5vmin; color: var(--text-dim); }
+.photo-camera.is-flash .photo-skip, .photo-camera.is-failed .photo-skip { visibility: hidden; }
 .photo-camera.is-failed .photo-window { display: none; }

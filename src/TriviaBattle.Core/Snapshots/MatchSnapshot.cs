@@ -133,8 +133,8 @@ public sealed record YourAnswerView(
 /// <param name="Delve">Dungeon format: their party's delve and their own HP (the team's in 2v2 Group).</param>
 /// <param name="Helping">Dungeon format, while they're downed in a party: a standing teammate's question, so they can shout the answer.</param>
 /// <param name="Beat">Dungeon format: the battle beat after their last answer (the next question waits until it ends).</param>
-/// <param name="PhotoOfferUntilMs">The intro is offering a hero photo ("press the action button to put your face on your hero") until this time. Null once they've said yes, or with no offer.</param>
-/// <param name="PhotoAtMs">They said yes: the station takes their hero photo at this time, after a countdown.</param>
+/// <param name="PhotoOfferUntilMs">Photos asked for first: the intro offers one ("press the action button to put your face on your hero") until this time. Null once they've answered, or with no offer.</param>
+/// <param name="PhotoAtMs">A hero photo is coming (or was taken): the station takes it at this time, after a countdown. The action button in the intro says no.</param>
 public sealed record YouView(
     string StationId,
     string Name,

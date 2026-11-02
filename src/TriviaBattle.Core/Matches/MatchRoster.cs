@@ -36,17 +36,37 @@ public sealed class Player(string stationId, string name, int? playerProfileId, 
     public Tally Tally { get; } = new();
 
     /// <summary>
-    /// Dungeon format: they said yes to a hero photo (their face on their hero), and their station
-    /// takes it at this time, after a countdown. Null if they haven't asked.
+    /// Dungeon format: when their station takes their hero photo (their face on their hero), after a
+    /// countdown. Set when the intro starts (photos on by default), or when they ask for one. Null if none is coming.
     /// </summary>
     public DateTimeOffset? PhotoAt { get; private set; }
 
-    /// <summary>Goes up when their hero photo arrives (0 = none yet). Screens fetch the picture from the server by this number.</summary>
+    /// <summary>Goes up when their hero photo arrives (0 = none). Screens fetch the picture from the server by this number.</summary>
     public int Photo { get; private set; }
 
-    public void AskForPhoto(DateTimeOffset takeAt) => PhotoAt = takeAt;
+    /// <summary>Their station's camera is on for the photo, so its countdown is heard. A station without a camera stays quiet.</summary>
+    public bool PhotoCameraOn { get; private set; }
+
+    /// <summary>They pressed the action button to say no: no photo this match, and any taken is gone.</summary>
+    public bool PhotoDeclined { get; private set; }
+
+    public void SchedulePhoto(DateTimeOffset takeAt, bool cameraOn)
+    {
+        PhotoAt = takeAt;
+        PhotoCameraOn = cameraOn;
+    }
+
+    public void CameraOn() => PhotoCameraOn = true;
 
     public void PhotoArrived() => Photo++;
+
+    public void DeclinePhoto()
+    {
+        PhotoAt = null;
+        Photo = 0;
+        PhotoCameraOn = false;
+        PhotoDeclined = true;
+    }
 }
 
 /// <summary>A team in a running match.</summary>

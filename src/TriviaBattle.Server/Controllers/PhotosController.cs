@@ -4,9 +4,9 @@ using TriviaBattle.Server.Game;
 namespace TriviaBattle.Server.Controllers;
 
 /// <summary>
-/// Hero photos (Dungeon format). A player says yes in the intro (the action button); their station counts
-/// down, takes the photo, cuts out just the face, renders the knight wearing it, and sends both here as
-/// PNGs. The station's 3D knight wears the face; every other screen shows the portrait. Pictures stay in
+/// Hero photos (Dungeon format). In the intro a player's station counts down (unless they press the action
+/// button to say no, or, with photos asked for first, until they press it to say yes), takes the photo,
+/// cuts out just the face, renders the knight wearing it, and sends both here as PNGs. The station's 3D knight wears the face; every other screen shows the portrait. Pictures stay in
 /// memory and go when the match ends (<see cref="PhotoStore"/>).
 /// </summary>
 [ApiController]
@@ -15,7 +15,7 @@ public class PhotosController(PhotoStore photos, MatchHost host) : ControllerBas
 {
     /// <summary>
     /// The station sends the photo it took: a form with two PNG files, "face" and "portrait". Only accepted
-    /// from a player in that match who asked for one, once.
+    /// for a player in that match whose photo is coming (not said no to), once.
     /// </summary>
     [HttpPut("{matchId}/{stationId}")]
     [RequestSizeLimit(PhotoStore.MaxBytes)]
@@ -31,8 +31,13 @@ public class PhotosController(PhotoStore photos, MatchHost host) : ControllerBas
             return NoContent();
 
         photos.Forget(matchId, stationId);
-        return Conflict(new { problems = new[] { "That player didn't ask for a hero photo, or already has one." } });
+        return Conflict(new { problems = new[] { "No hero photo is coming for that player, or they already have one." } });
     }
+
+    /// <summary>The station's camera came on for a photo that's coming: the server can play its countdown on the station's speaker.</summary>
+    [HttpPost("{matchId}/{stationId}/camera")]
+    public IActionResult CameraOn(string matchId, string stationId) =>
+        host.PhotoCameraOn(matchId, stationId) ? NoContent() : Conflict(new { problems = new[] { "No hero photo is coming at that station." } });
 
     /// <param name="kind">"face" or "portrait".</param>
     [HttpGet("{matchId}/{stationId}/{kind}")]
