@@ -28,6 +28,12 @@ public sealed record AdventurerHit(string OwnerId, TakenHit Hit) : MatchEvent;
 /// <summary>Dungeon format: a downed adventurer is back on their feet (their time ran out, or teammates revived them).</summary>
 public sealed record AdventurerGotUp(string OwnerId) : MatchEvent;
 
+/// <summary>
+/// Dungeon format: a battle beat ended and the owner's next question is showing, so their buttons count
+/// again (the button LEDs come back on). Raised by Tick; nothing in the snapshot changes.
+/// </summary>
+public sealed record QuestionShown(string OwnerId) : MatchEvent;
+
 /// <summary>Dungeon format: an adventurer picked up a power-up (a monster dropped it, or their streak earned it).</summary>
 public sealed record PowerUpFound(string OwnerId, PowerUp PowerUp) : MatchEvent;
 

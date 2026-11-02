@@ -183,8 +183,12 @@ public sealed class RoomSound : IDisposable
             Zone(stationId)?.PlayEffect(path);
     }
 
-    /// <summary>A sound effect (a dungeon hit, a kill...) on these stations' speakers. No file = silence.</summary>
-    public void PlayEffect(IEnumerable<string> stationIds, string? file)
+    /// <summary>
+    /// A sound effect (a dungeon hit, a kill...) on these stations' speakers, now or after
+    /// <paramref name="delaySeconds"/> (so it lands with the picture). No file = silence. A speaker plays
+    /// one effect at a time: a newer one cuts the last one off.
+    /// </summary>
+    public void PlayEffect(IEnumerable<string> stationIds, string? file, double delaySeconds = 0)
     {
         if (Path(file) is not { } path)
             return;
@@ -194,8 +198,16 @@ public sealed class RoomSound : IDisposable
         if (_audio.IsStereoTest)
             stations = stations.Take(1).ToList();
 
-        foreach (var stationId in stations)
-            Zone(stationId)?.PlayEffect(path);
+        var zones = stations.Select(Zone).OfType<AudioChannel>().ToList();
+        if (delaySeconds <= 0)
+        {
+            foreach (var zone in zones) zone.PlayEffect(path);
+            return;
+        }
+        _ = Task.Delay(TimeSpan.FromSeconds(delaySeconds)).ContinueWith(_ =>
+        {
+            foreach (var zone in zones) zone.PlayEffect(path);
+        });
     }
 
     /// <summary>Speaker test from the operator screen: a stinger on that speaker.</summary>

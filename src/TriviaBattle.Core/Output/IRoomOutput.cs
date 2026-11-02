@@ -17,6 +17,7 @@ public enum LightingCue
     Reveal = 3,     // not used since every match became a timed round; kept so the PLC numbering stays put
     Standings = 4,  // not used either, same reason
     Results = 5,
+    Boss = 6,       // Dungeon format: someone in the room is fighting a boss (the room turns ominous)
 }
 
 /// <summary>

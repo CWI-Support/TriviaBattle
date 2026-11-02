@@ -12,20 +12,25 @@ namespace TriviaBattle.Server.Game;
 /// LED rules for each seated station's four answer buttons:
 /// <list type="bullet">
 ///   <item>Playing: all four on ("press now"), except off during a wrong-answer lockout
-///         (for the whole team in 2v2 Group).</item>
+///         (for the whole team in 2v2 Group) and, in Dungeon format, while a battle beat plays (presses
+///         don't count until the next question is up; QuestionShown brings them back on).</item>
 ///   <item>Results: the winners' buttons blink.</item>
 ///   <item>Anything else, or match over: off.</item>
 /// </list>
 /// The action button (the fifth) lights whenever pressing it would do something: while Playing, when
 /// they hold a power-up and aren't downed.
 /// Several groups can play in one room at once. LEDs belong to each station's own match; the
-/// room's lighting cue follows the busiest match in the room: Playing, then Results, then Intro, else Idle.
+/// room's lighting cue follows the busiest match in the room: Playing (Boss while anyone faces a boss),
+/// then Results, then Intro, else Idle.
 /// </summary>
 public class RoomOutputCoordinator(
     IEnumerable<IRoomOutput> outputs,
     ButtonMap buttonMap,
-    StationLayout stations) : IMatchBroadcaster
+    StationLayout stations,
+    TimeProvider? clock = null) : IMatchBroadcaster
 {
+    private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+
     public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {
         if (events.All(e => e is LeaderboardPlacement))
@@ -39,7 +44,7 @@ public class RoomOutputCoordinator(
             for (var answer = 0; answer < 4; answer++)
             {
                 if (buttonMap.FindButtonId(player.StationId, answer) is int buttonId)
-                    leds[buttonId] = finished ? LedState.Off : LedFor(match, player);
+                    leds[buttonId] = finished ? LedState.Off : LedFor(match, player, _clock.GetUtcNow());
             }
             if (buttonMap.FindButtonId(player.StationId, ButtonPress.Action) is int actionId)
                 leds[actionId] = finished ? LedState.Off : ActionLedFor(match, player);
@@ -58,11 +63,13 @@ public class RoomOutputCoordinator(
     /// <summary>The cue for the busiest match still running in the room (Idle if there are none).</summary>
     private LightingCue RoomCue(string roomId, IReadOnlyList<MatchEngine> runningMatches)
     {
-        var phases = runningMatches
+        var inRoom = runningMatches
             .Where(m => !m.IsFinished && m.Roster.Players.Any(p => stations.Find(p.StationId)?.RoomId == roomId))
-            .Select(m => m.Phase)
             .ToList();
+        var phases = inRoom.Select(m => m.Phase).ToList();
 
+        var bossFight = inRoom.Any(m => m.Phase == MatchPhase.Playing && m.Dungeon?.Delves.Any(d => d.Encounter.Monster.IsBoss) == true);
+        if (bossFight) return LightingCue.Boss;
         if (phases.Contains(MatchPhase.Playing) || phases.Contains(MatchPhase.Continue)) return LightingCue.Question; // "Continue?" is still the game
         if (phases.Contains(MatchPhase.Results)) return LightingCue.Results;
         if (phases.Contains(MatchPhase.Intro)) return LightingCue.Intro;
@@ -77,13 +84,15 @@ public class RoomOutputCoordinator(
         return canUse ? LedState.On : LedState.Off;
     }
 
-    private static LedState LedFor(MatchEngine match, Player player)
+    private static LedState LedFor(MatchEngine match, Player player, DateTimeOffset now)
     {
         switch (match.Phase)
         {
             case MatchPhase.Playing:
-                // LockoutEnded (from the engine's tick) triggers a fresh update when the lockout runs out.
-                return match.StreamFor(player).LockedOutUntil == null ? LedState.On : LedState.Off;
+                // LockoutEnded and QuestionShown (from the engine's tick) bring fresh updates when they end.
+                var stream = match.StreamFor(player);
+                var beatPlaying = stream.CurrentShownAt > now;
+                return stream.LockedOutUntil == null && !beatPlaying ? LedState.On : LedState.Off;
 
             case MatchPhase.Results:
                 var standingId = match.Mode.UsesTeams ? player.TeamId : player.StationId;

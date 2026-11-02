@@ -36,7 +36,7 @@
       "26": 216, "27": 217, "28": 218, "29": 219
     },
 
-    "_LightingCueRegisters": "Room id -> holding register for its lighting scene. Values: 0 Idle, 1 Intro, 2 Question, 3 Reveal, 4 Standings, 5 Results.",
+    "_LightingCueRegisters": "Room id -> holding register for its lighting scene. Values: 0 Idle, 1 Intro, 2 Question, 5 Results, 6 Boss (3 Reveal and 4 Standings are no longer sent).",
     "LightingCueRegisters": {
       "A": 220
     }

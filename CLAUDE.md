@@ -74,7 +74,8 @@ Audio: ALL room sound is played by the server on the room's StarTech 7.1 card, n
 (`src/TriviaBattle.Hardware/Audio`: `AudioService`, `AudioChannel`) is RangerShack's, ported as-is: keep it in step with RangerShack
 instead of reworking it. `RoomSoundService` (an `IMatchBroadcaster`) maps match events to sounds on zones; outputs are
 0-based (`config/stations.json`). Videos are silent; their sound is a separate file (`Audio:IntroSound`).
-Dungeon games play fight sounds (`Audio:Dungeon`, placeholders in `media/audio/dungeon/sfx`) instead of stingers.
+Dungeon games play fight sounds (`Audio:Dungeon`, placeholders in `media/audio/dungeon/sfx`) instead of stingers,
+timed to land with the battle beat's picture (constants in `RoomSoundService`; keep them in step with the beat table).
 
 Admin: `/admin` page (`js/admin/*`, one file per tab, all via `admin-api.js`) over `/api/admin/*` (`Server/Admin`).
 `QuestionRules` validates questions for both editor and import; `QuestionTransfer` does CSV/JSON packs and also seeds the DB.

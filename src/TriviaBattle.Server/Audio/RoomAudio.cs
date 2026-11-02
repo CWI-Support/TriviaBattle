@@ -27,6 +27,9 @@ public class AudioSettings
     public string PlayingMusic { get; set; } = "";
     public string VictoryMusic { get; set; } = "";
 
+    /// <summary>Dungeon format: the room music while anyone in the room is fighting a boss. Empty = keep the playing music.</summary>
+    public string BossMusic { get; set; } = "";
+
     /// <summary>
     /// The intro video's soundtrack as its own file, played on the room speakers in sync with the
     /// screens (videos stay silent so the sound can go to the right speakers, as in the EscapeEngine).
@@ -75,7 +78,14 @@ public class DungeonSounds
     public string Hurt { get; set; } = "";
     public string Downed { get; set; } = "";
 
-    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, PartyCombo, Revive, Hurt, Downed];
+    /// <summary>A Shield takes the monster's hit.</summary>
+    public string Block { get; set; } = "";
+
+    /// <summary>A power-up found (the LOOT! card), and one used with the action button.</summary>
+    public string Loot { get; set; } = "";
+    public string PowerUp { get; set; } = "";
+
+    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp];
 
     /// <summary>At least one is set, so dungeon games play these instead of the stingers.</summary>
     public bool AnySet => All.Any(file => !string.IsNullOrWhiteSpace(file));

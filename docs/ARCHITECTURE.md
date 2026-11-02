@@ -148,8 +148,15 @@ The rules:
   next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
   to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
-- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed` (alongside the
-  usual `AnswerGiven`).
+- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, and
+  `QuestionShown` from `Tick` when a battle beat ends (alongside the usual `AnswerGiven`).
+- **The room joins in.** `RoomSoundService` plays each fight as a timed sequence that lands with the
+  beat's picture (the blow at 0.19 s, the burst at 1 s, the floor or boss under the curtain, the loot with
+  its card; the moments in `css/dungeon-battle.css`'s table), plus block, loot and power-up sounds, and
+  `Audio:BossMusic` while anyone in the room fights a boss. `RoomOutputCoordinator` turns a station's
+  answer LEDs off while its beat plays (presses don't count then) and on again at `QuestionShown`, lights
+  the action button while they hold a power-up, and sends the room the `Boss` lighting cue (6) while
+  anyone in it faces a boss.
 
 - **Battle beats.** After every answer the next question waits a moment while the screen shows the
   fight (`DungeonRun.BeatSecondsAfter`: `HitBeatSeconds`, `HurtBeatSeconds`, `KillBeatSeconds`,

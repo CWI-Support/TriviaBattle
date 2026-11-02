@@ -37,6 +37,9 @@ public sealed class MatchEngine
     private readonly Dictionary<string, QuestionStream> _streams;
     private readonly DungeonRun? _dungeon;
 
+    /// <summary>The time of the last Tick, so a tick can tell which questions appeared since (<see cref="QuestionShown"/>).</summary>
+    private DateTimeOffset _lastTickAt;
+
     /// <param name="questions">The question pool. Every answer owner gets their own order of it.</param>
     /// <param name="random">Shuffles each owner's question order. Tests pass a seeded one.</param>
     /// <param name="dungeon">The floors and monsters. Required when <see cref="MatchSettings.Format"/> is Dungeon.</param>
@@ -83,6 +86,7 @@ public sealed class MatchEngine
             : settings.MatchSeconds;
 
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
+        _lastTickAt = now;
     }
 
     public string MatchId { get; }
@@ -168,9 +172,14 @@ public sealed class MatchEngine
 
         if (_dungeon != null && Phase == MatchPhase.Playing && now < PhaseEndsAt)
         {
+            // A battle beat ran out since the last tick: that owner's next question is up.
+            foreach (var stream in _streams.Values.Where(s => s.LastAnswer != null && s.CurrentShownAt > _lastTickAt && s.CurrentShownAt <= now))
+                events.Add(new QuestionShown(stream.OwnerId));
+
             foreach (var adventurer in _dungeon.AttacksDue(now))
                 events.AddRange(MonsterAttacks(adventurer.OwnerId, now));
         }
+        _lastTickAt = now;
 
         if (now >= PhaseEndsAt)
             events.AddRange(AdvanceToNextPhase(now));

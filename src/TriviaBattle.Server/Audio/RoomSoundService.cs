@@ -18,8 +18,9 @@ namespace TriviaBattle.Server.Audio;
 ///   Lobby (no match)  lobby music          Intro    the intro's sound (music stops)
 ///   Playing           in-game music        Results  victory music (once)
 ///   An answer         right/wrong stinger on the speaker of whoever answered (both teammates in 2v2 Group)
-///   Dungeon fights    instead of stingers: hit, crit, kill, floor, boss, party combo, revive, hurt, downed
-///                     ("Audio:Dungeon"), at the moment the screens show it
+///   Dungeon fights    instead of stingers: hit, crit, kill, floor, boss, party combo, revive, hurt, downed,
+///                     block, loot, power-up ("Audio:Dungeon"), each timed to land with the battle beat's
+///                     picture; boss music while anyone in the room fights a boss ("Audio:BossMusic")
 ///
 /// Several groups can play in one room at once. The room speaker then follows the whole room
 /// (in-game music while anyone plays; victory only when the last game is on its results), and a
@@ -44,6 +45,18 @@ public sealed class RoomSoundService(
     ILogger<RoomSoundService> logger) : IMatchBroadcaster, IHostedService
 {
     private const string VolumesKey = "Audio:Volumes";
+
+    // When the fight's sounds play, in seconds after the battle beat starts, so they land with the picture.
+    // These are the moments in the table at the top of css/dungeon-battle.css (and js/battle3d/beats.js):
+    // change them together.
+    private const double BlowLands = 0.19;
+    private const double ClawsLand = 0.24;
+    private const double KnightFalls = 0.64;
+    private const double MonsterBursts = 1.0;
+    private const double CurtainFalls = 1.3;
+
+    /// <summary>When the LOOT! card comes up (DungeonBattle.loot): after a kill, over the curtain on a floor cleared, soon after a plain hit.</summary>
+    private static double LootShows(DealtHit hit) => hit.FloorCleared ? 1.45 : hit.Killed ? 1.25 : 0.6;
 
     // Held while this process owns the room audio. Named, so every process on the PC sees it.
     private Mutex? _audioOwner;
@@ -208,14 +221,29 @@ public sealed class RoomSoundService(
                 break;
 
             case AdventurerHit { OwnerId: var ownerId, Hit: var taken }:
-                room.PlayEffect(StationsOf(match, ownerId), taken.Downed ? _settings.Dungeon.Downed : _settings.Dungeon.Hurt);
+                var hurt = StationsOf(match, ownerId);
+                room.PlayEffect(hurt, taken.Blocked ? _settings.Dungeon.Block : _settings.Dungeon.Hurt, ClawsLand);
+                if (taken.Downed)
+                    room.PlayEffect(hurt, _settings.Dungeon.Downed, KnightFalls);
+                break;
+
+            case PowerUpUsed { OwnerId: var ownerId, Use: var use }:
+                room.PlayEffect([.. StationsOf(match, ownerId), .. StationsOf(match, use.TargetOwnerId)], _settings.Dungeon.PowerUp);
+                break;
+
+            case PowerUpFound { OwnerId: var ownerId } when match.Dungeon?.FindAdventurer(ownerId)?.LastDealt?.Found == null:
+                // Handed over without a hit (the dev tools): no LOOT! card to wait for. Found with a hit,
+                // PlayDungeonHit times it to the card.
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot);
                 break;
         }
     }
 
     /// <summary>
-    /// A hit on a dungeon monster, loudest thing first: a revive, a floor cleared (or a boss stepping up),
-    /// a kill, a party combo, a crit, a plain hit. Big moments are heard by the whole party.
+    /// A hit on a dungeon monster, as a little sequence timed with the battle beat: the blow (a revive, a
+    /// party combo, a crit or fireball, or a plain hit), then the monster bursting if it died, then the way
+    /// down (or the boss stepping up) if that cleared the floor, then the loot if it dropped some. Big
+    /// moments are heard by the whole party. Each one cuts off the end of the last, like the pictures do.
     /// </summary>
     private void PlayDungeonHit(RoomSound room, MatchEngine match, string ownerId, DealtHit hit)
     {
@@ -225,15 +253,18 @@ public sealed class RoomSoundService(
         var bossNext = match.Dungeon?.FindAdventurer(ownerId) is { } adventurer && match.Dungeon.DelveOf(adventurer).Encounter.Monster.IsBoss;
 
         if (hit.RevivedOwnerId != null)
-            room.PlayEffect(party, sounds.Revive);
-        else if (hit.FloorCleared)
-            room.PlayEffect(party, bossNext ? sounds.Boss : sounds.Floor);
-        else if (hit.Killed)
-            room.PlayEffect(striker, sounds.Kill);
+            room.PlayEffect(party, sounds.Revive, BlowLands);
         else if (hit.PartyCombo)
-            room.PlayEffect(party, sounds.PartyCombo);
+            room.PlayEffect(party, sounds.PartyCombo, BlowLands);
         else
-            room.PlayEffect(striker, hit.Crit ? sounds.Crit : sounds.Hit);
+            room.PlayEffect(striker, hit.Crit || hit.Fireball ? sounds.Crit : sounds.Hit, BlowLands);
+
+        if (hit.Killed)
+            room.PlayEffect(hit.FloorCleared ? party : striker, sounds.Kill, MonsterBursts);
+        if (hit.FloorCleared)
+            room.PlayEffect(party, bossNext ? sounds.Boss : sounds.Floor, CurtainFalls);
+        if (hit.Found != null)
+            room.PlayEffect(striker, sounds.Loot, LootShows(hit));
     }
 
     /// <summary>An answer owner's stations: a player's own, or both teammates' in 2v2 Group (the team answers as one).</summary>
@@ -250,20 +281,28 @@ public sealed class RoomSoundService(
 
     /// <summary>
     /// The room speaker follows the whole room: lobby music with nobody playing, in-game music while
-    /// any group plays (a solo player's "Continue?" countdown counts as playing), victory music once
-    /// the last game is on its results, silence during an intro.
+    /// any group plays (a solo player's "Continue?" countdown counts as playing), boss music instead
+    /// while anyone is fighting a boss (if there is any), victory music once the last game is on its
+    /// results, silence during an intro.
     /// </summary>
     private void UpdateRoomMusic(RoomSound room, List<MatchEngine> inRoom)
     {
+        var playing = inRoom.Where(m => m.Phase is MatchPhase.Playing or MatchPhase.Continue).ToList();
         if (inRoom.Count == 0)
             room.SetRoomMusic(_settings.LobbyMusic);
-        else if (inRoom.Any(m => m.Phase is MatchPhase.Playing or MatchPhase.Continue))
+        else if (playing.Any(FightingABoss) && !string.IsNullOrWhiteSpace(_settings.BossMusic))
+            room.SetRoomMusic(_settings.BossMusic);
+        else if (playing.Count > 0)
             room.SetRoomMusic(_settings.PlayingMusic);
         else if (inRoom.All(m => m.Phase == MatchPhase.Results))
             room.SetRoomMusic(_settings.VictoryMusic, loop: false);
         else
             room.SetRoomMusic(null); // an intro is playing
     }
+
+    /// <summary>A Dungeon game where some party is facing a boss.</summary>
+    private static bool FightingABoss(MatchEngine match) =>
+        match.Dungeon?.Delves.Any(d => d.Encounter.Monster.IsBoss) == true;
 
     private bool IsInRoom(MatchEngine match, string roomId) =>
         match.Roster.Players.Any(p => stations.Find(p.StationId)?.RoomId == roomId);
