@@ -25,11 +25,9 @@ public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby
         if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
             return BadRequest(new { problems = new[] { "A hero photo is two PNGs: the face and the portrait." } });
 
-        photos.KeepLobby(stationId, picture);
-        if (lobby.PhotoArrived(stationId))
+        if (lobby.PhotoArrived(stationId, picture))
             return NoContent();
-        photos.ForgetLobby(stationId);
-        return Conflict(new { problems = new[] { "That station isn't taking a hero photo." } });
+        return Conflict(new { problems = new[] { "That station isn't taking a hero photo, or already has one." } });
     }
 
     /// <summary>A station without a camera skips the lobby's photo step.</summary>
@@ -56,12 +54,11 @@ public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby
         if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
             return BadRequest(new { problems = new[] { "A hero photo is two PNGs: the face and the portrait." } });
 
-        // Kept first, so it's there by the time the screens hear about it and come to fetch it.
-        photos.Keep(matchId, stationId, picture);
-        if (host.PhotoTaken(matchId, stationId))
+        // Kept only once the match takes it (and before the screens hear about it and come to fetch it). A
+        // refused one, say from a second screen open as the same station, never touches the one it has.
+        if (host.PhotoTaken(matchId, stationId, () => photos.Keep(matchId, stationId, picture)))
             return NoContent();
-
-        photos.Forget(matchId, stationId);
+        logger.LogWarning("Match {Id}: a hero photo for {Station} was refused (is another screen open as that station?)", matchId, stationId);
         return Conflict(new { problems = new[] { "No hero photo is coming for that player, or they already have one." } });
     }
 

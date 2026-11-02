@@ -162,8 +162,11 @@ public sealed class MatchHost(
         }
     }
 
-    /// <summary>A station sent the hero photo its player asked for (<see cref="PhotoStore"/> holds the picture). False if it wasn't asked for.</summary>
-    public bool PhotoTaken(string matchId, string stationId)
+    /// <summary>
+    /// A station sent the hero photo its player asked for. If the match takes it, keep() stores the picture
+    /// (<see cref="PhotoStore"/>) before the screens hear about it. False if it wasn't asked for.
+    /// </summary>
+    public bool PhotoTaken(string matchId, string stationId, Action keep)
     {
         lock (_lock)
         {
@@ -171,6 +174,8 @@ public sealed class MatchHost(
                 return false;
 
             var events = match.PhotoTaken(stationId);
+            if (events.Count > 0)
+                keep();
             Publish(match, events);
             return events.Count > 0;
         }

@@ -11,8 +11,8 @@
 
 const DungeonFeed = {
     seen: {},          // `${matchId}:${stationId}` -> what we last saw of that player (hits, place)
-    queue: [],         // moments waiting for the caption: { html, at }
-    showing: null,     // the moment in the caption: { html, from }
+    queue: [],         // moments waiting for the caption: { html, at, stationId, rival }
+    showing: null,     // the moment in the caption: { html, from, stationId, rival } (js/battle3d/others.js drops a rival in)
     SHOW_MS: 2600,     // how long each one stays
     STALE_MS: 10000,   // one still waiting after this long is dropped (it's old news)
 
@@ -36,6 +36,8 @@ const DungeonFeed = {
             const taken = now.taken > before.taken ? p.delve.lastTaken : null;
             const say = (lineKey, values = {}) => DungeonFeed.queue.push({
                 at: Date.now(),
+                stationId: p.stationId,
+                rival: !teammate,
                 html: `
                     ${HeroPhoto.portrait(match, p.stationId, 'dg-feed-face', '')}
                     <span class="${teammate ? 'is-teammate' : 'is-rival'}">${Theme.text(lineKey, { name: p.name, ...values }, `${key}:${now.dealt}:${now.taken}`)}</span>`,
@@ -56,7 +58,7 @@ const DungeonFeed = {
             DungeonFeed.showing = null;
         DungeonFeed.queue = DungeonFeed.queue.filter(m => now - m.at < DungeonFeed.STALE_MS);
         if (!DungeonFeed.showing && DungeonFeed.queue.length)
-            DungeonFeed.showing = { html: DungeonFeed.queue.shift().html, from: now };
+            DungeonFeed.showing = { ...DungeonFeed.queue.shift(), from: now };
         const m = DungeonFeed.showing;
         return m ? `<div class="dg-feed-caption" style="--t0: ${m.from - now}ms">${m.html}</div>` : '';
     },

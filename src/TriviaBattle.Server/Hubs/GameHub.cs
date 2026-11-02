@@ -117,9 +117,16 @@ public class GameHub(
     private void Register(string key, string name)
     {
         var address = Context.GetHttpContext()?.Connection.RemoteIpAddress?.MapToIPv4().ToString();
-        if (screens.Find(Context.ConnectionId) == null)
+        var isNew = screens.Find(Context.ConnectionId) == null;
+        if (isNew)
             logger.LogInformation("{Screen} connected ({Address})", name, address);
         screens.Joined(Context.ConnectionId, new ConnectedScreen(key, name, address, clock.GetUtcNow()));
+
+        // Two screens as one station both take the hero photo (and only one counts): worth saying.
+        var same = screens.All.Where(s => s.Key == key).ToList();
+        if (isNew && key.StartsWith("player:") && same.Count > 1)
+            logger.LogWarning("{Screen} now has {Count} screens open ({Addresses}). Give every screen its own player number: each one with a camera takes the hero photo.",
+                name, same.Count, string.Join(", ", same.Select(s => s.Address)));
     }
 
     private IReadOnlyList<MatchSnapshot> MatchesInRoom(string roomId, Viewer viewer) =>

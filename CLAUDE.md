@@ -18,7 +18,8 @@ Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any but
 have the hero photo taken, pick solo / party / race / team battle or join the one forming, pick a category) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
 a game to `LobbyHost`; `js/arcade-lobby.js` draws it. The kiosk can still start games. Heroes: `Core/Arcade/Heroes.cs`,
 their models in `HEROES` (`js/battle3d/models.js`), their pictures in `media/heroes` (made by `/dev/heroes`).
-In group games players see each other's faces: `HeroPhoto.portrait` everywhere a player shows, `js/dungeon-feed.js`
+In group games players see each other's faces: `HeroPhoto.portrait` everywhere a player shows, teammates' heroes
+in your 3D fight and rivals dropping in (`js/battle3d/others.js`), `js/dungeon-feed.js`
 for the others' moments, and rivals' faces on the monsters (`Actor.wearMask`).
 Hero photos: the station puts the player's face on their hero right after they pick it in the lobby (the Photo step;
 `PhotoStore` keeps it by station until their game starts, then under the match), or in a kiosk game's intro (by

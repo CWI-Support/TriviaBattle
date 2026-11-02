@@ -14,6 +14,9 @@
 //   /dev/battle3d?rival=/path/picture.jpg   a rival (as in a race) with that face: the monsters wear it
 //   /dev/battle3d?photo=/path/picture.jpg   the hero wears a hero photo made from that picture (any picture
 //                                    with a face in it, on the server), as js/hero-camera.js makes them
+//   /dev/battle3d?team=barbarian,mage   teammates in your room (js/battle3d/others.js): they strike while
+//                                    each question is up
+//   /dev/battle3d?cameo              a rival's moment in the caption with each question: their hero drops in
 //
 // Kinds: hit, crit, combo, party, revive, kill, floor, boss, hurt, slow, downed, and with power-ups:
 // fireball (a Fireball hit), loot (a kill that drops a Potion), blocked (a Shield takes the hit; the
@@ -28,6 +31,9 @@ const only = params.get('kind');
 const frozenAt = params.has('at') ? Number(params.get('at')) : null;
 const COLOR = '#2a8cff';
 const HERO = params.get('hero') || 'knight'; // ?hero=mage: who fights (Core's Heroes.All)
+const TEAM = params.get('team')?.split(',').filter(Boolean) || []; // ?team=barbarian,mage: teammates' heroes
+const TEAM_COLORS = ['#ff3355', '#ffcc00', '#22dd66'];
+let teamHits = 0; // goes up with each question, so the teammates strike
 
 // The clock everything is drawn by. Frozen (?at=), it stands still, so the 3D scene holds its moment too.
 const pageOpened = Date.now();
@@ -82,10 +88,14 @@ function start() {
 
 /** Draws the station screen for one beat (or, with question set, the question that follows it). */
 function show(kind, startedAt, question = false) {
+    if (question) teamHits++;
+    if (question && params.has('cameo'))
+        DungeonFeed.queue.push({ at: Date.now(), stationId: 'A2', rival: true, html: `<span class="is-rival">${Theme.text('feed.overtook', { name: 'Bob' })}</span>` });
     const { match, you } = fakeState(kind, startedAt, question);
     document.getElementById('dev-label').textContent = question ? `${kind}: next question` : kind;
     document.getElementById('player-body').innerHTML = DungeonView.station(match, you, devNow(), COLOR);
-    window.Battle3D?.show({ match, you, color: COLOR });
+    const colors = Object.fromEntries([['A1', COLOR], ...TEAM.map((_, i) => [`A${i + 3}`, TEAM_COLORS[i]])]);
+    window.Battle3D?.show({ match, you, color: COLOR, colors });
 }
 
 function showMoment(kind) {
@@ -157,7 +167,7 @@ function fakeState(kind, startedAt, question) {
     };
 
     const you = {
-        stationId: 'A1', name: 'Ann', score: 1240,
+        stationId: 'A1', name: 'Ann', score: 1240, teamId: TEAM.length ? 'side1' : null,
         question: { number: 8, id: 1, category: 'Movies', text: 'Which wizard school does Harry Potter attend?',
                     answers: ['Hogwarts', 'Durmstrang', 'Beauxbatons', 'Ilvermorny'], mediaUrl: null, shownAtMs: startedAt + length,
                     hidden: kind === 'blocked' ? [1, 3] : null },
@@ -172,7 +182,11 @@ function fakeState(kind, startedAt, question) {
     const match = { matchId: 'dev', category: 'Movies', soloClock: true, phaseEndsAtMs: Date.now() + 75000,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero: HERO },
-                        ...(params.has('rival') ? [{ stationId: 'A2', name: 'Bob', photo: 1, hero: 'rogue' }] : []),
+                        ...(params.has('rival') || params.has('cameo') ? [{ stationId: 'A2', name: 'Bob', photo: params.has('rival') ? 1 : 0, hero: 'rogue' }] : []),
+                        ...TEAM.map((hero, i) => ({
+                            stationId: `A${i + 3}`, name: ['Cat', 'Dan', 'Eve'][i], teamId: 'side1', photo: 0, hero,
+                            delve: { lastDealt: { number: teamHits }, lastTaken: null, downedUntilMs: kind === 'downed' && i === 1 ? Date.now() + 5000 : null },
+                        })),
                     ] };
     return { match, you };
 }

@@ -26,13 +26,21 @@ Theme.load().then(() => HeroCamera.goSecure()); // opened over http by network a
 HeroPhoto.onLoad = redraw;  // a face arrived
 
 // The Dungeon fight is drawn in 3D (js/battle3d), unless the URL says ?view=2d or this PC can't do
-// WebGL 2: then it's the CSS version. That version also shows until three.js has loaded.
-if (new URLSearchParams(location.search).get('view') !== '2d' && canDraw3d()) {
+// WebGL 2: then it's the CSS version, without faces on the heroes or teammates in the room, and the log
+// says why once the screen is connected (render). The CSS version also shows until three.js has loaded.
+const asked2d = new URLSearchParams(location.search).get('view') === '2d';
+let why2d = !asked2d && !canDraw3d() ? 'The fight is drawn in 2D here: this browser has no WebGL 2 (is hardware acceleration off?)' : null;
+if (!asked2d && !why2d) {
     import('/js/battle3d/battle3d.js').then(() => {
         Battle3D.start(document.getElementById('stage3d'), () => connection.serverNow());
         document.body.classList.add('is-3d');
         if (lastState) render(lastState);
     });
+}
+
+/** Each station's colour, by station id (the 3D fight dresses teammates in theirs). */
+function stationColors(state) {
+    return Object.fromEntries(state.room.stations.map(s => [s.id, s.color]));
 }
 
 function canDraw3d() {
@@ -44,6 +52,10 @@ function canDraw3d() {
 }
 
 function render(state) {
+    if (why2d) {
+        connection.reportError(why2d);
+        why2d = null;
+    }
     if (state.match?.matchId !== lastState?.match?.matchId) {
         myPlacement = null;
         lastAnswerShown = null;
@@ -82,7 +94,7 @@ function render(state) {
     if (match && you) HeroCamera.follow(match, you, () => connection.serverNow(), state.station.color); // a kiosk game's intro photo
     const seat = match ? null : state.lobby.seats.find(s => s.stationId === state.station.id);
     HeroCamera.followLobby(seat, () => connection.serverNow(), state.station.color); // the lobby's photo step
-    if (fighting) window.Battle3D?.show({ match, you, color: state.station.color }); // once the 3D has loaded
+    if (fighting) window.Battle3D?.show({ match, you, color: state.station.color, colors: stationColors(state) }); // once the 3D has loaded
 
     // A battle beat is playing: the next question appears when it ends, so redraw then.
     clearTimeout(beatTimer);

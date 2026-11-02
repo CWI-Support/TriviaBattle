@@ -220,6 +220,13 @@ The rules:
   part dyed the station's colour, their attacks, where a face goes). The station's fight shows the
   player's own hero (`Battle.show`); `js/battle3d/portrait.js` draws heroes as pictures, and `/dev/heroes`
   saves each hero's card and portrait to `media/heroes` for the screens that draw in 2D.
+- The other players in your 3D fight (`js/battle3d/others.js`, `Others.update` every frame). Teammates with
+  a delve of their own (`PlayerView.Delve`) stand in your room, in their heroes, faces and station
+  colours (`Battle3D.show`'s `colors`). When a teammate's `lastDealt.Number` goes up they dash in and
+  strike, and your monster flinches (`showIdle`'s `foeFlinch`). A new `lastTaken` makes them reel, and
+  `downedUntilMs` keeps them on the floor. A rival's moment in the caption (`DungeonFeed.showing` with
+  `rival`) pops their hero up beside your monster, cheering. None of it is a beat: it's timed from when the
+  screen saw it and never holds up your question. `/dev/battle3d?team=barbarian,mage` and `?cameo` preview it.
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
   `PhotoDeclined`, `PhotoTaken`, and from `Tick`: `QuestionShown` when a battle beat ends and `PhotoCountdown`
   (alongside the usual `AnswerGiven`).

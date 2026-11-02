@@ -140,7 +140,10 @@ teammates' faces are on your station, and the other players' moments that matter
 caption across the top of the monster's room, one at a time, with their face ("…revived you!", "…is
 down! Answer right to revive them!", "…slew the Goblin Quizmaster!", "…overtook you!").
 The main screen's banners, line-up and results show faces too. In a race or a battle, the monsters
-you fight wear your opponents' faces (one rival per monster, in turn). The main screen shows
+you fight wear your opponents' faces (one rival per monster, in turn). In the 3D fight your teammates'
+heroes stand in the room with yours, wearing their faces: when one answers right they dash in and hit
+your monster, when one is hit they reel, and a downed one lies on the floor until revived. When a rival
+overtakes you or slays a boss, their hero pops up beside your monster and cheers. The main screen shows
 the room's lobby under its title. A station's card reader calls `POST /api/stations/{id}/swipe`
 with `{ "cardId": "..." }`.
 
@@ -171,7 +174,9 @@ player drops it, takes another or walks away from the lobby, and when their matc
   itself, and no intro countdown is heard (the station tells the server when its camera is on). The server log (and the admin's Live log) says when
   a station's camera came on and when its photo arrived, or why a photo couldn't be taken: not an
   https/localhost page, no camera, the camera refused or busy, no face found. A station page that isn't
-  https or localhost also says so on its intro screen.
+  https or localhost also says so on its intro screen. It also warns when a station has more than one
+  screen open (each one with a camera takes the photo; only the first counts), and when a station can
+  only draw the 2D fight (no WebGL 2), where heroes wear no faces and teammates aren't in the room.
 - Browsers only let `https` or `localhost` pages use a camera, so the server also listens on
   `https://<server-ip>:5001` (setting `HttpsPort`; `0` turns it off), with a certificate it makes for
   itself on first run (`certs/lan-https.pfx`, never committed; delete it to make a new one, e.g. after the

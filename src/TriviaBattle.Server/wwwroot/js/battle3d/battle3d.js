@@ -11,7 +11,7 @@
 //
 // Needs the import map for 'three' (see screens/dev-battle3d.html), and loads as a module:
 //   Battle3D.start(container, clock)   once; clock() = the server's time now (ms)
-//   Battle3D.show({ match, you, color }) after every redraw
+//   Battle3D.show({ match, you, color, colors }) after every redraw (colors: each station's colour, by id)
 //   HeroPortrait.render(faceUrl, color, options)  a hero (wearing a hero photo's face) as a canvas (js/battle3d/portrait.js)
 
 import * as THREE from 'three';
@@ -20,6 +20,7 @@ import { Actor } from './actor.js';
 import { Effects } from './effects.js';
 import { showBeat, showIdle } from './beats.js';
 import { heroPortrait } from './portrait.js';
+import { Others } from './others.js';
 
 // Where the fighters stand. The fight is staged on a slant (the knight nearer the camera, the monster
 // further back) so a tall, narrow station screen can show both big: side by side they'd be tiny.
@@ -51,6 +52,7 @@ class Battle {
         this.foeArrivedAt = null;
         this.foeYaw = FOE_FACING;
         this.foesMet = 0;      // counts the monsters, so each wears a rival's face in turn
+        this.others = new Others(this.stage.scene, { zAt, homes: HOMES, facing: HERO_FACING }); // teammates, and rivals dropping in
         this.lastFrame = performance.now();
         requestAnimationFrame(time => this.frame(time));
     }
@@ -109,6 +111,7 @@ class Battle {
         const you = this.view?.you;
 
         let lean = { zoom: 1, focus: 0 };
+        const foeFlinch = this.others.update(this.view, now, this.foe);
         if (you?.delve) {
             this.wantFoe(you, now);
             if (this.hero && this.foe) {
@@ -119,6 +122,7 @@ class Battle {
                     : showIdle(cast, {
                         heroDown: you.delve.downedUntilMs > now,
                         foeArrivedMs: this.foeArrivedAt === null ? null : now - this.foeArrivedAt,
+                        foeFlinch,
                     });
             }
         }

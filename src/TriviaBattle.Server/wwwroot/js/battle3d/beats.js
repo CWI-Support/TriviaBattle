@@ -34,8 +34,11 @@ export function showBeat(beat, ms, cast) {
     return beat.hurt ? monsterStrikes(beat, ms, cast) : heroStrikes(beat, ms, cast);
 }
 
-/** Between beats (or while a question is up): both stand at home, breathing. */
-export function showIdle(cast, { heroDown, foeArrivedMs }) {
+/**
+ * Between beats (or while a question is up): both stand at home, breathing. foeFlinch (0..1): a
+ * teammate's blow landing on the monster (js/battle3d/others.js), so it flashes and rocks back.
+ */
+export function showIdle(cast, { heroDown, foeArrivedMs, foeFlinch = 0 }) {
     const { hero, foe, fx, stage, homes, seconds } = cast;
     fx.hideAll();
     stage.shake.set(0, 0);
@@ -53,7 +56,10 @@ export function showIdle(cast, { heroDown, foeArrivedMs }) {
         const landed = foeArrivedMs - 300;
         if (landed > 0) squash = 0.3 * Math.exp(-landed / 90) * Math.cos(landed / 45);
     }
-    foe.apply({ x: homes.foe, lift, squash, clip: foe.spec.idle, time: seconds + 0.37 });
+    foe.apply({
+        x: homes.foe + 0.3 * foeFlinch, lift, squash, tilt: -0.15 * foeFlinch, flash: foeFlinch, flashColor: 0xffffff,
+        clip: foe.spec.idle, time: seconds + 0.37,
+    });
     return { zoom: 1, focus: 0 };
 }
 
@@ -197,7 +203,7 @@ function jolt(t, size) {
 }
 
 /** 1 the moment t passes 0, fading to 0 over length ms. */
-function pulse(t, length) {
+export function pulse(t, length) {
     return t < 0 || t >= length ? 0 : 1 - t / length;
 }
 
@@ -208,21 +214,21 @@ function punch(t, length) {
 }
 
 /** A knockback: out in rise ms, then eased back home by back ms. */
-function kick(t, rise, back) {
+export function kick(t, rise, back) {
     if (t < 0) return 0;
     if (t < rise) return easeOut(t / rise);
     return Math.max(0, 1 - easeInOut((t - rise) / back));
 }
 
-function mix(a, b, p) {
+export function mix(a, b, p) {
     return a + (b - a) * p;
 }
 
-function easeOut(p) {
+export function easeOut(p) {
     return 1 - Math.pow(1 - Math.min(1, Math.max(0, p)), 3);
 }
 
-function easeInOut(p) {
+export function easeInOut(p) {
     p = Math.min(1, Math.max(0, p));
     return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
 }

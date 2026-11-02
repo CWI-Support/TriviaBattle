@@ -37,16 +37,18 @@ public sealed class LobbyHost(
     {
         if (stations.Find(press.StationId)?.RoomId is not { } roomId)
             return;
-        var (from, to, result) = lobbies.Use(roomId, lobby =>
+        LobbyStep? from = null, to = null;
+        var change = Change(roomId, lobby =>
         {
-            var before = lobby.Seat(press.StationId)?.Step;
+            from = lobby.Seat(press.StationId)?.Step;
             var pressed = lobby.Press(press.StationId, press.AnswerIndex, clock.GetUtcNow());
-            return (before, lobby.Seat(press.StationId)?.Step, pressed);
+            to = lobby.Seat(press.StationId)?.Step;
+            return pressed;
         });
         // Each step a station takes, so the log shows where a player got to (and where they stopped).
         if (from != to)
             logger.LogInformation("Lobby {Station}: {From} -> {To}", press.StationId, from, to);
-        Apply(roomId, result);
+        Apply(roomId, change);
     }
 
     /// <summary>
@@ -71,20 +73,31 @@ public sealed class LobbyHost(
         player.LastSeenAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
-        Apply(roomId, lobbies.Use(roomId, lobby => lobby.Swipe(stationId, player.DisplayName, player.Id, clock.GetUtcNow())));
+        Apply(roomId, Change(roomId, lobby => lobby.Swipe(stationId, player.DisplayName, player.Id, clock.GetUtcNow())));
     }
 
-    /// <summary>A station sent the hero photo it took in the lobby (<see cref="PhotoStore"/> holds it). False if it wasn't taking one.</summary>
-    public bool PhotoArrived(string stationId)
+    /// <summary>
+    /// A station sent the hero photo it took in the lobby: kept (<see cref="PhotoStore"/>) if that station is
+    /// taking one. False if it isn't, or already has one (a second screen open as the same station).
+    /// </summary>
+    public bool PhotoArrived(string stationId, HeroPicture picture)
     {
         if (stations.Find(stationId)?.RoomId is not { } roomId)
             return false;
-        var accepted = lobbies.Use(roomId, lobby => lobby.PhotoArrived(stationId));
+        var accepted = lobbies.Use(roomId, lobby =>
+        {
+            if (!lobby.PhotoArrived(stationId))
+                return false;
+            photos.KeepLobby(stationId, picture);
+            return true;
+        });
         if (accepted)
         {
             logger.LogInformation("Lobby {Station}: hero photo arrived", stationId);
             broadcaster.LobbyChanged(roomId);
         }
+        else
+            logger.LogWarning("Lobby {Station}: a hero photo was refused (is another screen open as that station?)", stationId);
         return accepted;
     }
 
@@ -93,10 +106,10 @@ public sealed class LobbyHost(
     {
         if (stations.Find(stationId)?.RoomId is not { } roomId)
             return;
-        var result = lobbies.Use(roomId, lobby => lobby.SkipPhoto(stationId));
-        if (result.Changed)
+        var change = Change(roomId, lobby => lobby.SkipPhoto(stationId));
+        if (change.Result.Changed)
             logger.LogInformation("Lobby {Station}: no camera, so no hero photo", stationId);
-        Apply(roomId, result);
+        Apply(roomId, change);
     }
 
     /// <summary>Called several times a second by <see cref="MatchTicker"/>: forming games start on time, idle stations go back to the attract screen.</summary>
@@ -109,7 +122,7 @@ public sealed class LobbyHost(
             _ = RefreshCategoriesAsync();
         }
         foreach (var roomId in lobbies.RoomIds)
-            Apply(roomId, lobbies.Use(roomId, lobby => lobby.Tick(now)));
+            Apply(roomId, Change(roomId, lobby => lobby.Tick(now)));
     }
 
     /// <summary>Reads the categories with active questions and gives them to every room's lobby.</summary>
@@ -146,25 +159,36 @@ public sealed class LobbyHost(
         }
     }
 
-    private void Apply(string roomId, LobbyResult result)
+    /// <summary>What a change to a lobby did, and the hero photos of any game it starts (taken out of the lobby).</summary>
+    private sealed record LobbyChange(LobbyResult Result, IReadOnlyDictionary<string, HeroPicture> StartingPhotos);
+
+    /// <summary>
+    /// Changes the room's lobby and, under the same lock, keeps its photos in step with it (a tick or a press
+    /// at another station can't come in between): a game starting takes its players' photos with it, and a
+    /// photo nobody has any more (dropped, retaken, or its player left) is forgotten straight away.
+    /// </summary>
+    private LobbyChange Change(string roomId, Func<Lobby, LobbyResult> work) => lobbies.Use(roomId, lobby =>
     {
-        // A game starting takes its players' photos with it (before they're forgotten below).
+        var result = work(lobby);
         var startingPhotos = result.Starts.SelectMany(start => start.Players)
             .Where(p => p.Photo)
             .Select(p => (p.StationId, Picture: photos.TakeLobby(p.StationId)))
             .Where(p => p.Picture != null)
             .ToDictionary(p => p.StationId, p => p.Picture!);
-        // A photo nobody has any more (dropped, retaken, or its player left) is forgotten straight away.
-        foreach (var seat in lobbies.Use(roomId, lobby => lobby.Seats.Where(s => !s.HasPhoto).Select(s => s.StationId).ToList()))
-            photos.ForgetLobby(seat);
+        foreach (var seat in lobby.Seats.Where(s => !s.HasPhoto))
+            photos.ForgetLobby(seat.StationId);
+        return new LobbyChange(result, startingPhotos);
+    });
 
-        foreach (var start in result.Starts)
+    private void Apply(string roomId, LobbyChange change)
+    {
+        foreach (var start in change.Result.Starts)
         {
             logger.LogInformation("Lobby: starting a {Game} ({Category}) for {Players}", start.Game, start.Category?.Name ?? "everything",
                 string.Join(", ", start.Players.Select(p => $"{p.StationId} {p.Name} ({p.Hero}{(start.Game == GameChoice.Battle ? $", side {p.Side + 1}" : "")})")));
-            _ = StartAsync(start, startingPhotos);
+            _ = StartAsync(start, change.StartingPhotos);
         }
-        if (result.Changed)
+        if (change.Result.Changed)
             broadcaster.LobbyChanged(roomId);
     }
 
