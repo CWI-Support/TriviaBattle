@@ -118,44 +118,35 @@
 .dg-scroll-tag { font-size: 0.55em; opacity: 0.7; text-transform: uppercase; margin-bottom: 0.4vh; }
 .dg-scroll .question-media { max-height: calc(16vh * var(--fit)); display: block; margin: 0 auto 1vh; }
 
-/* While a question is up the fight is a strip: the monster small on the left, its nameplate beside it.
-   The question and answers get the room; the full fight plays between questions (dungeon-battle.css). */
-.dg-strip { position: relative; display: flex; align-items: stretch; gap: 2vw; }
-.dg-strip .dg-monster-wrap { flex: 0 0 auto; width: 22vmin; height: auto; min-height: 19vmin; }
-.dg-strip .dg-monster { height: 19vmin; }
-.dg-strip .dg-monster.is-boss { height: 21vmin; }
-.dg-strip .dg-enemy { flex: 1; justify-content: center; }
-.dg-strip .dg-float { font-size: 5vmin; top: 0; }
-.dg-strip .dg-float.is-crit { font-size: 6vmin; }
-.dg-strip .dg-slain, .dg-strip .dg-party-combo { font-size: 2.4vmin; }
-.dg-station.is-question .dg-scroll { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; font-size: calc(6vmin * var(--fit)); }
-.dg-station.is-question .dg-answer { font-size: calc(5.4vmin * var(--fit)); padding-block: calc(1.6vh * var(--fit)); }
+/* While a question is up the station shows the encounter (css/dungeon-encounter.css); the full fight
+   plays between questions (dungeon-battle.css).
 
-/* The question coming in as the battle beat fades out: the scroll drops in, the strip and the Host's
-   line rise, then the answers one after another; after a kill the next monster drops into the strip.
+   The question coming in as the battle beat fades out: the scroll drops in, the Host's line rises,
+   then the answers one after another; after a kill the next monster drops in.
    Timed from --q0 (minus how long ago the beat ended) so a redraw doesn't play it again, and quick,
    since the buttons are live. The top line and your plate stay put, so the screen doesn't jump. */
 .dg-station.is-after-beat .dg-scroll { animation: dg-q-drop 220ms ease-out var(--q0) both; }
-.dg-station.is-after-beat .dg-strip,
 .dg-station.is-after-beat .dg-feedback { animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both; }
 .dg-station.is-after-beat .dg-answer { animation: dg-q-rise 200ms ease-out calc(var(--q0) + 80ms) both; }
 .dg-station.is-after-beat .dg-answer:nth-child(2) { animation-delay: calc(var(--q0) + 120ms); }
 .dg-station.is-after-beat .dg-answer:nth-child(3) { animation-delay: calc(var(--q0) + 160ms); }
 .dg-station.is-after-beat .dg-answer:nth-child(4) { animation-delay: calc(var(--q0) + 200ms); }
-.dg-station.is-new-foe .dg-strip .dg-monster-wrap { animation: dg-drop 450ms cubic-bezier(0.3, 1.5, 0.6, 1) calc(var(--q0) + 60ms) both; }
 @keyframes dg-q-drop { from { opacity: 0; transform: translateY(-3vh); } }
 @keyframes dg-q-rise { from { opacity: 0; transform: translateY(2vh); } }
 
 .dg-monster-wrap { position: relative; height: 100%; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+/* The idle bob runs on a shared beat (--idle0, see DungeonView.idlePhase) so a redraw doesn't restart it.
+   A hit, a lunge or a drop-in plays over it from its own start (--t0, see DungeonView.lasting): it comes
+   last in the list, so it wins while it runs. */
 .dg-monster {
     height: min(100%, 46vmin);
     filter: drop-shadow(0 1.5vmin 0 rgba(0, 0, 0, 0.45));
-    animation: dg-idle 1.2s steps(2) infinite;
+    animation: dg-idle 1.2s steps(2) var(--idle0, 0s) infinite;
 }
 .dg-monster.is-boss { height: min(100%, 58vmin); }
-.dg-monster.is-hit { animation: dg-hit 0.45s steps(6), dg-idle 1.2s steps(2) 0.45s infinite; }
-.dg-monster.is-attacking { animation: dg-lunge 0.5s ease-out, dg-idle 1.2s steps(2) 0.5s infinite; }
-.dg-monster.is-new { animation: dg-drop 0.6s cubic-bezier(0.3, 1.5, 0.6, 1), dg-idle 1.2s steps(2) 0.6s infinite; }
+.dg-monster.is-hit { animation: dg-idle 1.2s steps(2) var(--idle0, 0s) infinite, dg-hit 0.45s steps(6) var(--t0, 0s); }
+.dg-monster.is-attacking { animation: dg-idle 1.2s steps(2) var(--idle0, 0s) infinite, dg-lunge 0.5s ease-out var(--t0, 0s); }
+.dg-monster.is-new { animation: dg-idle 1.2s steps(2) var(--idle0, 0s) infinite, dg-drop 0.6s cubic-bezier(0.3, 1.5, 0.6, 1) var(--t0, 0s); }
 
 @keyframes dg-idle { 50% { transform: translateY(-2%); } }
 @keyframes dg-hit {
@@ -273,7 +264,7 @@
 .dg-overlay.is-party { font-size: 2.8vmin; } /* the party's "DOWN! 2 more right answers..." is a longer line */
 
 /* Taking a hit flashes the whole screen red and gives it a shake. */
-.dg-station.is-hurt, .dg-lane.is-hurt { animation: dg-hurt 0.45s; }
+.dg-station.is-hurt, .dg-lane.is-hurt { animation: dg-hurt 0.45s var(--t0, 0s); }
 @keyframes dg-hurt {
     0% { box-shadow: inset 0 0 0 3vmin var(--wrong); transform: translateX(-0.8vmin); }
     30% { transform: translateX(0.8vmin); }

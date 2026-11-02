@@ -5,13 +5,15 @@
 // and works out which hits are new since the last draw so each one animates once (screens redraw on
 // every change).
 //
-// The station screen has two modes. While a question is up, the fight shrinks to a strip (the
-// monster, its HP and hourglass) so the question and answers get the room. Between questions, the
-// battle beat takes the whole screen (js/dungeon-battle.js). The main screen adds big banners across
+// The station screen has two modes. While a question is up, the encounter (js/dungeon-encounter.js):
+// the monster's nameplate, the question, the monster big in its room, the hourglass and the answers.
+// Between questions, the battle beat takes the whole screen (js/dungeon-battle.js). The main screen adds big banners across
 // the room for the moments worth shouting about (DungeonView.noteMoments).
 //
 // Short effects (damage numbers, "+10s", banners) are kept in a little store with the time they
 // started, so a redraw in the middle (someone else answered) carries them on instead of cutting them off.
+// The same goes for short animation states (a monster hit, lunging or dropping in; a lane shaking): see
+// lasting(). Idle loops (the monster's bob) run on one shared beat (--idle0), so a redraw doesn't restart them.
 //
 // Both screens group things the same way so they read at a glance:
 //   - the trail: where you are on the way to the boss (beaten monsters greyed, the current one framed)
@@ -25,6 +27,7 @@
 const DungeonView = {
     seen: {},    // owner key -> { dealt, taken, monster } as last drawn
     effects: {}, // key -> [{ html, at, ms }]: short effects still playing (see effect / activeEffects)
+    states: {},  // key -> { cls, at }: short animation states still playing (see lasting)
 
     /** Starts a short effect under a key: it's drawn by activeEffects until it has played for ms. */
     effect(key, html, ms) {
@@ -40,6 +43,24 @@ const DungeonView = {
         const playing = (DungeonView.effects[key] || []).filter(e => now - e.at < e.ms);
         DungeonView.effects[key] = playing;
         return playing.map(e => `<div class="dg-effect" style="--t0: ${e.at - now}ms">${e.html}</div>`).join('');
+    },
+
+    /**
+     * A short animation state under a key (a CSS class such as 'is-hit'): it starts when start is given and
+     * is kept, with its start time, for ms, so a redraw in the middle carries it on instead of cutting it
+     * off. Returns the class to add (or '') and t0, minus its age in ms, for the animation's delay (--t0).
+     */
+    lasting(key, start, ms) {
+        const now = Date.now();
+        if (start) DungeonView.states[key] = { cls: start, at: now };
+        const state = DungeonView.states[key];
+        if (!state || now - state.at >= ms) return { cls: '', t0: 0 };
+        return { cls: state.cls, t0: state.at - now };
+    },
+
+    /** The shared beat for idle loops: as a negative delay, every redraw joins the loop where it is. */
+    idlePhase(loopMs) {
+        return -(Date.now() % loopMs);
     },
 
     /**
@@ -77,6 +98,7 @@ const DungeonView = {
     reset() {
         DungeonView.seen = {};
         DungeonView.effects = {};
+        DungeonView.states = {};
     },
 
     icon(name) {
@@ -123,15 +145,10 @@ const DungeonView = {
     /**
      * The monster, animated by what just happened: shaken by a hit, lunging when it attacks, dropping in
      * when new. The damage numbers and "slain" are effects under key, so a redraw doesn't cut them off.
-     * stage: 'portrait' marks it as where the 3D scene draws the monster (js/battle3d), on a station.
      */
-    monster(delve, news, key, stage = null) {
+    monster(delve, news, key) {
         const m = delve.monster;
-        const states = [
-            m.isBoss ? 'is-boss' : '',
-            news.newMonster ? 'is-new' : news.dealt ? 'is-hit' : '',
-            news.taken ? 'is-attacking' : '',
-        ].join(' ');
+        const moment = DungeonView.lasting(`${key}:monster`, news.newMonster ? 'is-new' : news.dealt ? 'is-hit' : news.taken ? 'is-attacking' : null, 650);
         const big = news.dealt && (news.dealt.crit || news.dealt.partyCombo);
         const floater = news.dealt
             ? `<div class="dg-float ${big ? 'is-crit' : ''}">-${news.dealt.damage}${big ? '!' : ''}</div>`
@@ -143,8 +160,8 @@ const DungeonView = {
         if (floater || slain || partyCombo)
             DungeonView.effect(key, floater + slain + partyCombo, 1800);
         return `
-            <div class="dg-monster-wrap" ${stage ? `data-stage="${stage}"` : ''}>
-                ${PixelSprites.html(m.sprite, `dg-monster ${states}`)}
+            <div class="dg-monster-wrap" style="--t0: ${moment.t0}ms; --idle0: ${DungeonView.idlePhase(1200)}ms">
+                ${PixelSprites.html(m.sprite, `dg-monster ${m.isBoss ? 'is-boss' : ''} ${moment.cls}`)}
                 ${DungeonView.activeEffects(key)}
             </div>`;
     },
@@ -240,8 +257,9 @@ const DungeonView = {
     },
 
     /**
-     * The whole station screen while the clock runs, top to bottom: where you are (floor, trail, time
-     * left), the question, the monster with its nameplate, the Host's banner, the answers, and you.
+     * The whole station screen while the clock runs. A question is up: the encounter (js/dungeon-encounter.js,
+     * laid out like the design lead's example). Between questions: the battle beat, under where you are
+     * (floor, trail, time left), with you at the bottom.
      */
     station(match, you, serverNow, stationColor) {
         const delve = you.delve;
@@ -272,7 +290,7 @@ const DungeonView = {
                 ${DungeonPowerUps.slot(delve)}
             </div>`;
 
-        // A power-up used (by you, or a teammate's Potion aimed at you): a pop over the strip, once.
+        // A power-up used (by you, or a teammate's Potion aimed at you): a pop over the monster, once.
         const powerUpKey = `pu:${you.stationId}`;
         DungeonPowerUps.noticeUse(powerUpKey, delve, ownerId => delve.party.find(p => p.ownerId === ownerId)?.name || you.name);
 
@@ -287,55 +305,7 @@ const DungeonView = {
                 </div>`;
         }
 
-        const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
-        const stunned = !downed && you.lockedOutUntilMs && you.lockedOutUntilMs > serverNow;
-        const seed = `${match.matchId}:${you.stationId}`;
-
-        // Downed in a party: your buttons are dead, so you get a teammate's question to shout them the answer.
-        const helping = downed ? you.helping : null;
-        const shown = helping ? helping.question : q;
-        // A 50/50 took two wrong answers away: they stay in place (the buttons don't move), crossed out.
-        const answers = shown.answers.map((text, i) => `
-            <div class="dg-answer ${(downed && !helping) || stunned ? 'is-dimmed' : ''} ${shown.hidden?.includes(i) ? 'is-eliminated' : ''}" data-letter="${UI.ANSWER_LETTERS[i]}">
-                <span class="dg-rune">${UI.ANSWER_LETTERS[i]}</span>
-                <span class="dg-answer-text">${UI.escape(text)}</span>
-            </div>`).join('');
-
-        const overlaySeed = `${seed}:${delve.lastTaken?.number}`;
-        const overlay = !downed
-            ? stunned ? `<div class="dg-overlay is-stunned">${Theme.text('dungeon.stunned', {}, overlaySeed)}</div>` : ''
-            : delve.party.length > 1
-                ? `<div class="dg-overlay is-downed is-party">${Theme.text('dungeon.downedParty', { left: delve.reviveNeeded - delve.reviveProgress }, overlaySeed)}</div>`
-                : `<div class="dg-overlay is-downed">${Theme.text('dungeon.downed', { seconds: Theme.raw(`<span data-ends-at="${delve.downedUntilMs}"></span>`) }, overlaySeed)}</div>`;
-
-        const feedback = DungeonView.feedback(delve, you.lastAnswer, seed);
-        const tag = helping
-            ? `<div class="dg-scroll-tag is-help">${Theme.text('dungeon.helpTeammate', { name: helping.name }, overlaySeed)}</div>`
-            : match.category.includes(',') ? `<div class="dg-scroll-tag">${UI.escape(shown.category)}</div>` : '';
-
-        // Just after a battle beat the question comes in (and after a kill the next monster drops into the
-        // strip), timed from the beat's end so a redraw doesn't play it again. No beat: it's simply there.
-        const beat = you.beat;
-        const arrival = !beat ? ''
-            : `is-after-beat ${['kill', 'floor', 'boss'].includes(beat.kind) ? 'is-new-foe' : ''}`;
-        const arrivalStyle = beat ? `style="--q0: ${Math.round(beat.endsAtMs - serverNow)}ms"` : '';
-
-        // A question is up: it gets the room, and the fight shrinks to a strip (teammates' hits still land on it).
-        return `
-            <div class="dg-station is-question ${arrival} ${news.taken ? 'is-hurt' : ''}" ${arrivalStyle}>
-                ${top}
-                <div class="dg-scroll ${helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
-                <div class="dg-strip">
-                    ${DungeonView.monster(delve, news, `fx:station:${you.stationId}`, 'portrait')}
-                    ${DungeonView.enemy(delve, serverNow)}
-                    ${overlay}
-                    ${DungeonView.activeEffects(powerUpKey)}
-                </div>
-                <div class="dg-feedback ${feedback.tone}">${feedback.html}</div>
-                <div class="dg-answers ${helping ? 'is-helping' : ''}">${answers}</div>
-                ${DungeonView.teammates(delve, you.stationId)}
-                ${plate}
-            </div>`;
+        return DungeonEncounter.view(match, you, serverNow, { news, plate, clockKey, powerUpKey });
     },
 
     /**
@@ -345,8 +315,9 @@ const DungeonView = {
     lane({ key, name, color, delve, score, rank, isLeader, serverNow }) {
         const news = DungeonView.news(`lane:${key}`, delve);
         const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
+        const shake = DungeonView.lasting(`lane:${key}:hurt`, news.taken ? 'is-hurt' : null, 450);
         return `
-            <div class="dg-lane ${isLeader ? 'is-leader' : ''} ${news.taken ? 'is-hurt' : ''}" style="--lane-color: ${color}">
+            <div class="dg-lane ${isLeader ? 'is-leader' : ''} ${shake.cls}" style="--lane-color: ${color}; --t0: ${shake.t0}ms">
                 <div class="dg-lane-head">
                     ${rank ? `<span class="dg-rank">${UI.ordinal(rank)}</span>` : ''}
                     <span class="dg-lane-name">${name}</span>

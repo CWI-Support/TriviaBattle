@@ -1,7 +1,8 @@
 // Battle3D: the station's fight drawn in 3D (the default; ?view=2d on a station for the CSS version), in the "3D that reads like a painting" style (think
 // Hearthstone). The page draws its HTML exactly as before and then hands the same state over with
 // Battle3D.show({ match, you, color }). The HTML marks where the scene goes with data-stage: "fight"
-// on a battle beat (DungeonBattle.scene), "portrait" on the monster in the strip while a question is up.
+// on a battle beat (DungeonBattle.scene), "portrait" on the encounter's stage while a question is up
+// (DungeonEncounter.view: the monster big in its room, turned to face you).
 // The words, damage numbers, flash, HP bars and the floor curtain stay HTML (css/dungeon-battle.css);
 // css/battle3d.css hides the drawn room, sprites and sparks this replaces.
 //
@@ -43,6 +44,7 @@ class Battle {
         this.foeKey = null;
         this.foeLoadingKey = null;
         this.foeArrivedAt = null;
+        this.foeYaw = FOE_FACING;
         this.lastFrame = performance.now();
         requestAnimationFrame(time => this.frame(time));
     }
@@ -109,11 +111,20 @@ class Battle {
                     });
             }
         }
+        this.turnFoe(dt);
         this.aim(lean);
         this.stage.draw(now / 1000, dt);
     }
 
-    /** Points the camera: the whole fight, or (while a question is up) a portrait of the monster. */
+    /** While a question is up the monster turns to face you (the player is the one answering); in a fight it faces the knight. */
+    turnFoe(dt) {
+        if (!this.foe) return;
+        const wanted = this.stage.mode() === 'portrait' ? 0.25 : FOE_FACING;
+        this.foeYaw += (wanted - this.foeYaw) * (1 - Math.exp(-dt / 0.15));
+        this.foe.face(this.foeYaw);
+    }
+
+    /** Points the camera: the whole fight, or (while a question is up) the monster in its room. */
     aim({ zoom, focus }) {
         const aspect = this.stage.aspect();
         const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
@@ -121,9 +132,10 @@ class Battle {
         if (this.stage.mode() === 'portrait' && this.foe) {
             const spec = this.foe.spec;
             const height = spec.height || 2;
-            const target = new THREE.Vector3(FOE_HOME.x, (spec.hover || 0) + height * 0.58, FOE_HOME.z);
-            const distance = Math.max((height * 0.62) / tan, (this.foe.width * 0.8) / (tan * aspect));
-            this.stage.frame(target.clone().add(new THREE.Vector3(-0.3 * distance, 0.18 * distance, distance)), target, FOV);
+            // The monster big in the middle of its room, seen from straight on and a little below its eyes.
+            const target = new THREE.Vector3(FOE_HOME.x, (spec.hover || 0) + height * 0.52, FOE_HOME.z);
+            const distance = Math.max((height * 0.62) / tan, (this.foe.width * 0.95) / (tan * aspect));
+            this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)), target, FOV);
             return;
         }
 

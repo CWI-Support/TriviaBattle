@@ -134,7 +134,8 @@ const UI = {
             const start = Number(bar.dataset.startsAt);
             const end = Number(bar.dataset.endsAt);
             const fractionLeft = Math.min(1, Math.max(0, (end - now) / (end - start)));
-            bar.querySelector('.timer-bar-fill').style.width = (fractionLeft * 100) + '%';
+            // A standing bar (.is-vertical, the dungeon's hourglass) drains its height instead of its width.
+            bar.querySelector('.timer-bar-fill').style[bar.classList.contains('is-vertical') ? 'height' : 'width'] = (fractionLeft * 100) + '%';
             bar.classList.toggle('timer-bar-low', fractionLeft < 0.25);
         });
     },

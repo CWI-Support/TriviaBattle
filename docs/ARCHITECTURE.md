@@ -293,8 +293,11 @@ function render(state) { /* pick a view from state.match.phase and fill it in */
 Answer colors (A red, B blue, C yellow, D green) match the physical button pads and live in
 `css/screens.css`.
 
-Dungeon screens: `js/dungeon-view.js` draws the station's question view (the fight shrunk to a strip)
-and the main screen's lanes, plus the main screen's big moments (banners across the room for a floor
+Dungeon screens: `js/dungeon-view.js` draws the main screen's lanes and hands the station's question view
+to `js/dungeon-encounter.js` (`css/dungeon-encounter.css`), laid out like the design lead's example
+(`docs/design/station-example.png`): the monster's nameplate and HP, the question scroll hanging from it,
+the monster big in its room, the hourglass standing beside the answers (a rune box with the button's
+symbol, and a framed answer, each), then you. It also draws plus the main screen's big moments (banners across the room for a floor
 cleared, a boss, a revive, a party combo). During a battle beat the station shows `js/dungeon-battle.js`
 instead: the fight full size, animated in `css/dungeon-battle.css`. Its animations are timed from the
 beat's start on the server clock (`--t0`), its fade-out from the beat's end (`--t1`), and the next
@@ -308,7 +311,7 @@ The fight in 3D (the default; `?view=2d` on a station, or a PC without WebGL 2, 
 3D models that read like 2D paintings (Hearthstone-like). `js/battle3d/` draws the room, the fighters and
 the effects with three.js (vendored in `lib/three`, found through an import map) on a canvas behind the
 station's HTML. The HTML marks where it goes with `data-stage`: `fight` on the beat's `.dg-battle`,
-`portrait` on the monster in the strip while a question is up, so the fight shrinks into a live portrait.
+`portrait` on the encounter's `.dg-stage` while a question is up (the monster turns to face you).
 The words, damage number, flash, HP bar, the Host's line and the floor curtain stay HTML, so both versions
 share them; `css/battle3d.css` hides what the 3D replaces. One file per job: `models.js` (which model and
 clips each Sprite key uses; a key with no model stands in the room as its flat picture), `stage.js`

@@ -1,7 +1,7 @@
 // The 3D stage: one WebGL canvas over the whole screen, behind the station's HTML. It draws only inside
-// the box the page marks with data-stage (the full fight, or the monster's portrait in the strip while a
-// question is up), so the page's own layout decides where the scene goes and how big it is. When that
-// box moves or changes size (the fight shrinking into the strip), the picture glides after it.
+// the box the page marks with data-stage (the full fight, or the encounter's stage while a question is
+// up), so the page's own layout decides where the scene goes and how big it is. When that box moves or
+// changes size (the fight giving way to the question), the picture glides after it.
 //
 // The look aims for "3D that reads like a painting": a warm key light, warm torches, a cool fill, soft
 // round shadows under the actors, and a fixed camera, so the models only ever need to look good from one side.
@@ -143,7 +143,7 @@ export class Stage {
         return box && box.height > 0 ? box.width / box.height : 9 / 16;
     }
 
-    /** The data-stage box's kind: 'fight' (the full beat) or 'portrait' (the monster in the strip). */
+    /** The data-stage box's kind: 'fight' (the full beat) or 'portrait' (the encounter's stage, a question up). */
     mode() {
         return document.querySelector('[data-stage]')?.dataset.stage || null;
     }

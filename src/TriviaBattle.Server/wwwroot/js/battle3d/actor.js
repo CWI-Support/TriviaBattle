@@ -66,6 +66,7 @@ export class Actor {
         pivot.add(model);
         pivot.rotation.y = turn;
         this.holder.add(pivot);
+        this.pivot = pivot;
         this.model = model;
         this.width = Math.max(size.x, size.z) * scale;
     }
@@ -145,6 +146,11 @@ export class Actor {
             this.actions.set(name, action);
         }
         return this.actions.get(name);
+    }
+
+    /** Turns it to face this way (radians round the vertical; 0 = the camera). A cut-out always faces the camera. */
+    face(angle) {
+        if (this.pivot) this.pivot.rotation.y = angle + (this.spec.turn || 0);
     }
 
     /** True if the model has this clip (monsters without a hurt or death clip get knocked back or burst instead). */

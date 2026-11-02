@@ -1,0 +1,203 @@
+/* The station screen while a question is up (js/dungeon-encounter.js), laid out like the design lead's
+   example (docs/design/station-example.png): the monster's nameplate on top, the question scroll hanging
+   from it on chains, the monster big in its room, the hourglass standing beside the answers (rune box +
+   framed answer each), then you. Dark iron, warm parchment, gems at the corners.
+   Layout only, with the shared tokens and the --dg-* ones from css/dungeon.css. */
+
+.dg-station.is-encounter { gap: calc(0.9vh * var(--fit)); }
+
+/* A little cut gem, for the corners of the iron frames. */
+.dg-gem {
+    flex: 0 0 auto;
+    width: 2.8vmin;
+    height: 2.8vmin;
+    transform: rotate(45deg);
+    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.8) 0 18%, transparent 30%), var(--gem, #d62828);
+    border: 0.4vmin solid #000;
+    box-shadow: 0 0 1.2vmin var(--gem, #d62828);
+}
+.dg-gem.is-red { --gem: #e8323c; }
+.dg-gem.is-violet { --gem: #9b5cff; }
+
+/* ---------- The monster's nameplate ---------- */
+
+.dg-foe-plate {
+    position: relative;
+    padding: 0.8vh 2.4vw 1.2vh;
+    background: linear-gradient(#2e2a35, #1c1920);
+    border: 0.7vmin solid var(--dg-frame-edge);
+    box-shadow: inset 0 0 0 0.4vmin #000, 0 0.8vmin 0 rgba(0, 0, 0, 0.5);
+}
+.dg-foe-plate.is-boss { border-color: #b8862b; }
+.dg-foe-corners { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4vh; }
+.dg-foe-corners .dg-floor-badge { font-size: 2vmin; }
+.dg-foe-corners .dg-clock { font-size: 2.8vmin; position: relative; }
+.dg-foe-name {
+    width: max-content;
+    max-width: 100%;
+    margin: 0 auto 0.8vh;
+    padding: 0.4vh 3vw;
+    background: #15121a;
+    border: 0.5vmin solid var(--dg-frame-edge);
+    font-family: var(--dg-font-pixel);
+    font-size: 4.2vmin;
+    letter-spacing: 0.06em;
+    color: #f3ece0;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dg-foe-plate.is-boss .dg-foe-name { color: #ffd23f; }
+.dg-foe-hp { display: flex; align-items: center; gap: 1.6vw; }
+.dg-foe-hp .dg-bar { flex: 1; height: 4vmin; }
+.dg-foe-hp .dg-bar-fill { background: var(--dg-enemy-hp); }
+
+/* ---------- The question, hanging from the nameplate on two chains ---------- */
+
+.dg-station.is-encounter .dg-scroll {
+    position: relative;
+    width: 92%;
+    margin: 1.6vh auto 0;
+    min-height: 9vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-size: calc(5.6vmin * var(--fit));
+    text-transform: uppercase;
+    box-shadow: 0 1vmin 0 rgba(0, 0, 0, 0.55), inset 0 0 3vmin rgba(107, 74, 34, 0.35);
+}
+.dg-station.is-encounter .dg-scroll::before,
+.dg-station.is-encounter .dg-scroll::after {
+    content: '';
+    position: absolute;
+    top: calc(-1.6vh - 1vmin);
+    width: 1.4vmin;
+    height: calc(1.6vh + 1vmin);
+    background: repeating-linear-gradient(#9a94a3 0 0.7vh, #3c3842 0.7vh 1.1vh);
+    border: 0.2vmin solid #000;
+}
+.dg-station.is-encounter .dg-scroll::before { left: 10%; }
+.dg-station.is-encounter .dg-scroll::after { right: 10%; }
+
+/* ---------- The monster in its room ---------- */
+
+.dg-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 20vh;
+    overflow: hidden;
+    border: 0.5vmin solid #000;
+    box-shadow: inset 0 0 6vmin 1vmin rgba(0, 0, 0, 0.75);
+}
+.dg-stage .dg-monster-wrap { position: absolute; left: 0; right: 0; bottom: 12%; height: 78%; }
+.dg-stage .dg-monster { height: 100%; }
+.dg-stage .dg-monster.is-boss { height: 100%; }
+.dg-stage .dg-float { font-size: 7vmin; }
+.dg-stage .dg-float.is-crit { font-size: 9vmin; }
+/* The Host's line, one line on the floor of the room under the monster. Its "it was B" detail stays off:
+   the battle beat just showed the right answer big (DungeonBattle.reveal). */
+.dg-stage .dg-feedback {
+    position: absolute;
+    left: 2vw;
+    right: 2vw;
+    bottom: 0.8vh;
+    z-index: 2;
+    padding: 0.4vh 2vw;
+    background: rgba(10, 8, 12, 0.78);
+    font-size: calc(3.2vmin * var(--fit));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dg-stage .dg-feedback-detail { display: none; }
+.dg-stage .dg-feedback.is-go { background: transparent; text-shadow: 0.4vmin 0.4vmin 0 #000; }
+.dg-stage .dg-overlay { z-index: 3; }
+
+/* ---------- The hourglass beside the answers, and the answers ---------- */
+
+.dg-answer-area { display: grid; grid-template-columns: 7.5vmin minmax(0, 1fr); gap: 2vw; }
+
+.dg-glass { display: flex; flex-direction: column; align-items: center; gap: 0.6vh; }
+.dg-glass-seconds { font-family: var(--dg-font-pixel); font-size: 2.6vmin; color: var(--dg-hourglass); }
+.dg-glass-seconds.is-hurry { color: var(--wrong); animation: dg-blink 0.5s steps(1) infinite; }
+.dg-glass .timer-bar.is-vertical {
+    position: relative;
+    flex: 1;
+    width: 4.4vmin;
+    height: auto;
+    border-radius: 0;
+    background: #120f16;
+    border: 0.5vmin solid var(--dg-frame-edge);
+    box-shadow: inset 0 0 0 0.3vmin #000;
+}
+/* The sand sits at the bottom and runs down as time goes. */
+.dg-glass .timer-bar.is-vertical .timer-bar-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    background: linear-gradient(90deg, #c77a12, var(--dg-hourglass) 45%, #ffe08a 60%, var(--dg-hourglass));
+}
+.dg-glass .timer-bar.is-vertical.timer-bar-low .timer-bar-fill { background: var(--wrong); }
+.dg-glass .timer-bar.is-stopped .timer-bar-fill { height: 100%; opacity: 0.3; }
+.dg-glass-icon { width: 6vmin; height: auto; }
+/* A Freeze ices the hourglass over, and it thaws by itself when the freeze ends. */
+.dg-glass.is-frozen .timer-bar-fill { filter: hue-rotate(170deg) saturate(1.5) brightness(1.2); animation: dg-thaw 1ms linear var(--thaw) forwards; }
+.dg-glass.is-frozen .dg-glass-seconds { color: #9fe0ff; animation: dg-thaw 1ms linear var(--thaw) forwards; }
+
+.dg-station.is-encounter .dg-answers { gap: calc(1vh * var(--fit)); }
+.dg-station.is-encounter .dg-answer {
+    display: grid;
+    grid-template-columns: calc(8.5vmin * var(--fit)) minmax(0, 1fr);
+    gap: 1.6vw;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    font-size: calc(5vmin * var(--fit));
+}
+/* The rune box: the button's symbol, in its colour. */
+.dg-station.is-encounter .dg-rune {
+    width: auto;
+    height: auto;
+    aspect-ratio: 1;
+    align-self: stretch;
+    display: grid;
+    place-items: center;
+    background: #15121a;
+    border: 0.5vmin solid var(--answer-color);
+    box-shadow: inset 0 0 0 0.4vmin #000, 0 0 1.4vmin color-mix(in srgb, var(--answer-color) 45%, transparent);
+}
+.dg-rune-glyph {
+    display: block;
+    width: 68%;
+    height: 68%;
+    background: var(--answer-color);
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+    filter: drop-shadow(0 0 0.8vmin var(--answer-color));
+}
+.dg-station.is-encounter .dg-answer-text {
+    display: flex;
+    align-items: center;
+    gap: 1.4vw;
+    padding: calc(1.3vh * var(--fit)) 2.4vw;
+    background: linear-gradient(#211d27, #16131b);
+    border: 0.5vmin solid var(--answer-color);
+    box-shadow: inset 0 0 0 0.4vmin #000, 0 0 1.4vmin color-mix(in srgb, var(--answer-color) 30%, transparent);
+    text-transform: uppercase;
+    line-height: 1.05;
+}
+.dg-station.is-encounter .dg-answer-text b { font-weight: normal; color: var(--answer-color); }
+
+/* ---------- You, in an iron frame with gems ---------- */
+
+.dg-station.is-encounter .dg-plate { position: relative; }
+
+/* ---------- The question coming in after a battle beat (timed from --q0, see css/dungeon.css) ---------- */
+
+.dg-station.is-encounter.is-after-beat .dg-foe-plate { animation: dg-q-rise 200ms ease-out var(--q0) both; }
+.dg-station.is-encounter.is-after-beat .dg-stage { animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both; }
+.dg-station.is-encounter.is-new-foe .dg-stage .dg-monster-wrap { animation: dg-drop 450ms cubic-bezier(0.3, 1.5, 0.6, 1) calc(var(--q0) + 60ms) both; }
