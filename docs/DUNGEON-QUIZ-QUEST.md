@@ -313,8 +313,11 @@ conversion moment.
 **The arcade lobby (built, Nov 2026):** you start at the station, not the kiosk. Press any button (or
 swipe your card: a new card gets a made-up hero name and keeps it), pick one of five heroes (Knight,
 Barbarian, Mage, Rogue, Ranger: a look for now, classes later), then a game laid out like a question:
-Solo quest, Start a party (co-op), Start a race, or Join the one forming. A party or race waits 20
+Solo quest, Start a party (co-op), Start a race, or Join the one forming, then a category (or
+everything). A party can also be challenged: then it's a team battle. A party or race waits 20
 seconds for joiners (or until everyone presses ACTION for ready). The main screen shows who's where.
+In group games everyone's face is on everyone's screen: teammates, a feed of the others' big moments,
+the banners and results. In a race or battle the monsters wear your opponents' faces.
 Next: real profiles behind a QR code ("continue your journey"), and classes with their own powers.
 
 **Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. When the intro

@@ -174,6 +174,7 @@ function renderIntro(match) {
 function teamsVersus(match, at = null) {
     const card = team => `
         <div class="team-card" style="border-top: 1vmin solid ${teamColor(match, team.id)}">
+            <div class="team-faces">${membersOf(match, team).map(p => HeroPhoto.portrait(match, p.stationId, 'team-face', teamColor(match, team.id))).join('')}</div>
             <h2>${UI.escape(team.name)}</h2>
             <div class="members">${membersOf(match, team).map(p => UI.escape(p.name)).join(' &amp; ')}</div>
         </div>`;
@@ -226,7 +227,7 @@ function renderDungeonPlaying(match) {
     const timeAdded = DungeonView.timeAdded(clockKey, match); // a solo kill earned time
     if (timeAdded)
         DungeonView.effect(clockKey, DungeonView.timeAddedPop(timeAdded), 1600);
-    owners.forEach(DungeonView.noteMoments); // floors cleared, bosses, revives, party combos: banners across the room
+    owners.forEach(o => DungeonView.noteMoments({ ...o, match })); // floors cleared, bosses, revives, party combos: banners across the room
 
     document.getElementById('view-playing').innerHTML = `
         <div class="dg-main">
@@ -325,21 +326,24 @@ function renderResults(match) {
 function scoreboard(match) {
     const rows = match.standings.map(standing => {
         let color, members = '';
+        let players = [match.players.find(p => p.stationId === standing.id)];
 
         if (standing.isTeam) {
             const team = match.teams.find(t => t.id === standing.id);
             color = teamColor(match, team.id);
-            members = membersOf(match, team)
+            players = membersOf(match, team);
+            members = players
                 .map(p => `${UI.escape(p.name)} ${p.score.toLocaleString()}`)
                 .join(' &middot; ');
         } else {
             color = colorOf(standing.id);
         }
+        const faces = players.filter(Boolean).map(p => HeroPhoto.portrait(match, p.stationId, 'row-face', color)).join('');
 
         return `
             <div class="score-row race-row" style="--row-color: ${color}">
                 <span class="rank">${UI.ordinal(standing.rank)}</span>
-                <span>${UI.escape(standing.name)}<div class="members">${members}</div></span>
+                <span class="row-who"><span class="row-faces">${faces}</span><span>${UI.escape(standing.name)}<div class="members">${members}</div></span></span>
                 <span class="right-count">${Theme.text('playing.right', { n: standing.correctAnswers })}</span>
                 <span class="score">${standing.score.toLocaleString()}</span>
             </div>`;
@@ -356,11 +360,11 @@ function showFitted(viewId) {
     UI.fitToScreen(document.getElementById(viewId).firstElementChild);
 }
 
-/** A player's name and station. With the match (the intro's line-up), their face too once their hero photo is in. */
+/** A player's name and station. With the match (the intro's line-up), their portrait too: their face, or their hero. */
 function playerChip(player, match = null) {
     return `
         <div class="chip" style="--chip-color: ${colorOf(player.stationId)}">
-            ${match ? HeroPhoto.face(match, player.stationId, 'chip-face') : ''}
+            ${match ? HeroPhoto.portrait(match, player.stationId, 'chip-face', colorOf(player.stationId)) : ''}
             <div class="chip-name">${UI.escape(player.name)}</div>
             <div class="chip-detail">${UI.escape(stationsById[player.stationId]?.label || '')}</div>
         </div>`;

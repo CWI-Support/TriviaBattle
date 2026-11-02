@@ -47,6 +47,7 @@ function render(state) {
         myPlacement = null;
         lastAnswerShown = null;
         DungeonView.reset();
+        DungeonFeed.reset();
     }
     lastState = state;
     introVideo.follow(state.cue, { muted: true }); // sound comes from the main screen only
@@ -70,7 +71,7 @@ function render(state) {
     } else {
         switch (match.phase) {
             case 'Intro':    body.innerHTML = intro(match, you); break;
-            case 'Playing':  body.innerHTML = fighting ? DungeonView.station(match, you, connection.serverNow(), state.station.color) : playing(match, you); break;
+            case 'Playing':  body.innerHTML = fighting ? dungeonStation(match, you, state.station.color) : playing(match, you); break;
             case 'Continue': body.innerHTML = continueOffer(match, you); break;
             case 'Results':
             case 'Finished': body.innerHTML = results(match, you); break;
@@ -131,6 +132,12 @@ function intro(match, you) {
 }
 
 // ---------------------------------------------------------------- Playing
+
+/** The Dungeon fight, with the other players' big moments (and faces) popping up over it. */
+function dungeonStation(match, you, color) {
+    DungeonFeed.note(match, you);
+    return DungeonView.station(match, you, connection.serverNow(), color) + DungeonFeed.html();
+}
 
 function playing(match, you) {
     const q = you.question;
@@ -244,7 +251,25 @@ function results(match, you) {
             <p class="subtitle">${detail}</p>
             <p class="subtitle">${Theme.text('playing.right', { n: mine.correctAnswers })}</p>
             ${highScore}
+            ${podium(match)}
         </div>`;
+}
+
+/** A group game's final places, with everyone's portrait (their face, or their hero). Nothing when playing alone. */
+function podium(match) {
+    if (match.players.length < 2) return '';
+    const rows = match.standings.map(standing => {
+        const players = standing.isTeam ? match.players.filter(p => p.teamId === standing.id) : match.players.filter(p => p.stationId === standing.id);
+        const faces = players.map(p => HeroPhoto.portrait(match, p.stationId, 'podium-face', '')).join('');
+        return `
+            <div class="podium-row">
+                <span class="podium-rank">${UI.ordinal(standing.rank)}</span>
+                <span class="podium-faces">${faces}</span>
+                <span class="podium-name">${UI.escape(standing.name)}</span>
+                <b>${standing.score.toLocaleString()}</b>
+            </div>`;
+    }).join('');
+    return `<div class="podium">${rows}</div>`;
 }
 
 /** This player's row in the standings: their own (free-for-all) or their team's. */

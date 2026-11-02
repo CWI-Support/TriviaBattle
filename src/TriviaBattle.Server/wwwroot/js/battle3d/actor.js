@@ -171,6 +171,47 @@ export class Actor {
         this.materials.push(this.painted.mesh.material); // it flashes with the rest when hit
     }
 
+    /**
+     * A rival's face on a monster (in a race or a battle, the monsters you fight wear your opponents'
+     * faces): their cut-out face (js/face-cutout.js) as a mask, always turned to the camera and drawn over
+     * the monster, fixed to its head bone so it follows every bite and swing. url null takes it off.
+     */
+    async wearMask(url) {
+        this.maskUrl = url;
+        if (this.mask) {
+            this.mask.removeFromParent();
+            this.mask.material.map.dispose();
+            this.mask.material.dispose();
+            this.mask = null;
+        }
+        if (!url || !this.model) return;
+
+        const face = new Image();
+        face.src = url;
+        await face.decode();
+        if (this.maskUrl !== url) return; // another face (or none) was asked for meanwhile
+
+        const texture = new THREE.Texture(face);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.needsUpdate = true;
+        const mask = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+        mask.renderOrder = 10;
+        const size = (this.spec.height || 2) * (this.spec.mask ?? 0.5);
+        const head = findHead(this.model);
+        if (head) {
+            this.model.updateMatrixWorld(true);
+            const at = head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, size * 0.15, 0));
+            mask.position.copy(head.worldToLocal(at));
+            mask.scale.setScalar(size / head.getWorldScale(new THREE.Vector3()).x);
+            head.add(mask);
+        } else {
+            mask.position.set(0, (this.spec.height || 2) * 0.7, 0);
+            mask.scale.setScalar(size);
+            this.holder.add(mask);
+        }
+        this.mask = mask;
+    }
+
     /** Turns it to face this way (radians round the vertical; 0 = the camera). A cut-out always faces the camera. */
     face(angle) {
         if (this.pivot) this.pivot.rotation.y = angle + (this.spec.turn || 0);
@@ -196,6 +237,15 @@ export class Actor {
         scene.remove(this.root);
         for (const material of this.materials) material.dispose();
     }
+}
+
+/** The model's head bone ("Head" or "head" in every rig so far), or null. */
+function findHead(model) {
+    let head = null;
+    model.traverse(part => {
+        if (!head && part.isBone && /^head$/i.test(part.name)) head = part;
+    });
+    return head;
 }
 
 /** A looping clip wraps round; any other clip holds its last frame. */

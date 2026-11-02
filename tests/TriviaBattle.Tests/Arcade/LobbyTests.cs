@@ -9,7 +9,8 @@ namespace TriviaBattle.Tests.Arcade;
 
 /// <summary>
 /// The arcade lobby: walk up to a station, press any button, pick a hero (A/B flip, ACTION picks), then a
-/// game: solo at once, or a party or race the other stations can join. Joins for 20 s, late joiners get 6 s.
+/// game and its category (A/B flip, ACTION picks; the first is everything mixed): solo at once, or a party
+/// or race the other stations can join. Joins for 20 s, late joiners get 6 s.
 /// </summary>
 public class LobbyTests
 {
@@ -25,6 +26,8 @@ public class LobbyTests
 
     private DateTimeOffset _now = Start;
     private readonly Lobby _lobby = new(["A1", "A2", "A3"], new LobbySettings(), new Random(1));
+
+    public LobbyTests() => _lobby.SetCategories([new LobbyCategory(7, "Movies"), new LobbyCategory(9, "Music")]);
 
     private LobbyResult Press(string station, params int[] buttons)
     {
@@ -61,7 +64,7 @@ public class LobbyTests
     [Fact]
     public void Solo_starts_straight_away_with_the_hero_picked()
     {
-        var result = Press("A1", A, B, Action, A);
+        var result = Press("A1", A, B, Action, A, Action);   // ..., Solo, everything mixed
 
         var start = Assert.Single(result.Starts);
         Assert.Equal(GameChoice.Solo, start.Game);
@@ -77,12 +80,12 @@ public class LobbyTests
     [Fact]
     public void A_party_forms_others_join_it_and_it_starts_when_everyone_is_ready()
     {
-        Press("A1", A, Action, B);                       // A1 starts a party
+        Press("A1", A, Action, B, Action);               // A1 starts a party
         Assert.Equal(LobbyStep.Waiting, Seat("A1").Step);
         Assert.NotNull(_lobby.Forming);
 
         Press("A2", A, Action);                          // A2 sees joining first
-        Assert.Equal([GameChoice.Join, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
+        Assert.Equal([GameChoice.Join, GameChoice.Challenge, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
         Press("A2", A);
         Assert.Equal(2, _lobby.Forming!.Members.Count);
 
@@ -102,7 +105,7 @@ public class LobbyTests
     [Fact]
     public void A_race_starts_when_its_timer_runs_out_and_a_late_joiner_gets_a_few_seconds()
     {
-        Press("A1", A, Action, C);                       // a race, starting 20 s from now
+        Press("A1", A, Action, C, Action);               // a race, starting 20 s from now
         var startsAt = _lobby.Forming!.StartsAt;
 
         _now = startsAt - TimeSpan.FromSeconds(3);
@@ -119,9 +122,34 @@ public class LobbyTests
     }
 
     [Fact]
+    public void Challenging_a_party_makes_it_a_battle_one_team_a_side()
+    {
+        Press("A1", A, Action, B, Action);               // A1 starts a party
+        Press("A2", A, Action, B);                       // A2 challenges it
+        Press("A3", A, Action, A);                       // A3 joins A1's side
+
+        var start = Assert.Single(_lobby.Tick(_lobby.Forming!.StartsAt).Starts);
+
+        Assert.Equal(GameChoice.Battle, start.Game);
+        var setup = start.ToSetup([1], Difficulty.Easy);
+        Assert.Equal(GameModeKind.TeamCombinedScore, setup.Mode);
+        Assert.Equal([["A1", "A3"], ["A2"]], setup.Teams.Select(t => t.StationIds));
+        Assert.Empty(MatchSetupValidator.Validate(setup, Layout));
+    }
+
+    [Fact]
+    public void A_race_can_only_be_joined_not_challenged()
+    {
+        Press("A1", A, Action, C, Action);
+        Press("A2", A, Action);
+
+        Assert.Equal([GameChoice.Join, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
+    }
+
+    [Fact]
     public void A_party_nobody_joins_starts_as_a_solo_game()
     {
-        Press("A1", A, Action, B);
+        Press("A1", A, Action, B, Action);
 
         var start = Assert.Single(_lobby.Tick(_lobby.Forming!.StartsAt).Starts);
 
@@ -134,7 +162,7 @@ public class LobbyTests
         Press("A1", A, Action, D);
         Assert.Equal(LobbyStep.Hero, Seat("A1").Step);
 
-        Press("A1", Action, B, D);                       // in a party, then out again
+        Press("A1", Action, B, Action, D);               // in a party, then out again
         Assert.Equal(LobbyStep.Game, Seat("A1").Step);
         Assert.Null(_lobby.Forming);
     }
@@ -155,14 +183,14 @@ public class LobbyTests
         _lobby.Swipe("A1", "Brett", 42, _now);
         Assert.Equal((LobbyStep.Hero, "Brett", (int?)42), (Seat("A1").Step, Seat("A1").Name, Seat("A1").PlayerProfileId));
 
-        var start = Assert.Single(Press("A1", Action, A).Starts);
+        var start = Assert.Single(Press("A1", Action, A, Action).Starts);
         Assert.Equal(42, start.Players[0].PlayerProfileId);
     }
 
     [Fact]
     public void The_view_lists_the_seats_in_station_order_and_the_party_forming()
     {
-        Press("A2", A, Action, B);
+        Press("A2", A, Action, B, B, B, Action);        // a party (B) of Music (everything, Movies, Music)
         Press("A3", A);
 
         var view = LobbyView.From(_lobby, Layout.InRoom("A").Select(s => s.Id));
@@ -171,5 +199,44 @@ public class LobbyTests
         Assert.Equal([LobbyStep.Idle, LobbyStep.Waiting, LobbyStep.Hero], view.Seats.Select(s => s.Step));
         Assert.Equal(GameChoice.Party, view.Forming!.Kind);
         Assert.Equal(Seat("A2").Name, view.Forming.HostName);
+        Assert.Equal("Music", view.Forming.Category);
+        Assert.Equal(["Movies", "Music"], view.Categories);
+    }
+
+    [Fact]
+    public void A_and_B_flip_the_categories_round_from_everything_and_D_goes_back()
+    {
+        Press("A1", A, Action, A);                       // Solo: now the category
+        Assert.Equal(LobbyStep.Category, Seat("A1").Step);
+        Assert.Null(_lobby.CategoryOf(Seat("A1")));      // everything mixed comes first
+
+        Press("A1", B);
+        Assert.Equal("Movies", _lobby.CategoryOf(Seat("A1"))!.Name);
+        Press("A1", A, A);
+        Assert.Equal("Music", _lobby.CategoryOf(Seat("A1"))!.Name); // round the back
+
+        Press("A1", D);
+        Assert.Equal(LobbyStep.Game, Seat("A1").Step);
+    }
+
+    [Fact]
+    public void A_chosen_category_is_the_game_s_questions_and_everything_is_every_category()
+    {
+        var movies = Assert.Single(Press("A1", A, Action, A, B, Action).Starts);
+        Assert.Equal([7], movies.ToSetup([7, 9, 11], Difficulty.Easy).CategoryIds);
+
+        var everything = Assert.Single(Press("A2", A, Action, A, Action).Starts);
+        Assert.Equal([7, 9, 11], everything.ToSetup([7, 9, 11], Difficulty.Easy).CategoryIds);
+    }
+
+    [Fact]
+    public void Joiners_skip_the_category_the_party_s_host_chose_it()
+    {
+        Press("A1", A, Action, B, B, Action);            // a party (B) of Movies
+        Press("A2", A, Action, A);                       // join
+
+        var start = Assert.Single(_lobby.Tick(_lobby.Forming!.StartsAt).Starts);
+        Assert.Equal(GameChoice.Party, start.Game);
+        Assert.Equal("Movies", start.Category!.Name);
     }
 }

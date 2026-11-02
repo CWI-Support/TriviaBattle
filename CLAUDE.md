@@ -15,9 +15,11 @@ which holds all combat rules: each party (a team, or a solo player) shares one `
 owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
 Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
 Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any button or swipe, pick one of five heroes,
-pick solo / start a party / start a race / join) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
+pick solo / start a party / start a race / join or challenge, pick a category; a challenged party is a team battle) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
 a game to `LobbyHost`; `js/arcade-lobby.js` draws it. The kiosk can still start games. Heroes: `Core/Arcade/Heroes.cs`,
 their models in `HEROES` (`js/battle3d/models.js`), their pictures in `media/heroes` (made by `/dev/heroes`).
+In group games players see each other's faces: `HeroPhoto.portrait` everywhere a player shows, `js/dungeon-feed.js`
+for the others' moments, and rivals' faces on the monsters (`Actor.wearMask`).
 Hero photos: in the intro the station puts the player's face on their hero (by default; the action button says no,
 or with `PhotoByDefault` off it says yes). `js/hero-camera.js` takes it,
 `js/face-cutout.js` cuts out the face (MediaPipe, vendored in `lib/mediapipe`), `js/battle3d/face.js` paints it on the

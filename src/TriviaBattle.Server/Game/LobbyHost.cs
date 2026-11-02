@@ -11,9 +11,10 @@ namespace TriviaBattle.Server.Game;
 
 /// <summary>
 /// Runs the arcade lobby: the button presses and card swipes of stations that aren't in a game, and its
-/// clock. When the lobby says a game should start, this starts it with <see cref="MatchHost"/> (every active
-/// category, the lobby's difficulty), and the match takes over those stations' screens. The rules are in
-/// <see cref="Lobby"/> (Core).
+/// clock. When the lobby says a game should start, this starts it with <see cref="MatchHost"/> (the chosen
+/// category, or every active one; the lobby's difficulty), and the match takes over those stations' screens.
+/// It also keeps the lobbies' list of categories up to date (only ones with active questions). The rules
+/// are in <see cref="Lobby"/> (Core).
 /// </summary>
 public sealed class LobbyHost(
     Lobbies lobbies,
@@ -25,6 +26,11 @@ public sealed class LobbyHost(
     TimeProvider clock,
     ILogger<LobbyHost> logger)
 {
+    /// <summary>How often the categories on offer are read again (admin edits show up within this long).</summary>
+    private static readonly TimeSpan CategoryRefresh = TimeSpan.FromMinutes(1);
+
+    private DateTimeOffset _nextCategoryRefresh;
+    private int _refreshing; // 1 while a refresh is running
     /// <summary>A press at a station that isn't in a game (<see cref="ButtonRouter"/> decides).</summary>
     public void HandlePress(ButtonPress press)
     {
@@ -61,8 +67,48 @@ public sealed class LobbyHost(
     /// <summary>Called several times a second by <see cref="MatchTicker"/>: forming games start on time, idle stations go back to the attract screen.</summary>
     public void Tick()
     {
+        var now = clock.GetUtcNow();
+        if (now >= _nextCategoryRefresh && Interlocked.Exchange(ref _refreshing, 1) == 0)
+        {
+            _nextCategoryRefresh = now + CategoryRefresh;
+            _ = RefreshCategoriesAsync();
+        }
         foreach (var roomId in lobbies.RoomIds)
-            Apply(roomId, lobbies.Use(roomId, lobby => lobby.Tick(clock.GetUtcNow())));
+            Apply(roomId, lobbies.Use(roomId, lobby => lobby.Tick(now)));
+    }
+
+    /// <summary>Reads the categories with active questions and gives them to every room's lobby.</summary>
+    private async Task RefreshCategoriesAsync()
+    {
+        try
+        {
+            using var scope = scopes.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TriviaDbContext>();
+            var categories = await db.Categories
+                .Where(c => c.IsActive && c.Questions.Any(q => q.IsActive))
+                .OrderBy(c => c.Name)
+                .Select(c => new LobbyCategory(c.Id, c.Name))
+                .ToListAsync();
+            foreach (var roomId in lobbies.RoomIds)
+            {
+                var changed = lobbies.Use(roomId, lobby =>
+                {
+                    var before = lobby.Version;
+                    lobby.SetCategories(categories);
+                    return lobby.Version != before;
+                });
+                if (changed)
+                    broadcaster.LobbyChanged(roomId);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Reading the lobby's categories failed");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _refreshing, 0);
+        }
     }
 
     private void Apply(string roomId, LobbyResult result)

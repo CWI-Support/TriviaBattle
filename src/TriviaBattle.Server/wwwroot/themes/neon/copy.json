@@ -26,7 +26,7 @@
   "arcade": {
     "pressAny": "Press any button to play",
     "orSwipe": "or swipe your card",
-    "joinCallParty": "{name}'s party is forming! Press any button to join",
+    "joinCallParty": "{name}'s party is forming! Press any button to join it, or challenge it",
     "joinCallRace": "{name}'s race is about to start! Press any button to join",
     "hello": ["Welcome, {name}!", "Ah, {name}. We've been expecting you.", "{name} approaches!"],
     "chooseHero": "Choose your hero",
@@ -40,7 +40,14 @@
     "raceLine": "Everyone for themselves. Most points wins.",
     "joinParty": "Join {name}'s party",
     "joinRace": "Join {name}'s race",
-    "joinLine": "{count} in so far. It starts soon!",
+    "joinLine": "{category} · {count} in so far. It starts soon!",
+    "challenge": "Challenge {name}'s party",
+    "challengeLine": "Your team against theirs. Battle!",
+    "battleTitle": ["Battle!", "Team against team!", "It's a battle!"],
+    "vs": "VS",
+    "chooseCategory": "Pick your questions",
+    "everything": "Everything!",
+    "categoryKeys": "A and B to look · ACTION to choose · D: back",
     "back": "Back",
     "backLine": "Choose another hero",
     "partyTitle": "{name}'s party",
@@ -54,6 +61,18 @@
     "roomChoosing": "{name} is choosing",
     "roomWaiting": "{name} is in",
     "roomFree": "Free"
+  },
+
+  "feed": {
+    "revivedYou": ["{name} revived you!", "{name} dragged you back up!"],
+    "revived": "{name} revived {other}!",
+    "slain": ["{name} slew the {monster}!", "{name} took out the {monster}!"],
+    "bossSlain": ["{name} slew {monster}!", "{name} beat the boss!"],
+    "partyCombo": "{name} landed a party combo!",
+    "teammateDown": ["{name} is down! Answer right to revive them!", "{name} needs you! Right answers revive!"],
+    "rivalDown": ["{name} got knocked out!", "{name} is down!"],
+    "rivalFloor": "{name} reached floor {floor}!",
+    "overtook": ["{name} overtook you!", "{name} just passed you!"]
   },
 
   "heroes": {

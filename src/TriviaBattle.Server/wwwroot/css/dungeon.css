@@ -496,3 +496,24 @@
     84% { opacity: 1; transform: none; }
     100% { opacity: 0; transform: translateX(70vw) skewX(24deg); }
 }
+
+/* ---------- The other players' moments, with their faces (js/dungeon-feed.js) ----------
+   Over the fight's room, under the question; each slides in, stays, and slides out (--t0: its start). */
+.dg-feed {
+    position: fixed; top: 31%; left: 3vmin; right: 3vmin; z-index: 30; pointer-events: none;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 1.2vmin;
+}
+.dg-feed-item {
+    display: flex; align-items: center; gap: 2vmin; max-width: 86vmin; padding: 1.2vmin 2.4vmin 1.2vmin 1.2vmin;
+    border-radius: var(--radius); background: rgba(10, 8, 14, 0.88); border: 0.5vmin solid var(--accent);
+    font-family: var(--font-display); font-size: 4vmin; color: var(--text); text-align: left;
+    animation: dg-feed-pop 3.2s ease-in-out var(--t0) both;
+}
+.dg-feed-item.is-teammate { border-color: var(--correct); }
+.dg-feed-item.is-rival { border-color: var(--wrong); }
+.dg-feed-face { width: 13vmin; height: 13vmin; flex: none; border-radius: var(--radius-small); background: #2a2630; }
+@keyframes dg-feed-pop {
+    0% { transform: translateX(110%); opacity: 0; }
+    8%, 88% { transform: none; opacity: 1; }
+    100% { transform: translateX(110%); opacity: 0; }
+}

@@ -3,7 +3,8 @@
 //   Idle     "press any button to play" (and a call to join if a party or race is forming)
 //   Hero     the heroes, one at a time: A and B flip through them, ACTION chooses
 //   Game     the games on offer, laid out like a question (A, B, C), D to go back
-//   Waiting  the party or race forming: who's in, who's ready, when it starts
+//   Category the questions for a new game: everything mixed, or one category (A and B, ACTION, D back)
+//   Waiting  the party or race forming: who's in (a challenged party: the two sides, VS), who's ready, when it starts
 // The main screen shows the whole room's lobby under its title (ArcadeLobby.room).
 // Hero pictures are in media/heroes (drawn by /dev/heroes). Needs ui.js and theme.js. Styles: css/arcade-lobby.css.
 
@@ -16,6 +17,7 @@ const ArcadeLobby = {
         switch (seat?.step) {
             case 'Hero': return ArcadeLobby.heroStep(lobby, seat, seed);
             case 'Game': return ArcadeLobby.gameStep(lobby, seat);
+            case 'Category': return ArcadeLobby.categoryStep(lobby, seat);
             case 'Waiting': return ArcadeLobby.waitingStep(lobby, seat);
             default: return ArcadeLobby.idleStep(lobby);
         }
@@ -69,7 +71,8 @@ const ArcadeLobby = {
                 case 'Race': return option(letter, Theme.text('arcade.race'), Theme.text('arcade.raceLine'));
                 case 'Join': return option(letter,
                     forming.kind === 'Race' ? Theme.text('arcade.joinRace', { name: forming.hostName }) : Theme.text('arcade.joinParty', { name: forming.hostName }),
-                    Theme.text('arcade.joinLine', { count: forming.members.length }));
+                    Theme.text('arcade.joinLine', { category: Theme.raw(ArcadeLobby.categoryName(forming.category)), count: forming.members.length }));
+                case 'Challenge': return option(letter, Theme.text('arcade.challenge', { name: forming.hostName }), Theme.text('arcade.challengeLine'));
                 default: return '';
             }
         }).join('');
@@ -87,23 +90,50 @@ const ArcadeLobby = {
             </div>`;
     },
 
+    categoryStep(lobby, seat) {
+        const names = [null, ...lobby.categories];
+        const game = seat.forGame === 'Race' ? Theme.text('arcade.race') : seat.forGame === 'Party' ? Theme.text('arcade.party') : Theme.text('arcade.solo');
+        const list = names.map((name, i) => `
+            <div class="lb-category ${i === seat.categoryIndex ? 'is-on' : ''}">${ArcadeLobby.categoryName(name)}</div>`).join('');
+        return `
+            <div class="lb lb-categories">
+                <div class="lb-me">
+                    <img src="${ArcadeLobby.picture(seat.hero, 'head')}" alt="">
+                    <span>${game}</span>
+                </div>
+                <h1 class="lb-title">${Theme.text('arcade.chooseCategory')}</h1>
+                <div class="lb-category-list">${list}</div>
+                <div class="lb-keys">${Theme.text('arcade.categoryKeys')}</div>
+            </div>`;
+    },
+
+    /** A category's name, HTML-escaped; null is everything mixed. */
+    categoryName(name) {
+        return name ? UI.escape(name) : Theme.text('arcade.everything');
+    },
+
     waitingStep(lobby, seat) {
         const group = lobby.forming;
         if (!group) return ArcadeLobby.idleStep(lobby); // it started (or closed) a moment ago
-        const title = group.kind === 'Race'
-            ? Theme.text('arcade.raceTitle', { name: group.hostName })
+        const title = group.kind === 'Race' ? Theme.text('arcade.raceTitle', { name: group.hostName })
+            : group.isBattle ? Theme.text('arcade.battleTitle')
             : Theme.text('arcade.partyTitle', { name: group.hostName });
-        const members = group.members.map(m => `
-            <div class="lb-member ${m.ready ? 'is-ready' : ''}">
+        const member = m => `
+            <div class="lb-member ${m.ready ? 'is-ready' : ''} ${m.stationId === seat.stationId ? 'is-me' : ''}">
                 <img src="${ArcadeLobby.picture(m.hero, 'head')}" alt="">
                 <b>${UI.escape(m.name)}</b>
                 <small>${Theme.text(m.ready ? 'arcade.ready' : 'arcade.notReady')}</small>
-            </div>`).join('');
+            </div>`;
+        const side = n => group.members.filter(m => m.side === n).map(member).join('');
+        const members = group.isBattle
+            ? `<div class="lb-side">${side(0)}</div><div class="lb-vs">${Theme.text('arcade.vs')}</div><div class="lb-side">${side(1)}</div>`
+            : group.members.map(member).join('');
         return `
             <div class="lb lb-waiting">
                 <h1 class="lb-title">${title}</h1>
+                <div class="lb-subject">${ArcadeLobby.categoryName(group.category)}</div>
                 <div class="lb-starts"><small>${Theme.text('arcade.startsIn')}</small><b data-ends-at="${group.startsAtMs}"></b></div>
-                <div class="lb-members">${members}</div>
+                <div class="lb-members ${group.isBattle ? 'is-battle' : ''}">${members}</div>
                 <div class="lb-press">${Theme.text(seat.ready ? 'arcade.waitingForOthers' : 'arcade.pressReady')}</div>
                 <div class="lb-keys">${Theme.text('arcade.leave')}</div>
             </div>`;

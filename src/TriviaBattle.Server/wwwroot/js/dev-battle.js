@@ -11,6 +11,7 @@
 //   /dev/battle3d                    the same, drawn in 3D (js/battle3d); takes the same options
 //
 //   /dev/battle3d?hero=mage          another hero fights (knight, barbarian, mage, rogue, ranger)
+//   /dev/battle3d?rival=/path/picture.jpg   a rival (as in a race) with that face: the monsters wear it
 //   /dev/battle3d?photo=/path/picture.jpg   the hero wears a hero photo made from that picture (any picture
 //                                    with a face in it, on the server), as js/hero-camera.js makes them
 //
@@ -38,18 +39,21 @@ document.documentElement.style.setProperty('--station-color', COLOR);
 if (frozenAt !== null)
     document.body.classList.add('is-frozen');
 
-Theme.load().then(() => (params.has('photo') ? usePhoto(params.get('photo')) : null)).then(start);
+Theme.load()
+    .then(() => params.has('photo') && usePhoto('A1', params.get('photo'), HERO))
+    .then(() => params.has('rival') && usePhoto('A2', params.get('rival'), 'rogue'))
+    .then(start);
 
-/** ?photo=: a face for the hero, made from a picture the way a station makes one from its camera. */
-async function usePhoto(source) {
+/** ?photo= and ?rival=: a player's face, made from a picture the way a station makes one from its camera. */
+async function usePhoto(stationId, source, hero) {
     const picture = new Image();
     picture.src = source;
     await picture.decode();
     const face = await FaceCutout.cut(picture);
     if (!face) return console.warn('No face found in', source);
     const faceUrl = face.toDataURL('image/png');
-    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR, { hero: HERO }) : face;
-    HeroPhoto.use('dev', 'A1', 1, { face: faceUrl, portrait: portrait.toDataURL('image/png') });
+    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR, { hero }) : face;
+    HeroPhoto.use('dev', stationId, 1, { face: faceUrl, portrait: portrait.toDataURL('image/png') });
 }
 
 function start() {
@@ -166,6 +170,9 @@ function fakeState(kind, startedAt, question) {
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
     const match = { matchId: 'dev', category: 'Movies', soloClock: true, phaseEndsAtMs: Date.now() + 75000,
-                    players: [{ stationId: 'A1', photo: params.has('photo') ? 1 : 0, hero: HERO }] };
+                    players: [
+                        { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero: HERO },
+                        ...(params.has('rival') ? [{ stationId: 'A2', name: 'Bob', photo: 1, hero: 'rogue' }] : []),
+                    ] };
     return { match, you };
 }

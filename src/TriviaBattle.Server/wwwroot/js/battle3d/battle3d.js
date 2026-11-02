@@ -50,6 +50,7 @@ class Battle {
         this.foeLoadingKey = null;
         this.foeArrivedAt = null;
         this.foeYaw = FOE_FACING;
+        this.foesMet = 0;      // counts the monsters, so each wears a rival's face in turn
         this.lastFrame = performance.now();
         requestAnimationFrame(time => this.frame(time));
     }
@@ -94,6 +95,7 @@ class Battle {
             this.foeArrivedAt = this.foe ? this.clock() : null;  // the first monster is just there
             this.foe?.dispose(this.stage.scene);
             this.foe = this.place(foe, FOE_HOME);
+            this.foe.rivalTurn = this.foesMet++;
             this.foeKey = key;
             this.foeLoadingKey = null;
         });
@@ -121,6 +123,7 @@ class Battle {
             }
         }
         this.wearFace();
+        this.maskFoe();
         this.turnFoe(dt);
         this.aim(lean);
         this.stage.draw(now / 1000, dt);
@@ -131,6 +134,20 @@ class Battle {
         const view = this.view;
         const url = view?.you ? HeroPhoto.url(view.match, view.you.stationId, 'face') : null;
         if (this.hero && url !== this.hero.faceUrl) this.hero.wearFace(url);
+    }
+
+    /**
+     * In a race or a battle, the monster wears a rival's face: the other racers, or the other team, with a
+     * hero photo, one per monster in turn. Teammates and players without a photo aren't used.
+     */
+    maskFoe() {
+        const view = this.view;
+        if (!this.foe || !view?.you) return;
+        const rivals = (view.match.players || []).filter(p =>
+            p.stationId !== view.you.stationId && p.photo > 0 && (!view.you.teamId || p.teamId !== view.you.teamId));
+        const rival = rivals.length ? rivals[this.foe.rivalTurn % rivals.length] : null;
+        const url = rival ? HeroPhoto.url(view.match, rival.stationId, 'face') : null;
+        if (url !== this.foe.maskUrl) this.foe.wearMask(url);
     }
 
     /** While a question is up the monster turns to face you (the player is the one answering); in a fight it faces the knight. */

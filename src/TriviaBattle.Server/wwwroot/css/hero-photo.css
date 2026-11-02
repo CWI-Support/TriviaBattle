@@ -7,10 +7,26 @@
 /* A main-screen lane: a little bigger than the knight's pixel icon, so the face can be seen across the room. */
 .hero-photo.dg-portrait.small { width: 9vmin; height: 9vmin; }
 
-/* Beside a party member's name, and on the main screen's line-up in the intro. */
-.dg-member-face { width: 1.6em; height: 1.6em; flex: none; }
+/* Everyone's portrait wherever they appear: a party member's name, the main screen's line-up and team
+   cards, its big moments and results, and the station's final places. */
+.dg-member-face { width: 2.2em; height: 2.2em; flex: none; border-radius: var(--radius-small); background: #2a2630; }
 .dg-member-face + .dg-member-name { margin-right: auto; }
+.dg-member-line { align-items: center; }
 .chip-face { display: block; width: 12vmin; height: 12vmin; margin: -1vmin auto 0.5vmin; }
+.team-faces { display: flex; justify-content: center; gap: 1vmin; }
+.team-face { width: 12vmin; height: 12vmin; }
+.dg-moment-faces { display: flex; gap: 1vmin; }
+.dg-moment-face { width: 14vmin; height: 14vmin; border-radius: var(--radius-small); background: rgba(0, 0, 0, 0.35); }
+.row-who { display: flex; align-items: center; gap: 1.5vmin; }
+.row-faces { display: flex; gap: 0.6vmin; }
+.row-face { width: 7vmin; height: 7vmin; }
+.podium { display: flex; flex-direction: column; gap: 1.2vmin; width: 86vmin; margin-top: 2vmin; }
+.podium-row { display: flex; align-items: center; gap: 2vmin; padding: 1vmin 2vmin; border-radius: var(--radius); background: var(--panel); }
+.podium-rank { font-family: var(--font-display); font-size: 5vmin; color: var(--accent); width: 9vmin; }
+.podium-faces { display: flex; gap: 0.8vmin; }
+.podium-face { width: 11vmin; height: 11vmin; }
+.podium-name { flex: 1; text-align: left; font-size: 3.6vmin; }
+.podium-row b { font-family: var(--font-display); font-size: 4.6vmin; }
 
 /* ---------- The offer, in the intro: "Put your face on your hero? Press ACTION" ----------
    It fades out by itself when the offer ends (its animation-delay is set to that moment). */

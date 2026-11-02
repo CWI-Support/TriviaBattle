@@ -12,6 +12,7 @@
 // height  how tall it stands in the room (the knight is about 2.3; a back wall is 4)
 // turn    extra rotation (radians) if the model doesn't face +Z like glTF models should
 // hover   how high it floats (the bat)
+// mask    how big a rival's face is on it (a race or a battle), as a share of its height (0.5 if not given)
 // face    heroes only: where a player's hero photo goes (js/battle3d/face.js). The head mesh, the height
 //         of its eyes, mouth, chin and forehead and the distance between its pupils, all in the model's own
 //         units (it faces +Z), and the square of the head front the face map covers.

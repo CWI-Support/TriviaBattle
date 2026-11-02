@@ -227,13 +227,13 @@ const DungeonView = {
         return { html: `${headline}<div class="dg-feedback-detail">${itWas}</div>`, tone: 'is-bad' };
     },
 
-    /** One party member: their face (with a hero photo), name, HP, and "DOWN 1/3" while they wait for their teammates to revive them. */
+    /** One party member: their portrait (their face, or their hero), name, HP, and "DOWN 1/3" while they wait for their teammates to revive them. */
     member(m, reviveNeeded, match) {
         const down = !!m.downedUntilMs;
         return `
             <div class="dg-member ${down ? 'is-down' : ''}">
                 <div class="dg-member-line">
-                    ${HeroPhoto.face(match, m.ownerId, 'dg-member-face')}
+                    ${HeroPhoto.portrait(match, m.ownerId, 'dg-member-face', '')}
                     <span class="dg-member-name">${UI.escape(m.name)}</span>
                     ${down ? `<span class="dg-member-down">${Theme.text('dungeon.memberDown', { progress: m.reviveProgress, needed: reviveNeeded })}</span>` : ''}
                 </div>
@@ -334,7 +334,7 @@ const DungeonView = {
                 <div class="dg-lane-hero">
                     ${delve.party.length > 1
                         ? `<div class="dg-party is-lane">${delve.party.map(m => DungeonView.member(m, delve.reviveNeeded, match)).join('')}</div>`
-                        : `${HeroPhoto.portrait(match, key, 'dg-portrait small', color)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
+                        : `${HeroPhoto.portrait(match, delve.party[0]?.ownerId ?? key, 'dg-portrait small', color)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
                 </div>
                 ${DungeonView.stats(score, delve.kills)}
             </div>`;
@@ -344,14 +344,18 @@ const DungeonView = {
      * Main screen: the big moments of one lane since it was last drawn become banners sweeping across
      * the room screen (drawn by activeEffects('moments')): a boss slain, a floor cleared or a boss
      * stepping up, someone revived, a party combo. The Host has something to say about each
-     * (js/dungeon-host.js, on the main screen). name is already HTML-escaped.
+     * (js/dungeon-host.js, on the main screen). Each banner shows the faces of the lane's players.
+     * name is already HTML-escaped.
      */
-    noteMoments({ key, name, color, delve }) {
+    noteMoments({ key, name, color, delve, match }) {
         const hit = DungeonView.news(`moment:${key}`, delve).dealt;
         if (!hit) return;
 
+        const lanePlayers = match.players.filter(p => p.stationId === key || p.teamId === key);
+        const faces = `<div class="dg-moment-faces">${lanePlayers.map(p => HeroPhoto.portrait(match, p.stationId, 'dg-moment-face', color)).join('')}</div>`;
         const banner = (kind, text, sprite = null) => DungeonView.effect('moments', `
             <div class="dg-moment is-${kind}" style="--lane-color: ${color}">
+                ${faces}
                 ${sprite ? PixelSprites.html(sprite, 'dg-moment-sprite') : ''}
                 <div class="dg-moment-text">${text}</div>
             </div>`, 2600);

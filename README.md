@@ -73,7 +73,7 @@ Screen URLs and what they show:
 | `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health, and Insights (time in use, dwell time, returning players) |
 | `/dev/buttons` | Dev stand-in for the buttons (only when dev tools are on) |
 | `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
-| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=mage` for another hero) |
+| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=mage` for another hero, `?rival=/picture.jpg` for a rival's face on the monsters) |
 | `/dev/heroes` | Draws every hero's pictures for `media/heroes` (hero cards and portraits), to save after changing a hero |
 
 Add `?room=B` to any URL when there's more than one room. It doesn't matter which machine a screen
@@ -116,16 +116,26 @@ uses the five buttons:
    with a made-up name.
 2. **Choose your hero**: Knight, Barbarian, Mage, Rogue or Ranger. A and B flip through them, ACTION
    picks one. For now it's just a look; it's the hero you see fight.
-3. **Choose your game**, laid out like a question: A *Solo quest* (starts at once, on the arcade
-   clock), B *Start a party* (co-op: one shared dungeon), C *Start a race* (everyone on their own
-   delve), D back. While a party or race is forming, the other stations show "…is forming! Press
-   any button to join", and their choices are A *Join* and B *Solo*. Only one forms at a time.
-4. **Waiting**: everyone in it presses ACTION when ready. It starts when all are ready, or when its
-   join timer (`Game:Arcade:JoinSeconds`, 20) runs out. A late joiner gets at least `LateJoinSeconds`
-   (6). Alone, it starts as a solo game.
+3. **Choose your game**, laid out like a question: A *Solo quest* (on the arcade clock), B *Start a
+   party* (co-op: one shared dungeon), C *Start a race* (everyone on their own delve), D back.
+4. **Pick your questions**: *Everything!* or one category (only ones with active questions). A and B
+   flip, ACTION picks, D goes back. A solo game starts now; a party or race starts forming.
+5. **Joining**: while one is forming, the other stations show "…is forming! Press any button to join".
+   Their choices: for a party, A *Join* (the host's side), B *Challenge* (the other side) or C *Solo*;
+   for a race, A *Join* or B *Solo*. Joiners play the host's category. Only one forms at a time.
+6. **Waiting**: everyone in it presses ACTION when ready (D leaves). It starts when all are ready, or
+   when its join timer (`Game:Arcade:JoinSeconds`, 20) runs out. A late joiner gets at least
+   `LateJoinSeconds` (6). Alone, it starts as a solo game. A party someone challenged is a **battle**:
+   team against team (1v1, 2v2, 3v1...), each team sharing a delve.
 
 A station left choosing for `Game:Arcade:IdleSeconds` (30) goes back to "press any button". Games
-started here use every active category and `Game:Arcade:Difficulty` (Easy). The main screen shows
+started here use `Game:Arcade:Difficulty` (Easy).
+
+In a group game everyone sees everyone's face: their hero photo, or their hero without one. Your
+teammates' faces are on your station; the other players' big moments pop up over your fight with
+their faces ("…slew the Cellar Rat!", "…is down! Answer right to revive them!", "…overtook you!").
+The main screen's banners, line-up and results show faces too. In a race or a battle, the monsters
+you fight wear your opponents' faces (one rival per monster, in turn). The main screen shows
 the room's lobby under its title. A station's card reader calls `POST /api/stations/{id}/swipe`
 with `{ "cardId": "..." }`.
 

@@ -149,11 +149,13 @@ The rules:
   to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
 - **The arcade lobby** (`Core/Arcade`). Games start at the stations: `Lobby` (one per room) is every
-  station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Game, Waiting, and the one
-  `LobbyGroup` (a party or race) that may be forming. Like `MatchEngine` it's pure: time is passed in,
-  presses and card swipes go in, and it hands back `LobbyStart`s. `LobbyStart.ToSetup` makes the
-  `MatchSetup`: solo and race are free-for-all, and a party is one team in 2v2 Combined (a single team is
-  allowed: a co-op party). `Heroes` lists the five heroes (`SeatSetup.Hero`, then `Player.Hero` and
+  station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Game, Category, Waiting, and the one
+  `LobbyGroup` (a party or race, with its `LobbyCategory`) that may be forming. A party can be joined
+  (`GameChoice.Join`, side 0) or challenged (`Challenge`, side 1): with players on both sides it starts
+  as a `Battle`. Like `MatchEngine` it's pure: time is passed in, presses and card swipes go in, and it
+  hands back `LobbyStart`s. `LobbyStart.ToSetup` makes the `MatchSetup`: solo and race are free-for-all,
+  a party is one team in 2v2 Combined (a single team is allowed: a co-op party), and a battle is one
+  team a side. The categories on offer (`Lobby.SetCategories`) are refreshed by `LobbyHost` every minute. `Heroes` lists the five heroes (`SeatSetup.Hero`, then `Player.Hero` and
   `PlayerView.Hero`); `HeroNames` makes up names. On the server, `ButtonRouter` sends a press to
   `MatchHost` when its station is playing (`IsPlaying`), and to `LobbyHost` otherwise. `LobbyHost` drives
   the room's `Lobby` (held by `Lobbies`, behind one lock), ticks with `MatchTicker`, looks cards up (a new
@@ -192,6 +194,13 @@ The rules:
 
   `RoomSoundService` plays the countdown's blips and the shutter on the station's speaker. A station names
   its camera with `?camera=` when one PC drives several.
+- **Faces on everyone's screens.** `HeroPhoto.portrait` (a player's hero photo, or their hero's picture)
+  is used wherever a player shows: party members, the main screen's lanes, banners
+  (`DungeonView.noteMoments`), line-up and results, and the station's final places. `js/dungeon-feed.js`
+  watches the other players in the snapshot (each one's `Delve.LastDealt`, `LastTaken`, floor, and the
+  standings) and pops their big moments over your fight with their face. In a race or a battle the
+  monster wears a rival's face (`Battle.maskFoe`, `Actor.wearMask`: their "face" picture as a sprite on
+  the monster's `Head` bone).
 - Heroes in 3D: `HEROES` in `js/battle3d/models.js` (KayKit adventurers on one rig: their gear, the
   part dyed the station's colour, their attacks, where a face goes). The station's fight shows the
   player's own hero (`Battle.show`); `js/battle3d/portrait.js` draws heroes as pictures, and `/dev/heroes`
