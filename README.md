@@ -151,7 +151,8 @@ with `{ "cardId": "..." }`.
 
 At the stations the photo comes right after choosing a hero (`Game:Arcade:HeroPhotos`, `true`). The
 station shows the player's camera picture, with an outline to put their face in, and counts 3, 2, 1
-(`Game:Arcade:PhotoSeconds`, 4, from the step starting to the photo). The station then finds the face
+(`Game:Arcade:PhotoSeconds`, 4, from the step starting to the photo), with the blips and the shutter
+from their station's speaker once its camera is on. The station then finds the face
 (MediaPipe's face finder, vendored in `lib/mediapipe`, runs in the browser), cuts out just the face and
 paints it onto their hero's own face. It moves with every swing and hit in the 3D fight. A portrait of
 that hero shows on their plate, in the lobby, on their lane and in the line-up on the main screen. If no

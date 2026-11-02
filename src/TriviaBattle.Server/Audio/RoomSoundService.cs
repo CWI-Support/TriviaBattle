@@ -232,8 +232,7 @@ public sealed class RoomSoundService(
                 break;
 
             case PhotoCountdown { StationId: var stationId, SecondsLeft: var left }:
-                // The station's "3, 2, 1" (js/hero-camera.js), then the shutter as it takes the photo.
-                room.PlayEffect([stationId], left > 0 ? _settings.Dungeon.PhotoCountdown : _settings.Dungeon.Photo);
+                PlayPhotoCountdown(stationId, left);
                 break;
 
             case PowerUpFound { OwnerId: var ownerId } when match.Dungeon?.FindAdventurer(ownerId)?.LastDealt?.Found == null:
@@ -242,6 +241,16 @@ public sealed class RoomSoundService(
                 room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot);
                 break;
         }
+    }
+
+    /// <summary>
+    /// A hero photo at a station (in a kiosk game's intro, or the lobby's photo step): its "3, 2, 1"
+    /// (js/hero-camera.js), then the shutter (secondsLeft 0) as it takes the photo.
+    /// </summary>
+    public void PlayPhotoCountdown(string stationId, int secondsLeft)
+    {
+        if (stations.Find(stationId)?.RoomId is { } roomId && _rooms.GetValueOrDefault(roomId) is { } room)
+            room.PlayEffect([stationId], secondsLeft > 0 ? _settings.Dungeon.PhotoCountdown : _settings.Dungeon.Photo);
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using TriviaBattle.Core.Arcade;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Stations;
+using TriviaBattle.Server.Audio;
 using TriviaBattle.Server.Data;
 using TriviaBattle.Server.Data.Entities;
 using TriviaBattle.Server.Hubs;
@@ -22,6 +23,7 @@ public sealed class LobbyHost(
     MatchHost host,
     LobbyBroadcaster broadcaster,
     PhotoStore photos,
+    RoomSoundService sounds,
     IServiceScopeFactory scopes,
     IOptions<LobbySettings> settings,
     TimeProvider clock,
@@ -101,6 +103,10 @@ public sealed class LobbyHost(
         return accepted;
     }
 
+    /// <summary>A station's camera came on for the lobby's photo: its countdown is heard on its speaker. False if it isn't taking one.</summary>
+    public bool PhotoCameraOn(string stationId) =>
+        stations.Find(stationId)?.RoomId is { } roomId && lobbies.Use(roomId, lobby => lobby.PhotoCameraOn(stationId));
+
     /// <summary>A station without a camera skips the lobby's photo step.</summary>
     public void SkipPhoto(string stationId)
     {
@@ -122,7 +128,11 @@ public sealed class LobbyHost(
             _ = RefreshCategoriesAsync();
         }
         foreach (var roomId in lobbies.RoomIds)
+        {
             Apply(roomId, Change(roomId, lobby => lobby.Tick(now)));
+            foreach (var countdown in lobbies.Use(roomId, lobby => lobby.PhotoCountdowns(now)))
+                sounds.PlayPhotoCountdown(countdown.StationId, countdown.SecondsLeft);
+        }
     }
 
     /// <summary>Reads the categories with active questions and gives them to every room's lobby.</summary>

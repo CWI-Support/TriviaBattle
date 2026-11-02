@@ -30,6 +30,11 @@ public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby
         return Conflict(new { problems = new[] { "That station isn't taking a hero photo, or already has one." } });
     }
 
+    /// <summary>The station's camera came on for the lobby's photo: its countdown can be heard on its speaker.</summary>
+    [HttpPost("lobby/{stationId}/camera")]
+    public IActionResult LobbyCameraOn(string stationId) =>
+        lobby.PhotoCameraOn(stationId) ? NoContent() : Conflict(new { problems = new[] { "That station isn't taking a hero photo." } });
+
     /// <summary>A station without a camera skips the lobby's photo step.</summary>
     [HttpPost("lobby/{stationId}/skip")]
     public IActionResult SkipLobby(string stationId)

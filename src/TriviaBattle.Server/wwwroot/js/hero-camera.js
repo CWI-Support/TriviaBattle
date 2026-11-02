@@ -1,7 +1,8 @@
 // Hero photos on the station (Dungeon format): the camera. Two places take one:
 //   - the lobby, right after choosing a hero (the Photo step: lobby seat's photoTakeAtMs). The camera comes
 //     on with an outline to put your face in, counts "3, 2, 1" and takes it; then you see your hero wearing
-//     your face. ACTION keeps it, B takes another, D goes on without. It's sent to the server
+//     your face (the "3, 2, 1" and the shutter come from the station's speaker once it says its camera is on:
+//     POST .../lobby/{stationId}/camera). ACTION keeps it, B takes another, D goes on without. It's sent to the server
 //     (PUT /api/photos/lobby/{stationId}) and goes into your game when it starts.
 //   - a kiosk game's intro (you.photoAtMs): by default everyone's, unless they press ACTION to skip; a venue
 //     can ask first instead ("Put your face on your hero? Press ACTION", you.photoOfferUntilMs). The server
@@ -128,7 +129,8 @@ const HeroCamera = {
     async runLobby(run, seat, clock, color) {
         const box = HeroCamera.open(Theme.text('arcade.photoTitle'), Theme.text('arcade.photoKeysTaking'));
         try {
-            const face = await HeroCamera.shoot(box, run, run.takeAtMs, clock);
+            const face = await HeroCamera.shoot(box, run, run.takeAtMs, clock, () =>
+                fetch(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}/camera`, { method: 'POST' }).catch(() => {})); // the server's "3, 2, 1"
             if (run.cancelled) return;
             if (!face) {
                 HeroCamera.report(`none at ${seat.stationId} (lobby): no face found in the camera picture`);

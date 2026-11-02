@@ -92,6 +92,9 @@ public sealed class LobbySeat(string stationId)
     /// <summary>On the Photo step: when the station takes the photo (it counts down to this).</summary>
     public DateTimeOffset? PhotoTakeAt { get; private set; }
 
+    /// <summary>On the Photo step: the station's camera is on, so its countdown is heard (a station without one stays quiet).</summary>
+    public bool PhotoCameraOn { get; private set; }
+
     /// <summary>They have a hero photo (the server keeps the picture). Goes into their game with them.</summary>
     public bool HasPhoto { get; private set; }
 
@@ -134,8 +137,11 @@ public sealed class LobbySeat(string stationId)
     {
         Step = LobbyStep.Photo;
         PhotoTakeAt = takeAt;
+        PhotoCameraOn = false;
         HasPhoto = false;
     }
+
+    public void CameraOn() => PhotoCameraOn = true;
 
     public void PhotoArrived()
     {
@@ -246,6 +252,9 @@ public sealed record LobbyStart(GameChoice Game, IReadOnlyList<LobbyPlayer> Play
     }
 }
 
+/// <summary>A second of a station's hero photo countdown in the lobby: 3, 2, 1, then 0 as it's taken (the shutter).</summary>
+public sealed record LobbyPhotoCountdown(string StationId, int SecondsLeft);
+
 /// <summary>What a lobby call did: whether anything changed (screens need redrawing), and any games to start.</summary>
 public sealed record LobbyResult(bool Changed, IReadOnlyList<LobbyStart> Starts)
 {
@@ -268,10 +277,14 @@ public sealed class Lobby
 {
     private const int A = 0, B = 1, D = 3, Action = Input.ButtonPress.Action;
 
+    /// <summary>The photo's countdown: the digits the station shows (js/hero-camera.js, COUNT_FROM).</summary>
+    private const int PhotoCountFrom = 3;
+
     private readonly Dictionary<string, LobbySeat> _seats;
     private readonly LobbySettings _settings;
     private readonly Random _random;
     private int _groupsMade;
+    private DateTimeOffset? _lastCountdownAt;
 
     public Lobby(IEnumerable<string> stationIds, LobbySettings settings, Random random)
     {
@@ -404,6 +417,36 @@ public sealed class Lobby
         seat.PhotoArrived();
         Version++;
         return true;
+    }
+
+    /// <summary>The station's camera came on for the photo it's taking, so its countdown can be heard. False if it isn't taking one.</summary>
+    public bool PhotoCameraOn(string stationId)
+    {
+        if (Seat(stationId) is not { Step: LobbyStep.Photo, HasPhoto: false } seat)
+            return false;
+        seat.CameraOn();
+        return true;
+    }
+
+    /// <summary>
+    /// The countdown seconds due since the last call (the server calls it with every tick): each second of a
+    /// station's "3, 2, 1" and the shutter (0), where its camera is on. For the station's speaker.
+    /// </summary>
+    public IReadOnlyList<LobbyPhotoCountdown> PhotoCountdowns(DateTimeOffset now)
+    {
+        var since = _lastCountdownAt ?? now;
+        _lastCountdownAt = now;
+        var due = new List<LobbyPhotoCountdown>();
+        foreach (var seat in _seats.Values.Where(s => s is { Step: LobbyStep.Photo, PhotoCameraOn: true, HasPhoto: false, PhotoTakeAt: not null }))
+        {
+            for (var left = PhotoCountFrom; left >= 0; left--)
+            {
+                var moment = seat.PhotoTakeAt!.Value - TimeSpan.FromSeconds(left);
+                if (moment > since && moment <= now)
+                    due.Add(new LobbyPhotoCountdown(seat.StationId, left));
+            }
+        }
+        return due;
     }
 
     /// <summary>A station without a camera skips the Photo step (it says so itself, as soon as it gets there).</summary>

@@ -314,6 +314,24 @@ public class LobbyTests
     }
 
     [Fact]
+    public void The_photo_countdown_is_heard_once_the_camera_is_on_then_the_shutter()
+    {
+        _settings.HeroPhotos = true;
+        Press("A1", A, Action);                          // the photo is taken 4 s from now
+        var takeAt = Seat("A1").PhotoTakeAt!.Value;
+        _lobby.PhotoCountdowns(_now);
+
+        Assert.Empty(_lobby.PhotoCountdowns(takeAt - TimeSpan.FromSeconds(2.5))); // no camera yet: quiet (its 3 is missed)
+        Assert.True(_lobby.PhotoCameraOn("A1"));
+        Assert.Equal([new LobbyPhotoCountdown("A1", 2)], _lobby.PhotoCountdowns(takeAt - TimeSpan.FromSeconds(1.5)));
+        Assert.Equal([new LobbyPhotoCountdown("A1", 1), new LobbyPhotoCountdown("A1", 0)], _lobby.PhotoCountdowns(takeAt));
+
+        Press("A1", B);                                  // another: quiet until its camera is on again
+        Assert.Empty(_lobby.PhotoCountdowns(Seat("A1").PhotoTakeAt!.Value));
+        Assert.False(_lobby.PhotoCameraOn("A2"));        // not taking one
+    }
+
+    [Fact]
     public void A_station_without_a_camera_skips_the_photo()
     {
         _settings.HeroPhotos = true;
