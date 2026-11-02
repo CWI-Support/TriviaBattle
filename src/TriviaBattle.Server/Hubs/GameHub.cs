@@ -69,6 +69,9 @@ public class GameHub(
 
     public long Ping(long clientTimeMs) => clock.GetUtcNow().ToUnixTimeMilliseconds();
 
+    /// <summary>The addresses of other screens open as this same screen (a station's screen warns: only one of them should be there).</summary>
+    public IReadOnlyList<string?> OtherScreensHere() => screens.SameAs(Context.ConnectionId).Select(s => s.Address).ToList();
+
     public string ServerId() => ServerInstance.Id;
 
     /// <summary>A screen hit an error of its own (script crash, failed request). Goes to the log and the admin Live log.</summary>
@@ -123,10 +126,10 @@ public class GameHub(
         screens.Joined(Context.ConnectionId, new ConnectedScreen(key, name, address, clock.GetUtcNow()));
 
         // Two screens as one station both take the hero photo (and only one counts): worth saying.
-        var same = screens.All.Where(s => s.Key == key).ToList();
-        if (isNew && key.StartsWith("player:") && same.Count > 1)
+        var others = screens.SameAs(Context.ConnectionId);
+        if (isNew && key.StartsWith("player:") && others.Count > 0)
             logger.LogWarning("{Screen} now has {Count} screens open ({Addresses}). Give every screen its own player number: each one with a camera takes the hero photo.",
-                name, same.Count, string.Join(", ", same.Select(s => s.Address)));
+                name, others.Count + 1, string.Join(", ", others.Select(s => s.Address).Append(address)));
     }
 
     private IReadOnlyList<MatchSnapshot> MatchesInRoom(string roomId, Viewer viewer) =>

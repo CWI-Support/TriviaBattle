@@ -15,6 +15,9 @@
                       background: var(--panel); border-radius: 8px; text-decoration: none; border-left: 6px solid var(--link-color, var(--accent)); }
         .launcher a:hover { background: var(--panel-light); }
         .launcher .operator a { font-size: 20px; padding: 16px 22px; }
+        .launcher a small { display: block; font-size: 13px; color: var(--text-dim); }
+        .launcher a.is-open { opacity: 0.6; }
+        .launcher a.is-open small { color: var(--wrong); }
     </style>
 </head>
 <body>
@@ -35,14 +38,18 @@
     <script>
         // Station screens need https for their camera (hero photos), except on this PC (localhost). Opened
         // from another PC over http, the station links go to the server's https address instead.
-        Promise.all([fetch('/api/rooms').then(r => r.json()), fetch('/api/display').then(r => r.json())]).then(([{ devToolsEnabled, rooms }, { httpsPort }]) => {
+        // Each station says whether a screen is already open as it (and where), so a second PC picks a
+        // free one: two screens as one station both take its hero photo. Asked again every few seconds.
+        const show = () => Promise.all([fetch('/api/rooms').then(r => r.json()), fetch('/api/display').then(r => r.json())]).then(([{ devToolsEnabled, rooms, screens }, { httpsPort }]) => {
             const secure = !window.isSecureContext && httpsPort ? `https://${location.hostname}:${httpsPort}` : '';
             document.getElementById('rooms').innerHTML = (secure ? `<p class="dim">Station links open the secure address, so their cameras work. The first time,
                 the browser warns about it: click Advanced, then Proceed. Then Allow the camera.</p>` : '') + rooms.map(room => {
                 const q = rooms.length > 1 ? `?room=${room.id}` : '';
-                const players = room.stations
-                    .map(s => `<a href="${secure}/display/player/${s.number}${q}" style="--link-color:${s.color}">${UI.escape(s.label)}</a>`)
-                    .join('');
+                const players = room.stations.map(s => {
+                    const open = screens[`player:${s.id}`] || [];
+                    const where = open.length ? `open on ${open.map(a => UI.escape(a || '?')).join(', ')}` : 'free';
+                    return `<a href="${secure}/display/player/${s.number}${q}" class="${open.length ? 'is-open' : ''}" style="--link-color:${s.color}">${UI.escape(s.label)}<small>${where}</small></a>`;
+                }).join('');
                 const dev = devToolsEnabled
                     ? `<p><a href="/dev/buttons${q}">Dev buttons (keyboard)</a>
                           <a href="/display/main${q ? q + '&' : '?'}devkeys=1">Main screen + keyboard buttons</a>
@@ -55,6 +62,8 @@
                     ${dev}`;
             }).join('');
         });
+        show();
+        setInterval(() => show().catch(() => {}), 4000);
     </script>
 </body>
 </html>

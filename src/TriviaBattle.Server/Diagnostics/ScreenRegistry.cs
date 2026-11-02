@@ -19,6 +19,12 @@ public sealed class ScreenRegistry
     public ConnectedScreen? Find(string connectionId) => _byConnection.GetValueOrDefault(connectionId);
 
     public IReadOnlyList<ConnectedScreen> All => _byConnection.Values.ToList();
+
+    /// <summary>The other connections open as the same screen as this one (two windows both set to Player 1, say).</summary>
+    public IReadOnlyList<ConnectedScreen> SameAs(string connectionId) =>
+        Find(connectionId) is { } me
+            ? _byConnection.Where(e => e.Key != connectionId && e.Value.Key == me.Key).Select(e => e.Value).ToList()
+            : [];
 }
 
 /// <param name="Key">Which screen it is: "main:A", "kiosk:A" or "player:A2".</param>

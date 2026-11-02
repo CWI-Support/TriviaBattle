@@ -266,6 +266,11 @@
     "photoSecureSteps": "Click here. On the next page: Advanced, then Proceed. Then Allow the camera."
   },
 
+  "station": {
+    "alsoOpen": "{name} is also open on {where}",
+    "alsoOpenSteps": "Each screen needs its own player number. Click here to pick another one."
+  },
+
   "player": {
     "idle": "Swipe in at the kiosk to play",
     "busy": "A battle is in progress",

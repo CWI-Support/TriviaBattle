@@ -14,6 +14,7 @@ let lastState = null;
 let myPlacement = null;     // set if this player/team made a leaderboard this match
 let lastAnswerShown = null; // number of the last answer we drew feedback for, so new feedback can pop
 let beatTimer = null;       // redraws when a battle beat ends (no update comes from the server then)
+let sharedChecked = false;  // asked once whether another screen is open as this station
 
 const connection = new ScreenConnection({ role: 'player', stationNumber, onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
@@ -38,6 +39,25 @@ if (!asked2d && !why2d) {
     });
 }
 
+/**
+ * Another screen is open as this station too (often a second PC that picked the same player number): a
+ * bar says so, since each one with a camera would take the hero photo. It doesn't stop anything, and
+ * goes once this screen is the only one.
+ */
+async function warnIfShared() {
+    const others = await connection.hub.invoke('OtherScreensHere').catch(() => []);
+    let bar = document.querySelector('.station-shared');
+    if (!others.length) return bar?.remove();
+    if (!bar) {
+        bar = document.createElement('a');
+        bar.className = 'station-shared';
+        bar.href = '/';
+        document.body.appendChild(bar);
+    }
+    bar.innerHTML = `<b>${Theme.text('station.alsoOpen', { name: lastState?.station.label || '', where: others.map(a => a || '?').join(', ') })}</b>
+        <small>${Theme.text('station.alsoOpenSteps')}</small>`;
+}
+
 /** Each station's colour, by station id (the 3D fight dresses teammates in theirs). */
 function stationColors(state) {
     return Object.fromEntries(state.room.stations.map(s => [s.id, s.color]));
@@ -52,6 +72,11 @@ function canDraw3d() {
 }
 
 function render(state) {
+    if (!sharedChecked) {
+        sharedChecked = true;
+        warnIfShared();
+        setInterval(warnIfShared, 15000); // and again now and then: one may open or close later
+    }
     if (why2d) {
         connection.reportError(why2d);
         why2d = null;

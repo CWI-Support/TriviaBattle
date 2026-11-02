@@ -183,7 +183,8 @@ player drops it, takes another or walks away from the lobby, and when their matc
   PC's address changes). On a station PC, open the server's front page (`http://<server-ip>:5000`) and
   click its player number: station links go to the https address. The first time, the browser warns
   about the certificate (Advanced, then Proceed), then asks to use the camera (Allow). Both are
-  remembered. A station page opened over http by address switches to https by itself once the browser
+  remembered. The front page shows which player numbers already have a screen open (and on which PC),
+  and a station screen opened as a number that's already open says so in a bar along its top. A station page opened over http by address switches to https by itself once the browser
   trusts it, and until then shows a "Turn on this station's camera" bar. Each screen must be its own
   station number. The server's log lists the exact addresses when it starts. If
   other PCs can't reach port 5001, allow it in Windows Firewall. Instead of https, a station's Chrome can
