@@ -207,16 +207,15 @@ public sealed class LobbyHost(
                 .Select(c => c.Id)
                 .ToListAsync();
 
-            var result = await host.StartMatchAsync(start.ToSetup(categoryIds, settings.Value.Difficulty));
-            if (!result.Started)
+            // The photos move in before the screens hear of the match, so their first fetch finds them.
+            var result = await host.StartMatchAsync(start.ToSetup(categoryIds, settings.Value.Difficulty), matchId =>
             {
+                foreach (var (stationId, picture) in lobbyPhotos)
+                    if (start.Players.Any(p => p.StationId == stationId))
+                        photos.Keep(matchId, stationId, picture);
+            });
+            if (!result.Started)
                 logger.LogWarning("A {Game} game from the lobby didn't start: {Problems}", start.Game, string.Join(" ", result.Problems));
-                return;
-            }
-            // Screens that ask before this lands get a 404 and ask again a moment later (js/hero-photo.js).
-            foreach (var player in start.Players)
-                if (lobbyPhotos.TryGetValue(player.StationId, out var picture))
-                    photos.Keep(result.MatchId!, player.StationId, picture);
         }
         catch (Exception ex)
         {

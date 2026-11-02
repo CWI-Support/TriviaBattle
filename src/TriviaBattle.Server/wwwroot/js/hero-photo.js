@@ -43,8 +43,8 @@ const HeroPhoto = {
     },
 
     /**
-     * Fetches a picture into its cache entry, then redraws. Not there yet (a game from the lobby moves its
-     * photos in a moment after it starts): asks again a little later.
+     * Fetches a picture into its cache entry, then redraws. Not there (the server restarted, or a network
+     * blip): asks again a little later, on the next redraw after that.
      */
     fetchInto(key, entry, url) {
         fetch(url)

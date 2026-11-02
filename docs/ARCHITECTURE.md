@@ -170,8 +170,8 @@ The rules:
   `Lobby.PhotoArrived` counts it (`LobbySeat.HasPhoto`, `PhotoVersion`; screens fetch
   `GET /api/photos/lobby/{stationId}/portrait`). ACTION keeps it, B retakes, D drops it; a station without
   a camera posts `.../skip`. `LobbyHost` forgets a lobby photo as soon as its seat has none, and when a
-  game starts moves its players' photos into the match (`TakeLobby`, then `Keep` under the new match id;
-  screens that ask in between get a 404 and ask again, `HeroPhoto.fetchInto`). `SeatSetup.Photo` tells the
+  game starts moves its players' photos into the match (`TakeLobby`, then `Keep` under the new match id in
+  `StartMatchAsync`'s `created`, before any screen hears of it). `SeatSetup.Photo` tells the
   engine what the lobby settled (`Player.PhotoFromLobby`: brought one, `Photo` 1, or chose none,
   `PhotoDeclined`): it schedules no intro photo for them, and their intro ACTION does nothing.
 
