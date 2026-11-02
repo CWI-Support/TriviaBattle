@@ -1,25 +1,16 @@
-/* Hero photos (Dungeon format): a player's face on their hero (js/hero-photo.js), and the station's
-   camera that takes it (js/hero-camera.js). The picture is a small round pixel portrait: its corners are
-   already see-through, and it's drawn with square pixels, like the rest of the game's art. */
+/* Hero photos (Dungeon format): the knight wearing a player's face (js/hero-photo.js), and the station's
+   camera that takes it (js/hero-camera.js). The portrait is a render of the knight's head on a see-through
+   background, so it sits in the same frames as the knight's pixel portrait. */
 
-.hero-photo { image-rendering: pixelated; border-radius: 50%; background: #000; }
+.hero-photo { object-fit: contain; }
 
-/* Where the knight's portrait would be (the station plate, a main-screen lane): in a ring of their colour. */
-.hero-photo.dg-portrait { border-color: var(--photo-ring, #000); }
+/* A main-screen lane: a little bigger than the knight's pixel icon, so the face can be seen across the room. */
+.hero-photo.dg-portrait.small { width: 9vmin; height: 9vmin; }
 
 /* Beside a party member's name, and on the main screen's line-up in the intro. */
-.dg-member-face { width: 1.5em; height: 1.5em; flex: none; border: 0.3vmin solid #000; }
+.dg-member-face { width: 1.6em; height: 1.6em; flex: none; }
 .dg-member-face + .dg-member-name { margin-right: auto; }
-.chip-face { display: block; width: 10vmin; height: 10vmin; margin: 0 auto 1vmin; border: 0.5vmin solid var(--chip-color, var(--accent)); }
-
-/* The 2D fight (?view=2d): a bobblehead over the knight's helmet. The hero is 32vmin wide
-   (.dg-actor.is-hero) and its helmet sits about 28% of the way down. */
-.dg-actor-face {
-    position: absolute; z-index: 2; left: 19%; top: calc(32vmin * 0.28 - 8vmin); width: 50%;
-    border: 0.6vmin solid var(--station-color);
-    animation: photo-bob 0.8s steps(2) var(--t0) infinite;
-}
-@keyframes photo-bob { 50% { transform: translateY(-0.45vmin); } }
+.chip-face { display: block; width: 12vmin; height: 12vmin; margin: -1vmin auto 0.5vmin; }
 
 /* ---------- The offer, in the intro: "Put your face on your hero? Press ACTION" ----------
    It fades out by itself when the offer ends (its animation-delay is set to that moment). */
@@ -33,32 +24,39 @@
 .photo-offer-press { font-family: var(--font-display); font-size: calc(6vmin * var(--fit)); color: var(--accent); }
 @keyframes photo-offer-gone { to { opacity: 0; visibility: hidden; } }
 
-/* ---------- The camera: a circle over the screen, then the portrait it took ---------- */
+/* ---------- The camera: the picture with an outline to put your face in, then your knight ---------- */
 .photo-camera {
     position: fixed; inset: 0; z-index: 50; display: none;
     flex-direction: column; align-items: center; justify-content: center; gap: 4vmin;
-    background: rgba(0, 0, 0, 0.8);
+    background: #07060b;
 }
 .photo-camera.is-open { display: flex; }
 
-/* The circle shows exactly the part of the picture that's kept (the video's height is set to match). */
 .photo-window {
-    position: relative; width: 72vmin; height: 72vmin; border-radius: 50%; overflow: hidden;
-    border: 1.2vmin solid var(--station-color); box-shadow: 0 0 6vmin var(--station-color); background: #000;
+    position: relative; width: 84vmin; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius);
+    border: 1vmin solid var(--station-color); box-shadow: 0 0 6vmin var(--station-color); background: #000;
 }
-.photo-window video { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scaleX(-1); opacity: 0; }
+.photo-window video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0; }
 .photo-camera.is-live video { opacity: 1; }
 
-.photo-count {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    font-family: var(--font-display); font-size: 32vmin; color: #fff; opacity: 0.85; text-shadow: 0 0 2vmin #000;
+/* A face-shaped outline in the middle: where to put your face. */
+.photo-guide {
+    position: absolute; left: 50%; top: 47%; width: 34%; height: 66%; transform: translate(-50%, -50%);
+    border: 0.6vmin dashed rgba(255, 255, 255, 0.8); border-radius: 50% 50% 46% 46% / 42% 42% 58% 58%;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35); /* dims everything outside it */
 }
-.photo-result { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; display: none; }
+.photo-count {
+    position: absolute; right: 3vmin; top: 1vmin;
+    font-family: var(--font-display); font-size: 16vmin; color: #fff; text-shadow: 0 0 2vmin #000;
+}
+.photo-result { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: none; background: #1b1820; }
 .photo-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
-.photo-camera.is-taken .photo-count { display: none; }
-.photo-camera.is-taken .photo-result { display: block; }
-.photo-camera.is-taken .photo-flash { animation: photo-flash 0.5s ease-out both; }
+
+.photo-camera.is-flash .photo-flash { animation: photo-flash 0.5s ease-out both; }
+.photo-camera.is-flash .photo-count, .photo-camera.is-flash .photo-guide { display: none; }
+.photo-camera.is-taken .photo-result { display: block; animation: photo-reveal 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 @keyframes photo-flash { from { opacity: 1; } to { opacity: 0; } }
+@keyframes photo-reveal { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .photo-line { padding: 0 6vmin; font-family: var(--font-display); font-size: 7vmin; color: var(--accent); text-align: center; }
 .photo-camera.is-failed .photo-window { display: none; }

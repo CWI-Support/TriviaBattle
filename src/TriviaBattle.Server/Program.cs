@@ -123,9 +123,13 @@ try
 
     app.UseGlobalExceptionHandler();
     app.UseDefaultFiles();
-    // 3D models (.glb) for the battle scene aren't in the built-in list of file types, so they'd get a 404.
+    // 3D models (.glb) for the battle scene and the face finder's files (lib/mediapipe: an ES module, its
+    // WebAssembly and its model) aren't all in the built-in list of file types, so they'd get a 404.
     var fileTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
     fileTypes.Mappings[".glb"] = "model/gltf-binary";
+    fileTypes.Mappings[".mjs"] = "text/javascript";
+    fileTypes.Mappings[".wasm"] = "application/wasm";
+    fileTypes.Mappings[".task"] = "application/octet-stream";
     app.UseStaticFiles(new StaticFileOptions
     {
         ContentTypeProvider = fileTypes,

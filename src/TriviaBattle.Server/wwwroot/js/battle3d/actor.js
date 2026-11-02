@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadModel } from './stage.js';
 import { MODELS } from './models.js';
+import { paintFace } from './face.js';
 
 export class Actor {
     /**
@@ -149,45 +150,25 @@ export class Actor {
     }
 
     /**
-     * A player's hero photo on the hero, as a bobblehead: their round pixel face in a ring of their colour,
-     * as big as the head it replaces, fixed to the head bone (so it follows every swing, hit and fall) and
-     * always turned to the camera. url null takes it off and puts the head and helmet back.
+     * A player's hero photo on the hero: their cut-out face painted onto the front of its head, under the
+     * helmet (js/battle3d/face.js). url: the face from js/face-cutout.js; null takes it off again.
      */
-    async wearPhoto(url, color) {
-        const spec = this.spec.photo;
-        if (!spec || !this.model) return;
-        this.photoUrl = url;
-        if (this.photoSprite) {
-            this.photoSprite.removeFromParent();
-            this.photoSprite.material.map.dispose();
-            this.photoSprite.material.dispose();
-            this.photoSprite = null;
+    async wearFace(url) {
+        if (!this.spec.face || !this.model) return;
+        this.faceUrl = url;
+        if (this.painted) {
+            this.materials = this.materials.filter(m => m !== this.painted.mesh.material);
+            this.painted.takeOff();
+            this.painted = null;
         }
-        const parts = spec.replaces.map(name => this.model.getObjectByName(name)).filter(Boolean);
-        if (!url) {
-            parts.forEach(part => (part.visible = true));
-            return;
-        }
+        if (!url) return;
 
-        const canvas = await framedPhoto(url, color);
-        if (this.photoUrl !== url) return; // another photo (or none) was asked for meanwhile
-
-        // Measured with the head showing, at the pose the model was built in.
-        const bone = this.model.getObjectByName(spec.bone);
-        this.model.updateMatrixWorld(true);
-        const head = new THREE.Box3();
-        parts.forEach(part => head.expandByObject(part, true));
-        const size = head.getSize(new THREE.Vector3());
-        const boneScale = bone.getWorldScale(new THREE.Vector3()).x;
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.colorSpace = THREE.SRGBColorSpace;
-        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
-        sprite.position.copy(bone.worldToLocal(head.getCenter(new THREE.Vector3())));
-        sprite.scale.setScalar((Math.max(size.x, size.y) * spec.size) / boneScale);
-        bone.add(sprite);
-        parts.forEach(part => (part.visible = false));
-        this.photoSprite = sprite;
+        const face = new Image();
+        face.src = url;
+        await face.decode();
+        if (this.faceUrl !== url) return; // another face (or none) was asked for meanwhile
+        this.painted = paintFace(this.model, this.spec.face, face);
+        this.materials.push(this.painted.mesh.material); // it flashes with the rest when hit
     }
 
     /** Turns it to face this way (radians round the vertical; 0 = the camera). A cut-out always faces the camera. */
@@ -232,30 +213,6 @@ function visibleBox(model) {
         if (part.isMesh && part.visible) box.expandByObject(part, true);
     });
     return box;
-}
-
-/** The round photo in a ring of the player's colour, big enough to stay sharp on screen. Its pixels stay square. */
-async function framedPhoto(url, color) {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
-    const size = 256;
-    const ring = 16;
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = size;
-    const g = canvas.getContext('2d');
-    const disc = (radius, fill) => {
-        g.fillStyle = fill;
-        g.beginPath();
-        g.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
-        g.fill();
-    };
-    disc(size / 2, '#000');
-    disc(size / 2 - 4, color || '#fff');
-    disc(size / 2 - ring, '#000');
-    g.imageSmoothingEnabled = false;
-    g.drawImage(image, ring + 2, ring + 2, size - 2 * (ring + 2), size - 2 * (ring + 2));
-    return canvas;
 }
 
 let shadowCanvas = null;

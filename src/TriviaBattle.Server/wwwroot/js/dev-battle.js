@@ -10,8 +10,8 @@
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
 //   /dev/battle3d                    the same, drawn in 3D (js/battle3d); takes the same options
 //
-//   /dev/battle3d?photo=demo         the hero wears a hero photo (a made-up face, pixelated by js/hero-camera.js);
-//                                    ?photo=/path/picture.jpg uses a picture on the server instead
+//   /dev/battle3d?photo=/path/picture.jpg   the hero wears a hero photo made from that picture (any picture
+//                                    with a face in it, on the server), as js/hero-camera.js makes them
 //
 // Kinds: hit, crit, combo, party, revive, kill, floor, boss, hurt, slow, downed, and with power-ups:
 // fireball (a Fireball hit), loot (a kill that drops a Potion), blocked (a Shield takes the hit; the
@@ -38,45 +38,16 @@ if (frozenAt !== null)
 
 Theme.load().then(() => (params.has('photo') ? usePhoto(params.get('photo')) : null)).then(start);
 
-/** ?photo=: a face for the hero, made the way a station makes one from its camera. */
+/** ?photo=: a face for the hero, made from a picture the way a station makes one from its camera. */
 async function usePhoto(source) {
-    let picture = demoFace();
-    if (source !== 'demo') {
-        picture = new Image();
-        picture.src = source;
-        await picture.decode();
-    }
-    HeroPhoto.use('dev', 'A1', 1, HeroCamera.pixelate(picture).toDataURL('image/png'));
-}
-
-/** A cartoon face in a camera-sized picture, standing in for a player in front of the camera. */
-function demoFace() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 480;
-    const g = canvas.getContext('2d');
-    const oval = (x, y, rx, ry, fill) => {
-        g.fillStyle = fill;
-        g.beginPath();
-        g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-        g.fill();
-    };
-    g.fillStyle = '#6b7f99';
-    g.fillRect(0, 0, 640, 480);
-    oval(320, 470, 170, 90, '#2f6f4f');      // shoulders
-    oval(320, 190, 105, 95, '#5a3a22');      // hair
-    oval(320, 245, 90, 110, '#e3b08c');      // face
-    oval(320, 160, 95, 45, '#5a3a22');       // fringe
-    oval(285, 240, 15, 11, '#fff');
-    oval(355, 240, 15, 11, '#fff');
-    oval(287, 242, 7, 7, '#2b1d14');
-    oval(357, 242, 7, 7, '#2b1d14');
-    g.strokeStyle = '#8c3b2e';
-    g.lineWidth = 8;
-    g.beginPath();
-    g.arc(320, 285, 38, 0.15 * Math.PI, 0.85 * Math.PI);
-    g.stroke();
-    return canvas;
+    const picture = new Image();
+    picture.src = source;
+    await picture.decode();
+    const face = await FaceCutout.cut(picture);
+    if (!face) return console.warn('No face found in', source);
+    const faceUrl = face.toDataURL('image/png');
+    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR) : face;
+    HeroPhoto.use('dev', 'A1', 1, { face: faceUrl, portrait: portrait.toDataURL('image/png') });
 }
 
 function start() {

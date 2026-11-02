@@ -12,12 +12,14 @@
 // Needs the import map for 'three' (see screens/dev-battle3d.html), and loads as a module:
 //   Battle3D.start(container, clock)   once; clock() = the server's time now (ms)
 //   Battle3D.show({ match, you, color }) after every redraw
+//   HeroPortrait.render(faceUrl, color)  the knight wearing a hero photo's face, as a canvas (js/battle3d/portrait.js)
 
 import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
 import { showBeat, showIdle } from './beats.js';
+import { heroPortrait } from './portrait.js';
 
 // Where the fighters stand. The fight is staged on a slant (the knight nearer the camera, the monster
 // further back) so a tall, narrow station screen can show both big: side by side they'd be tiny.
@@ -26,8 +28,11 @@ const FOE_HOME = { x: 1.5, z: -1.0 };
 const zAt = x => HERO_HOME.z + (FOE_HOME.z - HERO_HOME.z) * (x - HERO_HOME.x) / (FOE_HOME.x - HERO_HOME.x);
 const HOMES = { hero: HERO_HOME.x, foe: FOE_HOME.x };
 
-/** Each faces the other, turned a little towards the camera so we see more than a profile. */
-const HERO_FACING = Math.atan2(FOE_HOME.x - HERO_HOME.x, FOE_HOME.z - HERO_HOME.z) - 0.7;
+/**
+ * Each faces the other, turned towards the camera: the monster a little, the knight a lot (three quarters
+ * on, Hearthstone style), so we see its face: the knight's own, or the player's (a hero photo).
+ */
+const HERO_FACING = Math.atan2(FOE_HOME.x - HERO_HOME.x, FOE_HOME.z - HERO_HOME.z) - 1.45;
 const FOE_FACING = Math.atan2(HERO_HOME.x - FOE_HOME.x, HERO_HOME.z - FOE_HOME.z) + 0.35;
 
 const FOV = 32;
@@ -111,17 +116,17 @@ class Battle {
                     });
             }
         }
-        this.wearPhoto();
+        this.wearFace();
         this.turnFoe(dt);
         this.aim(lean);
         this.stage.draw(now / 1000, dt);
     }
 
-    /** Your hero photo on the knight (js/hero-photo.js has it once it has loaded); the helmet again without one. */
-    wearPhoto() {
+    /** Your hero photo on the knight's face (js/hero-photo.js has it once it has loaded); the knight's own face without one. */
+    wearFace() {
         const view = this.view;
-        const url = view?.you ? HeroPhoto.url(view.match, view.you.stationId) : null;
-        if (this.hero && url !== this.hero.photoUrl) this.hero.wearPhoto(url, view.color);
+        const url = view?.you ? HeroPhoto.url(view.match, view.you.stationId, 'face') : null;
+        if (this.hero && url !== this.hero.faceUrl) this.hero.wearFace(url);
     }
 
     /** While a question is up the monster turns to face you (the player is the one answering); in a fight it faces the knight. */
@@ -174,6 +179,9 @@ function beatInfo(beat, delve) {
 }
 
 let battle = null;
+// The knight wearing a player's face, for the screens that draw in 2D (js/hero-camera.js makes it after a hero photo).
+window.HeroPortrait = { render: heroPortrait };
+
 window.Battle3D = {
     start(container, clock) {
         battle ??= new Battle(container, clock);

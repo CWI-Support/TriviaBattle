@@ -12,8 +12,9 @@
 // height  how tall it stands in the room (the knight is about 2.3; a back wall is 4)
 // turn    extra rotation (radians) if the model doesn't face +Z like glTF models should
 // hover   how high it floats (the bat)
-// photo   the hero only: where a player's hero photo goes (the head bone), how big (times the head), and
-//         the parts it stands in for (hidden while it's worn)
+// face    the hero only: where a player's hero photo goes (js/battle3d/face.js). The head mesh, the height
+//         of its eyes, mouth, chin and forehead and the distance between its pupils, all in the model's own
+//         units (it faces +Z), and the square of the head front the face map covers.
 
 export const MODELS = {
     hero: {
@@ -38,8 +39,15 @@ export const MODELS = {
         allGear: ['1H_Sword', '1H_Sword_Offhand', '2H_Sword', 'Badge_Shield', 'Rectangle_Shield', 'Round_Shield', 'Spike_Shield', 'Knight_Helmet', 'Knight_Cape'],
         // The part dyed the station's colour.
         tinted: 'Knight_Cape',
-        // A hero photo is worn as a bobblehead: the player's face, big and round, in place of the head and helmet.
-        photo: { bone: 'head', size: 1.0, replaces: ['Knight_Head', 'Knight_Helmet'] },
+        // A hero photo: the player's face painted on the knight's own face, inside the helmet's opening
+        // (about 1.40 to 1.70 high). The face's curve was measured from the head's skin; the rest set by eye.
+        face: {
+            mesh: 'Knight_Head',
+            top: 2.0, eyes: 1.61, mouth: 1.445, chin: 1.345, eyeSpan: 0.34,
+            skin: '#f6c29e', // the head's skin, round the edge of the face
+            area: { left: -0.55, bottom: 1.21, side: 1.1 },
+            surface: { front: 0.45, curve: 1.25, area: { from: 0.2, halfWidth: 0.42, bottom: 1.36, top: 1.8 } },
+        },
     },
     rat: {
         file: '/media/models/characters/rat.glb',

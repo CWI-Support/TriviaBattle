@@ -4,6 +4,13 @@ using TriviaBattle.Core.Matches;
 namespace TriviaBattle.Server.Game;
 
 /// <summary>
+/// One player's hero photo, as their station made it (both PNGs, with see-through backgrounds).
+/// </summary>
+/// <param name="Face">Just their face, cut out and laid out the same way as every face (js/face-cutout.js): the station's 3D knight wears it.</param>
+/// <param name="Portrait">The knight's head wearing it, for the screens that draw in 2D (the plate, the main screen).</param>
+public sealed record HeroPicture(byte[] Face, byte[] Portrait);
+
+/// <summary>
 /// Hero photos: a player's face on their hero, taken by their station's camera after they said yes
 /// (see <see cref="MatchEngine.PhotoTaken"/>). Kept in memory only, never written to disk or the
 /// database, and forgotten as soon as the match ends: a face never outlives the game it was taken for.
@@ -11,14 +18,14 @@ namespace TriviaBattle.Server.Game;
 /// </summary>
 public sealed class PhotoStore : IMatchBroadcaster
 {
-    /// <summary>The biggest picture accepted. A station sends a small pixel portrait (a few KB).</summary>
-    public const int MaxBytes = 64 * 1024;
+    /// <summary>The most a station may send for one photo (both pictures; they're usually well under 100 KB each).</summary>
+    public const int MaxBytes = 512 * 1024;
 
-    private readonly ConcurrentDictionary<(string MatchId, string StationId), byte[]> _photos = new();
+    private readonly ConcurrentDictionary<(string MatchId, string StationId), HeroPicture> _photos = new();
 
-    public void Keep(string matchId, string stationId, byte[] png) => _photos[(matchId, stationId)] = png;
+    public void Keep(string matchId, string stationId, HeroPicture picture) => _photos[(matchId, stationId)] = picture;
 
-    public byte[]? Find(string matchId, string stationId) => _photos.GetValueOrDefault((matchId, stationId));
+    public HeroPicture? Find(string matchId, string stationId) => _photos.GetValueOrDefault((matchId, stationId));
 
     public void Forget(string matchId, string stationId) => _photos.TryRemove((matchId, stationId), out _);
 

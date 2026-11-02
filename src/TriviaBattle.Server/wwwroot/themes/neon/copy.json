@@ -186,9 +186,10 @@
     "hostPartyCombo": ["A party combo from {name}! Teamwork. Disgusting. Beautiful.", "{name} struck as one! I hate how good that looked."],
     "photoOffer": "Put your face on your hero?",
     "photoPress": "Press ACTION",
-    "photoLook": ["Look at the camera!", "Face in the circle, hero!", "Your most heroic face. Go!"],
+    "photoLook": ["Look at the camera!", "Face in the outline, hero!", "Your most heroic face. Go!"],
     "photoDone": ["Looking heroic!", "Legendary.", "That face could slay a dragon."],
-    "photoFailed": "No camera today. Your hero keeps its helmet on."
+    "photoNoFace": "Couldn't see your face! Your knight keeps their own.",
+    "photoFailed": "No camera today. Your knight keeps their own face."
   },
 
   "player": {

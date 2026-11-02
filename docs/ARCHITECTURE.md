@@ -152,15 +152,29 @@ The rules:
   `MatchEngine` takes it while `PhotoOfferEndsAt` hasn't passed (the whole countdown must still fit in
   the intro; `DungeonSettings.HeroPhotos` and `PhotoCountdownSeconds`), sets `Player.PhotoAt` and raises
   `PhotoAsked`. Nobody is photographed without pressing. The snapshot tells the station
-  (`YouView.PhotoOfferUntilMs`, `PhotoAtMs`). `js/hero-camera.js` takes the photo then, turns it into a
-  48-pixel round portrait and sends the PNG to `PUT /api/photos/{matchId}/{stationId}`. `PhotoStore` keeps it
-  in memory only, never on disk or in the database, and forgets it when the match ends (it's an
-  `IMatchBroadcaster` for that). `MatchHost.PhotoTaken` then `MatchEngine.PhotoTaken` count it
-  (`Player.Photo`, sent as `PlayerView.Photo`, raising `PhotoTaken`). Every screen fetches it once per
-  number with `js/hero-photo.js` and keeps it as an in-memory blob URL (the server sends it `no-store`).
-  It shows on the plate, the lanes, the party list and the intro line-up, and as a bobblehead on the 3D
-  knight (`Actor.wearPhoto`, `MODELS.hero.photo`). `RoomSoundService` plays the countdown's blips and the
-  shutter on the station's speaker. A station names its camera with `?camera=` when one PC drives several.
+  (`YouView.PhotoOfferUntilMs`, `PhotoAtMs`). `js/hero-camera.js` takes the photo then and makes two
+  pictures, both sent to `PUT /api/photos/{matchId}/{stationId}` (a form):
+  - **face**: `js/face-cutout.js` finds the face with MediaPipe's Face Landmarker (vendored in
+    `lib/mediapipe`, run in the browser), cuts it out along its outline and lays it out the same way every
+    time: eyes level and a set distance apart, with eyes, mouth and chin at set heights.
+  - **portrait**: `js/battle3d/portrait.js` renders the knight's head wearing that face, for every screen
+    that draws in 2D. No face found: nothing is sent.
+
+  `PhotoStore` keeps both in memory only, never on disk or in the database, and forgets them when the match
+  ends (it's an `IMatchBroadcaster` for that). `MatchHost.PhotoTaken` then `MatchEngine.PhotoTaken` count the
+  photo (`Player.Photo`, sent as `PlayerView.Photo`, raising `PhotoTaken`). Every screen fetches what it needs
+  once per number (`GET /api/photos/{matchId}/{stationId}/{face|portrait}`, via `js/hero-photo.js`) and keeps it as
+  an in-memory blob URL (the server sends it `no-store`). The portrait shows on the plate, the lanes, the party
+  list and the intro line-up. The station's 3D knight wears the face (`Actor.wearFace`, `js/battle3d/face.js`):
+  - the front of that knight's head (its own copy) is split off into a face mesh on the same skeleton, so it
+    moves exactly as the head does;
+  - the knight's own eye, brow and nose bumps are smoothed to the face's curve, and the triangles that turns
+    over are dropped;
+  - the photo is shown on the knight's skin colour, redrawn so the player's eyes, mouth and chin land where
+    `MODELS.hero.face` says, inside the helmet's opening.
+
+  `RoomSoundService` plays the countdown's blips and the shutter on the station's speaker. A station names
+  its camera with `?camera=` when one PC drives several.
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
   `PhotoTaken`, and `QuestionShown` from `Tick` when a battle beat ends (alongside the usual `AnswerGiven`).
 - **The room joins in.** `RoomSoundService` plays each fight as a timed sequence that lands with the

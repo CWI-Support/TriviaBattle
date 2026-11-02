@@ -311,13 +311,14 @@ permanent and levels you up. Levels unlock things; gold keeps a run tense.
 conversion moment.
 
 **Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. In the intro:
-*"Put your face on your hero? Press ACTION"*. A 3, 2, 1 follows, then a round pixel portrait that rides
-on the 3D knight as a bobblehead and shows on the plate, the main screen's lane and the line-up. It's
-opt-in only. The photo stays in the server's memory and is gone when the match ends, and nothing is
-saved yet. Next steps:
+*"Put your face on your hero? Press ACTION"*. A 3, 2, 1 follows. A face finder cuts out just your face
+and paints it onto the 3D knight's face, inside the helmet, where it moves with every swing. A portrait of
+your knight shows on the plate, the main screen's lane and the line-up. It's opt-in only. The photo stays
+in the server's memory and is gone when the match ends, and nothing is saved yet. The knight now stands
+three quarters on to the camera in fights, so his face shows. Next steps:
 - Keeping your face on your card or profile, a deliberate second yes (the "continue your journey" QR).
 - Reaction shots: a snap at a crit, a kill or a knockout, for the results screen.
-- A face finder that centres the crop by itself; for now the circle on screen shows what's kept.
+- The same for the other classes' models once they exist (each says where its face goes: `MODELS.<key>.face`).
 
 ### Character select: classic RPG heroes, played for laughs
 
