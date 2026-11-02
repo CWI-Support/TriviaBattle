@@ -149,10 +149,15 @@ const DungeonView = {
             </div>`;
     },
 
-    /** The monster's nameplate: its name, its HP, and "Attacks in 7" with the hourglass draining beside it. */
-    enemy(delve) {
+    /**
+     * The monster's nameplate: its name, its HP, and "Attacks in 7" with the hourglass draining beside it.
+     * serverNow (the station passes it): while a Freeze holds the hourglass it's iced over, and thaws by
+     * itself when the freeze ends (a CSS animation timed by --thaw, so no redraw is needed).
+     */
+    enemy(delve, serverNow = null) {
         const m = delve.monster;
         const running = !!delve.attackAtMs;
+        const frozenFor = serverNow && delve.frozenUntilMs > serverNow ? Math.round(delve.frozenUntilMs - serverNow) : 0;
         const label = running
             ? Theme.text('dungeon.attackIn', { seconds: Theme.raw(`<span data-ends-at="${delve.attackAtMs}" data-hurry-at="3"></span>`) })
             : Theme.text('dungeon.attackPaused');
@@ -163,9 +168,10 @@ const DungeonView = {
             <div class="dg-enemy ${m.isBoss ? 'is-boss' : ''}">
                 <div class="dg-enemy-name">${UI.escape(m.name)}</div>
                 ${DungeonView.hp(m.hp, m.maxHp, 'is-enemy')}
-                <div class="dg-attack ${running ? '' : 'is-stopped'}">
+                <div class="dg-attack ${running ? '' : 'is-stopped'} ${frozenFor ? 'is-frozen' : ''}" style="--thaw: ${frozenFor}ms">
                     ${DungeonView.icon('sword')}
                     <span class="dg-attack-label">${label}</span>
+                    ${frozenFor ? `<span class="dg-frozen-label">${Theme.text('dungeon.attackFrozen')}</span>` : ''}
                     ${hourglass}
                 </div>
             </div>`;
@@ -197,7 +203,9 @@ const DungeonView = {
 
         const taken = delve.lastTaken;
         const values = { monster: taken?.monsterName || delve.monster.name, damage: taken?.damage || 0 };
-        const headline = lastAnswer.timedOut ? Theme.text('dungeon.tooSlow', values, s) : Theme.text('dungeon.wrong', values, s);
+        const headline = taken?.blocked ? Theme.text('dungeon.blocked', values, s)
+            : lastAnswer.timedOut ? Theme.text('dungeon.tooSlow', values, s)
+            : Theme.text('dungeon.wrong', values, s);
         const itWas = Theme.text('player.itWas', { letter: UI.ANSWER_LETTERS[lastAnswer.correctIndex], answer: lastAnswer.correctAnswer });
         return { html: `${headline}<div class="dg-feedback-detail">${itWas}</div>`, tone: 'is-bad' };
     },
@@ -261,7 +269,12 @@ const DungeonView = {
                     ${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}
                 </div>
                 ${DungeonView.stats(you.score, delve.kills)}
+                ${DungeonPowerUps.slot(delve)}
             </div>`;
+
+        // A power-up used (by you, or a teammate's Potion aimed at you): a pop over the strip, once.
+        const powerUpKey = `pu:${you.stationId}`;
+        DungeonPowerUps.noticeUse(powerUpKey, delve, ownerId => delve.party.find(p => p.ownerId === ownerId)?.name || you.name);
 
         // Between questions: the fight takes the whole screen (what just happened plays out).
         if (DungeonBattle.isPlaying(you, serverNow)) {
@@ -281,8 +294,9 @@ const DungeonView = {
         // Downed in a party: your buttons are dead, so you get a teammate's question to shout them the answer.
         const helping = downed ? you.helping : null;
         const shown = helping ? helping.question : q;
+        // A 50/50 took two wrong answers away: they stay in place (the buttons don't move), crossed out.
         const answers = shown.answers.map((text, i) => `
-            <div class="dg-answer ${(downed && !helping) || stunned ? 'is-dimmed' : ''}" data-letter="${UI.ANSWER_LETTERS[i]}">
+            <div class="dg-answer ${(downed && !helping) || stunned ? 'is-dimmed' : ''} ${shown.hidden?.includes(i) ? 'is-eliminated' : ''}" data-letter="${UI.ANSWER_LETTERS[i]}">
                 <span class="dg-rune">${UI.ANSWER_LETTERS[i]}</span>
                 <span class="dg-answer-text">${UI.escape(text)}</span>
             </div>`).join('');
@@ -313,8 +327,9 @@ const DungeonView = {
                 <div class="dg-scroll ${helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
                 <div class="dg-strip">
                     ${DungeonView.monster(delve, news, `fx:station:${you.stationId}`, 'portrait')}
-                    ${DungeonView.enemy(delve)}
+                    ${DungeonView.enemy(delve, serverNow)}
                     ${overlay}
+                    ${DungeonView.activeEffects(powerUpKey)}
                 </div>
                 <div class="dg-feedback ${feedback.tone}">${feedback.html}</div>
                 <div class="dg-answers ${helping ? 'is-helping' : ''}">${answers}</div>

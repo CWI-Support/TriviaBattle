@@ -1,7 +1,9 @@
-// Dev buttons page: one pad of 4 buttons per station, wired to the keyboard map.
+// Dev buttons page: one pad per station (answers A-D and the action button), wired to the keyboard map,
+// plus a card swipe and a way to hand out any power-up to test it.
 // Joins as a main screen just to show what the match is doing.
 
 let keyMap = []; // [{ key, buttonId, stationId, answer }]
+const POWER_UPS = ['Potion', 'Fireball', 'Freeze', 'FiftyFifty', 'Shield', 'TimeCrystal'];
 
 const connection = new ScreenConnection({ role: 'main', onState: render });
 connection.start().then(loadKeyMap);
@@ -43,6 +45,8 @@ function renderPads() {
                 <h3>${UI.escape(station.label)}</h3>
                 <div class="dev-buttons">${buttons}</div>
                 <button class="dev-swipe" onclick="swipeCard('${UI.escape(station.id)}')">Swipe card (continue)</button>
+                <div class="dev-give">Give: ${POWER_UPS.map(p =>
+                    `<button onclick="givePowerUp('${UI.escape(station.id)}', '${p}')">${p}</button>`).join('')}</div>
             </div>`;
     }).join('');
 }
@@ -51,6 +55,12 @@ function renderPads() {
 async function swipeCard(stationId) {
     const response = await fetch(`/api/dev/continue/${encodeURIComponent(stationId)}`, { method: 'POST' });
     if (!response.ok) alert((await response.json()).problems?.join(' ') || 'No continue on offer there.');
+}
+
+/** Hands that station's player a power-up, so it can be tried without earning it. */
+async function givePowerUp(stationId, powerUp) {
+    const response = await fetch(`/api/dev/powerup/${encodeURIComponent(stationId)}/${powerUp}`, { method: 'POST' });
+    if (!response.ok) alert((await response.json()).problems?.join(' ') || 'Nobody is playing a dungeon game there.');
 }
 
 function pressKey(key) {

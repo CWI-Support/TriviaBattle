@@ -39,16 +39,18 @@ dotnet test
 
 1. **Kiosk window**: pick a mode, add players with *Simulate card swipe* or *Play as guest*, then start.
 2. **Player windows**: each one is that player's keypad. Click into a player window and press
-   `1` `2` `3` `4` (or `A`–`D`, or the numpad), or just click/tap an answer. `Space` is a card swipe
-   at that station: it takes a continue when a solo dungeon game's "Continue?" is up.
+   `1` `2` `3` `4` (or `A`–`D`, or the numpad), or just click/tap an answer. `5` or `Enter` is the
+   action button (uses the power-up you hold). `Space` is a card swipe at that station: it takes a
+   continue when a solo dungeon game's "Continue?" is up.
 3. Close the screens with `.	ools\launch-screens.ps1 -Close`, and close the server's window to stop it.
 
 This works the same with the screens on separate devices (e.g. four tablets as player screens):
 open `http://<server-ip>:5000/display/player/1` on each and tap the answers.
 
 Other ways to press buttons without hardware:
-- `/dev/buttons`: all 16 buttons on one page, plus a "card swipe" per station to continue a solo
-  dungeon game when its "Continue?" is up.
+- `/dev/buttons`: all 20 buttons on one page (4 answers and the action button per station), plus a
+  "card swipe" per station to continue a solo dungeon game when its "Continue?" is up, and buttons to
+  hand any power-up to that station's player.
 - `/display/main?devkeys=1`: type for every player from the main screen
   (`1234` = Player 1, `QWER` = Player 2, `ASDF` = Player 3, `ZXCV` = Player 4).
 

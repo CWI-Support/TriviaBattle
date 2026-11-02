@@ -1,5 +1,5 @@
 {
-  "_comment": "Every physical answer button, by fixed button id. Rule used: buttonId = 10 + (player - 1) * 4 + answerIndex. Only the input/output layer uses these ids; game logic only sees station + answer. When the PLC register map is final, map these ids to registers in plc.json, not here.",
+  "_comment": "Every physical button, by fixed button id. Answer buttons: buttonId = 10 + (player - 1) * 4 + answerIndex. Each podium's fifth button (the action button: uses a power-up) is 26-29, so the answer ids never moved. Only the input/output layer uses these ids; game logic only sees station + answer. When the PLC register map is final, map these ids to registers in plc.json, not here.",
   "Buttons": [
     { "Id": 10, "Station": "A1", "Answer": "A" },
     { "Id": 11, "Station": "A1", "Answer": "B" },
@@ -19,6 +19,11 @@
     { "Id": 22, "Station": "A4", "Answer": "A" },
     { "Id": 23, "Station": "A4", "Answer": "B" },
     { "Id": 24, "Station": "A4", "Answer": "C" },
-    { "Id": 25, "Station": "A4", "Answer": "D" }
+    { "Id": 25, "Station": "A4", "Answer": "D" },
+
+    { "Id": 26, "Station": "A1", "Answer": "Action" },
+    { "Id": 27, "Station": "A2", "Answer": "Action" },
+    { "Id": 28, "Station": "A3", "Answer": "Action" },
+    { "Id": 29, "Station": "A4", "Answer": "Action" }
   ]
 }

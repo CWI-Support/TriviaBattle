@@ -140,6 +140,21 @@ public sealed class MatchHost(
         }
     }
 
+    /// <summary>Dev tools: hands the player at a station a power-up. False if they're not in a Dungeon game that's playing.</summary>
+    public bool GivePowerUp(string stationId, PowerUp powerUp)
+    {
+        lock (_lock)
+        {
+            var match = _matches.Values.FirstOrDefault(m => !m.IsFinished && m.HasStation(stationId));
+            var events = match?.GivePowerUp(stationId, powerUp) ?? [];
+            if (events.Count == 0)
+                return false;
+
+            Publish(match!, events);
+            return true;
+        }
+    }
+
     /// <summary>The operator gives a continue from the admin page. False if there's no continue on offer.</summary>
     public bool ContinueMatch(string matchId)
     {

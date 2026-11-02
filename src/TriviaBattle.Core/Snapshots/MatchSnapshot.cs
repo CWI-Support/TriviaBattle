@@ -96,6 +96,7 @@ public sealed record AnswerOutcomeView(int Number, bool IsCorrect, int Points, s
 /// <summary>A question on a player's screen. Never includes which answer is correct.</summary>
 /// <param name="Number">Their 1st, 2nd, 3rd... question.</param>
 /// <param name="Category">The question's own category (a match can mix several).</param>
+/// <param name="Hidden">Dungeon format: answers a 50/50 took away (always wrong ones; the correct one is never sent).</param>
 public sealed record QuestionView(
     int Number,
     int Id,
@@ -103,7 +104,8 @@ public sealed record QuestionView(
     string Text,
     IReadOnlyList<string> Answers,
     string? MediaUrl,
-    long? ShownAtMs);
+    long? ShownAtMs,
+    IReadOnlyList<int>? Hidden);
 
 /// <summary>
 /// The answer just given for a player screen's feedback ("Correct! +100" / "Nope, it was B").
@@ -168,6 +170,11 @@ public sealed record HelpView(string Name, QuestionView Question);
 /// <param name="Path">Every monster of the Depth they're in, to its boss, in order. Ones before (Floor, Room) are beaten.</param>
 /// <param name="ReviveProgress">While they're downed in a party: teammates' right answers so far, of <paramref name="ReviveNeeded"/>.</param>
 /// <param name="Party">Everyone in their party, them included (just them in a party of one).</param>
+/// <param name="PowerUp">The power-up they're holding, for the action button (null if none).</param>
+/// <param name="FireballReady">Their next right answer is a fireball.</param>
+/// <param name="Shielded">The next hit they take does no damage.</param>
+/// <param name="FrozenUntilMs">Their hourglass is frozen until then.</param>
+/// <param name="LastPowerUp">The last power-up they used; its Number changes with each use.</param>
 public sealed record DelveView(
     int Floor,
     int Room,
@@ -188,7 +195,12 @@ public sealed record DelveView(
     IReadOnlyList<PathStepView> Path,
     int ReviveProgress,
     int ReviveNeeded,
-    IReadOnlyList<PartyMemberView> Party);
+    IReadOnlyList<PartyMemberView> Party,
+    PowerUp? PowerUp,
+    bool FireballReady,
+    bool Shielded,
+    long? FrozenUntilMs,
+    PowerUpUse? LastPowerUp);
 
 /// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
 /// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>

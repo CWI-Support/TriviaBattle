@@ -37,6 +37,13 @@ public class LoggingMatchBroadcaster(ILogger<LoggingMatchBroadcaster> logger) : 
                         match.MatchId, a.Answer.OwnerId, a.Answer.Number, ButtonMap.AnswerIndexToLetter(a.Answer.AnswerIndex),
                         a.Answer.IsCorrect ? "right" : "wrong", a.Answer.Points, a.Answer.PressedByStationId);
                     break;
+                case PowerUpFound f:
+                    logger.LogInformation("Match {Id}: {Owner} found a {PowerUp}", match.MatchId, f.OwnerId, f.PowerUp);
+                    break;
+                case PowerUpUsed u:
+                    logger.LogInformation("Match {Id}: {Owner} used a {PowerUp} on {Target} ({Amount})",
+                        match.MatchId, u.OwnerId, u.Use.PowerUp, u.Use.TargetOwnerId, u.Use.Amount);
+                    break;
                 case LeaderboardPlacement p:
                     logger.LogInformation("Match {Id}: {Names} placed #{Rank} on the {Board} board with {Score}",
                         match.MatchId, p.Names, p.Rank, p.Board, p.Score);

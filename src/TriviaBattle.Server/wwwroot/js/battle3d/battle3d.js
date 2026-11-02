@@ -147,6 +147,8 @@ function beatInfo(beat, delve) {
         crit: !!hit?.crit,
         combo: !!hit?.combo,
         partyCombo: !!hit?.partyCombo,
+        fireball: !!hit?.fireball,
+        blocked: !!(hurt && delve.lastTaken?.blocked),
         seed: Math.abs(Math.floor(beat.startedAtMs / 7)),
     };
 }

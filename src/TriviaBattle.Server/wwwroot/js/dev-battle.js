@@ -10,10 +10,12 @@
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
 //   /dev/battle3d                    the same, drawn in 3D (js/battle3d); takes the same options
 //
-// Kinds: hit, crit, combo, party, revive, kill, floor, boss, hurt, slow, downed.
+// Kinds: hit, crit, combo, party, revive, kill, floor, boss, hurt, slow, downed, and with power-ups:
+// fireball (a Fireball hit), loot (a kill that drops a Potion), blocked (a Shield takes the hit; the
+// question after it has a 50/50's answers crossed out). The plate always holds a Shield.
 
-const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'floor', 'boss', 'hurt', 'slow', 'downed'];
-const BEAT_MS = { kill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700 }; // others (hits) 1500
+const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked'];
+const BEAT_MS = { kill: 2000, loot: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700 }; // others (hits) 1500
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
 
 const params = new URLSearchParams(location.search);
@@ -87,15 +89,15 @@ function showMoment(kind) {
 
 /** A match and "you" for one kind of beat, shaped like the server's snapshot. */
 function fakeState(kind, startedAt, question) {
-    const striking = !['hurt', 'slow', 'downed'].includes(kind);
-    const killed = ['kill', 'floor', 'boss'].includes(kind);
+    const striking = !['hurt', 'slow', 'downed', 'blocked'].includes(kind);
+    const killed = ['kill', 'loot', 'floor', 'boss'].includes(kind);
     const length = BEAT_MS[kind] || 1500;
     const party = kind === 'party' || kind === 'revive';
 
     const struck = kind === 'boss' || kind === 'floor'
         ? { name: 'Skeleton Intern', sprite: 'skeleton', maxHp: 120 }
         : { name: 'Goblin Bandit', sprite: 'goblin', maxHp: 100 };
-    const damage = kind === 'crit' ? 30 : kind === 'combo' ? 45 : kind === 'party' ? 60 : 20;
+    const damage = kind === 'crit' ? 30 : kind === 'combo' ? 45 : kind === 'party' || kind === 'fireball' ? 60 : 20;
     const hpLeft = killed ? 0 : 55;
     const current = kind === 'boss' ? { name: 'The Goblin Quizmaster', sprite: 'goblin-boss', hp: 300, maxHp: 300, isBoss: true }
         : kind === 'floor' ? { name: 'Bat Swarm', sprite: 'bat', hp: 70, maxHp: 70, isBoss: false }
@@ -106,10 +108,12 @@ function fakeState(kind, startedAt, question) {
         number: 7, damage, crit: kind === 'crit', combo: kind === 'combo', killed, floorCleared: kind === 'floor' || kind === 'boss',
         monsterName: struck.name, monsterSprite: struck.sprite, isBoss: false, monsterHpLeft: hpLeft, monsterMaxHp: struck.maxHp,
         partyCombo: kind === 'party', revivedOwnerId: kind === 'revive' ? 'A3' : null,
+        fireball: kind === 'fireball', found: kind === 'loot' ? 'Potion' : null,
     } : null;
     const taken = striking ? null : {
-        number: 3, damage: 15, reason: kind === 'slow' ? 'TooSlow' : 'WrongAnswer', downed: kind === 'downed',
-        monsterName: struck.name, monsterSprite: struck.sprite, hpLeft: kind === 'downed' ? 0 : 45,
+        number: 3, damage: kind === 'blocked' ? 0 : 15, reason: kind === 'slow' ? 'TooSlow' : 'WrongAnswer', downed: kind === 'downed',
+        monsterName: struck.name, monsterSprite: struck.sprite, hpLeft: kind === 'downed' ? 0 : kind === 'blocked' ? 85 : 45,
+        blocked: kind === 'blocked',
     };
     const hp = taken ? taken.hpLeft : 85;
     const floor = kind === 'floor' ? 2 : kind === 'boss' ? 5 : 1;
@@ -124,6 +128,7 @@ function fakeState(kind, startedAt, question) {
                ['goblin', 4, 1], ['skeleton', 4, 2], ['goblin-boss', 5, 1]]
             .map(([sprite, f, room]) => ({ floor: f, room, name: sprite, sprite, isBoss: sprite === 'goblin-boss' })),
         reviveProgress: 0, reviveNeeded: 3,
+        powerUp: 'Shield', fireballReady: false, shielded: false, frozenUntilMs: null, lastPowerUp: null,
         party: party
             ? [{ ownerId: 'A1', name: 'Ann', hp, maxHp: 100, downedUntilMs: null, reviveProgress: 0 },
                { ownerId: 'A3', name: 'Cat', hp: kind === 'revive' ? 100 : 70, maxHp: 100, downedUntilMs: null, reviveProgress: 0 }]
@@ -133,13 +138,14 @@ function fakeState(kind, startedAt, question) {
     const you = {
         stationId: 'A1', name: 'Ann', score: 1240,
         question: { number: 8, id: 1, category: 'Movies', text: 'Which wizard school does Harry Potter attend?',
-                    answers: ['Hogwarts', 'Durmstrang', 'Beauxbatons', 'Ilvermorny'], mediaUrl: null, shownAtMs: startedAt + length },
+                    answers: ['Hogwarts', 'Durmstrang', 'Beauxbatons', 'Ilvermorny'], mediaUrl: null, shownAtMs: startedAt + length,
+                    hidden: kind === 'blocked' ? [1, 3] : null },
         lockedOutUntilMs: null,
         lastAnswer: { number: 7, chosenIndex: striking ? 0 : 1, correctIndex: 0, correctAnswer: 'Austin', isCorrect: striking,
                       points: striking ? damage : 0, pressedByStationId: 'A1', pressedByName: 'Ann', timedOut: kind === 'slow' },
         delve,
         helping: null,
-        beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', slow: 'hurt' }[kind] || kind,
+        beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', fireball: 'hit', slow: 'hurt', blocked: 'hurt', loot: 'kill' }[kind] || kind,
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
     const match = { matchId: 'dev', category: 'Movies', soloClock: true, phaseEndsAtMs: Date.now() + 75000 };

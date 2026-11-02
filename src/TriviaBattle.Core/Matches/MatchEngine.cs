@@ -74,7 +74,7 @@ public sealed class MatchEngine
         {
             if (dungeon == null)
                 throw new ArgumentException("Dungeon format needs the dungeon map.", nameof(dungeon));
-            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon);
+            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon, random);
         }
 
         HasSoloClock = _dungeon is { IsSolo: true };
@@ -178,7 +178,10 @@ public sealed class MatchEngine
         return events;
     }
 
-    /// <summary>Handles a button press: answers that owner's current question. Presses outside Playing are ignored.</summary>
+    /// <summary>
+    /// Handles a button press: answers that owner's current question, or (the action button, Dungeon
+    /// format) uses their power-up. Presses outside Playing are ignored.
+    /// </summary>
     public IReadOnlyList<MatchEvent> HandlePress(ButtonPress press, DateTimeOffset now)
     {
         var player = Roster.FindPlayer(press.StationId);
@@ -186,12 +189,17 @@ public sealed class MatchEngine
             return NothingHappened;
 
         var stream = StreamFor(player);
+        if (press.IsAction)
+            return UsePowerUp(stream.OwnerId, now);
+
         var shownAt = stream.CurrentShownAt!.Value;
 
         if (stream.IsLockedOutAt(press.PressedAt))
             return NothingHappened;
         if (press.PressedAt < shownAt + TimeSpan.FromSeconds(Settings.NewQuestionGraceSeconds))
             return NothingHappened; // pressed before the new question could have been read
+        if (_dungeon?.IsHidden(stream.OwnerId, stream.CurrentNumber, press.AnswerIndex) == true)
+            return NothingHappened; // a 50/50 took that answer away
 
         var question = stream.CurrentQuestion;
         var isCorrect = press.AnswerIndex == question.CorrectIndex;
@@ -227,6 +235,8 @@ public sealed class MatchEngine
         if (dealt != null)
         {
             events.Add(new MonsterHit(stream.OwnerId, dealt));
+            if (dealt.Found is { } found)
+                events.Add(new PowerUpFound(stream.OwnerId, found));
             if (dealt.RevivedOwnerId is { } revived)
                 events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
             AddTime(_dungeon.SecondsEarnedBy(dealt));
@@ -238,6 +248,38 @@ public sealed class MatchEngine
 
         _dungeon.AfterTurn(stream, now);
         return events;
+    }
+
+    /// <summary>The action button: uses the power-up the owner holds, if any (a Time Crystal adds to the clock).</summary>
+    private IReadOnlyList<MatchEvent> UsePowerUp(string ownerId, DateTimeOffset now)
+    {
+        if (_dungeon?.UsePowerUp(ownerId, now) is not { } use)
+            return NothingHappened;
+
+        if (use.PowerUp == PowerUp.TimeCrystal)
+            AddTime(use.Amount);
+
+        Version++;
+        List<MatchEvent> events = [new PowerUpUsed(ownerId, use)];
+        if (use.Revived)
+            events.Add(new AdventurerGotUp(use.TargetOwnerId));
+        return events;
+    }
+
+    /// <summary>
+    /// Dev tools: hands the player at a station a power-up (replacing any they held). Does nothing
+    /// outside Playing, outside Dungeon format, or for a station not in this match.
+    /// </summary>
+    public IReadOnlyList<MatchEvent> GivePowerUp(string stationId, PowerUp powerUp)
+    {
+        var player = Roster.FindPlayer(stationId);
+        if (_dungeon == null || Phase != MatchPhase.Playing || player == null)
+            return NothingHappened;
+
+        var ownerId = Mode.GetAnswerOwnerId(player);
+        _dungeon.GivePowerUp(ownerId, powerUp);
+        Version++;
+        return [new PowerUpFound(ownerId, powerUp)];
     }
 
     /// <summary>

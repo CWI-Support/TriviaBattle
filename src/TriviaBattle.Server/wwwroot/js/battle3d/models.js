@@ -27,6 +27,7 @@ export const MODELS = {
         critAttack: { clip: '1H_Melee_Attack_Slice_Horizontal', contact: 0.42 },
         comboAttack: { clip: 'Dualwield_Melee_Attack_Slice', contact: 0.45 },
         hurt: 'Hit_A',
+        block: 'Block_Hit',   // a Shield takes the hit
         death: 'Death_A',
         cheer: 'Cheer',
         // The knight comes with all its gear as separate parts. Only these show; the rest are for

@@ -18,6 +18,8 @@ public enum HitReason
 /// <param name="MonsterHpLeft">Its HP after the hit (0 if it died), of <paramref name="MonsterMaxHp"/>.</param>
 /// <param name="PartyCombo">Everyone standing in the party answered right within a few seconds: a bonus hit.</param>
 /// <param name="RevivedOwnerId">This answer was the last one needed to revive a downed teammate (their answer owner id).</param>
+/// <param name="Fireball">A Fireball power-up was behind it.</param>
+/// <param name="Found">A power-up they found with this hit (dropped by the monster, or earned by the streak).</param>
 public sealed record DealtHit(
     int Number,
     int Damage,
@@ -31,12 +33,15 @@ public sealed record DealtHit(
     int MonsterHpLeft,
     int MonsterMaxHp,
     bool PartyCombo,
-    string? RevivedOwnerId);
+    string? RevivedOwnerId,
+    bool Fireball = false,
+    PowerUp? Found = null);
 
 /// <summary>A hit on the adventurer. <see cref="Number"/> counts up like <see cref="DealtHit.Number"/>.</summary>
 /// <param name="Downed">It took them to 0 HP.</param>
 /// <param name="HpLeft">Their HP after the hit.</param>
-public sealed record TakenHit(int Number, int Damage, HitReason Reason, bool Downed, string MonsterName, string MonsterSprite, int HpLeft);
+/// <param name="Blocked">A Shield took it: no damage.</param>
+public sealed record TakenHit(int Number, int Damage, HitReason Reason, bool Downed, string MonsterName, string MonsterSprite, int HpLeft, bool Blocked = false);
 
 /// <summary>
 /// One party's trip down the dungeon during a Dungeon-format match: the floor they're on and the

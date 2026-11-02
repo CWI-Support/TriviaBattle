@@ -9,7 +9,7 @@ server tells it and sends back what the user did.** No game rules live in the br
   physical buttons ──► PLC ──Modbus──┐
                                      ▼
   keyboard (dev) ──────────────► IButtonInput          (input layer: knows raw button ids)
-                                     │ ButtonEvent {buttonId 10-25, sequence, time}
+                                     │ ButtonEvent {buttonId 10-29, sequence, time}
                                      ▼
                                ButtonRouter ──uses──► ButtonMap (config/buttons.json)
                                      │ ButtonPress {stationId, answerIndex, sequence, time}
@@ -31,7 +31,7 @@ machines on the LAN. A screen knows what it is from its URL (`/display/main`, `/
 | Term | Meaning |
 |---|---|
 | **Room** | A physical space with stations, e.g. room `A`. |
-| **Station** | One player position: a screen plus 4 buttons. Id = room + number, e.g. `A1`. |
+| **Station** | One player position: a screen plus 4 answer buttons and an action button. Id = room + number, e.g. `A1`. |
 | **Match** | One game, played by a *set of stations*. A match isn't tied to a room, so two rooms can later be linked into one 8-station match. |
 | **Seat** | A player sitting at a station for a match. |
 | **Answer owner** | Who an answer counts for: the station (individual modes) or the team (2v2 Group). |
@@ -136,7 +136,20 @@ The rules:
   readers will call; until they exist it's `POST /api/dev/continue/{stationId}` (the dev buttons page)
   or the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and
   continue numbers are Operator-screen rules (`GameRulesService`).
-- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp` (alongside the usual `AnswerGiven`).
+- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal (solo only). Each
+  adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (a boss
+  always) and every `PowerUpStreak` right answers in a row earn one, only with empty hands
+  (`DungeonRun.FindPowerUp`; it's recorded on the hit as `DealtHit.Found`). The action button (the fifth
+  button, `ButtonPress.Action`) uses it: `MatchEngine.HandlePress` hands it to `DungeonRun.UsePowerUp`. A
+  Potion goes to whoever in the party needs it most (a downed teammate gets straight up); a Fireball
+  multiplies the next right answer (`FireballMultiplier`); a Freeze holds the hourglass (`FreezeSeconds`,
+  then it starts over); a 50/50 hides two wrong answers of the current question, which the snapshot
+  sends as `QuestionView.Hidden` (wrong ones only) and presses on them are ignored; a Shield blocks the
+  next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
+  to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
+  `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
+- Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed` (alongside the
+  usual `AnswerGiven`).
 
 - **Battle beats.** After every answer the next question waits a moment while the screen shows the
   fight (`DungeonRun.BeatSecondsAfter`: `HitBeatSeconds`, `HurtBeatSeconds`, `KillBeatSeconds`,
@@ -315,8 +328,11 @@ theme before the first draw and redraws when it changes. Details for designers a
 
 ## Buttons and hardware
 
-- `config/buttons.json` maps each fixed button id (10-25) to a station and answer letter:
-  `buttonId = 10 + (player - 1) * 4 + answerIndex`.
+- `config/buttons.json` maps each fixed button id to a station and answer letter:
+  `buttonId = 10 + (player - 1) * 4 + answerIndex` for the answer buttons (10-25), and 26-29 for each
+  podium's fifth button, the action button (`"Answer": "Action"`, `AnswerIndex` 4 = `ButtonPress.Action`).
+  It lights (LED registers 216-219) whenever pressing it would do something (`RoomOutputCoordinator`).
+  Keyboard stand-ins: `5` / `T` / `G` / `B`; on a station screen, `5` or Enter.
 - Only `IButtonInput` implementations and `ButtonRouter` ever see raw button ids. Game logic
   only sees `{stationId, answerIndex}`.
 - When the PLC register map is final, it gets mapped to these button ids in `config/plc.json`.

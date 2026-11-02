@@ -32,6 +32,8 @@ namespace TriviaBattle.Core.Dungeon;
 ///     the screens show the fight meanwhile.</item>
 ///   <item>A solo game runs on an arcade clock: every kill earns time (<see cref="SecondsEarnedBy"/>).
 ///     Groups play a fixed round, so everyone starts and ends together.</item>
+///   <item>Power-ups: a kill may drop one (a boss always does) and a streak earns one; each adventurer
+///     holds one at a time and uses it with the action button (<see cref="UsePowerUp"/>).</item>
 /// </list>
 /// Not thread-safe; the engine is only ever called by one thread at a time.
 /// </summary>
@@ -41,13 +43,16 @@ public sealed class DungeonRun
     private readonly IReadOnlyDictionary<string, QuestionStream> _streams;
     private readonly Dictionary<string, Delve> _delves = new();
     private readonly Dictionary<string, Adventurer> _adventurers = new();
+    private readonly Random _random;
 
     /// <param name="streams">The match's question streams, by answer owner. Downed adventurers' buttons are
     /// dead through their stream's lockout, so reviving someone ends it.</param>
-    public DungeonRun(MatchRoster roster, IGameMode mode, IReadOnlyDictionary<string, QuestionStream> streams, DungeonMap map, DungeonSettings settings)
+    /// <param name="random">Power-up drops and picks. Tests pass a seeded one.</param>
+    public DungeonRun(MatchRoster roster, IGameMode mode, IReadOnlyDictionary<string, QuestionStream> streams, DungeonMap map, DungeonSettings settings, Random random)
     {
         _settings = settings;
         _streams = streams;
+        _random = random;
         IsSolo = roster.Players.Count == 1;
 
         foreach (var player in roster.Players)
@@ -111,6 +116,8 @@ public sealed class DungeonRun
         var combo = streak >= _settings.ComboStreak;
         var partyCombo = IsPartyCombo(adventurer, delve, now);
 
+        var fireball = adventurer.ThrowFireball();
+
         var damage = (double)_settings.DamageFor(difficulty);
         if (crit)
             damage *= _settings.CritMultiplier;
@@ -118,12 +125,114 @@ public sealed class DungeonRun
             damage *= 1 + _settings.ComboBonus;
         if (partyCombo)
             damage *= 1 + _settings.PartyComboBonus;
+        if (fireball)
+            damage *= _settings.FireballMultiplier;
 
         var revived = HelpRevive(adventurer, now);
         var hit = delve.Hit((int)Math.Round(damage), crit, combo, partyCombo, revived?.OwnerId, now);
+        hit = hit with { Fireball = fireball, Found = FindPowerUp(adventurer, hit, streak) };
         adventurer.Landed(hit, now);
         return hit;
     }
+
+    /// <summary>
+    /// A kill may drop a power-up (a boss always does), and every <see cref="DungeonSettings.PowerUpStreak"/>
+    /// right answers in a row earn one. Only when their hands are free: they hold one at a time.
+    /// </summary>
+    private PowerUp? FindPowerUp(Adventurer adventurer, DealtHit hit, int streak)
+    {
+        if (adventurer.Held != null)
+            return null;
+
+        var dropped = hit.Killed && (hit.IsBoss || _random.NextDouble() < _settings.PowerUpDropChance);
+        var earned = _settings.PowerUpStreak > 0 && streak % _settings.PowerUpStreak == 0;
+        if (!dropped && !earned)
+            return null;
+
+        // Time Crystals only help a solo game (groups play a fixed round).
+        var choices = Enum.GetValues<PowerUp>().Where(p => IsSolo || p != PowerUp.TimeCrystal).ToList();
+        var found = choices[_random.Next(choices.Count)];
+        adventurer.PickUp(found);
+        return found;
+    }
+
+    /// <summary>Hands an adventurer a power-up, replacing any they held (the dev tools, for testing).</summary>
+    public void GivePowerUp(string ownerId, PowerUp powerUp) => _adventurers[ownerId].PickUp(powerUp);
+
+    /// <summary>
+    /// The action button: uses the power-up they're holding. Returns null if they hold none or are
+    /// downed. A Time Crystal's seconds are for the match engine to add to the clock.
+    /// </summary>
+    public PowerUpUse? UsePowerUp(string ownerId, DateTimeOffset now)
+    {
+        var adventurer = _adventurers[ownerId];
+        if (adventurer.IsDowned || adventurer.Held is not { } powerUp)
+            return null;
+
+        adventurer.DropHeld();
+        switch (powerUp)
+        {
+            case PowerUp.Potion:
+                var (target, healed, revived) = DrinkPotion(adventurer, now);
+                return adventurer.RecordPowerUp(powerUp, target.OwnerId, healed, revived);
+            case PowerUp.Fireball:
+                adventurer.ReadyFireball();
+                break;
+            case PowerUp.Freeze:
+                adventurer.Freeze(now + TimeSpan.FromSeconds(_settings.FreezeSeconds));
+                if (adventurer.AttackAt != null)
+                    StartHourglass(adventurer, now); // it waits out the freeze, then starts over
+                return adventurer.RecordPowerUp(powerUp, ownerId, (int)_settings.FreezeSeconds, revived: false);
+            case PowerUp.FiftyFifty:
+                HideTwoWrongAnswers(adventurer);
+                break;
+            case PowerUp.Shield:
+                adventurer.RaiseShield();
+                break;
+            case PowerUp.TimeCrystal:
+                return adventurer.RecordPowerUp(powerUp, ownerId, (int)_settings.TimeCrystalSeconds, revived: false);
+        }
+        return adventurer.RecordPowerUp(powerUp, ownerId, 0, revived: false);
+    }
+
+    /// <summary>
+    /// A Potion goes to whoever in the party needs it most: a downed teammate gets straight back up (at
+    /// full HP), otherwise whoever standing is lowest on HP, for their share of their max, is healed.
+    /// </summary>
+    private (Adventurer Target, int Healed, bool Revived) DrinkPotion(Adventurer user, DateTimeOffset now)
+    {
+        var party = PartyOf(user.PartyId);
+        var downed = party.Where(a => a.IsDowned).OrderBy(a => a.DownedUntil).FirstOrDefault();
+        if (downed != null)
+        {
+            var healed = downed.MaxHp - downed.Hp;
+            _streams[downed.OwnerId].EndLockout();
+            downed.GetUp();
+            StartHourglass(downed, now);
+            return (downed, healed, true);
+        }
+
+        var target = party.Where(a => !a.IsDowned).MinBy(a => (double)a.Hp / a.MaxHp)!;
+        return (target, target.Heal(_settings.PotionHeal), false);
+    }
+
+    /// <summary>A 50/50: two wrong answers of their current question go (always leaving at least two to choose from).</summary>
+    private void HideTwoWrongAnswers(Adventurer adventurer)
+    {
+        var stream = _streams[adventurer.OwnerId];
+        var question = stream.CurrentQuestion;
+        var hidden = Enumerable.Range(0, question.Answers.Count)
+            .Where(i => i != question.CorrectIndex)
+            .OrderBy(_ => _random.Next())
+            .Take(Math.Min(2, question.Answers.Count - 2))
+            .Order()
+            .ToList();
+        adventurer.HideAnswers(stream.CurrentNumber, hidden);
+    }
+
+    /// <summary>True if a 50/50 took this answer away from the question they're on (pressing it does nothing).</summary>
+    public bool IsHidden(string ownerId, int questionNumber, int answerIndex) =>
+        _adventurers[ownerId] is { } a && a.HiddenOnQuestion == questionNumber && a.HiddenAnswers.Contains(answerIndex);
 
     /// <summary>
     /// This right answer completes a party combo if every other standing member of the party has also
@@ -257,10 +366,16 @@ public sealed class DungeonRun
     public IReadOnlyList<Adventurer> AttacksDue(DateTimeOffset now) =>
         _adventurers.Values.Where(a => a.IsAttackDue(now)).ToList();
 
-    /// <summary>Turns the hourglass over from now, or from when their question appears if it's still to come (a battle beat).</summary>
+    /// <summary>
+    /// Turns the hourglass over from now, or from when their question appears if it's still to come (a
+    /// battle beat), or from when a Freeze ends.
+    /// </summary>
     private void StartHourglass(Adventurer adventurer, DateTimeOffset now)
     {
         var shownAt = _streams[adventurer.OwnerId].CurrentShownAt ?? now;
-        adventurer.StartHourglass(shownAt > now ? shownAt : now, DelveOf(adventurer).Encounter.Monster.AttackSeconds);
+        var from = shownAt > now ? shownAt : now;
+        if (adventurer.FrozenUntil > from)
+            from = adventurer.FrozenUntil.Value;
+        adventurer.StartHourglass(from, DelveOf(adventurer).Encounter.Monster.AttackSeconds);
     }
 }

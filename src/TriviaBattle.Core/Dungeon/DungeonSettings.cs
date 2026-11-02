@@ -82,6 +82,24 @@ public sealed class DungeonSettings
     /// <summary>How long "Continue?" waits for a swipe before going to the results.</summary>
     public double SoloContinueCountdownSeconds { get; set; } = 10;
 
+    // Power-ups (see PowerUp). One held at a time, used with the action button. A kill drops one
+    // PowerUpDropChance of the time (a boss always), and every PowerUpStreak right answers in a row earn one.
+
+    public double PowerUpDropChance { get; set; } = 0.35;
+    public int PowerUpStreak { get; set; } = 5;
+
+    /// <summary>The HP a Potion heals.</summary>
+    public int PotionHeal { get; set; } = 50;
+
+    /// <summary>A Fireball multiplies the next right answer's damage by this.</summary>
+    public double FireballMultiplier { get; set; } = 3;
+
+    /// <summary>How long a Freeze stops the monster's hourglass.</summary>
+    public double FreezeSeconds { get; set; } = 10;
+
+    /// <summary>The time a Time Crystal adds to a solo game's clock (up to the hard cap).</summary>
+    public double TimeCrystalSeconds { get; set; } = 20;
+
     public int DamageFor(Difficulty difficulty) => difficulty switch
     {
         Difficulty.Easy => EasyDamage,

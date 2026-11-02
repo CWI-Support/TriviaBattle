@@ -9,13 +9,15 @@ namespace TriviaBattle.Server.Game;
 /// Decides what the button LEDs and room lights should do for the current match state, and
 /// tells every <see cref="IRoomOutput"/> (console in dev, the PLC in the venue).
 ///
-/// LED rules for each seated station's four buttons:
+/// LED rules for each seated station's four answer buttons:
 /// <list type="bullet">
 ///   <item>Playing: all four on ("press now"), except off during a wrong-answer lockout
 ///         (for the whole team in 2v2 Group).</item>
 ///   <item>Results: the winners' buttons blink.</item>
 ///   <item>Anything else, or match over: off.</item>
 /// </list>
+/// The action button (the fifth) lights whenever pressing it would do something: while Playing, when
+/// they hold a power-up and aren't downed.
 /// Several groups can play in one room at once. LEDs belong to each station's own match; the
 /// room's lighting cue follows the busiest match in the room: Playing, then Results, then Intro, else Idle.
 /// </summary>
@@ -39,6 +41,8 @@ public class RoomOutputCoordinator(
                 if (buttonMap.FindButtonId(player.StationId, answer) is int buttonId)
                     leds[buttonId] = finished ? LedState.Off : LedFor(match, player);
             }
+            if (buttonMap.FindButtonId(player.StationId, ButtonPress.Action) is int actionId)
+                leds[actionId] = finished ? LedState.Off : ActionLedFor(match, player);
         }
 
         var roomIds = match.Roster.Players.Select(p => stations.Find(p.StationId)!.RoomId).Distinct().ToList();
@@ -63,6 +67,14 @@ public class RoomOutputCoordinator(
         if (phases.Contains(MatchPhase.Results)) return LightingCue.Results;
         if (phases.Contains(MatchPhase.Intro)) return LightingCue.Intro;
         return LightingCue.Idle;
+    }
+
+    /// <summary>On while they could use a power-up (PowerUpFound / PowerUpUsed events bring fresh updates).</summary>
+    private static LedState ActionLedFor(MatchEngine match, Player player)
+    {
+        var adventurer = match.Dungeon?.FindAdventurer(match.Mode.GetAnswerOwnerId(player));
+        var canUse = match.Phase == MatchPhase.Playing && adventurer is { Held: not null, IsDowned: false };
+        return canUse ? LedState.On : LedState.Off;
     }
 
     private static LedState LedFor(MatchEngine match, Player player)

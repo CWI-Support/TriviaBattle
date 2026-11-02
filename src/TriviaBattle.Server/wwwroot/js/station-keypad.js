@@ -2,6 +2,7 @@
 //
 //   keys 1 2 3 4  (top row or numpad)  or  A B C D   -> this station's answers A-D
 //   tapping / clicking an answer on the screen        -> the same
+//   5 or Enter                                        -> the action button (uses a power-up)
 //   Space                                             -> a card swipe at this station (takes a continue
 //                                                        when "Continue?" is up), like its card reader
 //
@@ -26,8 +27,9 @@ async function enableStationKeypad(connection, stationId) {
         if (!response.ok) console.info('Swipe: no continue on offer at this station right now.');
     };
 
-    const KEY_TO_ANSWER = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 };
-    const NUMPAD_TO_ANSWER = { Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 }; // works with NumLock off too
+    const ACTION = 4; // the action button's index (ButtonPress.Action on the server)
+    const KEY_TO_ANSWER = { '1': 0, '2': 1, '3': 2, '4': 3, '5': ACTION, a: 0, b: 1, c: 2, d: 3, enter: ACTION };
+    const NUMPAD_TO_ANSWER = { Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3, Numpad5: ACTION, NumpadEnter: ACTION }; // works with NumLock off too
 
     document.addEventListener('keydown', event => {
         if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;

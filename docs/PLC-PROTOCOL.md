@@ -17,7 +17,7 @@ for the PLC programmer. The register numbers are **placeholders**: they live in
 | 10–73 | PLC → server | Event ring buffer | 32 slots × 2 registers: `[button code, timestamp]`. |
 | 100 | server → PLC | Ack | The event counter value the server has processed up to. |
 | 101 | server → PLC | Heartbeat | Server adds 1 every second. If it stops changing, the server is down. |
-| 200–215 | server → PLC | Button LEDs | One per button (button ids 10–25). `0` off, `1` on, `2` blink. |
+| 200–219 | server → PLC | Button LEDs | One per button: 200–215 for the answer buttons (ids 10–25), 216–219 for each podium's action button (ids 26–29). `0` off, `1` on, `2` blink. |
 | 220 | server → PLC | Lighting cue, room A | `0` Idle, `1` Intro, `2` Question (the timed round is running), `5` Results. `3` and `4` (Reveal, Standings) are no longer sent. |
 
 The event counter and PLC clock **must be adjacent** (clock = counter + 1), so one read gets both
@@ -27,7 +27,9 @@ from the same scan.
 
 Each physical button has a fixed **button id** (`config/buttons.json`):
 `buttonId = 10 + (player − 1) × 4 + answer` (answer A=0 … D=3), so Player 1 is 10–13, Player 2 is
-14–17, Player 3 is 18–21 and Player 4 is 22–25.
+14–17, Player 3 is 18–21 and Player 4 is 22–25. Each podium also has a fifth button, the **action
+button** (it uses a power-up; later also ready-up and votes): Player 1's is 26, Player 2's 27,
+Player 3's 28 and Player 4's 29. It reports presses and has an LED exactly like the answer buttons.
 
 In an event slot the PLC writes a **button code**. `Plc:ButtonCodes` maps button id → code, and
 for now code = button id. If the PLC numbers its inputs differently, change the codes in config,

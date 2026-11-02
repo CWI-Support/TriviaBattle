@@ -1,5 +1,6 @@
 // The fight's effects: sparks, the sword's slash, the claw marks, the shockwave on the floor, the puff of
-// smoke and the shower of gold when a monster dies. Like the actors, they're shown at a moment, not
+// smoke and the shower of gold when a monster dies. Cartoon, never gory (the design doc): getting hurt
+// throws out stars, not blood. Like the actors, they're shown at a moment, not
 // played: every frame starts with everything hidden, then the beat asks for each effect at its age
 // ("sparks, 120 ms after the impact"). Particle paths come from the beat's seed, so the same moment
 // always looks the same, however often the screen redraws.
@@ -56,7 +57,7 @@ export class Effects {
     constructor(scene) {
         this.impact = new Burst(scene, { count: 26, color: 0xfff1b0, size: 0.16, speed: 7, rise: 1.5, gravity: 9, life: 0.45 });
         this.bigImpact = new Burst(scene, { count: 44, color: 0xffd23f, size: 0.22, speed: 10, rise: 2, gravity: 9, life: 0.6 });
-        this.blood = new Burst(scene, { count: 20, color: 0xff3b3b, size: 0.16, speed: 6, rise: 1.5, gravity: 10, life: 0.5 });
+        this.hurtStars = new Burst(scene, { count: 20, color: 0xff7a3b, size: 0.18, speed: 6, rise: 1.5, gravity: 10, life: 0.5 });
         this.smoke = new Burst(scene, { count: 24, color: 0x9a8a9c, size: 0.9, speed: 1.6, rise: 1.2, gravity: -0.5, life: 0.9, additive: false });
         this.gold = new Burst(scene, { count: 30, color: 0xffc83a, size: 0.26, speed: 5, rise: 6, gravity: 16, life: 1.1 });
 
@@ -65,7 +66,7 @@ export class Effects {
         this.shockwave.rotation.x = -Math.PI / 2;
         this.claws = [0, 1, 2].map(() => flatMesh(scene, new THREE.PlaneGeometry(2.2, 0.12), 0xff2a2a));
         this.all = [this.slash, this.shockwave, ...this.claws];
-        this.bursts = [this.impact, this.bigImpact, this.blood, this.smoke, this.gold];
+        this.bursts = [this.impact, this.bigImpact, this.hurtStars, this.smoke, this.gold];
     }
 
     /** Called first every frame: nothing shows unless the beat asks for it again. */
@@ -115,8 +116,8 @@ export class Effects {
         (big ? this.bigImpact : this.impact).show(at, age, seed);
     }
 
-    showBlood(at, age, seed) {
-        this.blood.show(at, age, seed);
+    showHurt(at, age, seed) {
+        this.hurtStars.show(at, age, seed);
     }
 
     /** A monster bursting: a puff of smoke and a shower of gold (loot, as the design doc wants power to feel earned). */

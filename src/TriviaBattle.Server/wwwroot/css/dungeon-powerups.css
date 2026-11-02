@@ -1,0 +1,98 @@
+/* Power-ups on the station screen (js/dungeon-powerups.js): the slot on the player plate, what's armed,
+   the pop when one is used, the 50/50's crossed-out answers, the frozen hourglass, and LOOT! in the
+   battle beat. Timed effects use --t0 like the rest of the dungeon (see css/dungeon-battle.css). */
+
+/* ---------- The slot: a row across the bottom of the player plate ---------- */
+
+.dg-plate:has(.dg-slot) { flex-wrap: wrap; }
+.dg-slot { flex: 1 0 100%; display: flex; align-items: center; justify-content: center; gap: 2vw; }
+.dg-slot-held { display: flex; align-items: center; gap: 1vw; padding: 0.3vh 1.2vw; border: 0.4vmin dashed var(--dg-frame-edge); font-family: var(--dg-font-pixel); white-space: nowrap; }
+.dg-slot-icon { width: 3.6vmin; height: auto; }
+.dg-slot-name { font-size: 2.4vmin; color: #ffd23f; text-transform: uppercase; }
+.dg-slot-press { font-size: 1.5vmin; padding: 0.2vh 0.6vw; background: #ffd23f; color: #000; }
+/* Holding one: the slot lights up and pulses like the action button does. */
+.dg-slot.is-full .dg-slot-held {
+    border-style: solid;
+    border-color: #ffd23f;
+    box-shadow: 0 0 2vmin rgba(255, 210, 63, 0.55);
+    animation: dg-slot-pulse 1.1s ease-in-out var(--t0, 0s) infinite;
+}
+@keyframes dg-slot-pulse { 50% { box-shadow: 0 0 0.6vmin rgba(255, 210, 63, 0.25); } }
+
+.dg-slot-armed { display: flex; gap: 0.8vw; }
+.dg-armed { display: inline-flex; align-items: center; gap: 0.5vw; font-family: var(--dg-font-pixel); font-size: 1.4vmin; padding: 0.3vh 0.6vw; background: rgba(0, 0, 0, 0.5); white-space: nowrap; }
+.dg-armed .dg-icon { width: 2.6vmin; height: auto; }
+.dg-armed.is-fireball { color: #ff9a1f; }
+.dg-armed.is-shield { color: #bfe4ff; }
+
+/* ---------- Used: a pop over the monster strip ---------- */
+
+.dg-pu-pop {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 2vw;
+    padding: 1vh 3vw;
+    background: rgba(12, 8, 16, 0.92);
+    border: 0.6vmin solid #ffd23f;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: dg-pu-pop 1800ms ease-out var(--t0) both;
+}
+.dg-pu-pop-icon { grid-row: span 2; width: 8vmin; height: auto; }
+.dg-pu-pop-name { font-family: var(--dg-font-pixel); font-size: 4.4vmin; color: #ffd23f; text-transform: uppercase; }
+.dg-pu-pop-detail { font-size: 2.6vmin; color: var(--text); }
+@keyframes dg-pu-pop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+    20% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -70%) scale(0.95); }
+}
+
+/* ---------- 50/50: the two wrong answers it took away ---------- */
+
+.dg-answer.is-eliminated { opacity: 0.25; filter: grayscale(1); }
+.dg-answer.is-eliminated .dg-answer-text { text-decoration: line-through; text-decoration-thickness: 0.4vmin; }
+
+/* ---------- Freeze: the hourglass iced over, thawing by itself when the freeze ends ---------- */
+
+.dg-attack.is-frozen { color: #9fe0ff; animation: dg-thaw 1ms linear var(--thaw) forwards; }
+.dg-attack.is-frozen .dg-hourglass { filter: hue-rotate(160deg) saturate(1.6); animation: dg-thaw 1ms linear var(--thaw) forwards; }
+.dg-frozen-label { font-family: var(--dg-font-pixel); font-size: 1.8vmin; color: #9fe0ff; animation: dg-thaw-out 1ms linear var(--thaw) forwards; }
+@keyframes dg-thaw { to { color: inherit; filter: none; } }
+@keyframes dg-thaw-out { to { visibility: hidden; } }
+
+/* ---------- In the battle beat: LOOT!, FIREBALL!, BLOCKED! ---------- */
+
+.dg-loot {
+    position: absolute;
+    left: 50%;
+    top: 74%;
+    z-index: 6;  /* over the floor curtain too, so a boss's drop is seen */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6vh;
+    padding: 1.4vh 5vw;
+    background: rgba(12, 8, 16, 0.9);
+    border: 0.7vmin solid #ffd23f;
+    box-shadow: 0 0 4vmin rgba(255, 210, 63, 0.5);
+    animation: dg-loot 600ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + var(--loot-at)) both;
+}
+.dg-loot-label { font-family: var(--dg-font-pixel); font-size: 3.4vmin; color: #ffd23f; white-space: nowrap; }
+.dg-loot-icon { width: 11vmin; height: auto; }
+.dg-loot-name { font-family: var(--dg-font-pixel); font-size: 3vmin; color: #fff; text-transform: uppercase; }
+@keyframes dg-loot {
+    0% { opacity: 0; transform: translate(-50%, -50%) translateY(6vh) scale(0.5); }
+    100% { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.is-fireball .dg-stamp.is-early { color: #ff9a1f; text-shadow: 0.7vmin 0.7vmin 0 #000, 0 0 5vmin #ff5a1f; }
+.is-fireball .dg-bignum { color: #ff9a1f; font-size: 15vmin; text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 4vmin #ff5a1f; }
+.is-blocked .dg-stamp.is-early { color: #bfe4ff; }
+.is-blocked .dg-battle-flash { background: radial-gradient(ellipse at center, transparent 40%, rgba(150, 210, 255, 0.6)); }

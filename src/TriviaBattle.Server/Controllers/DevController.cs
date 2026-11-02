@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Hardware.Input;
 using TriviaBattle.Server.Game;
@@ -33,6 +34,16 @@ public class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, Ma
             return NotFound();
 
         return host.ContinueAtStation(stationId) ? NoContent() : Conflict(new { problems = new[] { "No continue on offer at that station." } });
+    }
+
+    /// <summary>Hands the player at a station a power-up (Potion, Fireball, Freeze, FiftyFifty, Shield, TimeCrystal), to test it.</summary>
+    [HttpPost("powerup/{stationId}/{powerUp}")]
+    public IActionResult GivePowerUp(string stationId, PowerUp powerUp)
+    {
+        if (!devTools.Enabled)
+            return NotFound();
+
+        return host.GivePowerUp(stationId, powerUp) ? NoContent() : Conflict(new { problems = new[] { "Nobody is playing a dungeon game at that station." } });
     }
 
     /// <summary>The keyboard map plus what each button is, for the /dev/buttons page.</summary>

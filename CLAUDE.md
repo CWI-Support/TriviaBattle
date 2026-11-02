@@ -12,7 +12,8 @@ The room is moving to Dungeon Quiz Quest (`docs/DUNGEON-QUIZ-QUEST.md`): Dungeon
 Classic format working until it's formally dropped. `MatchSettings.Format` picks the game (default in `appsettings.json`,
 changeable on the Operator screen). In Dungeon format `MatchEngine` hands every answer and tick to a `DungeonRun`,
 which holds all combat rules: each party (a team, or a solo player) shares one `Delve` (floor, monster), and each answer
-owner is an `Adventurer` (own HP, streak, hourglass). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
+owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
+Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
 After each answer a battle beat holds the next question back while the station plays the fight full screen
 (`js/dungeon-battle.js`, `css/dungeon-battle.css`, preview at `/dev/battle`). Beat animations are timed from the
 beat's server start (`--t0`) so redraws don't restart them; keep their offsets in step with the beat lengths.
@@ -32,8 +33,8 @@ outputs, the audio engine), `TriviaBattle.Server` (ASP.NET host, EF Core, Signal
   in the same change when structure or behaviour changes.
 - All game logic lives in `src/TriviaBattle.Core` (no ASP.NET/EF/hardware references there).
   Browsers never contain game rules. They render snapshots and send intents.
-- Only the input layer (`IButtonInput` implementations, `ButtonRouter`) knows raw button ids (10-25).
-  Game code works with `{stationId, answerIndex}`.
+- Only the input layer (`IButtonInput` implementations, `ButtonRouter`) knows raw button ids (10-25 answers,
+  26-29 each podium's action button). Game code works with `{stationId, answerIndex}` (4 = `ButtonPress.Action`).
 - Never hardcode 4 stations, a single room, or "stations 1+2 vs 3+4". Ask `StationLayout`; teams come from `MatchSetup`.
 
 ## Commands

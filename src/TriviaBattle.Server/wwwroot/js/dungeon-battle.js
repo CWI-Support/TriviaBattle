@@ -7,7 +7,9 @@
 //   floor   the kill, then the screen goes dark: down the stairs to the next floor
 //   boss    the kill, then WARNING!: the floor's boss slams down with its name card
 //   hurt    the monster lunges at you and claws you (a wrong answer, or too slow), then the right
-//           answer flips over like a card
+//           answer flips over like a card. A Shield blocks it: BLOCKED!, no damage
+// A Fireball hit gets its own stamp, and a power-up found with the hit (dropped, or earned by the
+// streak) is held up as LOOT!.
 //   downed  the same, and your knight falls
 //
 // Every animation is timed from the beat's start on the server clock: the scene carries
@@ -41,6 +43,8 @@ const DungeonBattle = {
             hit?.combo ? 'is-combo' : '',
             hit?.partyCombo ? 'is-party-combo' : '',
             hit?.isBoss ? 'is-boss-foe' : '',
+            hit?.fireball ? 'is-fireball' : '',
+            taken?.blocked ? 'is-blocked' : '',
         ].join(' ');
 
         // The monster in the fight: the one you hit (it may already be dead), or the one hitting you.
@@ -60,9 +64,10 @@ const DungeonBattle = {
                     ${hurt ? DungeonBattle.claws() : '<div class="dg-fx-slash"></div>'}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}
                     ${beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.sparks(22, 'is-death') : ''}
-                    <div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo ? '!' : ''}</div>
+                    ${taken?.blocked ? '' : `<div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo || hit?.fireball ? '!' : ''}</div>`}
                     ${DungeonBattle.stamps(beat, hit, taken, delve, seed)}
                     ${hurt ? DungeonBattle.reveal(you.lastAnswer, seed) : ''}
+                    ${hit?.found ? DungeonBattle.loot(hit.found, beat.kind, seed) : ''}
                 </div>
                 <div class="dg-battle-bars">
                     ${hit
@@ -114,6 +119,8 @@ const DungeonBattle = {
             const name = delve.party.find(m => m.ownerId === hit.revivedOwnerId)?.name || '';
             early = Theme.text('dungeon.stampRevived', { name }, seed);
         }
+        else if (hit?.fireball) early = Theme.text('dungeon.stampFireball', {}, seed);
+        else if (taken?.blocked) early = Theme.text('dungeon.stampBlocked', {}, seed);
         else if (hit?.partyCombo) early = Theme.text('dungeon.partyComboShort');
         else if (hit?.combo) early = Theme.text('dungeon.stampCombo', { streak: delve.streak });
         else if (hit?.crit) early = Theme.text('dungeon.stampCrit', {}, seed);
@@ -141,6 +148,20 @@ const DungeonBattle = {
                     <span class="dg-reveal-letter">${UI.ANSWER_LETTERS[lastAnswer.correctIndex]}</span>
                     <span>${UI.escape(lastAnswer.correctAnswer)}</span>
                 </div>
+            </div>`;
+    },
+
+    /**
+     * A power-up found with this hit, held up for the player: after SLAIN! on a kill, over the curtain on
+     * a floor cleared (it's drawn above it), soon after the blow on a plain hit (the streak earned it).
+     */
+    loot(kind, beatKind, seed) {
+        const at = beatKind === 'kill' ? 1250 : beatKind === 'floor' || beatKind === 'boss' ? 1450 : 600;
+        return `
+            <div class="dg-loot" style="--loot-at: ${at}ms">
+                <div class="dg-loot-label">${Theme.text('dungeon.stampLoot', {}, seed)}</div>
+                ${DungeonPowerUps.icon(kind, 'dg-loot-icon')}
+                <div class="dg-loot-name">${DungeonPowerUps.name(kind)}</div>
             </div>`;
     },
 

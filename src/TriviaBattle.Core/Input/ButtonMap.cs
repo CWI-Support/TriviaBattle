@@ -3,7 +3,7 @@ namespace TriviaBattle.Core.Input;
 /// <summary>One row of config/buttons.json.</summary>
 /// <param name="ButtonId">Fixed id of the physical button, e.g. 10.</param>
 /// <param name="StationId">Station the button belongs to, e.g. "A1".</param>
-/// <param name="AnswerIndex">0-3 for answers A-D.</param>
+/// <param name="AnswerIndex">0-3 for answers A-D, 4 (<see cref="ButtonPress.Action"/>) for the action button.</param>
 public sealed record ButtonAssignment(int ButtonId, string StationId, int AnswerIndex);
 
 /// <summary>
@@ -21,8 +21,8 @@ public sealed class ButtonMap
 
         foreach (var a in Assignments)
         {
-            if (a.AnswerIndex is < 0 or > 3)
-                throw new InvalidOperationException($"Button {a.ButtonId}: answer index must be 0-3 (A-D).");
+            if (a.AnswerIndex is < 0 or > ButtonPress.Action)
+                throw new InvalidOperationException($"Button {a.ButtonId}: answer index must be 0-3 (A-D) or 4 (the action button).");
         }
 
         _byButtonId = Assignments.ToDictionary(a => a.ButtonId);
@@ -43,14 +43,16 @@ public sealed class ButtonMap
     public int? FindButtonId(string stationId, int answerIndex) =>
         _byStationAnswer.TryGetValue((stationId, answerIndex), out var id) ? id : null;
 
-    /// <summary>Converts "A".."D" (as written in buttons.json) to 0..3.</summary>
+    /// <summary>Converts "A".."D" (as written in buttons.json) to 0..3, and "Action" (the fifth button) to 4.</summary>
     public static int AnswerLetterToIndex(string letter)
     {
         var trimmed = letter.Trim().ToUpperInvariant();
+        if (trimmed == "ACTION")
+            return ButtonPress.Action;
         if (trimmed.Length != 1 || trimmed[0] < 'A' || trimmed[0] > 'D')
-            throw new InvalidOperationException($"Answer must be A, B, C or D (got '{letter}').");
+            throw new InvalidOperationException($"Answer must be A, B, C, D or Action (got '{letter}').");
         return trimmed[0] - 'A';
     }
 
-    public static string AnswerIndexToLetter(int index) => ((char)('A' + index)).ToString();
+    public static string AnswerIndexToLetter(int index) => index == ButtonPress.Action ? "Action" : ((char)('A' + index)).ToString();
 }

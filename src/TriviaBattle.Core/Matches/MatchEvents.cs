@@ -28,6 +28,12 @@ public sealed record AdventurerHit(string OwnerId, TakenHit Hit) : MatchEvent;
 /// <summary>Dungeon format: a downed adventurer is back on their feet (their time ran out, or teammates revived them).</summary>
 public sealed record AdventurerGotUp(string OwnerId) : MatchEvent;
 
+/// <summary>Dungeon format: an adventurer picked up a power-up (a monster dropped it, or their streak earned it).</summary>
+public sealed record PowerUpFound(string OwnerId, PowerUp PowerUp) : MatchEvent;
+
+/// <summary>Dungeon format: an adventurer used their power-up with the action button.</summary>
+public sealed record PowerUpUsed(string OwnerId, PowerUpUse Use) : MatchEvent;
+
 /// <summary>
 /// A player or team made a leaderboard. Unlike the events above, this one isn't raised by the
 /// engine: the server raises it after saving the match result, while Results is on screen.

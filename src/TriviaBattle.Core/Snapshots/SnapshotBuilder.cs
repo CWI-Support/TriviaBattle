@@ -95,7 +95,7 @@ public static class SnapshotBuilder
             team?.Name,
             player.Tally.Score,
             team?.Tally.Score,
-            question == null ? null : ToQuestion(stream),
+            question == null ? null : ToQuestion(match, stream),
             ToUnixMs(stream.LockedOutUntil),
             ToYourAnswer(match, stream.LastAnswer),
             ToDelve(match, stream.OwnerId),
@@ -121,10 +121,15 @@ public static class SnapshotBuilder
         return new BeatView(kind, answer.PressedAt.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds());
     }
 
-    /// <summary>The question on a stream's screen now. Never includes which answer is correct.</summary>
-    private static QuestionView ToQuestion(QuestionStream stream)
+    /// <summary>
+    /// The question on a stream's screen now. Never includes which answer is correct; a 50/50's hidden
+    /// answers are wrong ones, so sending those is fine.
+    /// </summary>
+    private static QuestionView ToQuestion(MatchEngine match, QuestionStream stream)
     {
         var question = stream.CurrentQuestion;
+        var adventurer = match.Dungeon?.FindAdventurer(stream.OwnerId);
+        var hidden = adventurer != null && adventurer.HiddenOnQuestion == stream.CurrentNumber ? adventurer.HiddenAnswers : null;
         return new QuestionView(
             stream.CurrentNumber,
             question.Id,
@@ -132,7 +137,8 @@ public static class SnapshotBuilder
             question.Text,
             question.Answers,
             question.MediaUrl,
-            ToUnixMs(stream.CurrentShownAt));
+            ToUnixMs(stream.CurrentShownAt),
+            hidden);
     }
 
     /// <summary>
@@ -146,7 +152,7 @@ public static class SnapshotBuilder
             return null;
 
         var teammate = match.Dungeon!.StandingTeammateOf(adventurer);
-        return teammate == null ? null : new HelpView(NameOf(match, teammate.OwnerId), ToQuestion(match.FindStream(teammate.OwnerId)!));
+        return teammate == null ? null : new HelpView(NameOf(match, teammate.OwnerId), ToQuestion(match, match.FindStream(teammate.OwnerId)!));
     }
 
     /// <summary>A player's name, or a team's in 2v2 Group (where the team answers as one).</summary>
@@ -201,7 +207,12 @@ public static class SnapshotBuilder
             match.Dungeon.ReviveAnswers,
             match.Dungeon.PartyOf(adventurer.PartyId)
                 .Select(a => new PartyMemberView(a.OwnerId, NameOf(match, a.OwnerId), a.Hp, a.MaxHp, ToUnixMs(a.DownedUntil), a.ReviveProgress))
-                .ToList());
+                .ToList(),
+            adventurer.Held,
+            adventurer.FireballReady,
+            adventurer.Shielded,
+            ToUnixMs(adventurer.FrozenUntil), // the screen shows it frozen while that is still to come
+            adventurer.LastPowerUp);
     }
 
     /// <summary>

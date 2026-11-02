@@ -93,9 +93,13 @@ damage, more time (solo), or a power-up. The clock pauses; after 8 seconds one i
    member waits for 3 right answers from teammates (20 s at most); if the whole party goes down,
    everyone is back in 5 s. A party combo (everyone right within 4 s) doubles that hit.
 5. Playtest: solo, then a group of four. Both have to be fun before going further.
-6. Fifth-button wiring: button ids 26 to 29 (10 to 25 stay as they are), LED registers 216 to 219,
-   keyboard stand-in keys 5 / T / G / B, the dev buttons page.
-7. Power-ups.
+6. Done: fifth-button wiring: button ids 26 to 29 (10 to 25 stay as they are), LED registers 216 to 219,
+   keyboard stand-in keys 5 / T / G / B (5 or Enter on a station screen), the dev buttons page. Kept after
+   the design doc's four-button box came up (Brett, 2 Nov 2026).
+7. Done (v1): power-ups. Potion, Fireball, Freeze, 50/50, Shield, Time Crystal (solo). A kill drops one
+   35% of the time (a boss always), a streak of 5 earns one; one slot; the action button lights while
+   you hold one. Not yet: the co-op and group-only ones (Heal Ally, Phone a Friend, Fog Bomb, Tiny
+   Hourglass), and power-ups aimed at rivals.
 8. Boons and doors by party vote.
 
 **Hardware to build:** a fifth button with an LED on each podium, and a card reader at each station.

@@ -18,7 +18,16 @@ public sealed record ButtonEvent(int ButtonId, long Sequence, DateTimeOffset Pre
 /// This is the only kind of input the game engine understands.
 /// </summary>
 /// <param name="StationId">Station that owns the button, e.g. "A1".</param>
-/// <param name="AnswerIndex">0-3 for answers A-D.</param>
+/// <param name="AnswerIndex">0-3 for answers A-D, or <see cref="Action"/> for the action button.</param>
 /// <param name="Sequence">Press order, carried over from <see cref="ButtonEvent.Sequence"/>.</param>
 /// <param name="PressedAt">When the press happened, on the server's clock.</param>
-public sealed record ButtonPress(string StationId, int AnswerIndex, long Sequence, DateTimeOffset PressedAt);
+public sealed record ButtonPress(string StationId, int AnswerIndex, long Sequence, DateTimeOffset PressedAt)
+{
+    /// <summary>
+    /// The <see cref="AnswerIndex"/> of the action button: the fifth button on each podium, not an answer.
+    /// It uses the player's power-up (and later: ready up, confirm a vote).
+    /// </summary>
+    public const int Action = 4;
+
+    public bool IsAction => AnswerIndex == Action;
+}

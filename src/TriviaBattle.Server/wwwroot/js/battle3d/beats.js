@@ -59,7 +59,7 @@ export function showIdle(cast, { heroDown, foeArrivedMs }) {
 
 function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds }) {
     const killed = beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss';
-    const big = beat.crit || beat.combo || beat.partyCombo;
+    const big = beat.crit || beat.combo || beat.partyCombo || beat.fireball;
     const a = stopped(ms, HIT_IMPACT, big || killed ? 110 : 60);
     const t = a - HIT_IMPACT;  // since the blow landed (held still during the hit-stop)
     const heroIdle = { clip: hero.spec.idle, time: seconds };
@@ -143,20 +143,30 @@ function monsterStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds }) {
     else foePose = { ...foeIdle, from: attackAt(800), fade: Math.min(1, (a - 800) / 200) };
     foe.apply({ x: foeX, tilt, ...foePose });
 
-    // The knight: reels back, flashing red. Downed: falls, and stays down.
+    // The knight: reels back, flashing red (or, behind a Shield, takes it on the shield). Downed: falls, and stays down.
+    const reel = beat.blocked && hero.has(hero.spec.block) ? hero.spec.block : hero.spec.hurt;
     let heroPose = heroIdle;
-    const hurtMs = hero.duration(hero.spec.hurt) * 1000;
-    if (t >= 0 && t < hurtMs) heroPose = { clip: hero.spec.hurt, time: t / 1000, from: heroIdle, fade: Math.min(1, t / 60) };
-    else if (t >= hurtMs) heroPose = { ...heroIdle, from: { clip: hero.spec.hurt, time: hurtMs / 1000 }, fade: Math.min(1, (t - hurtMs) / 200) };
+    const hurtMs = hero.duration(reel) * 1000;
+    if (t >= 0 && t < hurtMs) heroPose = { clip: reel, time: t / 1000, from: heroIdle, fade: Math.min(1, t / 60) };
+    else if (t >= hurtMs) heroPose = { ...heroIdle, from: { clip: reel, time: hurtMs / 1000 }, fade: Math.min(1, (t - hurtMs) / 200) };
     if (beat.kind === 'downed' && ms >= DOWNED_FALLS)
         heroPose = { clip: hero.spec.death, time: (ms - DOWNED_FALLS) / 1000, from: { clip: hero.spec.hurt, time: (DOWNED_FALLS - HURT_IMPACT) / 1000 }, fade: Math.min(1, (ms - DOWNED_FALLS) / 100) };
     // He falls backwards, out towards the edge of the picture: slide him in a little as he goes down.
     const fallIn = beat.kind === 'downed' ? DOWNED_SLIDE * easeOut((ms - DOWNED_FALLS) / 400) : 0;
-    hero.apply({ x: homes.hero - 0.4 * kick(t, 60, 500) + fallIn, flash: pulse(t, 260), flashColor: 0xff2020, ...heroPose });
+    hero.apply({
+        x: homes.hero - (beat.blocked ? 0.15 : 0.4) * kick(t, 60, 500) + fallIn,
+        flash: beat.blocked ? 0.5 * pulse(t, 160) : pulse(t, 260),
+        flashColor: beat.blocked ? 0xbfe4ff : 0xff2020,
+        ...heroPose,
+    });
 
     const chest = hero.chest();
-    fx.showClaws(chest, t / 1000);
-    fx.showBlood(chest, t / 1000, beat.seed);
+    if (beat.blocked) {
+        fx.showSparks(chest, t / 1000, beat.seed, true);  // it glances off the shield
+    } else {
+        fx.showClaws(chest, t / 1000);
+        fx.showHurt(chest, t / 1000, beat.seed);
+    }
     fx.showShockwave(hero.root.position, t / 1000, false);
 
     shake(stage, ms, jolt(ms - HURT_IMPACT, 0.13));
