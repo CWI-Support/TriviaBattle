@@ -341,7 +341,8 @@ const DungeonView = {
     /**
      * Main screen: the big moments of one lane since it was last drawn become banners sweeping across
      * the room screen (drawn by activeEffects('moments')): a boss slain, a floor cleared or a boss
-     * stepping up, someone revived, a party combo. name is already HTML-escaped.
+     * stepping up, someone revived, a party combo. The Host has something to say about each
+     * (js/dungeon-host.js, on the main screen). name is already HTML-escaped.
      */
     noteMoments({ key, name, color, delve }) {
         const hit = DungeonView.news(`moment:${key}`, delve).dealt;
@@ -354,18 +355,30 @@ const DungeonView = {
             </div>`, 2600);
         const who = Theme.raw(name);
 
-        if (hit.killed && hit.isBoss)
+        const seed = `${key}:${hit.number}`;
+        const host = (lineKey, values) => DungeonHost.say(Theme.text(lineKey, values, seed));
+
+        if (hit.killed && hit.isBoss) {
             banner('slain', Theme.text('dungeon.momentBossSlain', { name: who, monster: hit.monsterName }), hit.monsterSprite);
-        else if (hit.floorCleared && delve.monster.isBoss)
+            host('dungeon.hostBossSlain', { name: who, monster: hit.monsterName });
+        }
+        else if (hit.floorCleared && delve.monster.isBoss) {
             banner('boss', Theme.text('dungeon.momentBoss', { name: who, monster: delve.monster.name }), delve.monster.sprite);
-        else if (hit.floorCleared)
+            host('dungeon.hostBoss', { name: who, monster: delve.monster.name });
+        }
+        else if (hit.floorCleared) {
             banner('floor', Theme.text('dungeon.momentFloor', { name: who, floor: delve.floor }));
+            host('dungeon.hostFloor', { name: who, floor: delve.floor });
+        }
 
         if (hit.revivedOwnerId) {
             const revived = delve.party.find(m => m.ownerId === hit.revivedOwnerId)?.name || '';
             banner('revive', Theme.text('dungeon.momentRevived', { name: revived }));
+            host('dungeon.hostRevived', { name: revived });
         }
-        if (hit.partyCombo)
+        if (hit.partyCombo) {
             banner('combo', Theme.text('dungeon.momentPartyCombo', { name: who }));
+            host('dungeon.hostPartyCombo', { name: who });
+        }
     },
 };

@@ -25,7 +25,13 @@ far: after a wrong answer the right one flips over like a card in the middle of 
 is a reward too), and kills shower gold. **Art direction:** 3D models that read like 2D paintings
 (think Hearthstone). A first pass of the 3D fight runs on CC0 placeholder models (`js/battle3d/`,
 the stations' default, preview at `/dev/battle3d`); the knight's gear comes as swappable parts, ready
-for loot and power-ups to show on the hero.
+for loot and power-ups to show on the hero. The station's question screen now follows the design lead's
+example (`docs/design/station-example.png`), and the Host has a name and a face on the main screen:
+**Q.U.E.R.I.E.** (Quantum Universal Engine for Research, Innovation, and Experimentation), placeholder
+art and first lines in `copy.json`. Still open from the full doc: character classes (Rogue, Tank, Healer,
+Wizard, Warlock, Pugilist, Ranger), whether damage should decay smoothly with answer speed instead of the
+3-second crit, the four-button mini-games, operator-programmable events ("Trivia Night"), and how the
+doc's four-button cabinet squares with the fifth action button.
 
 **Bottom line on the software: keep it.** The room server, buttons and lights, room audio, kiosk and
 RFID cards, question bank and admin, several groups at once, the live log: none of it cares what genre

@@ -167,7 +167,23 @@
     "momentBoss": "{name} faces the boss: {monster}!",
     "momentFloor": ["{name} heads down to floor {floor}!", "{name} descends: floor {floor}!"],
     "momentRevived": "{name} is back on their feet!",
-    "momentPartyCombo": "{name}: party combo!"
+    "momentPartyCombo": "{name}: party combo!",
+    "hostName": "Q.U.E.R.I.E.",
+    "hostIdle": [
+      "Welcome back to the dungeon, my delicious little data points!",
+      "I read the entire internet in a second. You've read... a cereal box?",
+      "Knowledge is power. A lack of knowledge is content. For me.",
+      "Every wrong answer makes me stronger. Please. Keep going.",
+      "The goblins unionised. I pay them in trivia.",
+      "Fun fact: I am the fun. The facts are optional.",
+      "Ooh, a question! I love questions. I collect them. Like teeth. Friendly teeth.",
+      "Did you know? Neither did the last adventurer."
+    ],
+    "hostBossSlain": ["{name} slew {monster}! Rude. I'll just build a bigger one.", "{monster} is down! {name}, that was magnificent. I hate it."],
+    "hostBoss": ["{name} meets {monster}. I wrote its lines. They're mostly shouting.", "Boss time, {name}! I've been looking forward to this. For you. Mostly for me."],
+    "hostFloor": ["{name} goes deeper! Mind the stairs. I waxed them.", "Floor {floor}, {name}! Further from daylight, closer to ME."],
+    "hostRevived": ["{name} is back! Fainting is just a little nap in here.", "Revived! I was going to keep that one, {name}."],
+    "hostPartyCombo": ["A party combo from {name}! Teamwork. Disgusting. Beautiful.", "{name} struck as one! I hate how good that looked."]
   },
 
   "player": {

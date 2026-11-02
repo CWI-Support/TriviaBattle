@@ -37,6 +37,7 @@ function render(state) {
 
     if (state.matches.length === 0) {
         DungeonView.reset();
+        DungeonHost.reset();
         document.getElementById('lobby-title').innerHTML = Theme.text('brand.title');
         document.getElementById('lobby-subtitle').innerHTML = Theme.text('lobby.subtitle', {}, new Date().toDateString());
         showFitted('view-lobby');
@@ -240,6 +241,7 @@ function renderDungeonPlaying(match) {
                 return DungeonView.lane({ ...o, rank, isLeader: rank === 1 && anyoneBehind, serverNow: now });
             }).join('')}</div>
             <div class="dg-moments">${DungeonView.activeEffects('moments')}</div>
+            ${DungeonHost.box()}
         </div>`;
     UI.showView('view-playing');
 }

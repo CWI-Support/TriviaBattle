@@ -297,7 +297,10 @@ Dungeon screens: `js/dungeon-view.js` draws the main screen's lanes and hands th
 to `js/dungeon-encounter.js` (`css/dungeon-encounter.css`), laid out like the design lead's example
 (`docs/design/station-example.png`): the monster's nameplate and HP, the question scroll hanging from it,
 the monster big in its room, the hourglass standing beside the answers (a rune box with the button's
-symbol, and a framed answer, each), then you. It also draws plus the main screen's big moments (banners across the room for a floor
+symbol, and a framed answer, each), then you. The main screen has the Host, Q.U.E.R.I.E. (`js/dungeon-host.js`, `css/dungeon-host.css`): a face and a
+speech bubble at the foot of the room screen, commenting on each big moment and filling the quiet with
+idle quips (`dungeon.host*` in the copy, so a theme or licensed IP can bring its own host).
+`dungeon-view.js` also draws the main screen's big moments (banners across the room for a floor
 cleared, a boss, a revive, a party combo). During a battle beat the station shows `js/dungeon-battle.js`
 instead: the fight full size, animated in `css/dungeon-battle.css`. Its animations are timed from the
 beat's start on the server clock (`--t0`), its fade-out from the beat's end (`--t1`), and the next

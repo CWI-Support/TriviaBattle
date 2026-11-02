@@ -1,0 +1,44 @@
+/* The Host on the main screen (js/dungeon-host.js): Q.U.E.R.I.E.'s face at the foot of the room screen,
+   with a speech bubble. A fresh comment on a big moment pops in (timed from --t0, so a redraw doesn't
+   replay it); idle quips just sit there. */
+
+.dg-host {
+    display: flex;
+    align-items: center;
+    gap: 2vw;
+    padding: 0.6vh 2vw 0;
+}
+.dg-host-face {
+    flex: 0 0 auto;
+    width: 11vmin;
+    height: auto;
+    filter: drop-shadow(0 0 2vmin rgba(46, 242, 255, 0.45));
+    animation: dg-host-bob 2.4s ease-in-out infinite;
+}
+.dg-host.is-talking .dg-host-face { animation: dg-host-bob 2.4s ease-in-out infinite, dg-host-glitch 0.18s steps(2) 4; }
+@keyframes dg-host-bob { 50% { transform: translateY(-6%) rotate(-2deg); } }
+@keyframes dg-host-glitch { 50% { transform: translateX(3%) skewX(-6deg); filter: hue-rotate(90deg); } }
+
+.dg-host-bubble {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    padding: 1vh 2vw;
+    background: #120f18;
+    border: 0.5vmin solid #2ef2ff;
+    box-shadow: 0 0 2vmin rgba(46, 242, 255, 0.35), inset 0 0 0 0.3vmin #000;
+}
+/* The bubble's tail, pointing at his face. */
+.dg-host-bubble::before {
+    content: '';
+    position: absolute;
+    left: -2.2vmin;
+    top: 50%;
+    border: 1.1vmin solid transparent;
+    border-right-color: #2ef2ff;
+    transform: translateY(-50%);
+}
+.dg-host-name { font-family: var(--dg-font-pixel); font-size: 2vmin; color: #ff3df2; letter-spacing: 0.1em; }
+.dg-host-line { font-family: var(--font-body); font-size: 3.6vmin; line-height: 1.1; color: var(--text); }
+.dg-host.is-talking .dg-host-line { color: #fff; animation: dg-host-say 400ms ease-out var(--t0) both; }
+@keyframes dg-host-say { from { opacity: 0; transform: translateX(-2vw); } }
