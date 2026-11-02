@@ -96,7 +96,7 @@ $env:Plc__Enabled="true"; $env:Plc__Host="127.0.0.1"; $env:Plc__Port="5020"
 dotnet run                                              # terminal 2: game server using the PLC
 ```
 
-Press `1234` / `QWER` / `ASDF` / `ZXCV` in the simulator window to press buttons, and watch the
+Press `12345` / `QWERT` / `ASDFG` / `ZXCVB` (answers A-D, then the action button) in the simulator window to press buttons, and watch the
 LEDs and lighting cue change as the game runs.
 
 ## Open items for the real register map

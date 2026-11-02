@@ -52,7 +52,8 @@ Other ways to press buttons without hardware:
   "card swipe" per station to continue a solo dungeon game when its "Continue?" is up, and buttons to
   hand any power-up to that station's player.
 - `/display/main?devkeys=1`: type for every player from the main screen
-  (`1234` = Player 1, `QWER` = Player 2, `ASDF` = Player 3, `ZXCV` = Player 4).
+  (`12345` = Player 1, `QWERT` = Player 2, `ASDFG` = Player 3, `ZXCVB` = Player 4: answers A-D, then the
+  action button, in a line).
 
 These test buttons only work while dev tools are on. That's the default when you run with
 `dotnet run`, and they're off in Production.
