@@ -22,6 +22,7 @@ UI.startCountdowns(() => connection.serverNow());
 enableStationKeypad(connection, () => lastState?.station.id); // demo: keys 1-4 / A-D or taps answer, Space swipes a card
 const redraw = () => lastState && render(lastState);
 HeroCamera.check(redraw, text => connection.reportError(text)); // photos only happen on a station with a camera
+Theme.load().then(() => HeroCamera.goSecure()); // opened over http by network address: switch to the https address, or offer to
 HeroPhoto.onLoad = redraw;  // a face arrived
 
 // The Dungeon fight is drawn in 3D (js/battle3d), unless the URL says ?view=2d or this PC can't do
@@ -134,10 +135,10 @@ function intro(match, you) {
 
 // ---------------------------------------------------------------- Playing
 
-/** The Dungeon fight, with the other players' big moments (and faces) popping up over it. */
+/** The Dungeon fight. The other players' moments that matter to you are noted here, and shown in the monster's room (DungeonFeed). */
 function dungeonStation(match, you, color) {
     DungeonFeed.note(match, you);
-    return DungeonView.station(match, you, connection.serverNow(), color) + DungeonFeed.html();
+    return DungeonView.station(match, you, connection.serverNow(), color);
 }
 
 function playing(match, you) {

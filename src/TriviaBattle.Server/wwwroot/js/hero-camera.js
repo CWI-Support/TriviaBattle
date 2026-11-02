@@ -57,6 +57,41 @@ const HeroCamera = {
         return `<p class="photo-hint">${Theme.text('dungeon.photoNoHttps')}</p>`;
     },
 
+    /** The server's https address for this same screen, once known (an http station page can switch to it). */
+    secureUrl: null,
+
+    /**
+     * A station page opened over http by the server's network address can't use its camera. If the server
+     * has an https address (GET /api/display: httpsPort), go there straight away when this browser already
+     * trusts it; otherwise keep its address for the offer (secureOffer), since the first visit needs a click
+     * through the certificate warning. Call once when the page starts.
+     */
+    async goSecure() {
+        if (window.isSecureContext) return;
+        try {
+            const { httpsPort } = await (await fetch('/api/display')).json();
+            if (!httpsPort) return;
+            const origin = `https://${location.hostname}:${httpsPort}`;
+            HeroCamera.secureUrl = origin + location.pathname + location.search;
+            await fetch(`${origin}/api/display`, { mode: 'no-cors' }); // fails until this browser trusts the address
+            location.replace(HeroCamera.secureUrl);
+        } catch {
+            if (HeroCamera.secureUrl) HeroCamera.showSecureOffer(); // not trusted yet (or not reachable)
+        }
+    },
+
+    /**
+     * A bar along the bottom of a station page that can't use its camera: a link to the https address, and
+     * what to click there. Kept outside the screen's redrawn HTML, so it never changes the game's layout.
+     */
+    showSecureOffer() {
+        const bar = document.createElement('a');
+        bar.className = 'photo-secure';
+        bar.href = HeroCamera.secureUrl;
+        bar.innerHTML = `<b>${Theme.text('dungeon.photoSecureButton')}</b><small>${Theme.text('dungeon.photoSecureSteps')}</small>`;
+        document.body.appendChild(bar);
+    },
+
     /** Photos asked for first: the offer, for the intro screen. Nothing without a camera, or once it has passed (it fades out then by itself). */
     offer(you, serverNow) {
         if (!HeroCamera.hasCamera || !(you.photoOfferUntilMs > serverNow)) return '';

@@ -132,8 +132,9 @@ A station left choosing for `Game:Arcade:IdleSeconds` (30) goes back to "press a
 started here use `Game:Arcade:Difficulty` (Easy).
 
 In a group game everyone sees everyone's face: their hero photo, or their hero without one. Your
-teammates' faces are on your station; the other players' big moments pop up over your fight with
-their faces ("…slew the Cellar Rat!", "…is down! Answer right to revive them!", "…overtook you!").
+teammates' faces are on your station, and the other players' moments that matter to you show in a
+caption across the top of the monster's room, one at a time, with their face ("…revived you!", "…is
+down! Answer right to revive them!", "…slew the Goblin Quizmaster!", "…overtook you!").
 The main screen's banners, line-up and results show faces too. In a race or a battle, the monsters
 you fight wear your opponents' faces (one rival per monster, in turn). The main screen shows
 the room's lobby under its title. A station's card reader calls `POST /api/stations/{id}/swipe`
@@ -164,9 +165,12 @@ database, and it's forgotten when the match ends.
 - Browsers only let `https` or `localhost` pages use a camera, so the server also listens on
   `https://<server-ip>:5001` (setting `HttpsPort`; `0` turns it off), with a certificate it makes for
   itself on first run (`certs/lan-https.pfx`, never committed; delete it to make a new one, e.g. after the
-  PC's address changes). Open a station PC's screen at `https://<server-ip>:5001/display/player/N`: the
-  first time, the browser warns about the certificate (Advanced, then Proceed), then asks to use the
-  camera (Allow). Both are remembered. The server's log lists the exact addresses when it starts. If
+  PC's address changes). On a station PC, open the server's front page (`http://<server-ip>:5000`) and
+  click its player number: station links go to the https address. The first time, the browser warns
+  about the certificate (Advanced, then Proceed), then asks to use the camera (Allow). Both are
+  remembered. A station page opened over http by address switches to https by itself once the browser
+  trusts it, and until then shows a "Turn on this station's camera" bar. Each screen must be its own
+  station number. The server's log lists the exact addresses when it starts. If
   other PCs can't reach port 5001, allow it in Windows Firewall. Instead of https, a station's Chrome can
   also be started with `--unsafely-treat-insecure-origin-as-secure=http://<server-ip>:5000`. A kiosk window also needs
   camera permission for that address, granted once by hand in that profile or by the Chrome policy

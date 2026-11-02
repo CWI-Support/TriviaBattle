@@ -3,12 +3,13 @@
 //   - the monster's nameplate: its name and red HP bar, with the floor and the time left at its corners
 //   - the question on a parchment scroll hanging under it
 //   - the monster, big, in the middle of its room (in 3D when the station draws it: data-stage="portrait"),
-//     with the Host's line, being stunned or downed, and power-up pops over it
+//     with the Host's line, being stunned or downed, and power-up pops over it; across its top, the other
+//     players' moments that matter to you, with their faces (js/dungeon-feed.js)
 //   - the hourglass down the left of the answers; each answer a rune box (the button's symbol, in its
 //     colour) and a framed answer
 //   - your party, then you
 // Between questions the battle beat takes the screen instead (js/dungeon-battle.js).
-// Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js, dungeon-battle.js and dungeon-powerups.js.
+// Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js, dungeon-battle.js, dungeon-powerups.js and dungeon-feed.js.
 // Styles: css/dungeon-encounter.css.
 
 const DungeonEncounter = {
@@ -53,6 +54,7 @@ const DungeonEncounter = {
                     ${DungeonBattle.room()}
                     ${DungeonView.monster(delve, news, `fx:station:${you.stationId}`)}
                     <div class="dg-feedback ${feedback.tone}">${feedback.html}</div>
+                    ${DungeonFeed.caption()}
                     ${overlay}
                     ${DungeonView.activeEffects(powerUpKey)}
                 </div>

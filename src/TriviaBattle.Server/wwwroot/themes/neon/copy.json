@@ -65,13 +65,9 @@
 
   "feed": {
     "revivedYou": ["{name} revived you!", "{name} dragged you back up!"],
-    "revived": "{name} revived {other}!",
-    "slain": ["{name} slew the {monster}!", "{name} took out the {monster}!"],
-    "bossSlain": ["{name} slew {monster}!", "{name} beat the boss!"],
     "partyCombo": "{name} landed a party combo!",
+    "bossSlain": ["{name} slew {monster}!", "{name} beat the boss!"],
     "teammateDown": ["{name} is down! Answer right to revive them!", "{name} needs you! Right answers revive!"],
-    "rivalDown": ["{name} got knocked out!", "{name} is down!"],
-    "rivalFloor": "{name} reached floor {floor}!",
     "overtook": ["{name} overtook you!", "{name} just passed you!"]
   },
 
@@ -257,7 +253,9 @@
     "photoSkipped": "No photo. Your knight keeps their own face.",
     "photoNoFace": "Couldn't see your face! Your knight keeps their own.",
     "photoFailed": "No camera today. Your knight keeps their own face.",
-    "photoNoHttps": "No hero photo on this screen: it needs https (or localhost) to use a camera."
+    "photoNoHttps": "No hero photo on this screen: it needs https (or localhost) to use a camera.",
+    "photoSecureButton": "Turn on this station's camera",
+    "photoSecureSteps": "Click here. On the next page: Advanced, then Proceed. Then Allow the camera."
   },
 
   "player": {

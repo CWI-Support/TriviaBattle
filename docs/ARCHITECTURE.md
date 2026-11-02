@@ -198,7 +198,9 @@ The rules:
   is used wherever a player shows: party members, the main screen's lanes, banners
   (`DungeonView.noteMoments`), line-up and results, and the station's final places. `js/dungeon-feed.js`
   watches the other players in the snapshot (each one's `Delve.LastDealt`, `LastTaken`, floor, and the
-  standings) and pops their big moments over your fight with their face. In a race or a battle the
+  standings) and shows the moments that matter to you (a revive, a teammate down, a party combo, a boss
+  slain, being overtaken) with their face, one at a time, in a caption across the top of the monster's
+  room (`DungeonFeed.caption`, drawn by `DungeonEncounter.view`), never over your own fight. In a race or a battle the
   monster wears a rival's face (`Battle.maskFoe`, `Actor.wearMask`: their "face" picture as a sprite on
   the monster's `Head` bone).
 - Heroes in 3D: `HEROES` in `js/battle3d/models.js` (KayKit adventurers on one rig: their gear, the

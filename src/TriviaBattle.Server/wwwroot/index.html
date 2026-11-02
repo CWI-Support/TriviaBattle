@@ -33,11 +33,15 @@
 
     <script src="/js/ui.js"></script>
     <script>
-        fetch('/api/rooms').then(r => r.json()).then(({ devToolsEnabled, rooms }) => {
-            document.getElementById('rooms').innerHTML = rooms.map(room => {
+        // Station screens need https for their camera (hero photos), except on this PC (localhost). Opened
+        // from another PC over http, the station links go to the server's https address instead.
+        Promise.all([fetch('/api/rooms').then(r => r.json()), fetch('/api/display').then(r => r.json())]).then(([{ devToolsEnabled, rooms }, { httpsPort }]) => {
+            const secure = !window.isSecureContext && httpsPort ? `https://${location.hostname}:${httpsPort}` : '';
+            document.getElementById('rooms').innerHTML = (secure ? `<p class="dim">Station links open the secure address, so their cameras work. The first time,
+                the browser warns about it: click Advanced, then Proceed. Then Allow the camera.</p>` : '') + rooms.map(room => {
                 const q = rooms.length > 1 ? `?room=${room.id}` : '';
                 const players = room.stations
-                    .map(s => `<a href="/display/player/${s.number}${q}" style="--link-color:${s.color}">${UI.escape(s.label)}</a>`)
+                    .map(s => `<a href="${secure}/display/player/${s.number}${q}" style="--link-color:${s.color}">${UI.escape(s.label)}</a>`)
                     .join('');
                 const dev = devToolsEnabled
                     ? `<p><a href="/dev/buttons${q}">Dev buttons (keyboard)</a>
