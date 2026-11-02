@@ -40,8 +40,8 @@
       "Good luck, {name}. You'll need it.",
       "{name} enters the dungeon!"
     ],
-    "playerTeam": "You fight with the {team}",
-    "playerTeamWith": "You fight with the {team}, beside {teammates}",
+    "playerTeam": "You fight for {team}",
+    "playerTeamWith": "You fight for {team}, beside {teammates}",
     "rules": "{seconds} seconds. Every right answer is an attack!",
     "soloClock": [
       "Slay monsters to buy yourself more time.",

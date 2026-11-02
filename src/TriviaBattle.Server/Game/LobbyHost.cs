@@ -21,6 +21,7 @@ public sealed class LobbyHost(
     StationLayout stations,
     MatchHost host,
     LobbyBroadcaster broadcaster,
+    PhotoStore photos,
     IServiceScopeFactory scopes,
     IOptions<LobbySettings> settings,
     TimeProvider clock,
@@ -36,7 +37,16 @@ public sealed class LobbyHost(
     {
         if (stations.Find(press.StationId)?.RoomId is not { } roomId)
             return;
-        Apply(roomId, lobbies.Use(roomId, lobby => lobby.Press(press.StationId, press.AnswerIndex, clock.GetUtcNow())));
+        var (from, to, result) = lobbies.Use(roomId, lobby =>
+        {
+            var before = lobby.Seat(press.StationId)?.Step;
+            var pressed = lobby.Press(press.StationId, press.AnswerIndex, clock.GetUtcNow());
+            return (before, lobby.Seat(press.StationId)?.Step, pressed);
+        });
+        // Each step a station takes, so the log shows where a player got to (and where they stopped).
+        if (from != to)
+            logger.LogInformation("Lobby {Station}: {From} -> {To}", press.StationId, from, to);
+        Apply(roomId, result);
     }
 
     /// <summary>
@@ -62,6 +72,31 @@ public sealed class LobbyHost(
         await db.SaveChangesAsync();
 
         Apply(roomId, lobbies.Use(roomId, lobby => lobby.Swipe(stationId, player.DisplayName, player.Id, clock.GetUtcNow())));
+    }
+
+    /// <summary>A station sent the hero photo it took in the lobby (<see cref="PhotoStore"/> holds it). False if it wasn't taking one.</summary>
+    public bool PhotoArrived(string stationId)
+    {
+        if (stations.Find(stationId)?.RoomId is not { } roomId)
+            return false;
+        var accepted = lobbies.Use(roomId, lobby => lobby.PhotoArrived(stationId));
+        if (accepted)
+        {
+            logger.LogInformation("Lobby {Station}: hero photo arrived", stationId);
+            broadcaster.LobbyChanged(roomId);
+        }
+        return accepted;
+    }
+
+    /// <summary>A station without a camera skips the lobby's photo step.</summary>
+    public void SkipPhoto(string stationId)
+    {
+        if (stations.Find(stationId)?.RoomId is not { } roomId)
+            return;
+        var result = lobbies.Use(roomId, lobby => lobby.SkipPhoto(stationId));
+        if (result.Changed)
+            logger.LogInformation("Lobby {Station}: no camera, so no hero photo", stationId);
+        Apply(roomId, result);
     }
 
     /// <summary>Called several times a second by <see cref="MatchTicker"/>: forming games start on time, idle stations go back to the attract screen.</summary>
@@ -113,14 +148,31 @@ public sealed class LobbyHost(
 
     private void Apply(string roomId, LobbyResult result)
     {
+        // A game starting takes its players' photos with it (before they're forgotten below).
+        var startingPhotos = result.Starts.SelectMany(start => start.Players)
+            .Where(p => p.Photo)
+            .Select(p => (p.StationId, Picture: photos.TakeLobby(p.StationId)))
+            .Where(p => p.Picture != null)
+            .ToDictionary(p => p.StationId, p => p.Picture!);
+        // A photo nobody has any more (dropped, retaken, or its player left) is forgotten straight away.
+        foreach (var seat in lobbies.Use(roomId, lobby => lobby.Seats.Where(s => !s.HasPhoto).Select(s => s.StationId).ToList()))
+            photos.ForgetLobby(seat);
+
         foreach (var start in result.Starts)
-            _ = StartAsync(start);
+        {
+            logger.LogInformation("Lobby: starting a {Game} ({Category}) for {Players}", start.Game, start.Category?.Name ?? "everything",
+                string.Join(", ", start.Players.Select(p => $"{p.StationId} {p.Name} ({p.Hero}{(start.Game == GameChoice.Battle ? $", side {p.Side + 1}" : "")})")));
+            _ = StartAsync(start, startingPhotos);
+        }
         if (result.Changed)
             broadcaster.LobbyChanged(roomId);
     }
 
-    /// <summary>Starts a game from the lobby. If it can't start, the players are back at "press any button" and the log says why.</summary>
-    private async Task StartAsync(LobbyStart start)
+    /// <summary>
+    /// Starts a game from the lobby, with the hero photos its players brought (moved into the match). If it
+    /// can't start, the players are back at "press any button" and the log says why.
+    /// </summary>
+    private async Task StartAsync(LobbyStart start, IReadOnlyDictionary<string, HeroPicture> lobbyPhotos)
     {
         try
         {
@@ -133,7 +185,14 @@ public sealed class LobbyHost(
 
             var result = await host.StartMatchAsync(start.ToSetup(categoryIds, settings.Value.Difficulty));
             if (!result.Started)
+            {
                 logger.LogWarning("A {Game} game from the lobby didn't start: {Problems}", start.Game, string.Join(" ", result.Problems));
+                return;
+            }
+            // Screens that ask before this lands get a 404 and ask again a moment later (js/hero-photo.js).
+            foreach (var player in start.Players)
+                if (lobbyPhotos.TryGetValue(player.StationId, out var picture))
+                    photos.Keep(result.MatchId!, player.StationId, picture);
         }
         catch (Exception ex)
         {

@@ -11,8 +11,39 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/photos")]
-public class PhotosController(PhotoStore photos, MatchHost host, ILogger<PhotosController> logger) : ControllerBase
+public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby, ILogger<PhotosController> logger) : ControllerBase
 {
+    /// <summary>
+    /// The photo taken in the lobby, right after choosing a hero: the same two PNGs. Only while that station
+    /// is on the Photo step, with no photo yet. It goes into the player's game when it starts.
+    /// </summary>
+    [HttpPut("lobby/{stationId}")]
+    [RequestSizeLimit(PhotoStore.MaxBytes)]
+    public async Task<IActionResult> PutLobby(string stationId, IFormFile face, IFormFile portrait)
+    {
+        var picture = new HeroPicture(await ReadAsync(face), await ReadAsync(portrait));
+        if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
+            return BadRequest(new { problems = new[] { "A hero photo is two PNGs: the face and the portrait." } });
+
+        photos.KeepLobby(stationId, picture);
+        if (lobby.PhotoArrived(stationId))
+            return NoContent();
+        photos.ForgetLobby(stationId);
+        return Conflict(new { problems = new[] { "That station isn't taking a hero photo." } });
+    }
+
+    /// <summary>A station without a camera skips the lobby's photo step.</summary>
+    [HttpPost("lobby/{stationId}/skip")]
+    public IActionResult SkipLobby(string stationId)
+    {
+        lobby.SkipPhoto(stationId);
+        return NoContent();
+    }
+
+    /// <param name="kind">"face" or "portrait".</param>
+    [HttpGet("lobby/{stationId}/{kind}")]
+    public IActionResult GetLobby(string stationId, string kind) => Picture(photos.FindLobby(stationId), kind);
+
     /// <summary>
     /// The station sends the photo it took: a form with two PNG files, "face" and "portrait". Only accepted
     /// for a player in that match whose photo is coming (not said no to), once.
@@ -46,9 +77,10 @@ public class PhotosController(PhotoStore photos, MatchHost host, ILogger<PhotosC
 
     /// <param name="kind">"face" or "portrait".</param>
     [HttpGet("{matchId}/{stationId}/{kind}")]
-    public IActionResult Get(string matchId, string stationId, string kind)
+    public IActionResult Get(string matchId, string stationId, string kind) => Picture(photos.Find(matchId, stationId), kind);
+
+    private IActionResult Picture(HeroPicture? picture, string kind)
     {
-        var picture = photos.Find(matchId, stationId);
         var png = kind switch
         {
             "face" => picture?.Face,

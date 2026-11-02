@@ -8,9 +8,10 @@ using TriviaBattle.Core.Stations;
 namespace TriviaBattle.Tests.Arcade;
 
 /// <summary>
-/// The arcade lobby: walk up to a station, press any button, pick a hero (A/B flip, ACTION picks), then a
-/// game and its category (A/B flip, ACTION picks; the first is everything mixed): solo at once, or a party
-/// or race the other stations can join. Joins for 20 s, late joiners get 6 s.
+/// The arcade lobby: walk up to a station, press any button, pick a hero (A/B flip, ACTION picks), have the
+/// hero photo taken (ACTION keeps it, B retakes, D goes without), then a game and its category (A/B flip,
+/// ACTION picks; the first is everything mixed): solo at once, or a party, race or team battle the other
+/// stations can join. Joins for 20 s, late joiners get 6 s. Most tests switch the photo step off.
 /// </summary>
 public class LobbyTests
 {
@@ -25,9 +26,14 @@ public class LobbyTests
     ]);
 
     private DateTimeOffset _now = Start;
-    private readonly Lobby _lobby = new(["A1", "A2", "A3"], new LobbySettings(), new Random(1));
+    private readonly LobbySettings _settings = new() { HeroPhotos = false };
+    private readonly Lobby _lobby;
 
-    public LobbyTests() => _lobby.SetCategories([new LobbyCategory(7, "Movies"), new LobbyCategory(9, "Music")]);
+    public LobbyTests()
+    {
+        _lobby = new Lobby(["A1", "A2", "A3"], _settings, new Random(1));
+        _lobby.SetCategories([new LobbyCategory(7, "Movies"), new LobbyCategory(9, "Music")]);
+    }
 
     private LobbyResult Press(string station, params int[] buttons)
     {
@@ -58,7 +64,7 @@ public class LobbyTests
 
         Press("A1", Action);
         Assert.Equal(LobbyStep.Game, Seat("A1").Step);
-        Assert.Equal([GameChoice.Solo, GameChoice.Party, GameChoice.Race], _lobby.ChoicesFor(Seat("A1")));
+        Assert.Equal([GameChoice.Solo, GameChoice.Party, GameChoice.Race, GameChoice.Battle], _lobby.ChoicesFor(Seat("A1")));
     }
 
     [Fact]
@@ -85,7 +91,7 @@ public class LobbyTests
         Assert.NotNull(_lobby.Forming);
 
         Press("A2", A, Action);                          // A2 sees joining first
-        Assert.Equal([GameChoice.Join, GameChoice.Challenge, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
+        Assert.Equal([GameChoice.Join, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
         Press("A2", A);
         Assert.Equal(2, _lobby.Forming!.Members.Count);
 
@@ -122,11 +128,14 @@ public class LobbyTests
     }
 
     [Fact]
-    public void Challenging_a_party_makes_it_a_battle_one_team_a_side()
+    public void A_team_battle_is_joined_on_either_team_and_starts_one_team_a_side()
     {
-        Press("A1", A, Action, B, Action);               // A1 starts a party
-        Press("A2", A, Action, B);                       // A2 challenges it
-        Press("A3", A, Action, A);                       // A3 joins A1's side
+        Press("A1", A, Action, D, Action);               // A1 starts a battle (D)
+        Press("A2", A, Action);
+        Assert.Equal([GameChoice.Join, GameChoice.JoinOtherSide, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
+        Press("A2", B);                                  // A2 takes the other team
+        Press("A3", A, Action, A);                       // A3 joins A1's team
+        var names = (Seat("A1").Name, Seat("A2").Name);
 
         var start = Assert.Single(_lobby.Tick(_lobby.Forming!.StartsAt).Starts);
 
@@ -134,13 +143,37 @@ public class LobbyTests
         var setup = start.ToSetup([1], Difficulty.Easy);
         Assert.Equal(GameModeKind.TeamCombinedScore, setup.Mode);
         Assert.Equal([["A1", "A3"], ["A2"]], setup.Teams.Select(t => t.StationIds));
+        Assert.Equal([$"{names.Item1}'s team", $"{names.Item2}'s team"], setup.Teams.Select(t => t.Name));
         Assert.Empty(MatchSetupValidator.Validate(setup, Layout));
     }
 
     [Fact]
-    public void A_race_can_only_be_joined_not_challenged()
+    public void A_battle_nobody_takes_on_starts_as_a_party()
     {
-        Press("A1", A, Action, C, Action);
+        Press("A1", A, Action, D, Action);
+        Press("A2", A, Action, A);                       // on A1's team: nobody on the other
+
+        var start = Assert.Single(_lobby.Tick(_lobby.Forming!.StartsAt).Starts);
+
+        Assert.Equal(GameChoice.Party, start.Game);
+        Assert.Single(start.ToSetup([1], Difficulty.Easy).Teams);
+    }
+
+    [Fact]
+    public void A_battle_s_host_leaving_makes_the_other_team_the_host_s()
+    {
+        Press("A1", A, Action, D, Action);
+        Press("A2", A, Action, B);                       // the other team
+        Press("A1", D);                                  // the host leaves
+
+        Assert.Equal("A2", _lobby.Forming!.Host.StationId);
+        Assert.Equal(0, Seat("A2").Side);
+    }
+
+    [Fact]
+    public void Only_a_battle_has_two_teams_to_join()
+    {
+        Press("A1", A, Action, C, Action);               // a race
         Press("A2", A, Action);
 
         Assert.Equal([GameChoice.Join, GameChoice.Solo], _lobby.ChoicesFor(Seat("A2")));
@@ -157,9 +190,9 @@ public class LobbyTests
     }
 
     [Fact]
-    public void D_goes_back_a_step_and_leaving_the_last_one_out_closes_the_party()
+    public void ACTION_on_the_games_goes_back_to_the_heroes_and_leaving_the_last_one_out_closes_the_party()
     {
-        Press("A1", A, Action, D);
+        Press("A1", A, Action, Action);
         Assert.Equal(LobbyStep.Hero, Seat("A1").Step);
 
         Press("A1", Action, B, Action, D);               // in a party, then out again
@@ -238,5 +271,57 @@ public class LobbyTests
         var start = Assert.Single(_lobby.Tick(_lobby.Forming!.StartsAt).Starts);
         Assert.Equal(GameChoice.Party, start.Game);
         Assert.Equal("Movies", start.Category!.Name);
+    }
+
+    // ------------------------------------------------------------ The hero photo, after the hero
+
+    [Fact]
+    public void After_the_hero_comes_the_photo_B_takes_another_and_ACTION_keeps_it()
+    {
+        _settings.HeroPhotos = true;
+        Press("A1", A, Action);
+        Assert.Equal(LobbyStep.Photo, Seat("A1").Step);
+        Assert.Equal(_now + TimeSpan.FromSeconds(4), Seat("A1").PhotoTakeAt);
+
+        Press("A1", Action);                             // nothing to keep yet
+        Assert.Equal(LobbyStep.Photo, Seat("A1").Step);
+
+        Assert.True(_lobby.PhotoArrived("A1"));
+        Assert.False(_lobby.PhotoArrived("A1"));         // one per take
+        Press("A1", B);                                  // another
+        Assert.False(Seat("A1").HasPhoto);
+        Assert.Equal(_now + TimeSpan.FromSeconds(4), Seat("A1").PhotoTakeAt);
+        Assert.True(_lobby.PhotoArrived("A1"));
+        Assert.Equal(2, Seat("A1").PhotoVersion);        // screens fetch the new one
+
+        Press("A1", Action);
+        Assert.Equal(LobbyStep.Game, Seat("A1").Step);
+        var start = Assert.Single(Press("A1", A, Action).Starts);
+        Assert.True(start.Players[0].Photo);
+        Assert.True(start.ToSetup([1], Difficulty.Easy).Seats[0].Photo);
+    }
+
+    [Fact]
+    public void D_on_the_photo_goes_on_without_one_and_the_game_knows_they_said_no()
+    {
+        _settings.HeroPhotos = true;
+        Press("A1", A, Action, D);
+
+        Assert.Equal(LobbyStep.Game, Seat("A1").Step);
+        Assert.False(_lobby.PhotoArrived("A1"));         // too late: not taking one any more
+        var start = Assert.Single(Press("A1", A, Action).Starts);
+        Assert.False(start.ToSetup([1], Difficulty.Easy).Seats[0].Photo);
+    }
+
+    [Fact]
+    public void A_station_without_a_camera_skips_the_photo()
+    {
+        _settings.HeroPhotos = true;
+        Press("A1", A, Action);
+
+        Assert.True(_lobby.SkipPhoto("A1").Changed);
+
+        Assert.Equal(LobbyStep.Game, Seat("A1").Step);
+        Assert.False(Seat("A1").HasPhoto);
     }
 }

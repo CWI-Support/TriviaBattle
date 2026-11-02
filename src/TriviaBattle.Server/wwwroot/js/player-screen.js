@@ -79,7 +79,9 @@ function render(state) {
         }
     }
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
-    if (match && you) HeroCamera.follow(match, you, () => connection.serverNow(), state.station.color); // they said yes to a hero photo
+    if (match && you) HeroCamera.follow(match, you, () => connection.serverNow(), state.station.color); // a kiosk game's intro photo
+    const seat = match ? null : state.lobby.seats.find(s => s.stationId === state.station.id);
+    HeroCamera.followLobby(seat, () => connection.serverNow(), state.station.color); // the lobby's photo step
     if (fighting) window.Battle3D?.show({ match, you, color: state.station.color }); // once the 3D has loaded
 
     // A battle beat is playing: the next question appears when it ends, so redraw then.

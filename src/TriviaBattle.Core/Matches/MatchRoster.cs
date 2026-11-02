@@ -27,7 +27,7 @@ public sealed class Tally
 }
 
 /// <summary>A player in a running match.</summary>
-public sealed class Player(string stationId, string name, int? playerProfileId, string? teamId, string hero)
+public sealed class Player(string stationId, string name, int? playerProfileId, string? teamId, string hero, bool? lobbyPhoto = null)
 {
     public string StationId { get; } = stationId;
     public string Name { get; } = name;
@@ -45,13 +45,16 @@ public sealed class Player(string stationId, string name, int? playerProfileId, 
     public DateTimeOffset? PhotoAt { get; private set; }
 
     /// <summary>Goes up when their hero photo arrives (0 = none). Screens fetch the picture from the server by this number.</summary>
-    public int Photo { get; private set; }
+    public int Photo { get; private set; } = lobbyPhoto == true ? 1 : 0;
 
     /// <summary>Their station's camera is on for the photo, so its countdown is heard. A station without a camera stays quiet.</summary>
     public bool PhotoCameraOn { get; private set; }
 
-    /// <summary>They pressed the action button to say no: no photo this match, and any taken is gone.</summary>
-    public bool PhotoDeclined { get; private set; }
+    /// <summary>They said no to a hero photo (the action button in the intro, or none in the lobby): none this match, and any taken is gone.</summary>
+    public bool PhotoDeclined { get; private set; } = lobbyPhoto == false;
+
+    /// <summary>Their photo was settled in the lobby (brought one, or chose none): the intro takes none.</summary>
+    public bool PhotoFromLobby { get; } = lobbyPhoto != null;
 
     public void SchedulePhoto(DateTimeOffset takeAt, bool cameraOn)
     {
@@ -94,7 +97,8 @@ public sealed class MatchRoster
                 s.PlayerName.Trim(),
                 s.PlayerProfileId,
                 Teams.FirstOrDefault(t => t.StationIds.Contains(s.StationId))?.Id,
-                s.Hero ?? Arcade.Heroes.Default))
+                s.Hero ?? Arcade.Heroes.Default,
+                s.Photo))
             .ToList();
     }
 

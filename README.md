@@ -116,17 +116,21 @@ uses the five buttons:
    with a made-up name.
 2. **Choose your hero**: Knight, Barbarian, Mage, Rogue or Ranger. A and B flip through them, ACTION
    picks one. For now it's just a look; it's the hero you see fight.
-3. **Choose your game**, laid out like a question: A *Solo quest* (on the arcade clock), B *Start a
-   party* (co-op: one shared dungeon), C *Start a race* (everyone on their own delve), D back.
-4. **Pick your questions**: *Everything!* or one category (only ones with active questions). A and B
-   flip, ACTION picks, D goes back. A solo game starts now; a party or race starts forming.
-5. **Joining**: while one is forming, the other stations show "…is forming! Press any button to join".
-   Their choices: for a party, A *Join* (the host's side), B *Challenge* (the other side) or C *Solo*;
-   for a race, A *Join* or B *Solo*. Joiners play the host's category. Only one forms at a time.
-6. **Waiting**: everyone in it presses ACTION when ready (D leaves). It starts when all are ready, or
+3. **Your hero photo** (see "Hero photos" below): the camera comes on, counts 3, 2, 1 and shows your
+   hero wearing your face. ACTION keeps it, B takes another, D goes on without one. A station without
+   a camera skips this step by itself.
+4. **Choose your game**, laid out like a question: A *Solo quest* (on the arcade clock), B *Start a
+   party* (co-op: one shared dungeon), C *Start a race* (everyone on their own delve), D *Team battle*
+   (two teams, everyone picks a side). ACTION goes back to the heroes.
+5. **Pick your questions**: *Everything!* or one category (only ones with active questions). A and B
+   flip, ACTION picks, D goes back. A solo game starts now; any other starts forming.
+6. **Joining**: while one is forming, the other stations show "…is forming! Press any button to join".
+   Their choices: for a party or race, A *Join* or B *Solo*; for a team battle, A *Join {host}'s team*,
+   B *Join the other team* or C *Solo*. Joiners play the host's category. Only one forms at a time.
+7. **Waiting**: everyone in it presses ACTION when ready (D leaves). It starts when all are ready, or
    when its join timer (`Game:Arcade:JoinSeconds`, 20) runs out. A late joiner gets at least
-   `LateJoinSeconds` (6). Alone, it starts as a solo game. A party someone challenged is a **battle**:
-   team against team (1v1, 2v2, 3v1...), each team sharing a delve.
+   `LateJoinSeconds` (6). Alone, it starts as a solo game. A team battle is team against team (1v1,
+   2v2, 3v1...), each team sharing a delve; with nobody on the other team it starts as a party.
 
 A station left choosing for `Game:Arcade:IdleSeconds` (30) goes back to "press any button". Games
 started here use `Game:Arcade:Difficulty` (Easy).
@@ -142,23 +146,29 @@ with `{ "cardId": "..." }`.
 
 ### Hero photos (a camera at each station)
 
-When a Dungeon game's intro starts, each station with a camera shows the player's camera picture, with
-an outline to put their face in and "Press ACTION to skip". After a moment there's a 3, 2, 1; the blips
-and the shutter come from their station's speaker. The station then finds the face (MediaPipe's face
-finder, vendored in `lib/mediapipe`, runs in the browser), cuts out just the face and paints it onto
-the 3D knight's own face, under the helmet. It moves with every swing and hit. A portrait of that
-knight shows on their plate, on their lane and in the line-up on the main screen. If no face can be
-found, nothing is kept.
+At the stations the photo comes right after choosing a hero (`Game:Arcade:HeroPhotos`, `true`). The
+station shows the player's camera picture, with an outline to put their face in, and counts 3, 2, 1
+(`Game:Arcade:PhotoSeconds`, 4, from the step starting to the photo). The station then finds the face
+(MediaPipe's face finder, vendored in `lib/mediapipe`, runs in the browser), cuts out just the face and
+paints it onto their hero's own face. It moves with every swing and hit in the 3D fight. A portrait of
+that hero shows on their plate, in the lobby, on their lane and in the line-up on the main screen. If no
+face can be found, nothing is kept, and B tries again. ACTION keeps the photo, B takes another, D goes
+on without one. The photo goes into their game when it starts; that game's intro takes no other.
 
-Pressing ACTION during the intro says no: the camera stops, or a photo already taken comes off again,
-for the rest of the match. The photo is kept only in the server's memory, never on disk or in the
-database, and it's forgotten when the match ends.
+A game started at the kiosk takes its photos in the intro instead: each station with a camera shows the
+camera picture with "Press ACTION to skip"; after a moment there's a 3, 2, 1, with the blips and the
+shutter from their station's speaker. Pressing ACTION during the intro says no: the camera stops, or a
+photo already taken comes off again, for the rest of the match.
 
-- `Game:Dungeon:PhotoByDefault` (`true`) takes everyone's photo unless they skip. Set it to `false` to ask
-  first: the intro then offers "Put your face on your hero? Press ACTION", and only those who press get
-  one. Some venues and regions need that, especially where children play.
-- A station needs a webcam on its screen. Without one nothing is shown, and no countdown is heard (the
-  station tells the server when its camera is on). The server log (and the admin's Live log) says when
+The photo is kept only in the server's memory, never on disk or in the database. It's forgotten when the
+player drops it, takes another or walks away from the lobby, and when their match ends.
+
+- `Game:Dungeon:PhotoByDefault` (`true`) takes everyone's photo in a kiosk game's intro unless they skip.
+  Set it to `false` to ask first: the intro then offers "Put your face on your hero? Press ACTION", and
+  only those who press get one. Some venues and regions need that, especially where children play
+  (at the stations, set `Game:Arcade:HeroPhotos` to `false` there too).
+- A station needs a webcam on its screen. Without one nothing is shown, the lobby's photo step skips
+  itself, and no intro countdown is heard (the station tells the server when its camera is on). The server log (and the admin's Live log) says when
   a station's camera came on and when its photo arrived, or why a photo couldn't be taken: not an
   https/localhost page, no camera, the camera refused or busy, no face found. A station page that isn't
   https or localhost also says so on its intro screen.
@@ -180,8 +190,8 @@ database, and it's forgotten when the match ends.
 - One PC driving several stations, with a webcam each: give each station's page part of its camera's
   name, as in `/display/player/2?camera=c920`. A station that doesn't find its camera takes no photo
   rather than using the wrong one.
-- `Game:Dungeon:HeroPhotos` (`false` turns photos off) and `Game:Dungeon:PhotoCountdownSeconds` (3). By
-  default the photo is taken 4 seconds into the 7-second intro. Asking first, a yes only counts while the
+- `Game:Dungeon:HeroPhotos` (`false` turns photos off in games) and `Game:Dungeon:PhotoCountdownSeconds`
+  (3). By default a kiosk game's photo is taken 4 seconds into the 7-second intro. Asking first, a yes only counts while the
   whole countdown still fits in the intro, about 4 seconds to press. A longer `Game:IntroSeconds` gives more.
 - `/dev/battle3d?photo=/some/picture.jpg` previews the knight wearing the face in any picture on the
   server, without a camera.

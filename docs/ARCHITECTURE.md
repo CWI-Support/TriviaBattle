@@ -149,20 +149,33 @@ The rules:
   to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
 - **The arcade lobby** (`Core/Arcade`). Games start at the stations: `Lobby` (one per room) is every
-  station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Game, Category, Waiting, and the one
-  `LobbyGroup` (a party or race, with its `LobbyCategory`) that may be forming. A party can be joined
-  (`GameChoice.Join`, side 0) or challenged (`Challenge`, side 1): with players on both sides it starts
-  as a `Battle`. Like `MatchEngine` it's pure: time is passed in, presses and card swipes go in, and it
-  hands back `LobbyStart`s. `LobbyStart.ToSetup` makes the `MatchSetup`: solo and race are free-for-all,
-  a party is one team in 2v2 Combined (a single team is allowed: a co-op party), and a battle is one
-  team a side. The categories on offer (`Lobby.SetCategories`) are refreshed by `LobbyHost` every minute. `Heroes` lists the five heroes (`SeatSetup.Hero`, then `Player.Hero` and
+  station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Photo, Game, Category, Waiting, and
+  the one `LobbyGroup` (a party, race or team battle, with its `LobbyCategory`) that may be forming. A
+  battle is joined on the host's team (`GameChoice.Join`, side 0) or the other (`JoinOtherSide`, side 1);
+  with nobody on the other side it starts as a party, and if the host's team empties the other becomes
+  it (`LobbyGroup.Host` is the first on side 0). Like `MatchEngine` it's pure: time is passed in, presses
+  and card swipes go in, and it hands back `LobbyStart`s. `LobbyStart.ToSetup` makes the `MatchSetup`:
+  solo and race are free-for-all, a party is one team in 2v2 Combined (a single team is allowed: a co-op
+  party), and a battle is one team a side, each named after its first player. The categories on offer (`Lobby.SetCategories`) are refreshed by `LobbyHost` every minute. `Heroes` lists the five heroes (`SeatSetup.Hero`, then `Player.Hero` and
   `PlayerView.Hero`); `HeroNames` makes up names. On the server, `ButtonRouter` sends a press to
   `MatchHost` when its station is playing (`IsPlaying`), and to `LobbyHost` otherwise. `LobbyHost` drives
   the room's `Lobby` (held by `Lobbies`, behind one lock), ticks with `MatchTicker`, looks cards up (a new
   card is registered with a made-up name) and starts games with `MatchHost.StartMatchAsync` (every active
   category). `LobbyBroadcaster` pushes the change. Every `ScreenState` carries the room's `LobbyView`.
   Settings: `Game:Arcade` (`LobbySettings`).
-- **Hero photos** (a player's face on their hero; `DungeonSettings.HeroPhotos`, `PhotoByDefault`,
+- **Hero photos** (a player's face on their hero). At the stations the photo is the lobby's Photo step,
+  right after the hero (`LobbySettings.HeroPhotos`, `PhotoSeconds`): the seat's `PhotoTakeAt` goes out as
+  `LobbySeatView.PhotoTakeAtMs`, the station takes it (`HeroCamera.followLobby`) and sends it to
+  `PUT /api/photos/lobby/{stationId}`, which `PhotoStore` keeps by station (`KeepLobby`) while
+  `Lobby.PhotoArrived` counts it (`LobbySeat.HasPhoto`, `PhotoVersion`; screens fetch
+  `GET /api/photos/lobby/{stationId}/portrait`). ACTION keeps it, B retakes, D drops it; a station without
+  a camera posts `.../skip`. `LobbyHost` forgets a lobby photo as soon as its seat has none, and when a
+  game starts moves its players' photos into the match (`TakeLobby`, then `Keep` under the new match id;
+  screens that ask in between get a 404 and ask again, `HeroPhoto.fetchInto`). `SeatSetup.Photo` tells the
+  engine what the lobby settled (`Player.PhotoFromLobby`: brought one, `Photo` 1, or chose none,
+  `PhotoDeclined`): it schedules no intro photo for them, and their intro ACTION does nothing.
+
+  A kiosk game takes them in the intro (`DungeonSettings.HeroPhotos`, `PhotoByDefault`,
   `PhotoCountdownSeconds`). By default the engine schedules everyone's photo when the intro starts
   (`Player.PhotoAt`: `PhotoLead` plus the countdown). The action button in the intro says no
   (`PhotoButton`: `Player.DeclinePhoto`, `PhotoDeclined`): the photo is off for the match, and one already

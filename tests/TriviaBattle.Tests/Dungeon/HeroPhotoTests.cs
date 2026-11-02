@@ -142,6 +142,35 @@ public class HeroPhotoTests
     }
 
     [Fact]
+    public void A_photo_settled_in_the_lobby_stays_settled_in_the_intro()
+    {
+        var settings = new MatchSettings { Format = GameFormat.Dungeon };
+        var match = new TestMatch(GameModeKind.FreeForAll, settings, stations: ["A1", "A2", "A3"],
+            lobbyPhotos: new Dictionary<string, bool> { ["A1"] = true, ["A2"] = false });
+
+        Assert.Equal((1, (DateTimeOffset?)null), (PlayerAt(match, "A1").Photo, PlayerAt(match, "A1").PhotoAt)); // brought one
+        Assert.True(PlayerAt(match, "A2").PhotoDeclined);                                                      // chose none
+        Assert.NotNull(PlayerAt(match, "A3").PhotoAt);                                                         // a kiosk player's is still coming
+
+        Assert.Empty(PressAction(match, "A1"));        // a "ready" pressed twice doesn't take it off
+        Assert.Equal(1, PlayerAt(match, "A1").Photo);
+        Assert.Empty(match.Engine.PhotoTaken("A2"));   // and none is taken for someone who said no
+    }
+
+    [Fact]
+    public void The_lobby_keeps_a_photo_by_station_until_its_game_takes_it()
+    {
+        var store = new PhotoStore();
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0];
+        store.KeepLobby("A1", new HeroPicture(png, png));
+
+        Assert.NotNull(store.FindLobby("A1"));
+        Assert.NotNull(store.TakeLobby("A1"));
+        Assert.Null(store.FindLobby("A1"));            // moved into the match: the lobby has it no more
+        Assert.Null(store.TakeLobby("A1"));
+    }
+
+    [Fact]
     public void The_store_forgets_a_photo_when_its_player_says_no_and_all_of_a_match_s_when_it_ends()
     {
         var match = Match();

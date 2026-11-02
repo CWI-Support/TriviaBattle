@@ -20,7 +20,11 @@ public sealed record MatchSetup(
 /// <summary>A player sitting at a station.</summary>
 /// <param name="PlayerProfileId">Database id of the RFID-registered player, or null for a guest.</param>
 /// <param name="Hero">The hero they picked (<see cref="Arcade.Heroes"/>), or null for the default.</param>
-public sealed record SeatSetup(string StationId, string PlayerName, int? PlayerProfileId = null, string? Hero = null);
+/// <param name="Photo">
+/// Their hero photo was settled in the lobby: true, they bring one (the server moves it into the match);
+/// false, they chose none. Either way the intro takes no photo. Null (the kiosk): the intro may take one.
+/// </param>
+public sealed record SeatSetup(string StationId, string PlayerName, int? PlayerProfileId = null, string? Hero = null, bool? Photo = null);
 
 /// <summary>A team and the stations on it, never hardcoded. One team on its own is a co-op party (everyone against the dungeon).</summary>
 public sealed record TeamSetup(string TeamId, string Name, IReadOnlyList<string> StationIds);

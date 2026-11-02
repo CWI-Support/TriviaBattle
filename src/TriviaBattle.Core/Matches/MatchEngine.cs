@@ -88,9 +88,10 @@ public sealed class MatchEngine
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
         _lastTickAt = now;
 
-        // Hero photos on by default: everyone's station takes one after a moment and the countdown, unless they say no.
+        // Hero photos on by default: everyone's station takes one after a moment and the countdown, unless they
+        // say no. Not for players whose photo was settled in the lobby (they brought one, or chose none).
         if (OffersPhotos && settings.Dungeon.PhotoByDefault)
-            foreach (var player in Roster.Players)
+            foreach (var player in Roster.Players.Where(p => !p.PhotoFromLobby))
                 player.SchedulePhoto(now + PhotoLead + TimeSpan.FromSeconds(settings.Dungeon.PhotoCountdownSeconds), cameraOn: false);
     }
 
@@ -332,10 +333,11 @@ public sealed class MatchEngine
     /// </summary>
     private IReadOnlyList<MatchEvent> PhotoButton(Player player, DateTimeOffset now)
     {
-        if (!OffersPhotos || player.PhotoDeclined)
+        // Settled in the lobby: a "ready" pressed twice must not take off the photo they just kept.
+        if (!OffersPhotos || player.PhotoDeclined || player.PhotoFromLobby)
             return NothingHappened;
 
-        if (player.PhotoAt != null)
+        if (player.PhotoAt != null || player.Photo > 0)
         {
             player.DeclinePhoto();
             Version++;

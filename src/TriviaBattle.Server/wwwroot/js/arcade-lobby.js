@@ -1,12 +1,13 @@
 // The arcade lobby on the screens (Core/Arcade/Lobby.cs has the rules; the server sends state.lobby).
 // A station not in a game shows where its player is:
-//   Idle     "press any button to play" (and a call to join if a party or race is forming)
+//   Idle     "press any button to play" (and a call to join if a game is forming)
 //   Hero     the heroes, one at a time: A and B flip through them, ACTION chooses
-//   Game     the games on offer, laid out like a question (A, B, C), D to go back
+//   Photo    the hero photo: the camera window (js/hero-camera.js) covers the screen
+//   Game     the games on offer, laid out like a question (A, B, C, D), ACTION back to the heroes
 //   Category the questions for a new game: everything mixed, or one category (A and B, ACTION, D back)
-//   Waiting  the party or race forming: who's in (a challenged party: the two sides, VS), who's ready, when it starts
+//   Waiting  the game forming: who's in (a team battle: the two teams, VS), who's ready, when it starts
 // The main screen shows the whole room's lobby under its title (ArcadeLobby.room).
-// Hero pictures are in media/heroes (drawn by /dev/heroes). Needs ui.js and theme.js. Styles: css/arcade-lobby.css.
+// Hero pictures are in media/heroes (drawn by /dev/heroes). Needs ui.js, theme.js and hero-photo.js. Styles: css/arcade-lobby.css.
 
 const ArcadeLobby = {
     /** The station screen's lobby, for this station (state.station). */
@@ -16,6 +17,7 @@ const ArcadeLobby = {
         const seed = `${state.station.id}:${seat?.name}`;
         switch (seat?.step) {
             case 'Hero': return ArcadeLobby.heroStep(lobby, seat, seed);
+            case 'Photo': return ArcadeLobby.photoStep(seat);
             case 'Game': return ArcadeLobby.gameStep(lobby, seat);
             case 'Category': return ArcadeLobby.categoryStep(lobby, seat);
             case 'Waiting': return ArcadeLobby.waitingStep(lobby, seat);
@@ -56,6 +58,15 @@ const ArcadeLobby = {
             </div>`;
     },
 
+    /** Under the camera window (it covers this): the hero, and what's happening. */
+    photoStep(seat) {
+        return `
+            <div class="lb lb-hero">
+                <h1 class="lb-title">${Theme.text('arcade.photoTitle')}</h1>
+                <img class="lb-card" src="${ArcadeLobby.picture(seat.hero)}" alt="">
+            </div>`;
+    },
+
     gameStep(lobby, seat) {
         const option = (letter, title, line) => `
             <div class="answer lb-option" data-letter="${letter}">
@@ -63,42 +74,44 @@ const ArcadeLobby = {
                 <span><b>${title}</b><small>${line}</small></span>
             </div>`;
         const forming = lobby.forming;
+        const onSide = side => forming.members.filter(m => m.side === side).length;
         const choices = seat.choices.map((choice, i) => {
             const letter = UI.ANSWER_LETTERS[i];
             switch (choice) {
                 case 'Solo': return option(letter, Theme.text('arcade.solo'), Theme.text('arcade.soloLine'));
                 case 'Party': return option(letter, Theme.text('arcade.party'), Theme.text('arcade.partyLine'));
                 case 'Race': return option(letter, Theme.text('arcade.race'), Theme.text('arcade.raceLine'));
-                case 'Join': return option(letter,
-                    forming.kind === 'Race' ? Theme.text('arcade.joinRace', { name: forming.hostName }) : Theme.text('arcade.joinParty', { name: forming.hostName }),
-                    Theme.text('arcade.joinLine', { category: Theme.raw(ArcadeLobby.categoryName(forming.category)), count: forming.members.length }));
-                case 'Challenge': return option(letter, Theme.text('arcade.challenge', { name: forming.hostName }), Theme.text('arcade.challengeLine'));
+                case 'Battle': return option(letter, Theme.text('arcade.battle'), Theme.text('arcade.battleLine'));
+                case 'Join': return option(letter, ArcadeLobby.joinTitle(forming),
+                    Theme.text('arcade.joinLine', { category: Theme.raw(ArcadeLobby.categoryName(forming.category)), count: forming.kind === 'Battle' ? onSide(0) : forming.members.length }));
+                case 'JoinOtherSide': return option(letter, Theme.text('arcade.joinOtherTeam'), Theme.text('arcade.joinOtherLine', { count: onSide(1) }));
                 default: return '';
             }
         }).join('');
         return `
             <div class="lb lb-game">
                 <div class="lb-me">
-                    <img src="${ArcadeLobby.picture(seat.hero, 'head')}" alt="">
+                    <img src="${ArcadeLobby.face(seat.stationId, seat.photo, seat.hero)}" alt="">
                     <span>${ArcadeLobby.heroName(seat.hero)}</span>
                 </div>
                 <h1 class="lb-title">${Theme.text('arcade.chooseGame', { name: seat.name })}</h1>
-                <div class="answer-grid lb-options">
-                    ${choices}
-                    ${option('D', Theme.text('arcade.back'), Theme.text('arcade.backLine'))}
-                </div>
+                <div class="answer-grid lb-options">${choices}</div>
+                <div class="lb-keys">${Theme.text('arcade.changeHero')}</div>
             </div>`;
     },
 
     categoryStep(lobby, seat) {
         const names = [null, ...lobby.categories];
-        const game = seat.forGame === 'Race' ? Theme.text('arcade.race') : seat.forGame === 'Party' ? Theme.text('arcade.party') : Theme.text('arcade.solo');
+        const game = seat.forGame === 'Race' ? Theme.text('arcade.race')
+            : seat.forGame === 'Party' ? Theme.text('arcade.party')
+            : seat.forGame === 'Battle' ? Theme.text('arcade.battle')
+            : Theme.text('arcade.solo');
         const list = names.map((name, i) => `
             <div class="lb-category ${i === seat.categoryIndex ? 'is-on' : ''}">${ArcadeLobby.categoryName(name)}</div>`).join('');
         return `
             <div class="lb lb-categories">
                 <div class="lb-me">
-                    <img src="${ArcadeLobby.picture(seat.hero, 'head')}" alt="">
+                    <img src="${ArcadeLobby.face(seat.stationId, seat.photo, seat.hero)}" alt="">
                     <span>${game}</span>
                 </div>
                 <h1 class="lb-title">${Theme.text('arcade.chooseCategory')}</h1>
@@ -115,17 +128,19 @@ const ArcadeLobby = {
     waitingStep(lobby, seat) {
         const group = lobby.forming;
         if (!group) return ArcadeLobby.idleStep(lobby); // it started (or closed) a moment ago
+        const battle = group.kind === 'Battle';
         const title = group.kind === 'Race' ? Theme.text('arcade.raceTitle', { name: group.hostName })
-            : group.isBattle ? Theme.text('arcade.battleTitle')
+            : battle ? Theme.text('arcade.battleTitle')
             : Theme.text('arcade.partyTitle', { name: group.hostName });
         const member = m => `
             <div class="lb-member ${m.ready ? 'is-ready' : ''} ${m.stationId === seat.stationId ? 'is-me' : ''}">
-                <img src="${ArcadeLobby.picture(m.hero, 'head')}" alt="">
+                <img src="${ArcadeLobby.face(m.stationId, m.photo, m.hero)}" alt="">
                 <b>${UI.escape(m.name)}</b>
                 <small>${Theme.text(m.ready ? 'arcade.ready' : 'arcade.notReady')}</small>
             </div>`;
-        const side = n => group.members.filter(m => m.side === n).map(member).join('');
-        const members = group.isBattle
+        const side = n => group.members.filter(m => m.side === n).map(member).join('')
+            || `<div class="lb-member is-empty"><small>${Theme.text('arcade.waitingForRivals')}</small></div>`;
+        const members = battle
             ? `<div class="lb-side">${side(0)}</div><div class="lb-vs">${Theme.text('arcade.vs')}</div><div class="lb-side">${side(1)}</div>`
             : group.members.map(member).join('');
         return `
@@ -133,7 +148,7 @@ const ArcadeLobby = {
                 <h1 class="lb-title">${title}</h1>
                 <div class="lb-subject">${ArcadeLobby.categoryName(group.category)}</div>
                 <div class="lb-starts"><small>${Theme.text('arcade.startsIn')}</small><b data-ends-at="${group.startsAtMs}"></b></div>
-                <div class="lb-members ${group.isBattle ? 'is-battle' : ''}">${members}</div>
+                <div class="lb-members ${battle ? 'is-battle' : ''}">${members}</div>
                 <div class="lb-press">${Theme.text(seat.ready ? 'arcade.waitingForOthers' : 'arcade.pressReady')}</div>
                 <div class="lb-keys">${Theme.text('arcade.leave')}</div>
             </div>`;
@@ -150,7 +165,7 @@ const ArcadeLobby = {
                 : Theme.text('arcade.roomChoosing', { name: seat.name });
             return `
                 <div class="lb-room-seat ${busy ? 'is-busy' : ''}">
-                    ${busy ? `<img src="${ArcadeLobby.picture(seat.hero, 'head')}" alt="">` : ''}
+                    ${busy ? `<img src="${ArcadeLobby.face(seat.stationId, seat.photo, seat.hero)}" alt="">` : ''}
                     <small>${label(seat.stationId)}</small>
                     <span>${status}</span>
                 </div>`;
@@ -160,9 +175,25 @@ const ArcadeLobby = {
     },
 
     joinCall(group) {
-        return group.kind === 'Race'
-            ? Theme.text('arcade.joinCallRace', { name: group.hostName })
-            : Theme.text('arcade.joinCallParty', { name: group.hostName });
+        switch (group.kind) {
+            case 'Race': return Theme.text('arcade.joinCallRace', { name: group.hostName });
+            case 'Battle': return Theme.text('arcade.joinCallBattle', { name: group.hostName });
+            default: return Theme.text('arcade.joinCallParty', { name: group.hostName });
+        }
+    },
+
+    /** Joining the game that's forming (in a battle: the host's team). */
+    joinTitle(group) {
+        switch (group.kind) {
+            case 'Race': return Theme.text('arcade.joinRace', { name: group.hostName });
+            case 'Battle': return Theme.text('arcade.joinTeam', { name: group.hostName });
+            default: return Theme.text('arcade.joinParty', { name: group.hostName });
+        }
+    },
+
+    /** A player's face in the lobby: their hero photo once they have one, otherwise their hero. */
+    face(stationId, photo, hero) {
+        return HeroPhoto.lobby(stationId, photo) || ArcadeLobby.picture(hero, 'head');
     },
 
     /** A hero's picture: 'body' (the hero card) or 'head'. Hero keys come from the server's list. */

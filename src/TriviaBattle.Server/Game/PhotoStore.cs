@@ -11,10 +11,11 @@ namespace TriviaBattle.Server.Game;
 public sealed record HeroPicture(byte[] Face, byte[] Portrait);
 
 /// <summary>
-/// Hero photos: a player's face on their hero, taken by their station's camera in the intro
-/// (see <see cref="MatchEngine.PhotoTaken"/>). Kept in memory only, never written to disk or the
-/// database, and forgotten as soon as the match ends (or the player says no): a face never outlives the
-/// game it was taken for. It's a broadcaster only to hear about those.
+/// Hero photos: a player's face on their hero, taken by their station's camera, in the lobby after choosing
+/// a hero (kept by station until their game starts, then moved into it) or in a kiosk game's intro (see
+/// <see cref="MatchEngine.PhotoTaken"/>). Kept in memory only, never written to disk or the database, and
+/// forgotten as soon as the player drops it or leaves, or their match ends: a face never outlives the game
+/// it was taken for. It's a broadcaster only to hear about matches.
 /// </summary>
 public sealed class PhotoStore : IMatchBroadcaster
 {
@@ -22,12 +23,23 @@ public sealed class PhotoStore : IMatchBroadcaster
     public const int MaxBytes = 512 * 1024;
 
     private readonly ConcurrentDictionary<(string MatchId, string StationId), HeroPicture> _photos = new();
+    private readonly ConcurrentDictionary<string, HeroPicture> _lobby = new();
 
     public void Keep(string matchId, string stationId, HeroPicture picture) => _photos[(matchId, stationId)] = picture;
 
     public HeroPicture? Find(string matchId, string stationId) => _photos.GetValueOrDefault((matchId, stationId));
 
     public void Forget(string matchId, string stationId) => _photos.TryRemove((matchId, stationId), out _);
+
+    /// <summary>A photo taken in the lobby, by station: whoever is choosing there now.</summary>
+    public void KeepLobby(string stationId, HeroPicture picture) => _lobby[stationId] = picture;
+
+    public HeroPicture? FindLobby(string stationId) => _lobby.GetValueOrDefault(stationId);
+
+    public void ForgetLobby(string stationId) => _lobby.TryRemove(stationId, out _);
+
+    /// <summary>Takes a lobby photo out (its game is starting: it moves into the match).</summary>
+    public HeroPicture? TakeLobby(string stationId) => _lobby.TryRemove(stationId, out var picture) ? picture : null;
 
     public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {

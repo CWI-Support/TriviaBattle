@@ -312,19 +312,20 @@ conversion moment.
 
 **The arcade lobby (built, Nov 2026):** you start at the station, not the kiosk. Press any button (or
 swipe your card: a new card gets a made-up hero name and keeps it), pick one of five heroes (Knight,
-Barbarian, Mage, Rogue, Ranger: a look for now, classes later), then a game laid out like a question:
-Solo quest, Start a party (co-op), Start a race, or Join the one forming, then a category (or
-everything). A party can also be challenged: then it's a team battle. A party or race waits 20
-seconds for joiners (or until everyone presses ACTION for ready). The main screen shows who's where.
+Barbarian, Mage, Rogue, Ranger: a look for now, classes later), have your face put on it, then a game
+laid out like a question: Solo quest, Start a party (co-op), Start a race, Team battle (pick a side), or
+Join the one forming, then a category (or everything). A party, race or battle waits 20 seconds for
+joiners (or until everyone presses ACTION for ready). The main screen shows who's where.
 In group games everyone's face is on everyone's screen: teammates, a feed of the others' big moments,
 the banners and results. In a race or battle the monsters wear your opponents' faces.
 Next: real profiles behind a QR code ("continue your journey"), and classes with their own powers.
 
-**Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. When the intro
-starts the camera comes up ("Press ACTION to skip"), a 3, 2, 1 follows, and a face finder cuts out just your face
-and paints it onto the 3D knight's face, inside the helmet, where it moves with every swing. A portrait of
-your knight shows on the plate, the main screen's lane and the line-up. It's on by default with ACTION to skip
-(an Operator could switch to asking first, `PhotoByDefault`). The photo stays in the server's memory and is
+**Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. Right after you
+pick your hero the camera comes up, a 3, 2, 1 follows, and a face finder cuts out just your face and paints
+it onto your hero's face, where it moves with every swing. You see it at once: keep it, take another, or go
+without. A portrait of your hero shows in the lobby, on the plate, the main screen's lane and the line-up.
+A game started at the kiosk takes it in the intro instead, on by default with ACTION to skip (an Operator
+could switch to asking first, `PhotoByDefault`). The photo stays in the server's memory and is
 gone when the match ends, and nothing is saved yet. The knight now stands
 three quarters on to the camera in fights, so his face shows. Next steps:
 - Keeping your face on your card or profile, a deliberate second yes (the "continue your journey" QR).

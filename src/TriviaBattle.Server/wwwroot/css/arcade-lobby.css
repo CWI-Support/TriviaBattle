@@ -78,6 +78,7 @@
 .lb-side { display: flex; gap: 2.5vmin; justify-content: center; }
 .lb-vs { font-family: var(--font-display); font-size: 10vmin; color: var(--wrong); text-shadow: 0 0 2vmin var(--wrong); line-height: 1; }
 .lb-member.is-ready small { color: var(--correct); }
+.lb-member.is-empty { justify-content: center; min-height: 24vmin; border-style: dashed; background: none; } /* a battle's side nobody has picked yet */
 
 /* ---------- The main screen: the room's stations ---------- */
 .lb-room { display: flex; flex-direction: column; align-items: center; gap: 2vmin; margin-top: 2vmin; }

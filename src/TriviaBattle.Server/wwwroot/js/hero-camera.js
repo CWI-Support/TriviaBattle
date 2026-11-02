@@ -1,33 +1,37 @@
-// Hero photos on the station (Dungeon format): the camera. The server says when a photo is coming
-// (you.photoAtMs). By default that's everyone's, from the start of the intro; a venue can ask first instead
-// ("Put your face on your hero? Press ACTION", you.photoOfferUntilMs). The camera comes on in a window over
-// the screen with an outline to put your face in and "Press ACTION to skip". The server plays a "3, 2, 1" on
-// the station's speaker once the camera is on (it's told: POST .../camera). On the last beat the face is
-// found and cut out (js/face-cutout.js), the knight is drawn wearing it (js/battle3d/portrait.js) and shown
-// as the reveal, and both are sent to the server (PUT /api/photos/{matchId}/{stationId}). The camera goes off
-// straight away. If no face can be found, nothing is sent. Pressing ACTION in the intro says no: the
-// snapshot's photoAtMs goes, and the camera stops (or, if the photo was taken, the knight's own face comes
-// back). The rules are on the server: this only does what the snapshot says.
+// Hero photos on the station (Dungeon format): the camera. Two places take one:
+//   - the lobby, right after choosing a hero (the Photo step: lobby seat's photoTakeAtMs). The camera comes
+//     on with an outline to put your face in, counts "3, 2, 1" and takes it; then you see your hero wearing
+//     your face. ACTION keeps it, B takes another, D goes on without. It's sent to the server
+//     (PUT /api/photos/lobby/{stationId}) and goes into your game when it starts.
+//   - a kiosk game's intro (you.photoAtMs): by default everyone's, unless they press ACTION to skip; a venue
+//     can ask first instead ("Put your face on your hero? Press ACTION", you.photoOfferUntilMs). The server
+//     plays a "3, 2, 1" on the station's speaker once the camera is on (POST .../camera). Sent with
+//     PUT /api/photos/{matchId}/{stationId}.
+// Either way the face is found and cut out (js/face-cutout.js), the hero is drawn wearing it
+// (js/battle3d/portrait.js), and the camera goes off straight away. If no face can be found, nothing is
+// sent. The rules are on the server: this only does what the snapshot says.
 //
-// The station PC needs a camera, and the page must be allowed to use it. Browsers only give cameras to
-// https or localhost pages, so a station on the venue LAN starts Chrome with
-// --unsafely-treat-insecure-origin-as-secure=http://<server>:5000 (README, "Hero photos"). When one PC
+// The station PC needs a camera, and the page must be allowed to use it: browsers only give cameras to
+// https or localhost pages (the server has an https address for this: README, "Hero photos"). When one PC
 // drives several stations, each station's page names its own camera with ?camera=<part of its name>.
-// Without a camera nothing is shown, and nothing is heard. Whenever a photo can't be taken, the station
-// says why in the server's log (and the admin's Live log): not an https/localhost page, no camera,
-// the camera refused or busy, no face found.
+// Without a camera there's no photo step and nothing is heard. Whenever a photo can't be taken, the station
+// says why in the server's log (and the admin's Live log): not an https/localhost page, no camera, the
+// camera refused or busy, no face found.
 // Needs ui.js, theme.js and face-cutout.js on the page. Styles: css/hero-photo.css.
 
 const HeroCamera = {
     WARM_UP_MS: 800,   // a camera's first frames are dark while it sets its exposure
     SEARCH_MS: 2500,   // how long to keep looking for a face after the countdown
-    COUNT_FROM: 3,     // the digits show for the last seconds only (Game:Dungeon:PhotoCountdownSeconds, 3 by default)
+    COUNT_FROM: 3,     // the digits show for the last seconds only
 
+    checked: false,    // the camera check has finished
     hasCamera: false,
     noCamera: null,    // why there's no camera, once checked (for the log, and the hint on an insecure page)
     report: () => {},  // tells the server's log why a photo couldn't be taken
-    taken: null,       // `${matchId}/${stationId}` of the photo taken (or tried), so it's only done once
-    running: null,     // { key, cancelled } while the camera window is up
+    taken: null,       // `${matchId}/${stationId}` of the intro photo taken (or tried), so it's only done once
+    running: null,     // the intro's { key, cancelled } while its camera window is up
+    lobbyRun: null,    // the lobby's { takeAtMs, cancelled } while its camera window is up
+    skippedAt: null,   // the lobby photo step this station (with no camera) already skipped
     stream: null,      // the camera, while it's on
 
     /**
@@ -47,6 +51,7 @@ const HeroCamera = {
                 HeroCamera.noCamera = `the browser won't list cameras (${err.name})`;
             }
         }
+        HeroCamera.checked = true;
         redraw();
         if (HeroCamera.hasCamera) FaceCutout.load().catch(err => HeroCamera.report(`the face finder didn't load: ${err.message || err}`));
     },
@@ -63,8 +68,8 @@ const HeroCamera = {
     /**
      * A station page opened over http by the server's network address can't use its camera. If the server
      * has an https address (GET /api/display: httpsPort), go there straight away when this browser already
-     * trusts it; otherwise keep its address for the offer (secureOffer), since the first visit needs a click
-     * through the certificate warning. Call once when the page starts.
+     * trusts it; otherwise offer it (showSecureOffer), since the first visit needs a click through the
+     * certificate warning. Call once when the page starts.
      */
     async goSecure() {
         if (window.isSecureContext) return;
@@ -92,6 +97,57 @@ const HeroCamera = {
         document.body.appendChild(bar);
     },
 
+    // ------------------------------------------------------------ The lobby: right after choosing a hero
+
+    /**
+     * Call on every redraw, with this station's lobby seat (null in a game). On the Photo step this station
+     * takes its photo (a new one for each retake); leaving the step (kept, skipped, or the player walked
+     * away) closes the camera window. A station without a camera skips the step.
+     */
+    followLobby(seat, clock, color) {
+        const takeAtMs = seat?.step === 'Photo' ? seat.photoTakeAtMs : null;
+        if (HeroCamera.lobbyRun && HeroCamera.lobbyRun.takeAtMs !== takeAtMs) {
+            HeroCamera.lobbyRun.cancelled = true;
+            HeroCamera.lobbyRun = null;
+            HeroCamera.close();
+        }
+        if (!takeAtMs || HeroCamera.lobbyRun || !HeroCamera.checked) return;
+
+        if (!HeroCamera.hasCamera) {
+            if (HeroCamera.skippedAt === takeAtMs) return;
+            HeroCamera.skippedAt = takeAtMs;
+            if (HeroCamera.noCamera) HeroCamera.report(`none at ${seat.stationId} (lobby): ${HeroCamera.noCamera}`);
+            fetch(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}/skip`, { method: 'POST' }).catch(() => {});
+            return;
+        }
+        HeroCamera.lobbyRun = { takeAtMs, cancelled: false };
+        HeroCamera.runLobby(HeroCamera.lobbyRun, seat, clock, color);
+    },
+
+    /** The lobby's photo: taken, shown on the hero, sent; the window stays up until the player keeps it, retakes or skips. */
+    async runLobby(run, seat, clock, color) {
+        const box = HeroCamera.open(Theme.text('arcade.photoTitle'), Theme.text('arcade.photoKeysTaking'));
+        try {
+            const face = await HeroCamera.shoot(box, run, run.takeAtMs, clock);
+            if (run.cancelled) return;
+            if (!face) {
+                HeroCamera.report(`none at ${seat.stationId} (lobby): no face found in the camera picture`);
+                HeroCamera.failed(box, Theme.text('dungeon.photoNoFace'), Theme.text('arcade.photoKeysFailed'));
+                return;
+            }
+            const portrait = await HeroCamera.portraitOf(face, { color, hero: seat.hero });
+            if (run.cancelled) return;
+            HeroCamera.reveal(box, portrait, Theme.text('dungeon.photoDone', {}, `${seat.stationId}:${run.takeAtMs}`), Theme.text('arcade.photoKeysTaken'));
+            await HeroCamera.send(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}`, face, portrait);
+        } catch (err) {
+            if (run.cancelled) return;
+            HeroCamera.report(`failed at ${seat.stationId} (lobby): ${err.name || 'Error'}: ${err.message || err}`);
+            HeroCamera.failed(box, Theme.text('dungeon.photoFailed'), Theme.text('arcade.photoKeysFailed'));
+        }
+    },
+
+    // ------------------------------------------------------------ A kiosk game's intro
+
     /** Photos asked for first: the offer, for the intro screen. Nothing without a camera, or once it has passed (it fades out then by itself). */
     offer(you, serverNow) {
         if (!HeroCamera.hasCamera || !(you.photoOfferUntilMs > serverNow)) return '';
@@ -103,8 +159,8 @@ const HeroCamera = {
     },
 
     /**
-     * Call on every redraw. When a photo is coming, takes it (once per match); when the player has said no
-     * (photoAtMs gone), stops. Not after a reload of the page once it has arrived, or long after its moment.
+     * Call on every redraw of a game. When a photo is coming, takes it (once per match); when the player has
+     * said no (photoAtMs gone), stops. Not after a reload of the page once it has arrived, or long after its moment.
      */
     follow(match, you, clock, color) {
         if (!you) return;
@@ -122,68 +178,76 @@ const HeroCamera = {
         HeroCamera.run(match.matchId, you.stationId, you.photoAtMs, clock, { color, hero: player?.hero });
     },
 
-    /** look: the station's colour and the player's hero, for the portrait. */
+    /** The intro's photo: taken, shown on the hero for a moment, sent. look: the station's colour and the player's hero. */
     async run(matchId, stationId, takeAtMs, clock, look) {
         const run = (HeroCamera.running = { key: `${matchId}/${stationId}`, cancelled: false });
-        const box = HeroCamera.overlay();
-        const video = box.querySelector('video');
-        const line = box.querySelector('.photo-line');
-        const seed = `${matchId}:${stationId}`;
-        line.innerHTML = Theme.text('dungeon.photoLook', {}, seed);
-        box.querySelector('.photo-skip').innerHTML = Theme.text('dungeon.photoSkip');
-        box.className = 'photo-camera is-open';
+        const box = HeroCamera.open(Theme.text('dungeon.photoLook', {}, `${matchId}:${stationId}`), Theme.text('dungeon.photoSkip'));
         try {
-            HeroCamera.stream = await navigator.mediaDevices.getUserMedia({ video: await HeroCamera.whichCamera(), audio: false });
-            video.srcObject = HeroCamera.stream;
-            await video.play();
-            box.classList.add('is-live');
-            HeroCamera.cameraOn(matchId, stationId);
-            await HeroCamera.countDown(box, run, Math.max(takeAtMs, clock() + HeroCamera.WARM_UP_MS), clock);
-            if (run.cancelled) return await HeroCamera.skipped(box, video, line);
-            box.classList.add('is-flash');
-
-            const face = await HeroCamera.findFace(video, run);
-            HeroCamera.stop(video);
-            if (run.cancelled) return await HeroCamera.skipped(box, video, line);
+            const face = await HeroCamera.shoot(box, run, takeAtMs, clock, () => HeroCamera.cameraOn(matchId, stationId));
+            if (run.cancelled) return await HeroCamera.skipped(box);
             if (!face) {
                 HeroCamera.report(`none at ${stationId}: no face found in the camera picture`);
-                line.innerHTML = Theme.text('dungeon.photoNoFace');
-                box.classList.add('is-failed');
+                HeroCamera.failed(box, Theme.text('dungeon.photoNoFace'));
                 await HeroCamera.wait(2200);
                 return;
             }
-            const faceUrl = face.toDataURL('image/png');
-            const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, look.color, { hero: look.hero }) : face;
-            if (run.cancelled) return await HeroCamera.skipped(box, video, line);
-            box.querySelector('.photo-result').src = portrait.toDataURL('image/png');
-            line.innerHTML = Theme.text('dungeon.photoDone', {}, seed);
-            box.classList.add('is-taken');
-            await HeroCamera.upload(matchId, stationId, face, portrait);
+            const portrait = await HeroCamera.portraitOf(face, look);
+            if (run.cancelled) return await HeroCamera.skipped(box);
+            HeroCamera.reveal(box, portrait, Theme.text('dungeon.photoDone', {}, `${matchId}:${stationId}`));
+            await HeroCamera.send(`/api/photos/${encodeURIComponent(matchId)}/${encodeURIComponent(stationId)}`, face, portrait);
             await HeroCamera.wait(1800);
         } catch (err) {
             if (!run.cancelled) HeroCamera.report(`failed at ${stationId}: ${err.name || 'Error'}: ${err.message || err}`);
-            HeroCamera.stop(video);
-            line.innerHTML = Theme.text(run.cancelled ? 'dungeon.photoSkipped' : 'dungeon.photoFailed');
-            box.classList.add('is-failed');
+            HeroCamera.failed(box, Theme.text(run.cancelled ? 'dungeon.photoSkipped' : 'dungeon.photoFailed'));
             await HeroCamera.wait(2000);
         } finally {
-            box.className = 'photo-camera';
+            HeroCamera.close();
             HeroCamera.running = null;
         }
     },
 
     /** They pressed ACTION to say no: the camera goes off, with a word to say so. */
-    async skipped(box, video, line) {
-        HeroCamera.stop(video);
-        line.innerHTML = Theme.text('dungeon.photoSkipped');
-        box.classList.add('is-failed');
+    async skipped(box) {
+        HeroCamera.failed(box, Theme.text('dungeon.photoSkipped'));
         await HeroCamera.wait(1500);
     },
 
-    /** Tells the server the camera is on, so it plays the countdown on this station's speaker. */
+    /** Tells the server the camera is on, so it plays the intro's countdown on this station's speaker. */
     cameraOn(matchId, stationId) {
         fetch(`/api/photos/${encodeURIComponent(matchId)}/${encodeURIComponent(stationId)}/camera`, { method: 'POST' })
             .catch(() => {}); // only the blips depend on it
+    },
+
+    // ------------------------------------------------------------ The camera itself
+
+    /**
+     * Turns the camera on, counts down to takeAtMs and finds the face: the cut-out face, or null when there's
+     * no face to be found. The camera is off again afterwards. onLive: called once the camera is on.
+     */
+    async shoot(box, run, takeAtMs, clock, onLive = () => {}) {
+        const video = box.querySelector('video');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: await HeroCamera.whichCamera(), audio: false });
+        try {
+            if (run.cancelled) return null; // a retake (or a no) came while the camera was coming on
+            HeroCamera.stream = stream;
+            video.srcObject = stream;
+            await video.play();
+            box.classList.add('is-live');
+            onLive();
+            await HeroCamera.countDown(box, run, Math.max(takeAtMs, clock() + HeroCamera.WARM_UP_MS), clock);
+            if (run.cancelled) return null;
+            box.classList.add('is-flash');
+            return await HeroCamera.findFace(video, run);
+        } finally {
+            // Only this run's camera: after a quick retake, the next run's may already be on.
+            stream.getTracks().forEach(track => track.stop());
+            if (HeroCamera.stream === stream) HeroCamera.stop();
+        }
+    },
+
+    /** The hero wearing the face, drawn in 3D (where the station can), or just the face. */
+    async portraitOf(face, look) {
+        return window.HeroPortrait ? HeroPortrait.render(face.toDataURL('image/png'), look.color, { hero: look.hero }) : face;
     },
 
     /** Looks for the face in the camera picture until one is found, or SEARCH_MS has gone by (someone looked away). */
@@ -226,20 +290,55 @@ const HeroCamera = {
     },
 
     /** Both pictures, as a form (see PhotosController). */
-    async upload(matchId, stationId, face, portrait) {
+    async send(url, face, portrait) {
         const png = canvas => new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const form = new FormData();
         form.append('face', await png(face), 'face.png');
         form.append('portrait', await png(portrait), 'portrait.png');
-        const response = await fetch(`/api/photos/${encodeURIComponent(matchId)}/${encodeURIComponent(stationId)}`, { method: 'PUT', body: form });
+        const response = await fetch(url, { method: 'PUT', body: form });
         if (!response.ok) throw new Error(`the server said ${response.status}`);
     },
 
     /** Turns the camera off. */
-    stop(video) {
+    stop() {
         HeroCamera.stream?.getTracks().forEach(track => track.stop());
         HeroCamera.stream = null;
-        video.srcObject = null;
+        const video = document.querySelector('#photo-camera video');
+        if (video) video.srcObject = null;
+    },
+
+    // ------------------------------------------------------------ The camera window
+
+    /** Opens the window: the camera picture to come, a line to say what's happening, and the keys. */
+    open(line, keys) {
+        const box = HeroCamera.overlay();
+        box.querySelector('.photo-line').innerHTML = line;
+        box.querySelector('.photo-skip').innerHTML = keys;
+        box.querySelector('.photo-count').textContent = '';
+        box.className = 'photo-camera is-open';
+        return box;
+    },
+
+    /** The photo as the hero wears it, with a word about it (and, in the lobby, what to press now). */
+    reveal(box, portrait, line, keys = '') {
+        box.querySelector('.photo-result').src = portrait.toDataURL('image/png');
+        box.querySelector('.photo-line').innerHTML = line;
+        box.querySelector('.photo-skip').innerHTML = keys;
+        box.classList.add('is-taken');
+    },
+
+    /** No photo: says why (and, in the lobby, what to press now). */
+    failed(box, line, keys = '') {
+        HeroCamera.stop();
+        box.querySelector('.photo-line').innerHTML = line;
+        box.querySelector('.photo-skip').innerHTML = keys;
+        box.classList.add('is-failed');
+    },
+
+    close() {
+        HeroCamera.stop();
+        const box = document.getElementById('photo-camera');
+        if (box) box.className = 'photo-camera';
     },
 
     /** The camera window, made once and kept outside the screen's redrawn HTML (a redraw would cut the live picture). */

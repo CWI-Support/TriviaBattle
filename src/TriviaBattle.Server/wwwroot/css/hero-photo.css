@@ -87,5 +87,5 @@
 
 .photo-line { padding: 0 6vmin; font-family: var(--font-display); font-size: 7vmin; color: var(--accent); text-align: center; }
 .photo-skip { margin-top: -2vmin; font-family: var(--font-display); font-size: 4.5vmin; color: var(--text-dim); }
-.photo-camera.is-flash .photo-skip, .photo-camera.is-failed .photo-skip { visibility: hidden; }
+.photo-camera.is-failed .photo-line { margin-top: 30vmin; }
 .photo-camera.is-failed .photo-window { display: none; }

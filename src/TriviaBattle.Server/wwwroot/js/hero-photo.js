@@ -25,15 +25,37 @@ const HeroPhoto = {
 
         const entry = { matchId: match.matchId, photo: player.photo, url: null };
         HeroPhoto.cache.set(key, entry);
-        fetch(`/api/photos/${encodeURIComponent(match.matchId)}/${encodeURIComponent(stationId)}/${kind}`)
+        HeroPhoto.fetchInto(key, entry, `/api/photos/${encodeURIComponent(match.matchId)}/${encodeURIComponent(stationId)}/${kind}`);
+        return null;
+    },
+
+    /** A hero photo taken in the lobby (a station's seat or a party member: photo is its number), as a blob URL, or null while it loads. */
+    lobby(stationId, photo, kind = 'portrait') {
+        if (!photo) return null;
+        const key = `lobby/${stationId}/${kind}`;
+        const known = HeroPhoto.cache.get(key);
+        if (known?.photo === photo) return known.url;
+        if (known?.url) URL.revokeObjectURL(known.url);
+        const entry = { matchId: 'lobby', photo, url: null };
+        HeroPhoto.cache.set(key, entry);
+        HeroPhoto.fetchInto(key, entry, `/api/photos/lobby/${encodeURIComponent(stationId)}/${kind}`);
+        return null;
+    },
+
+    /**
+     * Fetches a picture into its cache entry, then redraws. Not there yet (a game from the lobby moves its
+     * photos in a moment after it starts): asks again a little later.
+     */
+    fetchInto(key, entry, url) {
+        fetch(url)
             .then(response => (response.ok ? response.blob() : null))
             .then(blob => {
-                if (!blob || HeroPhoto.cache.get(key) !== entry) return; // gone, or a newer one came
+                if (HeroPhoto.cache.get(key) !== entry) return; // gone, or a newer one came
+                if (!blob) return setTimeout(() => HeroPhoto.cache.get(key) === entry && HeroPhoto.cache.delete(key), 1500);
                 entry.url = URL.createObjectURL(blob);
                 HeroPhoto.onLoad?.();
             })
-            .catch(() => {}); // the knight stays; the photo isn't worth an error on a game screen
-        return null;
+            .catch(() => {}); // the hero's own picture stays; a photo isn't worth an error on a game screen
     },
 
     /**
@@ -63,7 +85,7 @@ const HeroPhoto = {
     /** Forgets every picture except those of these matches (the others have ended). */
     keepOnly(matchIds) {
         for (const [key, entry] of HeroPhoto.cache) {
-            if (matchIds.includes(entry.matchId)) continue;
+            if (matchIds.includes(entry.matchId) || entry.matchId === 'lobby') continue;
             if (entry.url?.startsWith('blob:')) URL.revokeObjectURL(entry.url);
             HeroPhoto.cache.delete(key);
         }
