@@ -59,7 +59,7 @@ public class RoomOutputCoordinator(
             .Select(m => m.Phase)
             .ToList();
 
-        if (phases.Contains(MatchPhase.Playing)) return LightingCue.Question;
+        if (phases.Contains(MatchPhase.Playing) || phases.Contains(MatchPhase.Continue)) return LightingCue.Question; // "Continue?" is still the game
         if (phases.Contains(MatchPhase.Results)) return LightingCue.Results;
         if (phases.Contains(MatchPhase.Intro)) return LightingCue.Intro;
         return LightingCue.Idle;

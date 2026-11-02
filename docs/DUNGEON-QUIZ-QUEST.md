@@ -8,13 +8,97 @@ monsters with HP, damage by difficulty, crits for fast answers, combos for strea
 hourglass, getting hit for wrong or slow answers, being downed and getting back up, floors and a
 Depth 1 boss from `config/dungeon.json`, endless deeper loops. The station screen follows the
 reference layout; the main screen shows a lane per adventurer or party; a `dungeon` theme with pixel
-fonts, placeholder pixel monsters and the Host's first lines. Not yet: cards as adventurers, heroes,
-items, doors, voice, real art.
+fonts, placeholder pixel monsters and the Host's first lines. A party (a team, or a solo player) shares
+one monster and floor, and each member keeps their own HP (`DungeonRun`). Groups play a fixed round;
+a solo game runs on the arcade clock (kills add time, up to a hard cap), all set on the Operator
+screen. When a solo clock runs out, "Continue?" counts down: a swipe adds time (for now from the dev
+buttons page or the Operator screen). Parties revive their downed members (3 right answers; the downed
+player shouts answers from a teammate's question meanwhile), land party combos, and get one lane per
+party on the main screen. Between questions a battle beat plays the fight full screen (your knight's
+strike, crits and combos, kills bursting apart, the way down to the next floor, the boss reveal, the
+monster clawing you), banners sweep the main screen for the big moments, and placeholder 8-bit sounds
+play on each station's speaker. Not yet: the station card readers, the fifth button, power-ups, cards as adventurers, heroes, doors, voice, real art.
+
+**Experience design** (the why: the "a-ha" moment, power acquisition, the Host as the story, the
+objectives and how they're measured): `docs/DUNGEON-QUIZ-QUEST-experience-design.pdf`. Following it so
+far: after a wrong answer the right one flips over like a card in the middle of the fight (finding out
+is a reward too), and kills shower gold. **Art direction:** 3D models that read like 2D paintings
+(think Hearthstone). A first pass of the 3D fight runs on CC0 placeholder models (`js/battle3d/`,
+the stations' default, preview at `/dev/battle3d`); the knight's gear comes as swappable parts, ready
+for loot and power-ups to show on the hero.
 
 **Bottom line on the software: keep it.** The room server, buttons and lights, room audio, kiosk and
 RFID cards, question bank and admin, several groups at once, the live log: none of it cares what genre
 it's dressed in. Dungeon Quiz Quest is a new game layer (combat, floors, progression), a new look, and a
 host script on top of what exists. Not a rewrite.
+
+---
+
+## Direction update (30 Oct 2026): a run you push through, not a speed battle
+
+The slice is still the 60-second speed battle in costume: every match is a fixed clock, and being
+downed is a free 5-second pause, so nothing you do changes how long you play. From here, the game is
+a run you push through, with time you earn, power-ups and choices. It must work as well for a group
+as for one player: the social side is vital.
+
+**Decided (Brett):**
+- **A fifth button on each podium:** a general action button, not only for power-ups. First job: use
+  your power-up. Later: ready up, confirm a continue, confirm a vote, with no more hardware changes. It
+  lights up whenever pressing it would do something.
+- **Group clock:** any match with 2 or more players (2v2, co-op, group free-for-all) has a fixed round
+  length set on the Operator screen. Everyone starts and ends together. Kills earn points, loot and
+  power-ups, not time.
+- **Solo clock:** the same clock, but it stretches like a classic arcade game. Kills, bosses and Time
+  Crystals add time. When it runs out, a "Continue?" countdown: swipe to add time and carry on from the
+  same floor and HP; no swipe, results. The most a solo game can last is a backend setting.
+- **Swipe to continue:** a card reader at each station.
+- **Sabotage:** only between sides of the same group match (Party Race, group free-for-all). Never in a
+  solo game. A solo player is their own match, so a group playing next to them can't reach them.
+- **The party owns the run.** A solo player is a party of one, so solo and group play share one set of
+  rules. Party members share the monster and floor, and each keeps their own HP. (Built.)
+
+**Operator settings:** round length (groups); solo starting time, time per monster, time per boss and
+the longest a solo game can last (the hard cap, continues included); time per continue (0 = none)
+and the continue countdown. Done.
+
+**Social mechanics** (switch on in parties of 2 or more):
+- **Revives:** a downed player's screen shows a teammate's question so they can shout the answer;
+  teammates' correct answers bring them back.
+- **Party combo:** everyone answers right within a few seconds of each other: a bonus hit.
+- **Votes:** boons and doors are picked by the party with their buttons, which gets them talking.
+- **Power-ups aimed at people,** targeted automatically (the teammate most in need, the leading rival).
+- The main screen and the Host call out the big moments for the room and the queue.
+
+**Power-ups (v1):** monsters drop them and a streak of 5 earns one. One slot; the action button lights.
+
+| For | Power-ups |
+|---|---|
+| Anyone | Potion (heal), Fireball (big hit), Freeze (stops the hourglass), 50/50, Shield (next miss free), Skip |
+| Solo only | Time Crystal (+time) |
+| Co-op | Heal Ally, Revive, Phone a Friend |
+| Group matches only | Fog Bomb, Tiny Hourglass |
+
+For 50/50 the server sends only which answers to hide, never the correct one (the `SnapshotBuilder` rule).
+
+**Boons:** after each floor, pick one of three on buttons A to C (a party votes): more HP, more
+damage, more time (solo), or a power-up. The clock pauses; after 8 seconds one is picked.
+
+**Build order** (each step ends in a playable build):
+1. Done: `DungeonRun` split out of `MatchEngine`; parties share the monster and floor.
+2. Done: the clock: fixed for groups, stretchable for solo, the Operator settings and the hard cap.
+   Starting defaults: 90 s solo start, +10 s a monster, +30 s a boss, 8 minutes at most.
+3. Done: the Continue screen, triggered from the dev buttons page or the Operator screen ("Give a
+   continue") until the station card readers exist. Defaults: +60 s a continue, 10 s to swipe.
+4. Done: revives and party combos, and a lane per party on the main screen. In a party a downed
+   member waits for 3 right answers from teammates (20 s at most); if the whole party goes down,
+   everyone is back in 5 s. A party combo (everyone right within 4 s) doubles that hit.
+5. Playtest: solo, then a group of four. Both have to be fun before going further.
+6. Fifth-button wiring: button ids 26 to 29 (10 to 25 stay as they are), LED registers 216 to 219,
+   keyboard stand-in keys 5 / T / G / B, the dev buttons page.
+7. Power-ups.
+8. Boons and doors by party vote.
+
+**Hardware to build:** a fifth button with an LED on each podium, and a card reader at each station.
 
 ---
 
@@ -453,18 +537,22 @@ Writing (Host lines) and art (sprites, UI kit, cutscenes) run alongside from pha
   during a run.
 - **Run length vs throughput:** a great 15-minute run is a bad venue product. Cap the Delve by time.
 - **Host tone** in a family venue: written and reviewed lines only.
-- **The fifth button** is a physical-build decision; it can't wait for software.
+- **The fifth button and a card reader per station** are physical-build work; they can't wait for software.
 
 ---
 
 ## 13. Decisions needed
 
 - [ ] Party Race (VS) as the headline mode, co-op, or both?
-- [ ] Delve length target: 4, 5 or 6 minutes?
+- [x] Delve length: groups get a fixed round length (Operator setting); solo gets an arcade clock that
+      stretches, with swipe-to-continue and a hard cap (Operator setting). See "Direction update".
+- [ ] Default numbers for the above (group round, solo start, time per kill and boss, continue time, hard cap): playtest.
+- [ ] The station card readers: what a swipe charges (the venue's game-card system, or our own cards)
+      and how they connect (a coin pulse into the PLC, or USB on the station PC).
 - [ ] What death costs: gold only, or floor progress too?
 - [ ] What carries over between visits: checkpoint, XP, relics, cosmetics?
-- [ ] Hero powers and items: hold-a-button, a fifth button on the podium, or auto-fire?
-- [ ] Sabotage items in VS modes: in, or too mean for families?
+- [x] Hero powers and items: a fifth button on the podium (a general action button).
+- [x] Sabotage items: group matches only, never solo.
 - [ ] Which four heroes are free from the first visit?
 - [ ] The Host: name, voice actor or TTS, how sharp (PG or PG-13)?
 - [ ] Name: Dungeon Quiz Quest or QUESTions?

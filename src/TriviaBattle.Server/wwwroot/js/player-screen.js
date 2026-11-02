@@ -1,6 +1,7 @@
 // Player station screen (portrait, next to the 4 answer buttons).
 // While the clock runs, this screen shows the player's own question (their team's in 2v2 Group).
-// Answering moves straight on to the next one, with a right/wrong banner for the last answer.
+// Answering moves straight on to the next one, with a right/wrong banner for the last answer
+// (in Dungeon Quiz Quest, after a battle beat: the fight plays full screen, then the next question).
 // The server sends a "you" section already worked out for the current mode, so this file
 // never needs to know mode rules.
 // All wording comes from the theme's copy.json via Theme.text() (see js/theme.js).
@@ -10,12 +11,31 @@ const stationNumber = Number(location.pathname.match(/\/display\/player\/(\d+)/)
 let lastState = null;
 let myPlacement = null;     // set if this player/team made a leaderboard this match
 let lastAnswerShown = null; // number of the last answer we drew feedback for, so new feedback can pop
+let beatTimer = null;       // redraws when a battle beat ends (no update comes from the server then)
 
 const connection = new ScreenConnection({ role: 'player', stationNumber, onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
 connection.start();
 UI.startCountdowns(() => connection.serverNow());
-enableStationKeypad(connection); // demo: keys 1-4 / A-D or tapping answers press this station's buttons
+enableStationKeypad(connection, () => lastState?.station.id); // demo: keys 1-4 / A-D or taps answer, Space swipes a card
+
+// The Dungeon fight is drawn in 3D (js/battle3d), unless the URL says ?view=2d or this PC can't do
+// WebGL 2: then it's the CSS version. That version also shows until three.js has loaded.
+if (new URLSearchParams(location.search).get('view') !== '2d' && canDraw3d()) {
+    import('/js/battle3d/battle3d.js').then(() => {
+        Battle3D.start(document.getElementById('stage3d'), () => connection.serverNow());
+        document.body.classList.add('is-3d');
+        if (lastState) render(lastState);
+    });
+}
+
+function canDraw3d() {
+    try {
+        return !!document.createElement('canvas').getContext('webgl2');
+    } catch {
+        return false;
+    }
+}
 
 function render(state) {
     if (state.match?.matchId !== lastState?.match?.matchId) {
@@ -45,11 +65,18 @@ function render(state) {
         switch (match.phase) {
             case 'Intro':    body.innerHTML = intro(match, you); break;
             case 'Playing':  body.innerHTML = fighting ? DungeonView.station(match, you, connection.serverNow(), state.station.color) : playing(match, you); break;
+            case 'Continue': body.innerHTML = continueOffer(match, you); break;
             case 'Results':
             case 'Finished': body.innerHTML = results(match, you); break;
         }
     }
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
+    if (fighting) window.Battle3D?.show({ match, you, color: state.station.color }); // once the 3D has loaded
+
+    // A battle beat is playing: the next question appears when it ends, so redraw then.
+    clearTimeout(beatTimer);
+    if (fighting && DungeonBattle.isPlaying(you, connection.serverNow()))
+        beatTimer = setTimeout(() => render(lastState), you.beat.endsAtMs - connection.serverNow() + 20);
 }
 
 /** Leaderboard placements arrive shortly after Results appears; show ours if we got one. */
@@ -87,6 +114,7 @@ function intro(match, you) {
                 <div class="intro-slam" ${at(0)}><h1 class="big-title">${Theme.text('intro.playerTitle', { name: you.name }, seedFor(match, you))}</h1></div>
                 <p class="subtitle intro-rise" ${at(600)}>${teamLine}</p>
                 <p class="subtitle intro-rise" ${at(1100)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
+                ${match.soloClock ? `<p class="subtitle intro-rise" ${at(1500)}>${Theme.text('intro.soloClock', {}, seedFor(match))}</p>` : ''}
             </div>
             ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;
@@ -163,6 +191,21 @@ function lockoutBanner(match, you) {
 }
 
 // ---------------------------------------------------------------- Results
+
+/** Solo Dungeon: the clock ran out. "Continue?" with a big countdown: swipe your card for more time. */
+function continueOffer(match, you) {
+    const seed = `${seedFor(match, you)}:${match.continuesUsed}`;
+    const progress = you.delve
+        ? `<p class="subtitle">${Theme.text('continue.progress', { floor: you.delve.floor, kills: you.delve.kills, score: you.score.toLocaleString() })}</p>`
+        : '';
+    return `
+        <div class="center-stack">
+            <h1 class="big-title">${Theme.text('continue.title', {}, seed)}</h1>
+            <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="4"></div>
+            <p class="subtitle">${Theme.text('continue.swipe', { seconds: match.continueSeconds }, seed)}</p>
+            ${progress}
+        </div>`;
+}
 
 function results(match, you) {
     const mine = myStanding(match, you);

@@ -9,7 +9,21 @@ README's status table shows which of the 6 implementation phases are done.
 
 The room is moving to Dungeon Quiz Quest (`docs/DUNGEON-QUIZ-QUEST.md`): Dungeon format is the default
 (`Core/Dungeon`, `config/dungeon.json`, `js/dungeon-view.js`, `css/dungeon.css`, `themes/dungeon`). Keep the
-Classic format working until it's formally dropped.
+Classic format working until it's formally dropped. `MatchSettings.Format` picks the game (default in `appsettings.json`,
+changeable on the Operator screen). In Dungeon format `MatchEngine` hands every answer and tick to a `DungeonRun`,
+which holds all combat rules: each party (a team, or a solo player) shares one `Delve` (floor, monster), and each answer
+owner is an `Adventurer` (own HP, streak, hourglass). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
+After each answer a battle beat holds the next question back while the station plays the fight full screen
+(`js/dungeon-battle.js`, `css/dungeon-battle.css`, preview at `/dev/battle`). Beat animations are timed from the
+beat's server start (`--t0`) so redraws don't restart them; keep their offsets in step with the beat lengths.
+Stations draw the fight in 3D (`js/battle3d/`, three.js; `?view=2d` or no WebGL 2 falls back to the CSS version; preview at
+`/dev/battle3d`): it shares the HTML words and bars, and `js/battle3d/beats.js` follows the same timing table.
+Combat numbers are `Game:Dungeon` (`DungeonSettings`);
+floors and monsters are `config/dungeon.json`, loaded by `Server/Game/DungeonContent.cs` at startup.
+
+Three projects: `TriviaBattle.Core` (game rules), `TriviaBattle.Hardware` (keyboard and PLC input, PLC/console
+outputs, the audio engine), `TriviaBattle.Server` (ASP.NET host, EF Core, SignalR, admin, every screen in `wwwroot`).
+`tools/PlcSimulator` fakes the PLC; tests are in `tests/TriviaBattle.Tests` (one folder per area).
 
 ## Ground rules
 
@@ -29,13 +43,13 @@ dotnet build                                                  # from repo root
 dotnet test                                                   # all tests
 dotnet test --filter "FullyQualifiedName~GameModeTests"       # one class
 dotnet test --filter "FullyQualifiedName~Group_first_teammate" # one test
-cd src/TriviaBattle.Server; dotnet run                        # http://0.0.0.0:5000, launcher page at /
+dotnet run --project src/TriviaBattle.Server                  # http://0.0.0.0:5000, launcher page at /
 dotnet tool restore; dotnet ef migrations add <Name> --project src/TriviaBattle.Server --output-dir Data/Migrations
 ```
 
 For manual testing, shorten a match with environment variables (any config key works this way), e.g.
-`Game__IntroSeconds=1 Game__MatchSeconds=20 Port=5055` (game rules saved on the admin page override these). Dev helpers
-(`/dev/buttons`, `POST /api/dev/buttons/{id}`, hub `PressKey`) are on only when `DevTools:Enabled` is true,
+`$env:Game__IntroSeconds=1; $env:Game__MatchSeconds=20; $env:Port=5055` (game rules saved on the admin page override these). Dev helpers
+(`/dev/buttons`, `POST /api/dev/buttons/{id}`, `POST /api/dev/continue/{stationId}` (a card swipe; `Space` on a station screen), hub `PressKey`) are on only when `DevTools:Enabled` is true,
 which defaults to the Development environment. `src/TriviaBattle.Server/TriviaBattle.http` has sample requests.
 
 ## How a button press flows
@@ -56,9 +70,10 @@ a `LightingCue` per room for each `IRoomOutput` (console in dev, PLC in the venu
 providers from `Plc:Enabled`. PLC protocol: `docs/PLC-PROTOCOL.md`; test without hardware via `tools/PlcSimulator`.
 
 Audio: ALL room sound is played by the server on the room's StarTech 7.1 card, never by the screen PCs. The engine
-(`Hardware/Audio`: `AudioService`, `AudioChannel`) is RangerShack's, ported as-is: keep it in step with RangerShack
+(`src/TriviaBattle.Hardware/Audio`: `AudioService`, `AudioChannel`) is RangerShack's, ported as-is: keep it in step with RangerShack
 instead of reworking it. `RoomSoundService` (an `IMatchBroadcaster`) maps match events to sounds on zones; outputs are
 0-based (`config/stations.json`). Videos are silent; their sound is a separate file (`Audio:IntroSound`).
+Dungeon games play fight sounds (`Audio:Dungeon`, placeholders in `media/audio/dungeon/sfx`) instead of stingers.
 
 Admin: `/admin` page (`js/admin/*`, one file per tab, all via `admin-api.js`) over `/api/admin/*` (`Server/Admin`).
 `QuestionRules` validates questions for both editor and import; `QuestionTransfer` does CSV/JSON packs and also seeds the DB.
@@ -79,7 +94,8 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 - Broadcasters run inside `MatchHost`'s lock. They must build what they need from the engine there,
   then start network sends without awaiting them (see `SignalRMatchBroadcaster.Send`).
 - Every visibility rule lives in `SnapshotBuilder`: a player sees only its own (or team's) current question, never its
-  correct answer until answered; main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
+  correct answer until answered (exception: downed in a Dungeon party, it also sees a teammate's question, to shout the
+  answer); main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
 - Starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`), not hub
   calls, so the kiosk gets validation problems back as a 400. A match takes `categoryIds` (one or more, mixed).
 - Several matches can run in one room at once (one per set of stations). Room-level outputs (main screen, kiosk,
@@ -96,9 +112,10 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 
 ## Key places
 
-- `Core/Matches/MatchEngine.cs`: phase state machine (Intro → Playing → Results → Finished). Every match is a timed round;
+- `Core/Matches/MatchEngine.cs`: phase state machine (Intro → Playing → Results → Finished; solo Dungeon games can go
+  Playing → Continue → Playing on a swipe). Every match is a timed round;
   each answer owner has a `QuestionStream` (answer → next question at once). Wrong answers: lockout or lose points.
 - `Core/Modes`: strategy classes for game modes (selected in `GameModes.Create`).
-- `Server/Game/GameRulesService.cs`: round length + wrong-answer penalty set on the Operator screen, `/operator` = admin's first tab (AppSettings table), laid over `"Game"`.
+- `Server/Game/GameRulesService.cs`: round length, wrong-answer penalty, format and the solo dungeon clock set on the Operator screen, `/operator` = admin's first tab (AppSettings table), laid over `"Game"`.
 - `Server/Game/MatchHost.cs`, `Server/Hubs/` (`GameHub` at `/gamehub`, `ScreenState`, groups per room/station).
 - `Server/config/*.json`: stations, button map, keyboard map. `appsettings.json` `"Game"`: timings, points, penalty defaults.

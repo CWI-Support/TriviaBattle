@@ -54,4 +54,10 @@ public class MatchesController(MatchHost host, IWordFilterService wordFilter, IL
     [HttpPost("{matchId}/abort")]
     [AdminApiKey]
     public IActionResult Abort(string matchId) => host.AbortMatch(matchId) ? NoContent() : NotFound();
+
+    /// <summary>The operator gives a solo player a continue while "Continue?" is up.</summary>
+    [HttpPost("{matchId}/continue")]
+    [AdminApiKey]
+    public IActionResult Continue(string matchId) =>
+        host.ContinueMatch(matchId) ? NoContent() : NotFound(new { problems = new[] { "That match isn't waiting on a continue." } });
 }

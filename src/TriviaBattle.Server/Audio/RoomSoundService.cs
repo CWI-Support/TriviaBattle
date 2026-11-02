@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Stations;
 using TriviaBattle.Server.Data;
@@ -17,6 +18,8 @@ namespace TriviaBattle.Server.Audio;
 ///   Lobby (no match)  lobby music          Intro    the intro's sound (music stops)
 ///   Playing           in-game music        Results  victory music (once)
 ///   An answer         right/wrong stinger on the speaker of whoever answered (both teammates in 2v2 Group)
+///   Dungeon fights    instead of stingers: hit, crit, kill, floor, boss, party combo, revive, hurt, downed
+///                     ("Audio:Dungeon"), at the moment the screens show it
 ///
 /// Several groups can play in one room at once. The room speaker then follows the whole room
 /// (in-game music while anyone plays; victory only when the last game is on its results), and a
@@ -123,7 +126,8 @@ public sealed class RoomSoundService(
 
         var files = new[] { _settings.LobbyMusic, _settings.AttractMusic, _settings.PlayingMusic, _settings.VictoryMusic, _settings.IntroSound }
             .Concat(_settings.CorrectStingers)
-            .Concat(_settings.WrongStingers);
+            .Concat(_settings.WrongStingers)
+            .Concat(_settings.Dungeon.All);
         foreach (var file in files.Where(f => !string.IsNullOrWhiteSpace(f)))
         {
             if (!File.Exists(Path.Combine(env.WebRootPath, file.TrimStart('/', '\\'))))
@@ -193,24 +197,67 @@ public sealed class RoomSoundService(
                 room.StopOnStations(groupStations);
                 break;
 
-            case AnswerGiven { Answer: var answer }:
+            case AnswerGiven { Answer: var answer } when !(match.IsDungeon && _settings.Dungeon.AnySet):
                 // In 2v2 Group the team answers as one, so both teammates hear it. Otherwise the owner is
                 // the player's own station (also when a dungeon monster's hourglass ran out and nobody pressed).
-                var team = match.Roster.FindTeam(answer.OwnerId);
-                room.PlayStinger(team?.StationIds ?? [answer.OwnerId], answer.IsCorrect);
+                room.PlayStinger(StationsOf(match, answer.OwnerId), answer.IsCorrect);
+                break;
+
+            case MonsterHit { OwnerId: var ownerId, Hit: var hit }:
+                PlayDungeonHit(room, match, ownerId, hit);
+                break;
+
+            case AdventurerHit { OwnerId: var ownerId, Hit: var taken }:
+                room.PlayEffect(StationsOf(match, ownerId), taken.Downed ? _settings.Dungeon.Downed : _settings.Dungeon.Hurt);
                 break;
         }
     }
 
     /// <summary>
+    /// A hit on a dungeon monster, loudest thing first: a revive, a floor cleared (or a boss stepping up),
+    /// a kill, a party combo, a crit, a plain hit. Big moments are heard by the whole party.
+    /// </summary>
+    private void PlayDungeonHit(RoomSound room, MatchEngine match, string ownerId, DealtHit hit)
+    {
+        var sounds = _settings.Dungeon;
+        var striker = StationsOf(match, ownerId);
+        var party = PartyStationsOf(match, ownerId);
+        var bossNext = match.Dungeon?.FindAdventurer(ownerId) is { } adventurer && match.Dungeon.DelveOf(adventurer).Encounter.Monster.IsBoss;
+
+        if (hit.RevivedOwnerId != null)
+            room.PlayEffect(party, sounds.Revive);
+        else if (hit.FloorCleared)
+            room.PlayEffect(party, bossNext ? sounds.Boss : sounds.Floor);
+        else if (hit.Killed)
+            room.PlayEffect(striker, sounds.Kill);
+        else if (hit.PartyCombo)
+            room.PlayEffect(party, sounds.PartyCombo);
+        else
+            room.PlayEffect(striker, hit.Crit ? sounds.Crit : sounds.Hit);
+    }
+
+    /// <summary>An answer owner's stations: a player's own, or both teammates' in 2v2 Group (the team answers as one).</summary>
+    private static IReadOnlyList<string> StationsOf(MatchEngine match, string ownerId) =>
+        match.Roster.FindTeam(ownerId)?.StationIds ?? [ownerId];
+
+    /// <summary>Everyone in an answer owner's dungeon party: their whole team, or just them.</summary>
+    private static IReadOnlyList<string> PartyStationsOf(MatchEngine match, string ownerId)
+    {
+        var team = match.Roster.FindTeam(ownerId)
+            ?? (match.Roster.FindPlayer(ownerId) is { } player ? match.Roster.TeamOf(player) : null);
+        return team?.StationIds ?? [ownerId];
+    }
+
+    /// <summary>
     /// The room speaker follows the whole room: lobby music with nobody playing, in-game music while
-    /// any group plays, victory music once the last game is on its results, silence during an intro.
+    /// any group plays (a solo player's "Continue?" countdown counts as playing), victory music once
+    /// the last game is on its results, silence during an intro.
     /// </summary>
     private void UpdateRoomMusic(RoomSound room, List<MatchEngine> inRoom)
     {
         if (inRoom.Count == 0)
             room.SetRoomMusic(_settings.LobbyMusic);
-        else if (inRoom.Any(m => m.Phase == MatchPhase.Playing))
+        else if (inRoom.Any(m => m.Phase is MatchPhase.Playing or MatchPhase.Continue))
             room.SetRoomMusic(_settings.PlayingMusic);
         else if (inRoom.All(m => m.Phase == MatchPhase.Results))
             room.SetRoomMusic(_settings.VictoryMusic, loop: false);

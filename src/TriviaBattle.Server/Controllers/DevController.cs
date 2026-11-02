@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Hardware.Input;
+using TriviaBattle.Server.Game;
 using TriviaBattle.Server.Hubs;
 
 namespace TriviaBattle.Server.Controllers;
@@ -12,7 +13,7 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/dev")]
-public class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, DevToolsSettings devTools) : ControllerBase
+public class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, MatchHost host, DevToolsSettings devTools) : ControllerBase
 {
     [HttpPost("buttons/{buttonId:int}")]
     public IActionResult PressButton(int buttonId)
@@ -22,6 +23,16 @@ public class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, De
 
         keyboard.PressButton(buttonId);
         return NoContent();
+    }
+
+    /// <summary>A card swipe at a station, standing in for the station card readers: gives a continue if one is on offer.</summary>
+    [HttpPost("continue/{stationId}")]
+    public IActionResult SwipeToContinue(string stationId)
+    {
+        if (!devTools.Enabled)
+            return NotFound();
+
+        return host.ContinueAtStation(stationId) ? NoContent() : Conflict(new { problems = new[] { "No continue on offer at that station." } });
     }
 
     /// <summary>The keyboard map plus what each button is, for the /dev/buttons page.</summary>

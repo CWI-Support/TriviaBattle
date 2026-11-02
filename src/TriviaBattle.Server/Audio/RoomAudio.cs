@@ -38,6 +38,9 @@ public class AudioSettings
     public List<string> CorrectStingers { get; set; } = new();
     public List<string> WrongStingers { get; set; } = new();
 
+    /// <summary>Dungeon Quiz Quest's fight sounds, played instead of the right/wrong stingers in dungeon games.</summary>
+    public DungeonSounds Dungeon { get; set; } = new();
+
     // Volumes, 0-1.
     public double MusicVolume { get; set; } = 0.8;
     public double AttractVolume { get; set; } = 0.8;
@@ -45,6 +48,37 @@ public class AudioSettings
     public double StingerVolume { get; set; } = 1;
     public double SubVolume { get; set; } = 1;
 
+}
+
+/// <summary>
+/// "Audio:Dungeon": the fight's sound effects, on the station speakers at the moment each thing happens
+/// (the screens show the same moment as a battle beat). Mostly on the speaker of whoever it happened to;
+/// a floor cleared, a boss, a party combo or a revive is heard by the whole party. Empty = silence.
+/// While none is set, dungeon games use the right/wrong stingers instead.
+/// </summary>
+public class DungeonSounds
+{
+    public string Hit { get; set; } = "";
+    public string Crit { get; set; } = "";
+    public string Kill { get; set; } = "";
+
+    /// <summary>A floor cleared: on the way down.</summary>
+    public string Floor { get; set; } = "";
+
+    /// <summary>A floor cleared, and the next floor's boss steps up.</summary>
+    public string Boss { get; set; } = "";
+
+    public string PartyCombo { get; set; } = "";
+    public string Revive { get; set; } = "";
+
+    /// <summary>The monster hits you (a wrong answer, or too slow).</summary>
+    public string Hurt { get; set; } = "";
+    public string Downed { get; set; } = "";
+
+    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, PartyCombo, Revive, Hurt, Downed];
+
+    /// <summary>At least one is set, so dungeon games play these instead of the stingers.</summary>
+    public bool AnySet => All.Any(file => !string.IsNullOrWhiteSpace(file));
 }
 
 /// <summary>

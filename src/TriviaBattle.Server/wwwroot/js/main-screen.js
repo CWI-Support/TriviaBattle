@@ -52,6 +52,7 @@ function render(state) {
     switch (match.phase) {
         case 'Intro':    renderIntro(match); break;
         case 'Playing':  renderPlaying(match); break;
+        case 'Continue': renderContinue(match); break;
         case 'Results':
         case 'Finished': renderResults(match); break;
     }
@@ -128,6 +129,10 @@ function panelBody(match) {
                 <div class="panel-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
                 <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
                 <div class="race-board">${match.standings.map(s => raceRow(match, s)).join('')}</div>`;
+        case 'Continue':
+            return `${head}
+                <div class="panel-title">${Theme.text('continue.title', {}, momentSeed(match))}</div>
+                <div class="panel-clock" data-ends-at="${match.phaseEndsAtMs}"></div>`;
         default:
             return `${head}
                 <div class="panel-title">${winnerHeadline(match)}</div>
@@ -153,6 +158,7 @@ function renderIntro(match) {
                 <p class="subtitle intro-rise" ${at(400)}>${modeName(match)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</p>
                 ${lineup}
                 <p class="subtitle intro-rise" ${at(1700)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, momentSeed(match))}</p>
+                ${match.soloClock ? `<p class="subtitle intro-rise" ${at(2100)}>${Theme.text('intro.soloClock', {}, momentSeed(match))}</p>` : ''}
             </div>
             ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;
@@ -212,6 +218,11 @@ function renderDungeonPlaying(match) {
     const rankOf = o => owners.filter(other => ahead(other, o) < 0).length + 1;
     const anyoneBehind = owners.some(o => rankOf(o) > 1); // nobody glows while it's all square
     const now = connection.serverNow();
+    const clockKey = `clock:${match.matchId}`;
+    const timeAdded = DungeonView.timeAdded(clockKey, match); // a solo kill earned time
+    if (timeAdded)
+        DungeonView.effect(clockKey, DungeonView.timeAddedPop(timeAdded), 1600);
+    owners.forEach(DungeonView.noteMoments); // floors cleared, bosses, revives, party combos: banners across the room
 
     document.getElementById('view-playing').innerHTML = `
         <div class="dg-main">
@@ -219,12 +230,16 @@ function renderDungeonPlaying(match) {
                 <span>${modeName(match)} &middot; ${UI.escape(match.category)}</span>
                 <span>${Theme.text('dungeon.mainTitle', {}, momentSeed(match))}</span>
             </div>
-            <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+            <div class="dg-main-clock">
+                <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+                ${DungeonView.activeEffects(clockKey)}
+            </div>
             <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
             <div class="dg-lanes">${owners.map(o => {
                 const rank = owners.length > 1 ? rankOf(o) : null;
                 return DungeonView.lane({ ...o, rank, isLeader: rank === 1 && anyoneBehind, serverNow: now });
             }).join('')}</div>
+            <div class="dg-moments">${DungeonView.activeEffects('moments')}</div>
         </div>`;
     UI.showView('view-playing');
 }
@@ -268,6 +283,18 @@ function winnerHeadline(match) {
     return winners.length > 1
         ? Theme.text('results.tie', {}, match.matchId)
         : Theme.text('results.winner', { name: winners[0].name }, match.matchId);
+}
+
+/** Solo Dungeon: the player's clock ran out. "Continue?" counts down until they swipe or time's up. */
+function renderContinue(match) {
+    const seed = `${momentSeed(match)}:${match.continuesUsed}`;
+    document.getElementById('view-continue').innerHTML = `
+        <div class="center-stack">
+            <h1 class="big-title">${Theme.text('continue.title', {}, seed)}</h1>
+            <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="4"></div>
+            <p class="subtitle">${Theme.text('continue.mainSwipe', { name: match.players[0].name, seconds: match.continueSeconds }, seed)}</p>
+        </div>`;
+    showFitted('view-continue');
 }
 
 function renderResults(match) {

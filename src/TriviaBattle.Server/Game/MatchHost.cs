@@ -72,8 +72,9 @@ public sealed class MatchHost(
                 dungeon);
 
             _matches.Add(match.MatchId, match);
-            logger.LogInformation("Match {Id} started: {Format} {Mode}, {Players} players, {Seconds}s, {Questions} questions in the pool, wrong answers: {Penalty}",
-                match.MatchId, matchSettings.Format, match.Mode.DisplayName, setup.Seats.Count, matchSettings.MatchSeconds, questions.Count, matchSettings.WrongAnswerPenalty);
+            logger.LogInformation("Match {Id} started: {Format} {Mode}, {Players} players, {Seconds}s{Clock}, {Questions} questions in the pool, wrong answers: {Penalty}",
+                match.MatchId, matchSettings.Format, match.Mode.DisplayName, setup.Seats.Count, match.RoundSeconds,
+                match.HasSoloClock ? $" (solo clock, up to {matchSettings.Dungeon.SoloMaxSeconds}s)" : "", questions.Count, matchSettings.WrongAnswerPenalty);
 
             Publish(match, [new PhaseChanged(match.Phase)]);
             return new StartMatchResult(match.MatchId, []);
@@ -123,6 +124,40 @@ public sealed class MatchHost(
             RemoveFinishedMatch(match);
             return true;
         }
+    }
+
+    /// <summary>
+    /// A swipe at a station: if that station's match is waiting on "Continue?" (solo Dungeon), the
+    /// player goes back in with more time. False if there's no continue on offer there.
+    /// The station card readers will call this; until they exist, the dev buttons page does.
+    /// </summary>
+    public bool ContinueAtStation(string stationId)
+    {
+        lock (_lock)
+        {
+            var match = _matches.Values.FirstOrDefault(m => !m.IsFinished && m.HasStation(stationId));
+            return match != null && Continue(match);
+        }
+    }
+
+    /// <summary>The operator gives a continue from the admin page. False if there's no continue on offer.</summary>
+    public bool ContinueMatch(string matchId)
+    {
+        lock (_lock)
+        {
+            return _matches.TryGetValue(matchId, out var match) && Continue(match);
+        }
+    }
+
+    private bool Continue(MatchEngine match)
+    {
+        var events = match.Continue(clock.GetUtcNow());
+        if (events.Count == 0)
+            return false;
+
+        logger.LogInformation("Match {Id}: continue #{Count}", match.MatchId, match.ContinuesUsed);
+        Publish(match, events);
+        return true;
     }
 
     public MatchSnapshot? GetSnapshot(string matchId, Viewer viewer)

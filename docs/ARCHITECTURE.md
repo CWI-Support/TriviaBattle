@@ -55,6 +55,8 @@ Phase flow:
 
 ```
 Intro → Playing (the clock runs for Game:MatchSeconds) → Results → Finished
+           ↑   ↓
+         Continue?   solo Dungeon games only: the clock ran out; a swipe goes back to Playing
 ```
 
 Every match is a **timed rapid-fire round**: answer as many questions as you can before the clock
@@ -95,22 +97,66 @@ mode doesn't touch the engine. A game mode answers three questions:
 `MatchSettings.Format` picks the game: `Classic` (the rapid-fire quiz) or `Dungeon`. A mode (who
 owns answers, who scores) is independent of the format, so every mode works in both.
 
-In Dungeon format the engine gives every answer owner a `Delve` (`Core/Dungeon`): their own trip down
-the dungeon, with a floor, a monster and hit points. Parties in 2v2 Group share one, like they share
-a question stream.
-- A correct answer is `Delve.Strike`: damage by difficulty, a crit if fast, a combo on a streak. The
-  answer's points are the damage, so scores, results and leaderboards work unchanged.
-- A wrong answer, or the monster's hourglass running out (`Tick`), is `Delve.TakeHit`. A timeout is
-  recorded as a `GivenAnswer` with `TimedOut` (no press) and the question moves on.
-- At 0 HP the owner is downed: their stream is locked out for `DownedSeconds`, then they get up at full
-  HP and the monster heals. Nobody is knocked out of a paid game.
+In Dungeon format the engine has a `DungeonRun` (`Core/Dungeon`), which holds the combat rules;
+`MatchEngine` runs the match as usual (phases, question streams, scoring) and hands it every answer and
+tick. The run is built around parties, so solo and group play share one set of rules:
+- A **party** is a team, or a player on their own (a solo game is a party of one). Each party has one
+  `Delve`: its floor and the monster it's fighting. Parties race each other down.
+- Each answer owner is an **`Adventurer`** with their own HP, streak and hourglass. Every adventurer in a
+  party hits the same monster. In 2v2 Group teammates share their question, so the team is one adventurer;
+  in 2v2 Combined each teammate is an adventurer on the team's delve.
+
+The rules:
+- A correct answer is `DungeonRun.Strike`: damage by difficulty, a crit if fast, a combo on the
+  adventurer's streak, taken off the party's monster. The answer's points are the damage, so scores,
+  results and leaderboards work unchanged.
+- A wrong answer, or the adventurer's hourglass running out (`Tick`), is `DungeonRun.TakeHit`. A timeout
+  is recorded as a `GivenAnswer` with `TimedOut` (no press) and the question moves on.
+- At 0 HP an adventurer is downed: their stream is locked out, then they get up at full HP. On their own
+  that's `DownedSeconds`. In a party of two or more they wait for their teammates: `ReviveAnswers` right
+  answers from them (counted on whoever has been down longest) revive them at once, with
+  `PartyDownedSeconds` as the safety net. When the whole party is down, the monster heals to full and
+  everyone gets up after `DownedSeconds`. Nobody is knocked out of a paid game.
+- **Party combo:** when every other standing member of the party has answered right within
+  `PartyComboSeconds`, the hit that completes it does `PartyComboBonus` more damage
+  (`DealtHit.PartyCombo`). Then everyone needs a fresh right answer for the next one.
 - The hourglass only runs while their buttons work: it stops during a lockout and restarts after.
+- **The clock.** Groups play a fixed round of `MatchSeconds`, so everyone starts and ends together. A
+  solo game (one player in the match) runs on an arcade clock: Playing starts at `SoloStartSeconds`,
+  and every kill adds time (`DungeonRun.SecondsEarnedBy`: `SoloSecondsPerKill`, or `SoloSecondsPerBoss`
+  for a boss). `MatchEngine` moves `PhaseEndsAt` back, never past `SoloMaxSeconds` after Playing
+  started (the hard cap). `MatchEngine.RoundSeconds` is the starting length, `HasSoloClock` says which
+  clock it is; the snapshot carries both (`MatchSeconds`, `SoloClock`), and screens pop "+10s" when
+  the end time moves.
+- **Continue?** When a solo clock runs out, the match goes to `MatchPhase.Continue` for
+  `SoloContinueCountdownSeconds` instead of Results. `MatchEngine.Continue(now)` (a swipe) goes back
+  to Playing for `SoloContinueSeconds`, same floor, same HP, the same question shown again; no swipe
+  and the countdown runs into Results. The hard cap counts every stretch of play, so a continue is
+  only offered while a whole one still fits. `MatchHost.ContinueAtStation` is what the station card
+  readers will call; until they exist it's `POST /api/dev/continue/{stationId}` (the dev buttons page)
+  or the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and
+  continue numbers are Operator-screen rules (`GameRulesService`).
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp` (alongside the usual `AnswerGiven`).
+
+- **Battle beats.** After every answer the next question waits a moment while the screen shows the
+  fight (`DungeonRun.BeatSecondsAfter`: `HitBeatSeconds`, `HurtBeatSeconds`, `KillBeatSeconds`,
+  `FloorBeatSeconds`). It's simply the next question's `CurrentShownAt` moved later: presses before it
+  are ignored like any press before a question appears, and the hourglass starts when it shows. The
+  clocks keep running (time per kill and the round length allow for it). `YouView.Beat` tells the
+  station what to play (`hit`, `kill`, `floor`, `boss`, `hurt`, `downed`) and from when to when; hits
+  carry what the scene needs to draw them (`DealtHit.MonsterSprite`, `MonsterHpLeft`, `TakenHit.HpLeft`).
+
+New dungeon rules (time, power-ups, revives) belong in `DungeonRun`, not in `MatchEngine`.
 
 Floors and monsters are content in `config/dungeon.json`, loaded into a `DungeonMap` at startup (a
 broken file stops the server with the problem spelled out). Past the last floor the dungeon loops
-with tougher monsters. Snapshots carry a `DelveView` (on `PlayerView`, `TeamView` and `YouView`), whose
-`Path` lists every monster of the current Depth down to its boss (the screens' icon trail);
+with tougher monsters. Snapshots carry a `DelveView` (on `PlayerView`, `TeamView` and `YouView`): one
+adventurer's fight, combining their party's delve (floor, monster, kills, `LastHit` by anyone in the
+party) with their own HP, hourglass and hits, plus `Party` (every member's HP and revive progress).
+`TeamView.Delve` is the whole party's fight for its main-screen lane. While a player is downed in a
+party, `YouView.Helping` carries a standing teammate's question so they can shout the answer (the one
+exception to "a player only sees their own question"; it never includes the answer). Its `Path` lists
+every monster of the current Depth down to its boss (the screens' icon trail);
 `js/dungeon-view.js` draws the station fight screen and the main screen's lanes from it, and
 `js/pixel-sprites.js` draws placeholder pixel monsters until real art is dropped in (a monster's
 `Sprite` can be a picture path).
@@ -171,9 +217,12 @@ all running matches (`runningMatches`), so things the room shares look at the wh
   station is busy.
 - **Intro video:** full screen everywhere only when the room was empty; otherwise just that
   group's station screens play it (`ScreenStateFactory.ForRoom` sends no cue to the main screen).
+- **Station speakers, dungeon games:** the fight's sounds (`Audio:Dungeon`) instead of the right/wrong
+  stingers, at the moment the battle beat shows it; floors, bosses, party combos and revives for the
+  whole party.
 - **Room speaker:** in-game music while anyone plays, victory only when the last game ends; a
   group's intro and early victory play on its own station speakers.
-- **Room lights:** the busiest phase in the room wins (Playing, then Results, then Intro).
+- **Room lights:** the busiest phase in the room wins (Playing or Continue, then Results, then Intro).
 
 ### Synced moments (intro video)
 
@@ -223,6 +272,31 @@ function render(state) { /* pick a view from state.match.phase and fill it in */
 
 Answer colors (A red, B blue, C yellow, D green) match the physical button pads and live in
 `css/screens.css`.
+
+Dungeon screens: `js/dungeon-view.js` draws the station's question view (the fight shrunk to a strip)
+and the main screen's lanes, plus the main screen's big moments (banners across the room for a floor
+cleared, a boss, a revive, a party combo). During a battle beat the station shows `js/dungeon-battle.js`
+instead: the fight full size, animated in `css/dungeon-battle.css`. Its animations are timed from the
+beat's start on the server clock (`--t0`), its fade-out from the beat's end (`--t1`), and the next
+question's arrival from that same end (`--q0`, `is-after-beat` in `css/dungeon.css`). Short effects
+elsewhere are kept with their start time (`DungeonView.effect`), so a redraw halfway through never
+restarts or cuts them. `/dev/battle` plays
+every beat on a loop with made-up data (`?kind=boss&at=2100` freezes a moment) for tuning the animations.
+
+The fight in 3D (the default; `?view=2d` on a station, or a PC without WebGL 2, gets the CSS version; preview at
+`/dev/battle3d`): the art direction is
+3D models that read like 2D paintings (Hearthstone-like). `js/battle3d/` draws the room, the fighters and
+the effects with three.js (vendored in `lib/three`, found through an import map) on a canvas behind the
+station's HTML. The HTML marks where it goes with `data-stage`: `fight` on the beat's `.dg-battle`,
+`portrait` on the monster in the strip while a question is up, so the fight shrinks into a live portrait.
+The words, damage number, flash, HP bar, the Host's line and the floor curtain stay HTML, so both versions
+share them; `css/battle3d.css` hides what the 3D replaces. One file per job: `models.js` (which model and
+clips each Sprite key uses; a key with no model stands in the room as its flat picture), `stage.js`
+(renderer, camera, lights, room), `actor.js` (one fighter), `effects.js`, `beats.js` (the timelines) and
+`battle3d.js` (the entry point). Like the CSS version, every frame is worked out from the time since the
+beat's server start (clips are set to a time, never left playing), so a redraw can't put it out of step;
+`beats.js` keeps its moments in step with the table at the top of `css/dungeon-battle.css`. The models are
+CC0 placeholders (`media/models/CREDITS.md`) until the real art exists.
 
 ### Themes
 

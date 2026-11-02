@@ -21,8 +21,9 @@ namespace TriviaBattle.Core.Matches;
 /// </list>
 /// Both return the <see cref="MatchEvent"/>s that happened (empty if nothing changed).
 ///
-/// In <see cref="GameFormat.Dungeon"/> every answer owner also has a <see cref="Delve"/>: correct
-/// answers hit their monster, wrong ones (or its hourglass running out) get them hit back.
+/// In <see cref="GameFormat.Dungeon"/> the match also has a <see cref="DungeonRun"/>, which this class
+/// tells about every answer and tick: correct answers hit the party's monster, wrong ones (or its
+/// hourglass running out) get the answer owner hit back. The combat rules are all in there.
 ///
 /// The current time is always passed in rather than read from a clock, which keeps the
 /// engine predictable and easy to test.
@@ -34,7 +35,7 @@ public sealed class MatchEngine
     private static readonly IReadOnlyList<MatchEvent> NothingHappened = [];
 
     private readonly Dictionary<string, QuestionStream> _streams;
-    private readonly Dictionary<string, Delve> _delves = new();
+    private readonly DungeonRun? _dungeon;
 
     /// <param name="questions">The question pool. Every answer owner gets their own order of it.</param>
     /// <param name="random">Shuffles each owner's question order. Tests pass a seeded one.</param>
@@ -73,9 +74,13 @@ public sealed class MatchEngine
         {
             if (dungeon == null)
                 throw new ArgumentException("Dungeon format needs the dungeon map.", nameof(dungeon));
-            foreach (var ownerId in _streams.Keys)
-                _delves[ownerId] = new Delve(ownerId, dungeon, settings.Dungeon);
+            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon);
         }
+
+        HasSoloClock = _dungeon is { IsSolo: true };
+        RoundSeconds = HasSoloClock
+            ? Math.Min(settings.Dungeon.SoloStartSeconds, settings.Dungeon.SoloMaxSeconds)
+            : settings.MatchSeconds;
 
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
     }
@@ -89,6 +94,22 @@ public sealed class MatchEngine
 
     /// <summary>The category name(s), taken from the questions (the setup only has ids): "Movies, Music".</summary>
     public string CategoryName { get; }
+
+    /// <summary>
+    /// A solo Dungeon game: the clock is an arcade clock. It starts at the solo starting time and
+    /// every kill adds time (see <see cref="DungeonRun.SecondsEarnedBy"/>), up to the hard cap.
+    /// Every other match plays a fixed round of <see cref="MatchSettings.MatchSeconds"/>.
+    /// </summary>
+    public bool HasSoloClock { get; }
+
+    /// <summary>How long the clock runs when Playing starts (a solo game's can grow from there).</summary>
+    public double RoundSeconds { get; }
+
+    /// <summary>Solo games: how many times the player continued (swiped for more time).</summary>
+    public int ContinuesUsed { get; private set; }
+
+    /// <summary>Solo games: play time used before the last continue. It counts toward the hard cap.</summary>
+    private TimeSpan _playedBeforeContinue;
 
     public MatchPhase Phase { get; private set; }
     public DateTimeOffset PhaseStartedAt { get; private set; }
@@ -113,8 +134,8 @@ public sealed class MatchEngine
 
     public bool IsDungeon => Settings.Format == GameFormat.Dungeon;
 
-    /// <summary>Dungeon format: an answer owner's trip down the dungeon. Null in Classic format.</summary>
-    public Delve? FindDelve(string ownerId) => _delves.GetValueOrDefault(ownerId);
+    /// <summary>Dungeon format: the parties' delves and the adventurers. Null in Classic format.</summary>
+    public DungeonRun? Dungeon => _dungeon;
 
     public bool HasStation(string stationId) => Roster.FindPlayer(stationId) != null;
 
@@ -141,21 +162,14 @@ public sealed class MatchEngine
             Version++;
             events.Add(new LockoutEnded(stream.OwnerId));
 
-            if (FindDelve(stream.OwnerId) is { } delve && Phase == MatchPhase.Playing)
-            {
-                if (delve.DownedUntil != null)
-                {
-                    delve.GetUp();
-                    events.Add(new AdventurerGotUp(stream.OwnerId));
-                }
-                delve.StartHourglass(now);
-            }
+            if (_dungeon != null && Phase == MatchPhase.Playing && _dungeon.ButtonsWorkAgain(stream.OwnerId, now))
+                events.Add(new AdventurerGotUp(stream.OwnerId));
         }
 
-        if (Phase == MatchPhase.Playing && now < PhaseEndsAt)
+        if (_dungeon != null && Phase == MatchPhase.Playing && now < PhaseEndsAt)
         {
-            foreach (var delve in _delves.Values.Where(d => d.IsAttackDue(now)))
-                events.AddRange(MonsterAttacks(delve, now));
+            foreach (var adventurer in _dungeon.AttacksDue(now))
+                events.AddRange(MonsterAttacks(adventurer.OwnerId, now));
         }
 
         if (now >= PhaseEndsAt)
@@ -184,8 +198,7 @@ public sealed class MatchEngine
         var losesPoints = !isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.LosePoints;
 
         // Dungeon format: a correct answer is an attack, and its points are the damage it did.
-        var delve = FindDelve(stream.OwnerId);
-        var dealt = isCorrect ? delve?.Strike(question.Difficulty, press.PressedAt - shownAt) : null;
+        var dealt = isCorrect ? _dungeon?.Strike(stream.OwnerId, question.Difficulty, press.PressedAt - shownAt, now) : null;
         var correctPoints = dealt?.Damage ?? Settings.CorrectPoints;
 
         var answer = new GivenAnswer(
@@ -199,7 +212,8 @@ public sealed class MatchEngine
             press.PressedAt,
             ResponseTime: press.PressedAt - shownAt);
 
-        stream.Record(answer, now);
+        // Dungeon format: the next question waits while the screen shows the fight (a battle beat).
+        stream.Record(answer, now + TimeSpan.FromSeconds(_dungeon?.BeatSecondsAfter(dealt) ?? 0));
         Mode.ScoreAnswer(answer, player, Roster);
 
         if (!isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.Lockout)
@@ -207,22 +221,69 @@ public sealed class MatchEngine
 
         Version++;
         List<MatchEvent> events = [new AnswerGiven(answer)];
-        if (delve == null)
+        if (_dungeon == null)
             return events;
 
         if (dealt != null)
+        {
             events.Add(new MonsterHit(stream.OwnerId, dealt));
+            if (dealt.RevivedOwnerId is { } revived)
+                events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
+            AddTime(_dungeon.SecondsEarnedBy(dealt));
+        }
         else
-            events.Add(new AdventurerHit(stream.OwnerId, delve.TakeHit(HitReason.WrongAnswer, now)));
+        {
+            events.Add(new AdventurerHit(stream.OwnerId, _dungeon.TakeHit(stream.OwnerId, HitReason.WrongAnswer, now)));
+        }
 
-        AfterDungeonTurn(stream, delve, now);
+        _dungeon.AfterTurn(stream, now);
         return events;
     }
 
-    /// <summary>The monster's hourglass ran out: it attacks, and the question it was guarding is lost.</summary>
-    private IReadOnlyList<MatchEvent> MonsterAttacks(Delve delve, DateTimeOffset now)
+    /// <summary>
+    /// The solo arcade clock: pushes the end of Playing back, but never past the hard cap
+    /// (<see cref="DungeonSettings.SoloMaxSeconds"/> of play in all, continues included).
+    /// </summary>
+    private void AddTime(double seconds)
     {
-        var stream = _streams[delve.OwnerId];
+        if (!HasSoloClock || seconds <= 0)
+            return;
+
+        var cap = PhaseStartedAt + TimeSpan.FromSeconds(Settings.Dungeon.SoloMaxSeconds) - _playedBeforeContinue;
+        var endsAt = PhaseEndsAt + TimeSpan.FromSeconds(seconds);
+        PhaseEndsAt = endsAt < cap ? endsAt : cap;
+    }
+
+    /// <summary>
+    /// A continue (a swipe at the station, or the operator giving one). While the match waits on
+    /// <see cref="MatchPhase.Continue"/>, the solo player goes back to Playing for
+    /// <see cref="DungeonSettings.SoloContinueSeconds"/> more, on the same floor with the same HP.
+    /// Ignored at any other time.
+    /// </summary>
+    public IReadOnlyList<MatchEvent> Continue(DateTimeOffset now)
+    {
+        if (Phase != MatchPhase.Continue)
+            return NothingHappened;
+
+        ContinuesUsed++;
+        EnterPhase(MatchPhase.Playing, now, Settings.Dungeon.SoloContinueSeconds);
+        foreach (var stream in _streams.Values)
+        {
+            stream.Start(now); // the question they were on shows again, with a fresh hourglass
+            _dungeon!.Resume(stream, now);
+        }
+        return [new PhaseChanged(Phase)];
+    }
+
+    /// <summary>Solo games, when the clock has run out: continues are on, and a whole one still fits under the hard cap.</summary>
+    private bool CanContinue =>
+        Settings.Dungeon.SoloContinueSeconds > 0 &&
+        _playedBeforeContinue.TotalSeconds + Settings.Dungeon.SoloContinueSeconds <= Settings.Dungeon.SoloMaxSeconds;
+
+    /// <summary>An owner's hourglass ran out: the monster attacks, and the question it was guarding is lost.</summary>
+    private IReadOnlyList<MatchEvent> MonsterAttacks(string ownerId, DateTimeOffset now)
+    {
+        var stream = _streams[ownerId];
         var lost = new GivenAnswer(
             stream.OwnerId,
             stream.CurrentNumber,
@@ -234,27 +295,12 @@ public sealed class MatchEngine
             now,
             ResponseTime: now - stream.CurrentShownAt!.Value,
             TimedOut: true);
-        stream.Record(lost, now);
+        stream.Record(lost, now + TimeSpan.FromSeconds(_dungeon!.BeatSecondsAfter(dealt: null)));
 
-        var hit = delve.TakeHit(HitReason.TooSlow, now);
-        AfterDungeonTurn(stream, delve, now);
+        var hit = _dungeon.TakeHit(ownerId, HitReason.TooSlow, now);
+        _dungeon.AfterTurn(stream, now);
         Version++;
-        return [new AnswerGiven(lost), new AdventurerHit(stream.OwnerId, hit)];
-    }
-
-    /// <summary>
-    /// After an answer or an attack: downed adventurers' buttons go dead until they get up, and the
-    /// hourglass runs for the next question unless the buttons are dead (it restarts when they work again).
-    /// </summary>
-    private static void AfterDungeonTurn(QuestionStream stream, Delve delve, DateTimeOffset now)
-    {
-        if (delve.DownedUntil is { } downedUntil && (stream.LockedOutUntil == null || stream.LockedOutUntil < downedUntil))
-            stream.LockOut(downedUntil);
-
-        if (stream.IsLockedOutAt(now))
-            delve.StopHourglass();
-        else
-            delve.StartHourglass(now);
+        return [new AnswerGiven(lost), new AdventurerHit(ownerId, hit)];
     }
 
     /// <summary>Ends the match immediately (operator abort from the admin page).</summary>
@@ -279,14 +325,25 @@ public sealed class MatchEngine
             case MatchPhase.Intro:
                 foreach (var stream in _streams.Values)
                     stream.Start(now);
-                foreach (var delve in _delves.Values)
-                    delve.StartHourglass(now);
-                EnterPhase(MatchPhase.Playing, now, Settings.MatchSeconds);
+                _dungeon?.Start(now);
+                EnterPhase(MatchPhase.Playing, now, RoundSeconds);
                 return [new PhaseChanged(Phase)];
 
             case MatchPhase.Playing:
-                foreach (var delve in _delves.Values)
-                    delve.StopHourglass();
+                _dungeon?.Stop();
+                if (HasSoloClock)
+                {
+                    _playedBeforeContinue += PhaseEndsAt - PhaseStartedAt;
+                    if (CanContinue)
+                    {
+                        EnterPhase(MatchPhase.Continue, now, Settings.Dungeon.SoloContinueCountdownSeconds);
+                        return [new PhaseChanged(Phase)];
+                    }
+                }
+                EnterPhase(MatchPhase.Results, now, Settings.ResultsSeconds);
+                return [new PhaseChanged(Phase)];
+
+            case MatchPhase.Continue: // nobody swiped in time
                 EnterPhase(MatchPhase.Results, now, Settings.ResultsSeconds);
                 return [new PhaseChanged(Phase)];
 

@@ -121,8 +121,12 @@ try
 
     app.UseGlobalExceptionHandler();
     app.UseDefaultFiles();
+    // 3D models (.glb) for the battle scene aren't in the built-in list of file types, so they'd get a 404.
+    var fileTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+    fileTypes.Mappings[".glb"] = "model/gltf-binary";
     app.UseStaticFiles(new StaticFileOptions
     {
+        ContentTypeProvider = fileTypes,
         // Always check for a newer file, so screens pick up edits on refresh.
         OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
     });
@@ -136,6 +140,8 @@ try
     app.MapFallbackToFile("/display/leaderboard", "screens/leaderboard.html");
     app.MapFallbackToFile("/kiosk", "screens/kiosk.html");
     app.MapFallbackToFile("/dev/buttons", "screens/dev-buttons.html");
+    app.MapFallbackToFile("/dev/battle", "screens/dev-battle.html"); // the battle beats on a loop, with made-up data
+    app.MapFallbackToFile("/dev/battle3d", "screens/dev-battle3d.html"); // the same, drawn in 3D (js/battle3d)
     app.MapFallbackToFile("/admin", "screens/admin.html");
     app.MapGet("/operator", () => Results.Redirect("/admin#operator")); // the venue staff's screen: sound, rules, theme
 

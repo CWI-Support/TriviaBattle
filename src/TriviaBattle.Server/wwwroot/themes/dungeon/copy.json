@@ -42,7 +42,12 @@
     ],
     "playerTeam": "You fight with the {team}",
     "playerTeamWith": "You fight with the {team}, beside {teammates}",
-    "rules": "{seconds} seconds. Every right answer is an attack!"
+    "rules": "{seconds} seconds. Every right answer is an attack!",
+    "soloClock": [
+      "Slay monsters to buy yourself more time.",
+      "Every kill puts sand back in your hourglass.",
+      "Kill fast and the dungeon lets you stay longer."
+    ]
   },
   "player": {
     "idle": "Swipe in at the spellbook to quest",
@@ -55,6 +60,23 @@
     ],
     "playerWon": "{who} delved deepest!"
   },
+  "continue": {
+    "title": [
+      "CONTINUE?",
+      "Not dead yet?",
+      "One more go?"
+    ],
+    "swipe": [
+      "Swipe your card for {seconds} more seconds in the dungeon.",
+      "Feed the dungeon a swipe. It gives you {seconds} more seconds.",
+      "The goblins are waiting. Swipe for {seconds} more seconds."
+    ],
+    "mainSwipe": [
+      "{name} is out of time. Swipe for {seconds} more seconds!",
+      "Will {name} go deeper? Swipe for {seconds} more seconds!"
+    ],
+    "progress": "Floor {floor} · {kills} slain · {score} points"
+  },
   "kiosk": {
     "start": "Enter the dungeon!",
     "modeTitle": "Choose your quest",
@@ -63,6 +85,7 @@
     "categoryTitle": "Choose your realms",
     "busyTitle": "A quest is under way",
     "busyIntro": "Into the dungeon. The quest is starting!",
+    "busyContinue": "An adventurer is deciding whether to go on...",
     "started": "Your quest begins! Head to your stations."
   }
 }

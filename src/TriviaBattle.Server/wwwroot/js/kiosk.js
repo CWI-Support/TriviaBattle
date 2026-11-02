@@ -308,6 +308,8 @@ function renderAllBusy(matches) {
             ? Theme.text('kiosk.busyIntro', {}, match.matchId)
             : match.phase === 'Results'
                 ? Theme.text('kiosk.busyResults', {}, match.matchId)
+            : match.phase === 'Continue'
+                ? Theme.text('kiosk.busyContinue', {}, match.matchId)
                 : Theme.text('kiosk.busyPlaying', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) });
         return `<p class="subtitle"><b>${who}</b> &middot; ${progress}</p>`;
     }).join('');

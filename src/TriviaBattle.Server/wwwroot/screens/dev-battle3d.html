@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Battle Preview 3D</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+    <link rel="stylesheet" href="/css/dungeon.css">
+    <link rel="stylesheet" href="/css/dungeon-battle.css">
+    <link rel="stylesheet" href="/css/battle3d.css">
+    <style>
+        /* Dev only: the beat being shown, in the corner. ?at= freezes every animation at that moment. */
+        #dev-label { position: fixed; right: 1vmin; bottom: 1vmin; z-index: 99; padding: 0.5vmin 1vmin; background: #000; color: #0f0; font: 2vmin monospace; }
+        body.is-frozen *, body.is-frozen *::before, body.is-frozen *::after { animation-play-state: paused !important; }
+    </style>
+    <!-- three.js is vendored (the venue LAN may be offline); modules find it through this map. -->
+    <script type="importmap">
+        { "imports": { "three": "/lib/three/three.module.min.js", "three/addons/": "/lib/three/addons/" } }
+    </script>
+</head>
+<body class="is-3d">
+    <!-- /dev/battle in 3D: the same made-up beats (js/dev-battle.js explains the URL options), drawn by js/battle3d. -->
+    <div class="theme-backdrop"></div>
+    <div id="stage3d"></div>
+    <div class="player-screen is-dungeon">
+        <main class="player-body" id="player-body"></main>
+    </div>
+    <div id="dev-moment"></div>
+    <div id="dev-label"></div>
+
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/pixel-sprites.js"></script>
+    <script src="/js/dungeon-view.js"></script>
+    <script src="/js/dungeon-battle.js"></script>
+    <!-- Modules run in order after the page is read: Battle3D first, so the dev script can use it. -->
+    <script type="module" src="/js/battle3d/battle3d.js"></script>
+    <script type="module" src="/js/dev-battle.js"></script>
+</body>
+</html>

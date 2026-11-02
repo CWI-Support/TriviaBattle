@@ -42,8 +42,15 @@ function renderPads() {
             <div class="dev-pad" style="--chip-color: ${station.color}">
                 <h3>${UI.escape(station.label)}</h3>
                 <div class="dev-buttons">${buttons}</div>
+                <button class="dev-swipe" onclick="swipeCard('${UI.escape(station.id)}')">Swipe card (continue)</button>
             </div>`;
     }).join('');
+}
+
+/** Stands in for the station's card reader: gives a continue if that station's game is on "Continue?". */
+async function swipeCard(stationId) {
+    const response = await fetch(`/api/dev/continue/${encodeURIComponent(stationId)}`, { method: 'POST' });
+    if (!response.ok) alert((await response.json()).problems?.join(' ') || 'No continue on offer there.');
 }
 
 function pressKey(key) {

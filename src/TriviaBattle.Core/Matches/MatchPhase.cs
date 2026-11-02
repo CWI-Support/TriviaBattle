@@ -4,6 +4,8 @@ namespace TriviaBattle.Core.Matches;
 /// The steps a match moves through. Every match is a timed rapid-fire round:
 /// <code>
 /// Intro -> Playing (the match clock runs; everyone answers at their own pace) -> Results -> Finished
+///                    |                ^
+///                    +-> Continue? ---+   (solo Dungeon games only: a swipe goes back to Playing)
 /// </code>
 /// Before a match exists, the room is in "Lobby" (kiosk setup). That isn't a match phase
 /// because there is no match yet; the server reports it separately.
@@ -18,6 +20,12 @@ public enum MatchPhase
     /// questions: answer one and the next appears straight away. See <see cref="QuestionStream"/>.
     /// </summary>
     Playing,
+
+    /// <summary>
+    /// Solo Dungeon games only: the arcade clock ran out. A short countdown runs; a continue (a swipe)
+    /// goes back to Playing with more time, on the same floor; otherwise Results. Never in group games.
+    /// </summary>
+    Continue,
 
     /// <summary>Final results after the clock runs out.</summary>
     Results,

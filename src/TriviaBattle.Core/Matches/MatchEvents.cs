@@ -25,7 +25,7 @@ public sealed record MonsterHit(string OwnerId, DealtHit Hit) : MatchEvent;
 /// <summary>Dungeon format: the monster hit back (a wrong answer, or its hourglass ran out).</summary>
 public sealed record AdventurerHit(string OwnerId, TakenHit Hit) : MatchEvent;
 
-/// <summary>Dungeon format: a downed adventurer is back on their feet.</summary>
+/// <summary>Dungeon format: a downed adventurer is back on their feet (their time ran out, or teammates revived them).</summary>
 public sealed record AdventurerGotUp(string OwnerId) : MatchEvent;
 
 /// <summary>

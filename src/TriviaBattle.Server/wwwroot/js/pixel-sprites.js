@@ -189,6 +189,37 @@ const PixelSprites = {
                 'kkkkkkkkkkkkkkkk',
             ],
         },
+        // The adventurer in the battle scene: a knight side-on, sword up, facing right (towards the
+        // monster). 'r' (plume and cape) is the station's colour.
+        hero: {
+            palette: { k: '#111111', s: '#c9d1d9', S: '#7d858d', v: '#1a1a1a', e: '#ffd23f', r: '#d62828',
+                       w: '#eef3f8', W: '#9aa6b2', h: '#8a5a2b', g: '#f0b429', b: '#4a3424' },
+            rows: [
+                '..........rr............',
+                '.........rrrr...........',
+                '..........rrr...........',
+                '........kkkkkk..........',
+                '.......kssssssk.........',
+                '......ksssSSsssk......kw',
+                '......kssvvvesk......kwk',
+                '......ksSSSSSSsk....kwWk',
+                '.......kssssssk....kwWk.',
+                '....rr..kkSSkk....kwWk..',
+                '...rrrkkssssssk..kwWk...',
+                '..rrrksssSSssssk.kwk....',
+                '..rrrkssSkkSsssgkgk.....',
+                '..rrrksSk..kSssshhk.....',
+                '...rrksSk..ksssgkgk.....',
+                '...rrkssSkkSssk.k.......',
+                '....rkssssssssk.........',
+                '.....kSSSSSSSSk.........',
+                '.....kssk..kssk.........',
+                '.....kssk..kssk.........',
+                '.....kSSk..kSSk.........',
+                '....kbbbk..kbbbk........',
+                '....kkkkk..kkkkk........',
+            ],
+        },
         // Small icons for labels: hit points, kills, the monster's attack, the stairs between floors.
         'icon-heart': {
             palette: { k: '#000000', r: '#e8323c', w: '#ffc0c4' },

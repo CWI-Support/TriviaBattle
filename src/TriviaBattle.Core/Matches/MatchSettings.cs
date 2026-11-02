@@ -34,7 +34,10 @@ public sealed class MatchSettings
     /// <summary>Combat numbers for <see cref="GameFormat.Dungeon"/>.</summary>
     public DungeonSettings Dungeon { get; set; } = new();
 
-    /// <summary>How long the clock runs: answer as many questions as you can in this time.</summary>
+    /// <summary>
+    /// How long the clock runs: answer as many questions as you can in this time. A solo Dungeon game
+    /// uses the arcade clock instead (<see cref="DungeonSettings.SoloStartSeconds"/>).
+    /// </summary>
     public double MatchSeconds { get; set; } = 60;
 
     // How long the other phases last, in seconds. See MatchPhase for what each phase is.
@@ -63,5 +66,10 @@ public sealed class MatchSettings
     public bool ShuffleAnswers { get; set; } = true;
 
     /// <summary>A copy, so per-match overrides never change the shared configured instance.</summary>
-    public MatchSettings Copy() => (MatchSettings)MemberwiseClone();
+    public MatchSettings Copy()
+    {
+        var copy = (MatchSettings)MemberwiseClone();
+        copy.Dungeon = Dungeon.Copy(); // its own object, or a change to the copy's would change the original's
+        return copy;
+    }
 }

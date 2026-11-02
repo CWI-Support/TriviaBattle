@@ -7,6 +7,7 @@ const OperatorTab = {
 
     init() {
         document.getElementById('l-rules-penalty').addEventListener('change', OperatorTab.showPenaltyFields);
+        document.getElementById('l-rules-format').addEventListener('change', OperatorTab.showSoloFields);
         document.getElementById('l-rules').addEventListener('submit', async event => {
             event.preventDefault();
             await OperatorTab.saveRules();
@@ -29,7 +30,14 @@ const OperatorTab = {
         document.getElementById('l-rules-lockout').value = rules.lockoutSeconds;
         document.getElementById('l-rules-points').value = rules.wrongAnswerPoints;
         document.getElementById('l-rules-format').value = rules.format;
+        document.getElementById('l-rules-solo-start').value = rules.soloStartSeconds;
+        document.getElementById('l-rules-solo-kill').value = rules.soloSecondsPerKill;
+        document.getElementById('l-rules-solo-boss').value = rules.soloSecondsPerBoss;
+        document.getElementById('l-rules-solo-max').value = rules.soloMaxSeconds;
+        document.getElementById('l-rules-solo-continue').value = rules.soloContinueSeconds;
+        document.getElementById('l-rules-solo-countdown').value = rules.soloContinueCountdownSeconds;
         OperatorTab.showPenaltyFields();
+        OperatorTab.showSoloFields();
     },
 
     async saveRules() {
@@ -41,6 +49,12 @@ const OperatorTab = {
                 lockoutSeconds: Number(document.getElementById('l-rules-lockout').value),
                 wrongAnswerPoints: Number(document.getElementById('l-rules-points').value),
                 format: document.getElementById('l-rules-format').value,
+                soloStartSeconds: Number(document.getElementById('l-rules-solo-start').value),
+                soloSecondsPerKill: Number(document.getElementById('l-rules-solo-kill').value),
+                soloSecondsPerBoss: Number(document.getElementById('l-rules-solo-boss').value),
+                soloMaxSeconds: Number(document.getElementById('l-rules-solo-max').value),
+                soloContinueSeconds: Number(document.getElementById('l-rules-solo-continue').value),
+                soloContinueCountdownSeconds: Number(document.getElementById('l-rules-solo-countdown').value),
             });
             status.textContent = 'Saved. The next match uses these rules.';
         } catch (err) {
@@ -53,6 +67,13 @@ const OperatorTab = {
         const lockout = document.getElementById('l-rules-penalty').value === 'Lockout';
         document.getElementById('l-rules-lockout-field').hidden = !lockout;
         document.getElementById('l-rules-points-field').hidden = lockout;
+        document.getElementById('l-rules-status').textContent = '';
+    },
+
+    /** The solo clock only exists in Dungeon Quiz Quest. Hidden fields are still saved as they are. */
+    showSoloFields() {
+        const dungeon = document.getElementById('l-rules-format').value === 'Dungeon';
+        document.querySelectorAll('.l-rules-solo').forEach(field => field.hidden = !dungeon);
         document.getElementById('l-rules-status').textContent = '';
     },
 
@@ -166,6 +187,8 @@ const OperatorTab = {
 
             document.querySelectorAll('[data-abort]').forEach(button =>
                 button.addEventListener('click', () => OperatorTab.abort(button.dataset.abort)));
+            document.querySelectorAll('[data-continue]').forEach(button =>
+                button.addEventListener('click', () => OperatorTab.giveContinue(button.dataset.continue)));
         } catch (err) {
             document.getElementById('l-matches').innerHTML = `<p class="problems">${UI.escape(err.message)}</p>`;
         }
@@ -198,11 +221,22 @@ const OperatorTab = {
                     <strong>${UI.escape(match.modeName)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</strong>
                     <span class="status-pill">${match.phase}</span>
                     <span class="spacer"></span>
+                    ${match.phase === 'Continue' ? `<button class="primary" data-continue="${match.matchId}">Give a continue</button>` : ''}
                     <button class="danger" data-abort="${match.matchId}">Abort match</button>
                 </header>
                 ${streams}
                 <p>${standings}</p>
             </div>`;
+    },
+
+    /** A free continue for a solo player on "Continue?" (a comp, or a swipe that didn't read). */
+    async giveContinue(matchId) {
+        try {
+            await AdminApi.post(`/api/matches/${matchId}/continue`);
+            await OperatorTab.refresh();
+        } catch (err) {
+            showError(err);
+        }
     },
 
     async abort(matchId) {

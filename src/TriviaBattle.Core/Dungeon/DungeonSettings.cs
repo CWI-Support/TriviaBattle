@@ -30,9 +30,57 @@ public sealed class DungeonSettings
 
     /// <summary>
     /// At 0 HP an adventurer is downed: their buttons are dead this long, then they get back up at
-    /// full HP. The monster heals to full meanwhile. Nobody is knocked out of a paid game.
+    /// full HP. When the whole party is down the monster heals. Nobody is knocked out of a paid game.
     /// </summary>
     public double DownedSeconds { get; set; } = 5;
+
+    // Battle beats: after each answer the next question waits a moment while the screen shows the fight
+    // (your hit, the monster's attack, a kill, the way down to the next floor). Buttons are dead and the
+    // monster's hourglass waits meanwhile. The clocks keep running: time per kill and the round length
+    // allow for it. 0 = no beat (the next question at once).
+
+    public double HitBeatSeconds { get; set; } = 1.5;
+    public double HurtBeatSeconds { get; set; } = 1.7;
+    public double KillBeatSeconds { get; set; } = 2;
+
+    /// <summary>A floor cleared: the way down, or the next floor's boss stepping up.</summary>
+    public double FloorBeatSeconds { get; set; } = 3;
+
+    // In a party of two or more, a downed adventurer waits for their teammates: ReviveAnswers right
+    // answers from them bring them back. PartyDownedSeconds is the safety net if nobody manages it.
+    // When the whole party is down, everyone gets up after DownedSeconds.
+
+    public int ReviveAnswers { get; set; } = 3;
+    public double PartyDownedSeconds { get; set; } = 20;
+
+    /// <summary>A party combo: everyone standing answers right within this many seconds of each other.</summary>
+    public double PartyComboSeconds { get; set; } = 4;
+
+    /// <summary>The hit that completes a party combo adds this share of the damage on top (1 = double).</summary>
+    public double PartyComboBonus { get; set; } = 1;
+
+    // A solo game runs on an arcade clock: it starts at SoloStartSeconds and every monster slain adds
+    // time, up to SoloMaxSeconds of play in all. When it runs out the player can continue (a swipe)
+    // for SoloContinueSeconds more. Groups play a fixed round (MatchSettings.MatchSeconds) so everyone
+    // starts and ends together. All of these can be changed on the Operator screen.
+
+    public double SoloStartSeconds { get; set; } = 90;
+    public double SoloSecondsPerKill { get; set; } = 10;
+
+    /// <summary>A boss kill adds this instead of <see cref="SoloSecondsPerKill"/>.</summary>
+    public double SoloSecondsPerBoss { get; set; } = 30;
+
+    /// <summary>The hard cap: a solo game's clock never runs longer than this in all, continues included.</summary>
+    public double SoloMaxSeconds { get; set; } = 480;
+
+    /// <summary>
+    /// The time a continue adds. A continue is only offered while a whole one still fits under
+    /// <see cref="SoloMaxSeconds"/>. 0 = no continues.
+    /// </summary>
+    public double SoloContinueSeconds { get; set; } = 60;
+
+    /// <summary>How long "Continue?" waits for a swipe before going to the results.</summary>
+    public double SoloContinueCountdownSeconds { get; set; } = 10;
 
     public int DamageFor(Difficulty difficulty) => difficulty switch
     {
@@ -40,4 +88,6 @@ public sealed class DungeonSettings
         Difficulty.Hard => HardDamage,
         _ => MediumDamage,
     };
+
+    public DungeonSettings Copy() => (DungeonSettings)MemberwiseClone();
 }

@@ -39,14 +39,16 @@ dotnet test
 
 1. **Kiosk window**: pick a mode, add players with *Simulate card swipe* or *Play as guest*, then start.
 2. **Player windows**: each one is that player's keypad. Click into a player window and press
-   `1` `2` `3` `4` (or `A`–`D`, or the numpad), or just click/tap an answer.
+   `1` `2` `3` `4` (or `A`–`D`, or the numpad), or just click/tap an answer. `Space` is a card swipe
+   at that station: it takes a continue when a solo dungeon game's "Continue?" is up.
 3. Close the screens with `.	ools\launch-screens.ps1 -Close`, and close the server's window to stop it.
 
 This works the same with the screens on separate devices (e.g. four tablets as player screens):
 open `http://<server-ip>:5000/display/player/1` on each and tap the answers.
 
 Other ways to press buttons without hardware:
-- `/dev/buttons`: all 16 buttons on one page.
+- `/dev/buttons`: all 16 buttons on one page, plus a "card swipe" per station to continue a solo
+  dungeon game when its "Continue?" is up.
 - `/display/main?devkeys=1`: type for every player from the main screen
   (`1234` = Player 1, `QWER` = Player 2, `ASDF` = Player 3, `ZXCV` = Player 4).
 
@@ -59,10 +61,12 @@ Screen URLs and what they show:
 |---|---|
 | `/kiosk` | Touchscreen setup outside the room |
 | `/display/main` | Main room screen: clock and live scores, split into halves/quadrants when several groups play at once; leaderboards between matches |
-| `/display/player/{n}` | Player station screen (portrait) |
+| `/display/player/{n}` | Player station screen (portrait). The Dungeon fight is drawn in 3D; `?view=2d` for the older CSS version |
 | `/display/leaderboard` | Stand-alone rotating leaderboards, e.g. for a lobby TV |
 | `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health |
 | `/dev/buttons` | Dev stand-in for the buttons (only when dev tools are on) |
+| `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
+| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options |
 
 Add `?room=B` to any URL when there's more than one room. It doesn't matter which machine a screen
 runs on. Point a browser at `http://<server-ip>:5000/...`.
@@ -134,8 +138,10 @@ to add a game mode, station or button mapping.
 |---|---|
 | Rooms and stations (count, labels, colors) | `src/TriviaBattle.Server/config/stations.json` |
 | Dungeon floors and monsters (HP, damage, hourglass, sprite) | `src/TriviaBattle.Server/config/dungeon.json` |
-| Dungeon combat numbers (adventurer HP, damage per difficulty, crits, combos, downed time) | `"Game:Dungeon"` in `appsettings.json` |
+| Dungeon combat numbers (adventurer HP, damage per difficulty, crits, combos, downed time, revives, party combos, battle beat lengths) | `"Game:Dungeon"` in `appsettings.json` |
 | Classic quiz or Dungeon Quiz Quest | Operator screen, `/operator` (default: `"Game:Format"` in `appsettings.json`) |
+| Round length (groups, and every Classic game) | Operator screen (default: `"Game:MatchSeconds"`) |
+| Solo dungeon clock: starting time, time per monster and per boss, longest solo game, time per continue, continue countdown | Operator screen (defaults: `"Game:Dungeon:Solo*"`) |
 | Button id -> station + answer | `src/TriviaBattle.Server/config/buttons.json` |
 | Keyboard key -> button id (dev stand-in for buttons) | `src/TriviaBattle.Server/config/keyboard.json` |
 | PLC on/off, address, register map, button codes, LED registers | `src/TriviaBattle.Server/config/plc.json` (see docs/PLC-PROTOCOL.md) |
@@ -148,7 +154,7 @@ to add a game mode, station or button mapping.
 | Database file | `ConnectionStrings:TriviaBattle` in `appsettings.json` |
 | Admin API key (empty = admin endpoints open, a warning is logged) | `AdminApiKey` in `appsettings.json` |
 | HTTP port | `Port` in `appsettings.json` |
-| Dev helpers such as `/api/dev/buttons` | `DevTools:Enabled` (defaults to on in Development only) |
+| Dev helpers such as `/api/dev/buttons` and `/api/dev/continue/{stationId}` | `DevTools:Enabled` (defaults to on in Development only) |
 
 Any setting can also be overridden with an environment variable, e.g. `Game__MatchSeconds=30`
 (the admin page's game rules win once they've been saved there).
@@ -176,7 +182,7 @@ Open **/admin**. If `AdminApiKey` is set in `appsettings.json`, the page asks fo
 - **Players**: rename or forget RFID cards.
 - **Operator** (the default tab, also at `/operator`, linked from the start page): the venue staff's
   screen. Sound (volume sliders, sound card status, a test button per speaker), game rules
-  (round length, wrong-answer penalty), theme, running matches (with the correct answers) and abort,
+  (round length, solo clock, wrong-answer penalty), theme, running matches (with the correct answers) and abort,
   and PLC health.
 - **Live log**: is anything going wrong right now? Which screens are connected (a missing one shows
   red), and the server log as it happens: matches, buttons, sound, rejected requests (e.g. a kiosk
@@ -199,7 +205,9 @@ amps and a powered sub. Windows must have the card set to **7.1**.
 
 What plays where:
 - **Each station's speaker:** a success or fail stinger the moment that station answers (both
-  teammates hear it in 2v2 Group). One is picked at random from the three of each.
+  teammates hear it in 2v2 Group). One is picked at random from the three of each. Dungeon games
+  play the fight instead (`Audio:Dungeon`): hit, crit, kill, floor, boss, party combo, revive, hurt,
+  downed. The files in `media/audio/dungeon/sfx` are generated 8-bit placeholders.
 - **Room speaker, plus the same on the sub:** main theme in the lobby, the intro's sound,
   in-game music while the clock runs, victory music at the results.
 - **Attract:** the main theme, looping all the time.

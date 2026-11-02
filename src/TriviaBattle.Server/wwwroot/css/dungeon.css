@@ -19,6 +19,10 @@
 }
 
 .pixel-sprite { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* A short effect kept across redraws (DungeonView.activeEffects): it only carries --t0, minus the
+   effect's age, which its animations use as their delay so they carry on instead of restarting. */
+.dg-effect { display: contents; }
 .dg-icon { flex: 0 0 auto; width: 1.2em; height: auto; }
 
 /* ---------- Station screen (portrait) ---------- */
@@ -59,6 +63,14 @@
 .dg-clock small { font-size: 0.55em; color: var(--text-dim); text-transform: uppercase; }
 .dg-clock .is-hurry { color: var(--wrong); animation: dg-blink 0.5s steps(1) infinite; }
 @keyframes dg-blink { 50% { opacity: 0.3; } }
+
+/* A solo kill earns time: "+10s" pops up beside the clock and floats away. */
+.dg-time-added { color: var(--correct); animation: dg-time-added 1.6s ease-out var(--t0, 0ms) both; }
+@keyframes dg-time-added {
+    0% { transform: translateY(30%) scale(1.5); opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translateY(-80%); opacity: 0; }
+}
 
 /* The trail: an icon per monster, grouped by floor, stairs between floors. Icons shrink to fit
    the width (--steps, set by dungeon-view.js, counts them), up to --step-max. */
@@ -106,8 +118,33 @@
 .dg-scroll-tag { font-size: 0.55em; opacity: 0.7; text-transform: uppercase; margin-bottom: 0.4vh; }
 .dg-scroll .question-media { max-height: calc(16vh * var(--fit)); display: block; margin: 0 auto 1vh; }
 
-/* The monster's room: takes whatever height is left. */
-.dg-stage { flex: 1 1 0; min-height: 12vh; position: relative; display: flex; justify-content: center; }
+/* While a question is up the fight is a strip: the monster small on the left, its nameplate beside it.
+   The question and answers get the room; the full fight plays between questions (dungeon-battle.css). */
+.dg-strip { position: relative; display: flex; align-items: stretch; gap: 2vw; }
+.dg-strip .dg-monster-wrap { flex: 0 0 auto; width: 22vmin; height: auto; min-height: 19vmin; }
+.dg-strip .dg-monster { height: 19vmin; }
+.dg-strip .dg-monster.is-boss { height: 21vmin; }
+.dg-strip .dg-enemy { flex: 1; justify-content: center; }
+.dg-strip .dg-float { font-size: 5vmin; top: 0; }
+.dg-strip .dg-float.is-crit { font-size: 6vmin; }
+.dg-strip .dg-slain, .dg-strip .dg-party-combo { font-size: 2.4vmin; }
+.dg-station.is-question .dg-scroll { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; font-size: calc(6vmin * var(--fit)); }
+.dg-station.is-question .dg-answer { font-size: calc(5.4vmin * var(--fit)); padding-block: calc(1.6vh * var(--fit)); }
+
+/* The question coming in as the battle beat fades out: the scroll drops in, the strip and the Host's
+   line rise, then the answers one after another; after a kill the next monster drops into the strip.
+   Timed from --q0 (minus how long ago the beat ended) so a redraw doesn't play it again, and quick,
+   since the buttons are live. The top line and your plate stay put, so the screen doesn't jump. */
+.dg-station.is-after-beat .dg-scroll { animation: dg-q-drop 220ms ease-out var(--q0) both; }
+.dg-station.is-after-beat .dg-strip,
+.dg-station.is-after-beat .dg-feedback { animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both; }
+.dg-station.is-after-beat .dg-answer { animation: dg-q-rise 200ms ease-out calc(var(--q0) + 80ms) both; }
+.dg-station.is-after-beat .dg-answer:nth-child(2) { animation-delay: calc(var(--q0) + 120ms); }
+.dg-station.is-after-beat .dg-answer:nth-child(3) { animation-delay: calc(var(--q0) + 160ms); }
+.dg-station.is-after-beat .dg-answer:nth-child(4) { animation-delay: calc(var(--q0) + 200ms); }
+.dg-station.is-new-foe .dg-strip .dg-monster-wrap { animation: dg-drop 450ms cubic-bezier(0.3, 1.5, 0.6, 1) calc(var(--q0) + 60ms) both; }
+@keyframes dg-q-drop { from { opacity: 0; transform: translateY(-3vh); } }
+@keyframes dg-q-rise { from { opacity: 0; transform: translateY(2vh); } }
 
 .dg-monster-wrap { position: relative; height: 100%; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
 .dg-monster {
@@ -191,7 +228,7 @@
     color: #fff;
     text-shadow: 0.4vmin 0.4vmin 0 #000;
     pointer-events: none;
-    animation: dg-float 1s ease-out forwards;
+    animation: dg-float 1s ease-out var(--t0, 0ms) both;
 }
 .dg-float.is-crit { color: #ffd23f; font-size: 8vmin; }
 .dg-float.is-taken { color: var(--wrong); top: 55%; }
@@ -210,7 +247,7 @@
     font-size: 3.6vmin;
     color: #ffd23f;
     text-shadow: 0.35vmin 0.35vmin 0 #000;
-    animation: dg-fade 1.8s ease-in forwards;
+    animation: dg-fade 1.8s ease-in var(--t0, 0ms) both;
 }
 @keyframes dg-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
 
@@ -233,6 +270,7 @@
 }
 .dg-overlay.is-stunned { border-color: var(--accent); font-size: 3.6vmin; }
 .dg-overlay.small { font-size: 2.2vmin; }
+.dg-overlay.is-party { font-size: 2.8vmin; } /* the party's "DOWN! 2 more right answers..." is a longer line */
 
 /* Taking a hit flashes the whole screen red and gives it a shake. */
 .dg-station.is-hurt, .dg-lane.is-hurt { animation: dg-hurt 0.45s; }
@@ -331,8 +369,10 @@
 
 /* ---------- Main screen: a lane per adventurer (or party) ---------- */
 
-.dg-main { height: 100%; display: flex; flex-direction: column; gap: 1.2vh; padding: 3vh 3vw; }
+.dg-main { position: relative; height: 100%; display: flex; flex-direction: column; gap: 1.2vh; padding: 3vh 3vw; }
 .dg-main .match-clock { font-size: 12vmin; line-height: 1; }
+.dg-main-clock { position: relative; }
+.dg-main-clock .dg-time-added { position: absolute; left: 62%; top: 0; font-family: var(--dg-font-pixel); font-size: 6vmin; }
 .dg-lanes { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2vw; }
 
 .dg-lane {
@@ -377,6 +417,91 @@
 .dg-lane .dg-attack-label { font-size: 2.6vmin; }
 .dg-lane .dg-hourglass { height: 1.6vmin; }
 .dg-lane-hero { display: flex; align-items: center; gap: 1vw; }
+.dg-lane .dg-member { font-size: 2vmin; }
 .dg-lane-hero .dg-hp { flex: 1; }
 .dg-lane .dg-stats { flex-direction: row; justify-content: space-between; align-items: center; }
 .dg-lane .dg-stat b { font-size: 3.2vmin; }
+
+/* ---------- Parties: teammates' HP, revives, shouting a teammate the answer ---------- */
+
+.dg-party { display: flex; gap: 2vmin; }
+.dg-party.is-lane { flex: 1; flex-direction: column; gap: 0.8vh; }
+.dg-member { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.4vh; font-family: var(--dg-font-pixel); font-size: 2.4vmin; }
+.dg-member-line { display: flex; justify-content: space-between; gap: 1vmin; }
+.dg-member-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-member .dg-hp { font-size: 2.6vmin; }
+.dg-member .dg-bar { height: 2.6vmin; }
+.dg-member .dg-bar-text { font-size: 1.4vmin; }
+.dg-member.is-down .dg-hp { opacity: 0.4; }
+.dg-member-down { color: var(--wrong); animation: dg-blink 1s steps(1) infinite; }
+
+/* Downed in a party: the scroll and answers are a teammate's, to shout to them (your buttons are dead). */
+.dg-scroll-tag.is-help { opacity: 1; color: var(--wrong); }
+.dg-scroll.is-helping { outline: 0.6vmin dashed var(--wrong); outline-offset: -1.2vmin; }
+.dg-answers.is-helping .dg-answer { border-style: dashed; }
+
+/* "PARTY COMBO!" over the monster when the whole party lands right answers together. */
+.dg-party-combo {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: var(--dg-font-pixel);
+    font-size: 4.4vmin;
+    color: #ffd23f;
+    text-shadow: 0.35vmin 0.35vmin 0 #000;
+    animation: dg-fade 1.8s ease-in var(--t0, 0ms) both;
+}
+.dg-lane .dg-party-combo { font-size: 2.4vmin; }
+
+/* ---------- Main screen: big moments sweeping across the room screen ---------- */
+
+.dg-moments {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4vh;
+}
+.dg-moment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3vw;
+    width: 100%;
+    padding: 2.4vh 6vw;
+    background: linear-gradient(90deg, transparent, rgba(8, 6, 12, 0.94) 14% 86%, transparent);
+    border-top: 0.9vmin solid var(--lane-color);
+    border-bottom: 0.9vmin solid var(--lane-color);
+    box-shadow: 0 0 6vmin color-mix(in srgb, var(--lane-color) 45%, transparent);
+    animation: dg-moment 2600ms cubic-bezier(0.2, 0.9, 0.3, 1) var(--t0, 0ms) both;
+}
+.dg-moment-text {
+    font-family: var(--dg-font-pixel);
+    font-size: 5.4vmin;
+    line-height: 1.25;
+    color: #fff;
+    text-align: center;
+    text-transform: uppercase;
+    text-shadow: 0.5vmin 0.5vmin 0 #000;
+}
+.dg-moment-sprite { height: 14vmin; animation: dg-idle 0.6s steps(2) infinite; }
+.dg-moment.is-slain .dg-moment-text { color: #ffd23f; }
+.dg-moment.is-slain .dg-moment-sprite { filter: grayscale(1) brightness(0.6); transform: rotate(-90deg); animation: none; }
+.dg-moment.is-boss { background: linear-gradient(90deg, transparent, rgba(60, 4, 4, 0.95) 14% 86%, transparent); }
+.dg-moment.is-boss .dg-moment-text { color: #ff5a5a; }
+.dg-moment.is-revive .dg-moment-text { color: var(--dg-hero-hp); }
+.dg-moment.is-combo .dg-moment-text { color: #ffd23f; animation: dg-moment-rainbow 0.3s steps(3) infinite; }
+@keyframes dg-moment-rainbow { to { filter: hue-rotate(360deg); } }
+@keyframes dg-moment {
+    0% { opacity: 0; transform: translateX(-70vw) skewX(-24deg); }
+    12% { opacity: 1; transform: translateX(2vw) skewX(-6deg); }
+    18% { transform: none; }
+    84% { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: translateX(70vw) skewX(24deg); }
+}

@@ -1,0 +1,21 @@
+/* The 3D fight (js/battle3d). Its canvas covers the screen behind the station's HTML (in front of the
+   theme backdrop) and draws only inside the box marked data-stage: the beat's fight, or the monster's
+   portrait in the strip. The HTML keeps the words, the damage number, the flash, the HP bar, the Host's
+   line and the floor curtain; the drawn room, pixel actors, slash, claws and sparks give way to the 3D.
+   Everything is scoped to .is-3d (on <body>), so the CSS version is untouched without it. */
+
+#stage3d { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+#stage3d canvas { display: block; width: 100%; height: 100%; }
+
+/* A dark vignette round the fight frames it like a painting and keeps the eye in the middle. */
+.is-3d .dg-battle { border-color: transparent; box-shadow: inset 0 0 14vmin 2vmin rgba(8, 4, 8, 0.85); animation: none; }
+.is-3d .dg-battle .dg-room,
+.is-3d .dg-battle .dg-actor,
+.is-3d .dg-battle .dg-fx-slash,
+.is-3d .dg-battle .dg-fx-claws,
+.is-3d .dg-battle .dg-sparks { display: none; }
+.is-3d .dg-battle .dg-arena { animation: none; }  /* the camera shakes instead */
+
+/* While a question is up the monster is a live portrait in the strip, in a frame. */
+.is-3d .dg-strip .dg-monster-wrap { border: 0.6vmin solid var(--dg-frame-edge); box-shadow: inset 0 0 0 0.4vmin #000, 0 0 2vmin rgba(0, 0, 0, 0.6); }
+.is-3d .dg-strip .dg-monster-wrap > .dg-monster { visibility: hidden; }

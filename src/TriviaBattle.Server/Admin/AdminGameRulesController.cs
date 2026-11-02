@@ -5,7 +5,7 @@ using TriviaBattle.Server.Middleware;
 namespace TriviaBattle.Server.Admin;
 
 /// <summary>
-///   GET /api/admin/game-rules  -> round length and wrong-answer penalty
+///   GET /api/admin/game-rules  -> round length, wrong-answer penalty, format, solo clock
 ///   PUT /api/admin/game-rules  -> change them (applies from the next match)
 /// </summary>
 [ApiController]

@@ -183,6 +183,21 @@ public sealed class RoomSound : IDisposable
             Zone(stationId)?.PlayEffect(path);
     }
 
+    /// <summary>A sound effect (a dungeon hit, a kill...) on these stations' speakers. No file = silence.</summary>
+    public void PlayEffect(IEnumerable<string> stationIds, string? file)
+    {
+        if (Path(file) is not { } path)
+            return;
+
+        var stations = stationIds.Distinct().ToList();
+        // In stereo test mode every station is in both ears: one copy, not several out of step.
+        if (_audio.IsStereoTest)
+            stations = stations.Take(1).ToList();
+
+        foreach (var stationId in stations)
+            Zone(stationId)?.PlayEffect(path);
+    }
+
     /// <summary>Speaker test from the operator screen: a stinger on that speaker.</summary>
     /// <param name="speaker">A station id, or "room", "attract" or "sub".</param>
     /// <returns>False if there's no such speaker in this room.</returns>

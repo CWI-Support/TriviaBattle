@@ -18,10 +18,21 @@ public sealed class TestMatch
     private long _nextSequence = 1;
 
     /// <param name="stations">Free-for-all only: which stations play (default all four), e.g. a solo game on ["A1"].</param>
+    /// <param name="battleBeats">
+    /// Dungeon format: keep the battle beats (the pause after each answer). Off by default, so a test's
+    /// "press, wait a second, press" timings read simply; DungeonBeatTests turn them on.
+    /// </param>
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
-        IReadOnlyList<string>? stations = null, string matchId = "test-match")
+        IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false)
     {
         Settings = settings ?? new MatchSettings();
+        if (!battleBeats)
+        {
+            Settings.Dungeon.HitBeatSeconds = 0;
+            Settings.Dungeon.HurtBeatSeconds = 0;
+            Settings.Dungeon.KillBeatSeconds = 0;
+            Settings.Dungeon.FloorBeatSeconds = 0;
+        }
         Now = Start;
 
         var teams = mode == GameModeKind.FreeForAll
@@ -106,8 +117,11 @@ public sealed class TestMatch
 
     public QuestionStream StreamOf(string stationId) => Engine.StreamFor(Engine.Roster.FindPlayer(stationId)!);
 
-    /// <summary>Dungeon format: the delve a player is on (their own, or their team's in 2v2 Group).</summary>
-    public Delve DelveOf(string stationId) => Engine.FindDelve(StreamOf(stationId).OwnerId)!;
+    /// <summary>Dungeon format: who a player fights as (themselves, or their team in 2v2 Group): HP, streak, hourglass.</summary>
+    public Adventurer AdventurerOf(string stationId) => Engine.Dungeon!.FindAdventurer(StreamOf(stationId).OwnerId)!;
+
+    /// <summary>Dungeon format: the delve a player's party is on (their own in Free for All): floor, monster, kills.</summary>
+    public Delve DelveOf(string stationId) => Engine.Dungeon!.DelveOf(AdventurerOf(stationId));
 
     public int ScoreOf(string stationId) => Engine.Roster.FindPlayer(stationId)!.Tally.Score;
 

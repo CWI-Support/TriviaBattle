@@ -46,7 +46,7 @@ public sealed class QuestionStream(string ownerId, IReadOnlyList<Question> quest
     /// <summary>1-based number of the current question for this owner.</summary>
     public int CurrentNumber => _answers.Count + 1;
 
-    /// <summary>When the current question appeared. Null until Playing starts.</summary>
+    /// <summary>When the current question appeared (or will: after a battle beat it's a moment ahead). Null until Playing starts.</summary>
     public DateTimeOffset? CurrentShownAt { get; private set; }
 
     /// <summary>With the Lockout penalty: buttons are dead until this time. Null when not locked out.</summary>
@@ -58,14 +58,17 @@ public sealed class QuestionStream(string ownerId, IReadOnlyList<Question> quest
 
     public bool IsLockedOutAt(DateTimeOffset time) => LockedOutUntil != null && time < LockedOutUntil;
 
-    /// <summary>Shows the first question. Called when Playing starts.</summary>
+    /// <summary>Shows the current question from now: the first one when Playing starts, the same one again after a continue.</summary>
     public void Start(DateTimeOffset now) => CurrentShownAt = now;
 
-    /// <summary>Records an answer to the current question and moves on to the next one.</summary>
-    public void Record(GivenAnswer answer, DateTimeOffset now)
+    /// <summary>
+    /// Records an answer to the current question and moves on to the next one, which appears at
+    /// <paramref name="nextShownAt"/>: straight away, or after a Dungeon battle beat.
+    /// </summary>
+    public void Record(GivenAnswer answer, DateTimeOffset nextShownAt)
     {
         _answers.Add(answer);
-        CurrentShownAt = now;
+        CurrentShownAt = nextShownAt;
     }
 
     public void LockOut(DateTimeOffset until) => LockedOutUntil = until;

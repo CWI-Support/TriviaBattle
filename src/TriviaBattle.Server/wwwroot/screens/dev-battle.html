@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Battle Preview</title>
+    <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/screens.css">
+    <link rel="stylesheet" href="/css/dungeon.css">
+    <link rel="stylesheet" href="/css/dungeon-battle.css">
+    <style>
+        /* Dev only: the beat being shown, in the corner. ?at= freezes every animation at that moment. */
+        #dev-label { position: fixed; right: 1vmin; bottom: 1vmin; z-index: 99; padding: 0.5vmin 1vmin; background: #000; color: #0f0; font: 2vmin monospace; }
+        body.is-frozen *, body.is-frozen *::before, body.is-frozen *::after { animation-play-state: paused !important; }
+        #dev-moment .dg-main { height: 100vh; }
+    </style>
+</head>
+<body>
+    <!-- The station's battle beats with made-up data (js/dev-battle.js explains the URL options). -->
+    <div class="theme-backdrop"></div>
+    <div class="player-screen is-dungeon">
+        <main class="player-body" id="player-body"></main>
+    </div>
+    <div id="dev-moment"></div>
+    <div id="dev-label"></div>
+
+    <script src="/js/ui.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/pixel-sprites.js"></script>
+    <script src="/js/dungeon-view.js"></script>
+    <script src="/js/dungeon-battle.js"></script>
+    <script src="/js/dev-battle.js"></script>
+</body>
+</html>

@@ -29,13 +29,22 @@
     "playerTitle": "Get ready, {name}!",
     "playerTeam": "You're on {team}",
     "playerTeamWith": "You're on {team} with {teammates}",
-    "rules": "{seconds} seconds. Answer as many as you can!"
+    "rules": "{seconds} seconds. Answer as many as you can!",
+    "soloClock": "Every monster you beat wins you more time!"
   },
 
   "playing": {
     "title": "Answer as many as you can!",
     "right": "{n} right",
     "lockedOut": "Locked!"
+  },
+
+  "continue": {
+    "_about": "Solo Dungeon games: the clock ran out and the player can swipe their card for more time. {seconds} = time a continue adds, {name} = the player.",
+    "title": "Continue?",
+    "swipe": "Swipe your card for {seconds} more seconds!",
+    "mainSwipe": "{name}, swipe your card for {seconds} more seconds!",
+    "progress": "Floor {floor} · {kills} beaten · {score} points"
   },
 
   "dungeon": {
@@ -50,6 +59,7 @@
     "attackPaused": "Attack paused",
     "score": "Score",
     "time": "Time",
+    "timeAdded": "+{seconds}s",
     "go": [
       "Answer to attack!",
       "Hit it with the right answer!",
@@ -102,7 +112,41 @@
     ],
     "downedShort": "DOWNED!",
     "slain": "SLAIN!",
-    "floorCleared": "FLOOR CLEARED!"
+    "floorCleared": "FLOOR CLEARED!",
+    "partyCombo": [
+      "PARTY COMBO! {damage} damage, all together now!",
+      "PARTY COMBO! Teamwork hits for {damage}!",
+      "The whole party lands it: {damage} damage!"
+    ],
+    "partyComboShort": "PARTY COMBO!",
+    "revived": [
+      "You got {name} back on their feet!",
+      "{name} is back in the fight, thanks to you!"
+    ],
+    "downedParty": [
+      "DOWN! {left} more right answers from your party bring you back.",
+      "DOWN! Your party needs {left} more right answers to save you."
+    ],
+    "helpTeammate": [
+      "Help {name}! Shout the answer!",
+      "{name} needs you. Shout it!"
+    ],
+    "memberDown": "DOWN {progress}/{needed}",
+    "stampCrit": ["CRITICAL!", "CRIT!", "BRUTAL!"],
+    "stampCombo": "COMBO x{streak}!",
+    "stampRevived": "{name} IS BACK!",
+    "stampWrong": ["WRONG!", "OOF!", "NOPE!"],
+    "stampSlow": ["TOO SLOW!", "TIME'S UP!"],
+    "stampDowned": "DOWN!",
+    "revealLabel": ["THE ANSWER WAS", "IT WAS", "FILE THAT AWAY:"],
+    "stampSlain": ["SLAIN!", "DESTROYED!", "K.O.!"],
+    "stampWarning": "WARNING!",
+    "bossApproaches": ["A boss blocks the way down!", "The floor's boss wants a word.", "This one doesn't die easy."],
+    "momentBossSlain": "{name} slew {monster}!",
+    "momentBoss": "{name} faces the boss: {monster}!",
+    "momentFloor": ["{name} heads down to floor {floor}!", "{name} descends: floor {floor}!"],
+    "momentRevived": "{name} is back on their feet!",
+    "momentPartyCombo": "{name}: party combo!"
   },
 
   "player": {
@@ -165,6 +209,7 @@
     "busyTitle": "Battle in progress",
     "busyIntro": "Head into the room. The battle is starting!",
     "busyResults": "Final results are in!",
+    "busyContinue": "One more go? Waiting for a swipe.",
     "busyWait": "The next group can set up as soon as a station is free.",
     "busyPlaying": "{seconds} seconds left"
   }

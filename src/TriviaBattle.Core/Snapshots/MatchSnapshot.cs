@@ -27,7 +27,10 @@ public sealed record Viewer(ViewerRole Role, string? StationId = null)
 
 /// <summary>The full state of one match, as one screen is allowed to see it.</summary>
 /// <param name="PhaseEndsAtMs">While Playing, this is the match clock running out.</param>
-/// <param name="MatchSeconds">How long the clock runs, for "60 seconds: go!" before it starts.</param>
+/// <param name="MatchSeconds">How long the clock runs when it starts, for "60 seconds: go!" before it starts.</param>
+/// <param name="SoloClock">A solo Dungeon game: every monster slain adds time to the clock.</param>
+/// <param name="ContinueSeconds">Solo Dungeon games: the time a continue adds (0 = no continues), for "swipe for 60 more seconds".</param>
+/// <param name="ContinuesUsed">Solo Dungeon games: how many times the player has continued.</param>
 /// <param name="You">Only for player screens.</param>
 /// <param name="Streams">Only for admin: every player's/team's current question, with its answer.</param>
 /// <param name="Format">"Classic" or "Dungeon": which game the screens draw.</param>
@@ -44,6 +47,9 @@ public sealed record MatchSnapshot(
     string Category,
     string Difficulty,
     double MatchSeconds,
+    bool SoloClock,
+    double ContinueSeconds,
+    int ContinuesUsed,
     IReadOnlyList<PlayerView> Players,
     IReadOnlyList<TeamView> Teams,
     IReadOnlyList<Standing> Standings,
@@ -55,7 +61,7 @@ public sealed record MatchSnapshot(
 /// their answers belong to their team (2v2 Group: see <see cref="TeamView.LastAnswer"/>).
 /// </param>
 /// <param name="LockedOutUntilMs">Set while a wrong-answer lockout is running for whoever they answer as.</param>
-/// <param name="Delve">Dungeon format: their own delve. Null in Classic, and in 2v2 Group (the team delves: <see cref="TeamView.Delve"/>).</param>
+/// <param name="Delve">Dungeon format: their party's delve and their own HP. Null in Classic, and in 2v2 Group (the team is one adventurer: <see cref="TeamView.Delve"/>).</param>
 public sealed record PlayerView(
     string StationId,
     string Name,
@@ -68,7 +74,10 @@ public sealed record PlayerView(
     DelveView? Delve);
 
 /// <param name="LastAnswer">Only in 2v2 Group, where the team answers as one.</param>
-/// <param name="Delve">Dungeon format, 2v2 Group only: the party's shared delve.</param>
+/// <param name="Delve">
+/// Dungeon format: the team's fight, for its lane on the main screen. In 2v2 Group the team is one
+/// adventurer; otherwise its HP adds up the teammates' and each one is in <see cref="DelveView.Party"/>.
+/// </param>
 public sealed record TeamView(
     string Id,
     string Name,
@@ -117,7 +126,9 @@ public sealed record YourAnswerView(
 /// TEAM's (shared by both teammates); otherwise they're the player's own.
 /// </summary>
 /// <param name="Question">The question to answer now. Null outside Playing.</param>
-/// <param name="Delve">Dungeon format: the delve they're on (their party's in 2v2 Group).</param>
+/// <param name="Delve">Dungeon format: their party's delve and their own HP (the team's in 2v2 Group).</param>
+/// <param name="Helping">Dungeon format, while they're downed in a party: a standing teammate's question, so they can shout the answer.</param>
+/// <param name="Beat">Dungeon format: the battle beat after their last answer (the next question waits until it ends).</param>
 public sealed record YouView(
     string StationId,
     string Name,
@@ -128,16 +139,35 @@ public sealed record YouView(
     QuestionView? Question,
     long? LockedOutUntilMs,
     YourAnswerView? LastAnswer,
-    DelveView? Delve);
+    DelveView? Delve,
+    HelpView? Helping,
+    BeatView? Beat);
 
-/// <summary>Dungeon format: where one adventurer (or party) is, what they're fighting, and how it's going.</summary>
+/// <summary>
+/// The fight shown between two questions. The screen plays it from <see cref="StartedAtMs"/> to
+/// <see cref="EndsAtMs"/>, when the next question appears. What exactly happened is in the delve's
+/// LastDealt (your hit) or LastTaken (the monster's).
+/// </summary>
+/// <param name="Kind">"hit", "kill", "floor" (a floor cleared), "boss" (cleared, and the next floor's boss steps up), "hurt" or "downed".</param>
+public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs);
+
+/// <summary>A teammate's question shown to a downed player. Never includes which answer is correct.</summary>
+public sealed record HelpView(string Name, QuestionView Question);
+
+/// <summary>
+/// Dungeon format: one adventurer's fight. The floor, monster, kills, path and <see cref="LastHit"/> are
+/// their party's (teammates share them); HP, streak, hourglass, downed and the other hits are their own.
+/// </summary>
 /// <param name="Floor">1-based, counting from the top of the dungeon.</param>
 /// <param name="Room">Which monster of the floor this is (1-based), of <paramref name="RoomsOnFloor"/>.</param>
 /// <param name="AttackAtMs">The monster's hourglass runs out at this time. Null while it's stopped (buttons dead).</param>
 /// <param name="DownedUntilMs">Set while they're downed.</param>
-/// <param name="LastDealt">The last hit they landed; its Number changes with each hit, so screens can animate it once.</param>
-/// <param name="LastTaken">The last hit they took; same idea.</param>
+/// <param name="LastHit">The last hit on the monster by anyone in the party; its Number changes with each hit, so screens can animate it once.</param>
+/// <param name="LastDealt">The last hit they landed themselves (for "you hit it for 30").</param>
+/// <param name="LastTaken">The last hit they took; numbered like LastHit.</param>
 /// <param name="Path">Every monster of the Depth they're in, to its boss, in order. Ones before (Floor, Room) are beaten.</param>
+/// <param name="ReviveProgress">While they're downed in a party: teammates' right answers so far, of <paramref name="ReviveNeeded"/>.</param>
+/// <param name="Party">Everyone in their party, them included (just them in a party of one).</param>
 public sealed record DelveView(
     int Floor,
     int Room,
@@ -152,9 +182,17 @@ public sealed record DelveView(
     long? AttackStartedAtMs,
     long? AttackAtMs,
     long? DownedUntilMs,
+    DealtHit? LastHit,
     DealtHit? LastDealt,
     TakenHit? LastTaken,
-    IReadOnlyList<PathStepView> Path);
+    IReadOnlyList<PathStepView> Path,
+    int ReviveProgress,
+    int ReviveNeeded,
+    IReadOnlyList<PartyMemberView> Party);
+
+/// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
+/// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>
+public sealed record PartyMemberView(string OwnerId, string Name, int Hp, int MaxHp, long? DownedUntilMs, int ReviveProgress);
 
 /// <summary>One monster on the path through a Depth.</summary>
 public sealed record PathStepView(int Floor, int Room, string Name, string Sprite, bool IsBoss);

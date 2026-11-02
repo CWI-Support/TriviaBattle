@@ -1,0 +1,493 @@
+/* The battle beat: the full-screen fight on the station screen between two questions
+   (js/dungeon-battle.js draws it).
+
+   Timing: every animation's delay is calc(var(--t0) + its offset), where --t0 is minus how long ago
+   the beat started. A redraw halfway through then carries on where it was. The offsets fit the
+   default beat lengths, so change both together:
+     hit 1.5 s    0 charge, 160 slash, 190 impact (flash, knockback, sparks, damage), 250 HP drains,
+                  then your knight stands over the monster and hops back while it staggers (to ~1050)
+     hurt 1.7 s   0 lunge and WRONG!/TOO SLOW!, 240 claws and impact, 320 your HP drains,
+                  then the monster looms over you and backs off while you stagger (to ~1100);
+                  620 the right answer flips over like a card and stays to the end
+     downed       hurt, then 640 DOWN! and your knight falls
+     kill 2 s     hit, then 720 the monster flashes and bursts, 1000 SLAIN!
+     floor 3 s    kill, then 1330 dark, 1650 FLOOR 3 (the dark stays up to the end)
+     boss 3 s     kill, then 1280 red, 1400 WARNING!, 1900 the boss slams down, 2150 its name
+   The blow always lands early (190 / 240): the server plays its sound the moment the beat starts. So a
+   longer beat goes into the aftermath, never a slower run-up.
+   Every beat opens like a shutter and fades out over its last 200 ms, timed from --t1 (how long until
+   it ends) so it fits any beat length. The question then comes in (css/dungeon.css, is-after-beat).
+   Looping animations (torches, bobbing) also start at --t0, so a redraw doesn't snap them back.
+
+   Pixel sizes are vmin so the scene scales with the screen; actors are pixel sprites (crisp). */
+
+.dg-battle {
+    --gold: #ffd23f;
+    --spark: #fff3b0;
+    --blood: #ff3b3b;
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0.6vmin solid var(--dg-frame-edge);
+    box-shadow: inset 0 0 0 0.4vmin #000;
+    animation:
+        dg-battle-in 160ms ease-out var(--t0) both,
+        dg-battle-out 200ms ease-in calc(var(--t1) - 200ms) forwards;
+}
+/* In: the fight opens out from the middle, fully drawn (a fade would show the empty backdrop through it).
+   Both ends are insets: a shape can't blend into "none", it would just snap open halfway. */
+@keyframes dg-battle-in { from { clip-path: inset(50% 0); } to { clip-path: inset(0); } }
+@keyframes dg-battle-out { to { opacity: 0; transform: scale(0.97); } }
+
+/* ---------- The room: stone wall, torches, floor, vignette ---------- */
+
+.dg-room {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 50% 110%, transparent 35%, rgba(0, 0, 0, 0.8) 80%),
+        repeating-linear-gradient(0deg, transparent 0 7.4vmin, rgba(0, 0, 0, 0.55) 7.4vmin 8vmin),
+        repeating-linear-gradient(90deg, transparent 0 13.4vmin, rgba(0, 0, 0, 0.4) 13.4vmin 14vmin),
+        linear-gradient(#3b3142, #231b28 70%);
+}
+.dg-room-floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 38%;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.5), transparent 30%),
+        repeating-linear-gradient(90deg, transparent 0 9vmin, rgba(0, 0, 0, 0.35) 9vmin 9.6vmin),
+        linear-gradient(#4b3d36, #17110f);
+    border-top: 0.8vmin solid #000;
+}
+.dg-torch {
+    position: absolute;
+    top: 16%;
+    width: 3.6vmin;
+    height: 9vmin;
+    background: linear-gradient(90deg, #6b4a32, #3a2618);
+    border: 0.5vmin solid #000;
+}
+.dg-torch.is-left { left: 7%; }
+.dg-torch.is-right { right: 7%; }
+.dg-torch i {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    width: 5.4vmin;
+    height: 8vmin;
+    background: radial-gradient(ellipse at 50% 72%, #fff6c2 0 16%, #ffb52e 34%, #e2541b 58%, transparent 70%);
+    transform: translateX(-50%);
+    animation: dg-flame 0.45s steps(3) var(--t0) infinite alternate;
+}
+.dg-torch i::after {
+    /* the warm light the torch throws on the wall */
+    content: '';
+    position: absolute;
+    inset: -16vmin;
+    background: radial-gradient(circle, rgba(255, 160, 60, 0.3), transparent 62%);
+    animation: dg-glow 1.3s ease-in-out var(--t0) infinite alternate;
+}
+@keyframes dg-flame {
+    from { transform: translateX(-50%) scaleY(1); }
+    to { transform: translateX(-54%) scaleY(1.18) skewX(-5deg); }
+}
+@keyframes dg-glow { from { opacity: 0.65; } to { opacity: 1; } }
+
+/* ---------- The fighters ---------- */
+
+.dg-arena { position: relative; flex: 1 1 0; min-height: 0; }
+
+/* The box moves (charge, lunge, knockback, fall); the sprite inside bobs on the spot. */
+.dg-actor { position: absolute; bottom: 30%; display: flex; flex-direction: column; align-items: center; }
+.dg-actor-sprite { position: relative; z-index: 1; width: 100%; animation: dg-bob 0.8s steps(2) var(--t0) infinite; }
+.dg-actor.is-hero { left: 6%; width: 32vmin; }
+.dg-actor.is-foe { right: 5%; width: 40vmin; }
+.dg-actor.is-boss { width: 52vmin; }
+.dg-shadow { position: absolute; bottom: -2vmin; width: 80%; height: 4vmin; border-radius: 50%; background: rgba(0, 0, 0, 0.55); }
+@keyframes dg-bob { 50% { transform: translateY(-1.5%); } }
+
+/* Your knight charges in (leaving a pale after-image) and strikes, stands over the monster a moment,
+   then hops back to its spot. */
+.is-striking .dg-actor.is-hero { animation: dg-hero-strike 900ms cubic-bezier(0.25, 0.8, 0.3, 1) var(--t0) both; }
+@keyframes dg-hero-strike {
+    0% { transform: none; filter: none; }
+    17% { transform: translateX(20vmin) translateY(-5%) rotate(8deg); filter: drop-shadow(-6vmin 0 0 rgba(255, 255, 255, 0.3)); }
+    26% { transform: translateX(18vmin) rotate(-4deg); filter: none; }
+    62% { transform: translateX(17vmin) rotate(-2deg); }
+    80% { transform: translateX(8vmin) translateY(-14%); }
+    100% { transform: none; filter: none; }
+}
+
+/* The monster flashes white and reels back as the blow lands, then (if it lives) staggers about
+   before squaring up again. */
+.is-hit .dg-actor.is-foe {
+    animation:
+        dg-foe-hit 420ms steps(7) calc(var(--t0) + 190ms) both,
+        dg-foe-stagger 440ms steps(6) calc(var(--t0) + 610ms) forwards;
+}
+@keyframes dg-foe-stagger {
+    35% { transform: translateX(4%) rotate(-4deg); }
+    70% { transform: translateX(2%) rotate(3deg); }
+}
+@keyframes dg-foe-hit {
+    0% { transform: none; filter: none; }
+    15% { transform: translateX(9%) rotate(4deg); filter: brightness(6) saturate(0); }
+    35% { transform: translateX(5%); filter: none; }
+    55% { transform: translateX(7%) rotate(2deg); filter: brightness(4) saturate(0); }
+    100% { transform: none; filter: none; }
+}
+
+/* A kill: after the blow it flickers white and bursts apart. */
+.is-kill .dg-actor.is-foe, .is-floor .dg-actor.is-foe, .is-boss .dg-actor.is-foe {
+    animation:
+        dg-foe-hit 420ms steps(7) calc(var(--t0) + 190ms) both,
+        dg-foe-die 650ms steps(8) calc(var(--t0) + 720ms) forwards;
+}
+@keyframes dg-foe-die {
+    0% { opacity: 1; transform: none; filter: none; }
+    30% { transform: scale(1.08); filter: brightness(6) saturate(0); }
+    50% { opacity: 1; filter: none; }
+    65% { filter: brightness(6) saturate(0); }
+    100% { opacity: 0; transform: scale(1.4) translateY(-8%); filter: brightness(6) blur(0.6vmin); }
+}
+
+/* The monster's turn: it winds up and lunges at you, looms over you a moment, then backs off.
+   You reel back flashing red, then stagger. */
+.is-hurting .dg-actor.is-foe { animation: dg-foe-lunge 900ms cubic-bezier(0.5, 0, 0.25, 1) var(--t0) both; }
+@keyframes dg-foe-lunge {
+    0% { transform: none; }
+    12% { transform: translateX(4vmin) scale(0.94); }
+    28% { transform: translateX(-24vmin) scale(1.2); }
+    37% { transform: translateX(-22vmin) scale(1.2); }
+    52% { transform: translateX(-23vmin) scale(1.23); }
+    66% { transform: translateX(-21vmin) scale(1.18); }
+    100% { transform: none; }
+}
+.is-hurting .dg-actor.is-hero { animation: dg-hero-hurt 820ms steps(8) calc(var(--t0) + 240ms) both; }
+.is-downed .dg-actor.is-hero {
+    animation:
+        dg-hero-hurt 820ms steps(8) calc(var(--t0) + 240ms) both,
+        dg-hero-fall 380ms ease-in calc(var(--t0) + 700ms) forwards;
+}
+@keyframes dg-hero-hurt {
+    0% { transform: none; filter: none; }
+    10% { transform: translateX(-12%) rotate(-8deg); filter: brightness(0.7) sepia(1) saturate(9) hue-rotate(-35deg); }
+    22% { filter: none; }
+    35% { transform: translateX(-6%) rotate(-3deg); filter: brightness(0.7) sepia(1) saturate(9) hue-rotate(-35deg); }
+    55% { transform: translateX(-7%) rotate(-5deg); filter: none; }
+    75% { transform: translateX(-3%) rotate(2deg); }
+    100% { transform: none; filter: none; }
+}
+@keyframes dg-hero-fall {
+    to { transform: translateX(-4vmin) translateY(20%) rotate(-90deg); filter: grayscale(1) brightness(0.55); }
+}
+
+/* ---------- Effects ---------- */
+
+/* Your sword's arc: a white crescent sweeping over the monster (gold, and twice, for a crit). */
+.dg-fx-slash {
+    position: absolute;
+    right: 8%;
+    bottom: 34%;
+    width: 40vmin;
+    height: 40vmin;
+    border-radius: 50%;
+    box-shadow: inset 2.8vmin -1.4vmin 0 0 #fff;
+    filter: drop-shadow(0 0 1.6vmin #9fdcff);
+    animation: dg-slash 300ms ease-out calc(var(--t0) + 160ms) both;
+}
+.dg-fx-slash::after {
+    content: '';
+    position: absolute;
+    inset: 10%;
+    border-radius: 50%;
+    box-shadow: inset -2.4vmin 1.2vmin 0 0 #fff;
+    opacity: 0;
+}
+.is-crit .dg-fx-slash, .is-party-combo .dg-fx-slash { box-shadow: inset 3.8vmin -1.9vmin 0 0 var(--gold); filter: drop-shadow(0 0 2.6vmin var(--gold)); }
+.is-crit .dg-fx-slash::after, .is-party-combo .dg-fx-slash::after { animation: dg-slash 280ms ease-out calc(var(--t0) + 120ms) both; }
+@keyframes dg-slash {
+    0% { opacity: 0; transform: rotate(-70deg) scale(0.5); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(45deg) scale(1.15); }
+}
+
+/* The monster's claws: three red rakes across your knight. */
+.dg-fx-claws { position: absolute; left: 6%; bottom: 34%; width: 32vmin; height: 34vmin; transform: rotate(-22deg); }
+.dg-fx-claws i {
+    position: absolute;
+    top: 0;
+    width: 2.4vmin;
+    height: 100%;
+    background: linear-gradient(transparent, var(--blood) 18% 82%, transparent);
+    box-shadow: 0 0 2vmin var(--blood);
+    transform-origin: top;
+    animation: dg-claw 420ms ease-out calc(var(--t0) + 240ms) both;
+}
+.dg-fx-claws i:nth-child(1) { left: 16%; }
+.dg-fx-claws i:nth-child(2) { left: 46%; animation-delay: calc(var(--t0) + 280ms); }
+.dg-fx-claws i:nth-child(3) { left: 76%; animation-delay: calc(var(--t0) + 320ms); }
+@keyframes dg-claw {
+    0% { transform: scaleY(0); opacity: 1; }
+    35% { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 0; }
+}
+
+/* Pixel sparks flying out of the impact (each <i> has its own --dx/--dy); a kill's are bigger and gold.
+   Hidden until they fly ("forwards", not "both": the first frame is a visible clump at the impact point). */
+.dg-sparks { position: absolute; right: 24%; bottom: 52%; width: 0; height: 0; }
+.is-hurting .dg-sparks { right: auto; left: 22%; }
+.dg-sparks i {
+    position: absolute;
+    width: 1.8vmin;
+    height: 1.8vmin;
+    opacity: 0;
+    background: var(--spark);
+    box-shadow: 0 0 1.2vmin var(--gold);
+    animation: dg-spark 560ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(var(--t0) + 190ms) forwards;
+}
+.is-hurting .dg-sparks i { background: #ff7a7a; box-shadow: 0 0 1.2vmin var(--blood); animation-delay: calc(var(--t0) + 260ms); }
+.dg-sparks.is-death i { width: 2.8vmin; height: 2.8vmin; background: var(--gold); animation: dg-spark 900ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(var(--t0) + 1000ms) forwards; }
+.dg-sparks.is-death i:nth-child(3n) { background: #fff; }
+.dg-sparks.is-death i:nth-child(3n + 1) { background: #ff8a2e; }
+@keyframes dg-spark {
+    0% { opacity: 1; transform: translate(0, 0) scale(1.2); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+}
+
+/* The damage, huge: pops in over whoever got hit, then floats off. Gold for a crit, red when it's you. */
+.dg-bignum {
+    position: absolute;
+    right: 14%;
+    bottom: 58%;
+    font-family: var(--dg-font-pixel);
+    font-size: 12vmin;
+    color: #fff;
+    text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 3vmin rgba(255, 255, 255, 0.4);
+    animation: dg-bignum 760ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + 200ms) both;
+}
+.is-crit .dg-bignum, .is-party-combo .dg-bignum { color: var(--gold); font-size: 15vmin; text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 4vmin var(--gold); }
+.is-hurting .dg-bignum { right: auto; left: 10%; color: var(--blood); animation-delay: calc(var(--t0) + 260ms); }
+/* A plain hit or a miss has the stage to itself, so its number stays up longer (a kill's clears for SLAIN!). */
+.is-hit .dg-bignum, .is-hurting .dg-bignum { animation-duration: 1100ms; }
+@keyframes dg-bignum {
+    0% { opacity: 0; transform: scale(0.2) translateY(30%); }
+    18% { opacity: 1; transform: scale(1.35); }
+    30% { transform: scale(1); }
+    80% { opacity: 1; transform: translateY(-25%); }
+    100% { opacity: 0; transform: translateY(-45%); }
+}
+
+/* Stamped words: early (CRITICAL!, COMBO x4, PARTY COMBO!, WRONG!) and late (SLAIN!, DOWN!). */
+.dg-stamp {
+    position: absolute;
+    left: 50%;
+    top: 3%;
+    z-index: 3;
+    font-family: var(--dg-font-pixel);
+    font-size: min(8.5vmin, calc(88vmin / var(--chars, 8)));  /* long words shrink to fit the width */
+    color: var(--gold);
+    white-space: nowrap;
+    text-transform: uppercase;
+    text-shadow: 0.7vmin 0.7vmin 0 #000, 0 0 4vmin rgba(255, 210, 63, 0.5);
+    -webkit-text-stroke: 0.3vmin #000;
+}
+.dg-stamp.is-early { animation: dg-stamp 820ms ease-out calc(var(--t0) + 120ms) both; }
+.dg-stamp.is-late { top: 30%; font-size: min(13vmin, calc(86vmin / var(--chars, 6))); color: #fff; animation: dg-stamp-late 900ms ease-out calc(var(--t0) + 1000ms) both; }
+.is-combo .dg-stamp.is-early { color: #ff9a2e; }
+.is-party-combo .dg-stamp.is-early { animation: dg-stamp 820ms ease-out calc(var(--t0) + 120ms) both, dg-rainbow 0.3s steps(3) var(--t0) infinite; }
+.is-hurting .dg-stamp.is-early { color: var(--blood); animation-delay: var(--t0); }
+.is-downed .dg-stamp.is-late { color: var(--blood); animation: dg-stamp-late 540ms ease-out calc(var(--t0) + 640ms) both; }
+@keyframes dg-stamp {
+    0% { opacity: 0; transform: translateX(-50%) scale(3) rotate(-12deg); }
+    16% { opacity: 1; transform: translateX(-50%) scale(0.92) rotate(-4deg); }
+    24% { transform: translateX(-50%) scale(1) rotate(-4deg); }
+    85% { opacity: 1; transform: translateX(-50%) scale(1.05) rotate(-4deg); }
+    100% { opacity: 0; transform: translateX(-50%) scale(1.1) rotate(-4deg); }
+}
+@keyframes dg-stamp-late {
+    0% { opacity: 0; transform: translateX(-50%) scale(3) rotate(10deg); }
+    16% { opacity: 1; transform: translateX(-50%) scale(0.9) rotate(3deg); }
+    24% { transform: translateX(-50%) scale(1) rotate(3deg); }
+    85% { opacity: 1; transform: translateX(-50%) scale(1.04) rotate(3deg); }
+    100% { opacity: 0; transform: translateX(-50%) scale(1.08) rotate(3deg); }
+}
+@keyframes dg-rainbow { to { filter: hue-rotate(360deg); } }
+
+/* The whole arena shakes on big hits, when you're hurt, and when a monster bursts. */
+.is-crit .dg-arena, .is-party-combo .dg-arena { animation: dg-shake 320ms steps(8) calc(var(--t0) + 200ms) both; }
+.is-hurting .dg-arena { animation: dg-shake 320ms steps(8) calc(var(--t0) + 250ms) both; }
+.is-kill .dg-arena, .is-floor .dg-arena, .is-boss .dg-arena {
+    animation:
+        dg-shake 320ms steps(8) calc(var(--t0) + 200ms) both,
+        dg-shake 420ms steps(10) calc(var(--t0) + 1000ms) forwards;
+}
+@keyframes dg-shake {
+    0%, 100% { transform: none; }
+    20% { transform: translate(-1.6vmin, 0.8vmin); }
+    40% { transform: translate(1.4vmin, -1vmin); }
+    60% { transform: translate(-1vmin, -0.6vmin); }
+    80% { transform: translate(0.8vmin, 1vmin); }
+}
+
+/* A flash over everything: white on the blow (brighter for a crit or a kill), red round the edges when you're hit. */
+.dg-battle-flash {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background: #fff;
+    --flash: 0.35;
+    animation: dg-flash 260ms ease-out calc(var(--t0) + 190ms) both;
+}
+.is-crit .dg-battle-flash, .is-party-combo .dg-battle-flash { --flash: 0.7; }
+.is-kill .dg-battle-flash, .is-floor .dg-battle-flash, .is-boss .dg-battle-flash {
+    --flash: 0.6;
+    animation: dg-flash 260ms ease-out calc(var(--t0) + 190ms) both, dg-flash 380ms ease-out calc(var(--t0) + 1000ms) forwards;
+}
+.is-hurting .dg-battle-flash {
+    --flash: 1;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(255, 20, 20, 0.85));
+    animation: dg-flash 560ms ease-out calc(var(--t0) + 240ms) both;
+}
+@keyframes dg-flash { 0% { opacity: 0; } 15% { opacity: var(--flash); } 100% { opacity: 0; } }
+
+/* The right answer after a miss, turned over like a card in the middle of the fight (the "a-ha"). */
+.dg-reveal {
+    position: absolute;
+    left: 50%;
+    top: 78%;  /* on the floor in front of the fighters, clear of their heads and the damage number */
+    z-index: 3;
+    width: 84%;
+    padding: 2vh 4vw 2.4vh;
+    text-align: center;
+    background: var(--dg-parchment);
+    color: var(--dg-parchment-text);
+    border: 0.8vmin solid var(--gold);
+    box-shadow: 0 0 0 0.5vmin #000, 0 1.4vmin 3vmin rgba(0, 0, 0, 0.7), 0 0 5vmin rgba(255, 210, 63, 0.45);
+    transform: translate(-50%, -50%);
+    animation: dg-reveal 420ms cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--t0) + 620ms) both;
+}
+.dg-reveal-label { font-family: var(--dg-font-pixel); font-size: 3vmin; letter-spacing: 0.1em; opacity: 0.75; margin-bottom: 1.2vh; }
+.dg-reveal-answer { display: flex; align-items: center; justify-content: center; gap: 2.4vw; font-family: var(--font-body); font-size: 6.4vmin; line-height: 1.1; }
+.dg-reveal-letter {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 1.5em;
+    height: 1.5em;
+    font-family: var(--dg-font-pixel);
+    font-size: 0.8em;
+    background: var(--dg-parchment-text);
+    color: var(--gold);
+}
+/* It flips over edge-on, then settles. */
+@keyframes dg-reveal {
+    0% { opacity: 0; transform: translate(-50%, -50%) perspective(80vmin) rotateY(90deg) scale(0.7); }
+    60% { opacity: 1; transform: translate(-50%, -50%) perspective(80vmin) rotateY(-8deg) scale(1.06); }
+    100% { opacity: 1; transform: translate(-50%, -50%) perspective(80vmin) rotateY(0) scale(1); }
+}
+
+/* ---------- HP bar and the Host's line, under the fight ---------- */
+
+.dg-battle-bars { position: relative; z-index: 2; padding: 0 3vw; }
+.dg-battle-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6vh;
+    padding: 1.2vh 2vw;
+    background: rgba(20, 16, 24, 0.88);
+    border: 0.5vmin solid var(--dg-frame-edge);
+}
+.dg-battle-bar-name { font-family: var(--dg-font-pixel); font-size: 3.2vmin; text-align: center; text-transform: uppercase; color: var(--text); }
+.dg-battle-bar.for-hero .dg-battle-bar-name { color: var(--station-color); }
+.dg-battle-bar .dg-bar { height: 5vmin; }
+.dg-battle-bar .dg-bar-text { font-size: 2.4vmin; }
+.dg-battle-bar.for-hero .dg-bar-fill { background: var(--dg-hero-hp); }
+.dg-battle .dg-bar-fill { transition: none; }
+
+/* The bar drains from before to after (in steps, like an old console); the chunk knocked off flashes white, then fades. */
+.dg-drain { animation: dg-drain 460ms steps(10) calc(var(--t0) + 250ms) both; }
+.is-hurting .dg-drain { animation-delay: calc(var(--t0) + 320ms); }
+@keyframes dg-drain { from { width: var(--from); } to { width: var(--to); } }
+.dg-bar-ghost { position: absolute; left: 0; top: 0; bottom: 0; background: #fff; animation: dg-ghost 700ms ease-in calc(var(--t0) + 450ms) both; }
+@keyframes dg-ghost { from { opacity: 0.6; } to { opacity: 0; } }
+
+.dg-battle-line {
+    position: relative;
+    z-index: 2;
+    margin: 1.2vh 3vw 1.4vh;
+    background: rgba(10, 8, 12, 0.88);
+    animation: dg-line-in 280ms ease-out calc(var(--t0) + 280ms) both;
+}
+.dg-battle-line.is-go { background: rgba(10, 8, 12, 0.88); }
+@keyframes dg-line-in { from { opacity: 0; transform: translateY(40%); } }
+
+/* ---------- Floor cleared / boss: the curtain over everything ---------- */
+
+.dg-curtain {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4vh;
+    text-align: center;
+    background: radial-gradient(ellipse at center, #1c1324, #000 75%);
+    animation: dg-curtain 300ms ease-out calc(var(--t0) + 1330ms) both;
+}
+/* It only fades in: lifting it again would show the empty room for a moment before the question comes in. */
+@keyframes dg-curtain { from { opacity: 0; } }
+.dg-curtain-title {
+    font-family: var(--dg-font-pixel);
+    font-size: 11vmin;
+    line-height: 1.2;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-shadow: 0.7vmin 0.7vmin 0 #000;
+    padding: 0 4vw;
+    animation: dg-curtain-title 700ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + 1650ms) both;
+}
+@keyframes dg-curtain-title { 0% { opacity: 0; transform: scale(2.5); } 100% { opacity: 1; transform: none; } }
+.dg-curtain-sub { font-family: var(--font-body); font-size: 4.6vmin; color: var(--text); animation: dg-line-in 500ms ease-out calc(var(--t0) + 1950ms) both; }
+.dg-curtain-stairs { display: flex; gap: 2vmin; }
+.dg-curtain-stairs .dg-icon { width: 9vmin; animation: dg-descend 600ms steps(4) calc(var(--t0) + 1450ms) infinite both; }
+.dg-curtain-stairs .dg-icon:nth-child(2) { animation-delay: calc(var(--t0) + 1550ms); }
+.dg-curtain-stairs .dg-icon:nth-child(3) { animation-delay: calc(var(--t0) + 1650ms); }
+@keyframes dg-descend { 0% { opacity: 0; transform: translateY(-40%); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateY(40%); } }
+
+/* The boss: hazard stripes on dark red, WARNING! flashing, the boss slamming down, then its name. */
+.is-boss .dg-curtain {
+    background:
+        repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.4) 0 4vmin, transparent 4vmin 8vmin),
+        radial-gradient(ellipse at center, #5c0d0d, #120202 75%);
+    animation: dg-curtain 300ms ease-out calc(var(--t0) + 1280ms) both;
+}
+.dg-curtain-warning {
+    font-family: var(--dg-font-pixel);
+    font-size: 10vmin;
+    color: var(--blood);
+    text-shadow: 0.7vmin 0.7vmin 0 #000;
+    animation: dg-warning 0.25s steps(1) calc(var(--t0) + 1400ms) 6 both;
+}
+@keyframes dg-warning { 50% { opacity: 0.15; } }
+.dg-curtain-boss {
+    width: 46vmin;
+    filter: drop-shadow(0 0 3vmin rgba(255, 40, 40, 0.75));
+    animation: dg-boss-slam 380ms cubic-bezier(0.6, 0, 0.9, 0.4) calc(var(--t0) + 1900ms) both;
+}
+@keyframes dg-boss-slam {
+    0% { opacity: 0; transform: translateY(-150%) scale(1.4); }
+    80% { opacity: 1; transform: translateY(3%) scale(1.06, 0.9); }
+    100% { opacity: 1; transform: none; }
+}
+.is-boss .dg-curtain-title { color: var(--blood); font-size: 8vmin; animation-delay: calc(var(--t0) + 2150ms); }
+.is-boss .dg-curtain-sub { animation-delay: calc(var(--t0) + 2350ms); }
