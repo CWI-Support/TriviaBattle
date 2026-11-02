@@ -81,7 +81,14 @@ public sealed class MatchHost(
         }
     }
 
-    /// <summary>Called by the button router for every translated press.</summary>
+    /// <summary>True while a match is running at this station (its presses are the match's; otherwise they're the lobby's).</summary>
+    public bool IsPlaying(string stationId)
+    {
+        lock (_lock)
+            return IsStationInMatch(stationId);
+    }
+
+    /// <summary>Called by the button router for every press at a station that's in a match.</summary>
     public void HandlePress(ButtonPress press)
     {
         lock (_lock)

@@ -36,12 +36,16 @@ const HeroPhoto = {
         return null;
     },
 
-    /** The knight wearing this player's face where the knight's portrait would be, or the knight's pixel portrait without one. */
+    /**
+     * This player's portrait: their hero wearing their face, or their hero's own picture without a photo
+     * (media/heroes). A team's lane (no single player) shows the knight's pixel portrait.
+     */
     portrait(match, stationId, cssClass, color) {
         const url = HeroPhoto.url(match, stationId);
-        return url
-            ? `<img class="hero-photo ${cssClass}" src="${url}" alt="">`
-            : PixelSprites.html('knight', cssClass, { r: color });
+        const hero = match?.players?.find(p => p.stationId === stationId)?.hero;
+        if (url) return `<img class="hero-photo ${cssClass}" src="${url}" alt="">`;
+        if (hero) return `<img class="hero-photo ${cssClass}" src="/media/heroes/${encodeURIComponent(hero)}-head.png" alt="">`;
+        return PixelSprites.html('knight', cssClass, { r: color });
     },
 
     /** Just the small portrait (beside a party member's name, in the line-up). Nothing without a photo. */

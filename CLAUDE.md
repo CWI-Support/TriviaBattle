@@ -14,6 +14,10 @@ changeable on the Operator screen). In Dungeon format `MatchEngine` hands every 
 which holds all combat rules: each party (a team, or a solo player) shares one `Delve` (floor, monster), and each answer
 owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
 Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
+Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any button or swipe, pick one of five heroes,
+pick solo / start a party / start a race / join) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
+a game to `LobbyHost`; `js/arcade-lobby.js` draws it. The kiosk can still start games. Heroes: `Core/Arcade/Heroes.cs`,
+their models in `HEROES` (`js/battle3d/models.js`), their pictures in `media/heroes` (made by `/dev/heroes`).
 Hero photos: in the intro the station puts the player's face on their hero (by default; the action button says no,
 or with `PhotoByDefault` off it says yes). `js/hero-camera.js` takes it,
 `js/face-cutout.js` cuts out the face (MediaPipe, vendored in `lib/mediapipe`), `js/battle3d/face.js` paints it on the
@@ -63,6 +67,7 @@ which defaults to the Development environment. `src/TriviaBattle.Server/TriviaBa
 
 `IButtonInput` (keyboard or PLC) raises a `ButtonEvent{buttonId, sequence, pressedAt}`
 → `ButtonRouter` translates it with `ButtonMap` (`config/buttons.json`) into a `ButtonPress{stationId, answerIndex}`
+→ a station not in a game: `LobbyHost` (the arcade lobby); otherwise
 → `MatchHost.HandlePress` (one lock for all matches) → `MatchEngine.HandlePress` returns `MatchEvent`s
 → each `IMatchBroadcaster` (log, `SignalRMatchBroadcaster`) runs, still inside the lock
 → screens receive a per-viewer `State` (built by `SnapshotBuilder`) plus answer-free `Event`s.
@@ -104,8 +109,9 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 - Every visibility rule lives in `SnapshotBuilder`: a player sees only its own (or team's) current question, never its
   correct answer until answered (exception: downed in a Dungeon party, it also sees a teammate's question, to shout the
   answer); main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
-- Starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`), not hub
-  calls, so the kiosk gets validation problems back as a 400. A match takes `categoryIds` (one or more, mixed).
+- At the kiosk, starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`),
+  not hub calls, so the kiosk gets validation problems back as a 400. A match takes `categoryIds` (one or more,
+  mixed). At the stations the lobby starts them (`LobbyHost`); a station's card reader calls `POST /api/stations/{id}/swipe`.
 - Several matches can run in one room at once (one per set of stations). Room-level outputs (main screen, kiosk,
   room speaker, room lights) must consider every running match: `IMatchBroadcaster.MatchChanged` gets
   `runningMatches`, and room screens get `ScreenState.Matches`. Never assume one match per room.

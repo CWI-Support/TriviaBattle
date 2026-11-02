@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
+using TriviaBattle.Core.Arcade;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Questions;
@@ -86,6 +87,10 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton(DungeonContent.Load(builder.Environment.ContentRootPath)); // config/dungeon.json
     builder.Services.AddSingleton<MatchHost>();
+    builder.Services.Configure<LobbySettings>(builder.Configuration.GetSection("Game:Arcade"));
+    builder.Services.AddSingleton<Lobbies>();     // the arcade lobby at the stations (Core/Arcade)
+    builder.Services.AddSingleton<LobbyHost>();
+    builder.Services.AddSingleton<LobbyBroadcaster>();
     builder.Services.AddSingleton<GameRulesService>();
     builder.Services.AddHostedService<MatchTicker>();
     builder.Services.AddSingleton<IMatchBroadcaster, LoggingMatchBroadcaster>();
@@ -148,6 +153,7 @@ try
     app.MapFallbackToFile("/dev/buttons", "screens/dev-buttons.html");
     app.MapFallbackToFile("/dev/battle", "screens/dev-battle.html"); // the battle beats on a loop, with made-up data
     app.MapFallbackToFile("/dev/battle3d", "screens/dev-battle3d.html"); // the same, drawn in 3D (js/battle3d)
+    app.MapFallbackToFile("/dev/heroes", "screens/dev-heroes.html"); // draws the heroes' pictures for media/heroes
     app.MapFallbackToFile("/admin", "screens/admin.html");
     app.MapGet("/operator", () => Results.Redirect("/admin#operator")); // the venue staff's screen: sound, rules, theme
 

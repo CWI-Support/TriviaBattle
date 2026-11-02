@@ -61,7 +61,8 @@ public static class SnapshotBuilder
             ownsStream ? ToOutcome(stream.LastAnswer) : null,
             ToUnixMs(stream.LockedOutUntil),
             ownsStream ? ToDelve(match, stream.OwnerId) : null,
-            player.Photo);
+            player.Photo,
+            player.Hero);
     }
 
     private static TeamView BuildTeam(MatchEngine match, Team team)

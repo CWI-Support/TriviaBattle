@@ -1,4 +1,5 @@
-// Player station screen (portrait, next to the 4 answer buttons).
+// Player station screen (portrait, next to the 4 answer buttons and the action button).
+// Between games it's the arcade lobby (js/arcade-lobby.js): press any button, choose a hero, choose a game.
 // While the clock runs, this screen shows the player's own question (their team's in 2v2 Group).
 // Answering moves straight on to the next one, with a right/wrong banner for the last answer
 // (in Dungeon Quiz Quest, after a battle beat: the fight plays full screen, then the next question).
@@ -97,11 +98,13 @@ function handleEvent(event) {
     }
 }
 
+/** Not in a game: the arcade lobby (press any button, choose a hero, choose a game). */
 function idle(state, match) {
+    if (!match) return ArcadeLobby.station(state);
     return `
         <div class="center-stack">
             <h1 class="big-title">${UI.escape(state.station.label)}</h1>
-            <p class="subtitle">${Theme.text(match ? 'player.busy' : 'player.idle', {}, new Date().toDateString())}</p>
+            <p class="subtitle">${Theme.text('player.busy', {}, new Date().toDateString())}</p>
         </div>`;
 }
 

@@ -17,10 +17,56 @@
   },
 
   "lobby": {
-    "subtitle": "Swipe in at the kiosk to start a battle",
+    "subtitle": "Press any button at a station to play",
     "leaderboardEmpty": "Play a battle to get on the leaderboard!",
     "leaderboardToday": "Today's best",
     "leaderboardAllTime": "All-time best"
+  },
+
+  "arcade": {
+    "pressAny": "Press any button to play",
+    "orSwipe": "or swipe your card",
+    "joinCallParty": "{name}'s party is forming! Press any button to join",
+    "joinCallRace": "{name}'s race is about to start! Press any button to join",
+    "hello": ["Welcome, {name}!", "Ah, {name}. We've been expecting you.", "{name} approaches!"],
+    "chooseHero": "Choose your hero",
+    "heroKeys": "A and B to look · ACTION to choose",
+    "chooseGame": "What's your quest, {name}?",
+    "solo": "Solo quest",
+    "soloLine": "Just you and the dungeon. Starts now.",
+    "party": "Start a party",
+    "partyLine": "Team up: one dungeon, fought together.",
+    "race": "Start a race",
+    "raceLine": "Everyone for themselves. Most points wins.",
+    "joinParty": "Join {name}'s party",
+    "joinRace": "Join {name}'s race",
+    "joinLine": "{count} in so far. It starts soon!",
+    "back": "Back",
+    "backLine": "Choose another hero",
+    "partyTitle": "{name}'s party",
+    "raceTitle": "{name}'s race",
+    "startsIn": "Starting in",
+    "pressReady": "Press ACTION when you're ready",
+    "waitingForOthers": "Ready! Waiting for the others…",
+    "ready": "Ready",
+    "notReady": "Getting ready",
+    "leave": "D: leave",
+    "roomChoosing": "{name} is choosing",
+    "roomWaiting": "{name} is in",
+    "roomFree": "Free"
+  },
+
+  "heroes": {
+    "knight": "Knight",
+    "knightLine": "Shield up, sword out, questions answered.",
+    "barbarian": "Barbarian",
+    "barbarianLine": "Hits first. Reads the question second.",
+    "mage": "Mage",
+    "mageLine": "Knows a spell for everything. Except humility.",
+    "rogue": "Rogue",
+    "rogueLine": "Two knives, zero hesitation.",
+    "ranger": "Ranger",
+    "rangerLine": "Never misses. Well, rarely."
   },
 
   "intro": {

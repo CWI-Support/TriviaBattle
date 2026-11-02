@@ -3,8 +3,9 @@
 //   keys 1 2 3 4  (top row or numpad)  or  A B C D   -> this station's answers A-D
 //   tapping / clicking an answer on the screen        -> the same
 //   5 or Enter                                        -> the action button (uses a power-up)
-//   Space                                             -> a card swipe at this station (takes a continue
-//                                                        when "Continue?" is up), like its card reader
+//   Space                                             -> a card swipe at this station, like its card reader
+//                                                        (a pretend card per station): starts you in the
+//                                                        lobby, or takes a continue when "Continue?" is up
 //
 // Presses go through the server's normal button path (button id -> ButtonRouter), so the game
 // can't tell them apart from the real buttons. Only switched on when the server has dev tools
@@ -20,11 +21,15 @@ async function enableStationKeypad(connection, stationId) {
     const press = answerIndex =>
         connection.pressStationButton(answerIndex).catch(err => console.warn('Keypad press failed:', err));
 
-    // The same call as the Swipe button on /dev/buttons. Nothing on offer: the server says no, and that's fine.
+    // The same call the station's card reader makes (StationsController), with a pretend card for this station.
     const swipe = async () => {
         if (!stationId()) return;
-        const response = await fetch(`/api/dev/continue/${encodeURIComponent(stationId())}`, { method: 'POST' });
-        if (!response.ok) console.info('Swipe: no continue on offer at this station right now.');
+        const response = await fetch(`/api/stations/${encodeURIComponent(stationId())}/swipe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cardId: `dev-card-${stationId()}` }),
+        });
+        if (!response.ok) console.info('Swipe: nothing to do at this station right now.');
     };
 
     const ACTION = 4; // the action button's index (ButtonPress.Action on the server)
@@ -43,7 +48,7 @@ async function enableStationKeypad(connection, stationId) {
     });
 
     document.addEventListener('click', event => {
-        const answer = event.target.closest('.answer[data-letter]');
+        const answer = event.target.closest('.answer[data-letter], .lb-turn[data-letter]');
         if (answer) press(UI.ANSWER_LETTERS.indexOf(answer.dataset.letter));
     });
 }

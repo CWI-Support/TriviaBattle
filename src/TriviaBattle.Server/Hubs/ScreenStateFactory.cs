@@ -3,6 +3,7 @@ using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Snapshots;
 using TriviaBattle.Core.Stations;
 using TriviaBattle.Server.Display;
+using TriviaBattle.Server.Game;
 
 namespace TriviaBattle.Server.Hubs;
 
@@ -27,7 +28,7 @@ public class MediaSettings
 /// Used both when a screen joins (GameHub) and on every change (SignalRMatchBroadcaster),
 /// so the two always agree.
 /// </summary>
-public class ScreenStateFactory(StationLayout stations, IOptionsMonitor<MediaSettings> media, ThemeService themes)
+public class ScreenStateFactory(StationLayout stations, IOptionsMonitor<MediaSettings> media, ThemeService themes, Lobbies lobbies)
 {
     /// <summary>
     /// For the main screen and kiosk: every match in the room. The intro video only takes over
@@ -35,11 +36,11 @@ public class ScreenStateFactory(StationLayout stations, IOptionsMonitor<MediaSet
     /// station screens play it, so nobody else's game gets covered.
     /// </summary>
     public ScreenState ForRoom(string roomId, IReadOnlyList<MatchSnapshot> matches) =>
-        new(Room(roomId), null, matches.FirstOrDefault(), matches, matches.Count == 1 ? CueFor(matches[0]) : null, themes.Current);
+        new(Room(roomId), null, matches.FirstOrDefault(), matches, matches.Count == 1 ? CueFor(matches[0]) : null, themes.Current, lobbies.View(roomId));
 
     /// <summary>For a player screen: the match at its station, if any.</summary>
     public ScreenState ForStation(string roomId, Station station, MatchSnapshot? match) =>
-        new(Room(roomId), StationInfo.From(station), match, match == null ? [] : [match], CueFor(match), themes.Current);
+        new(Room(roomId), StationInfo.From(station), match, match == null ? [] : [match], CueFor(match), themes.Current, lobbies.View(roomId));
 
     public RoomInfo Room(string roomId) =>
         new(roomId, stations.RoomName(roomId), stations.InRoom(roomId).Select(StationInfo.From).ToList());

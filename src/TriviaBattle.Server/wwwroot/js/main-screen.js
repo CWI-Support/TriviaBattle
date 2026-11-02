@@ -42,6 +42,7 @@ function render(state) {
         DungeonHost.reset();
         document.getElementById('lobby-title').innerHTML = Theme.text('brand.title');
         document.getElementById('lobby-subtitle').innerHTML = Theme.text('lobby.subtitle', {}, new Date().toDateString());
+        document.getElementById('lobby-room').innerHTML = ArcadeLobby.room(state); // who's at which station, and any party forming
         showFitted('view-lobby');
         return;
     }

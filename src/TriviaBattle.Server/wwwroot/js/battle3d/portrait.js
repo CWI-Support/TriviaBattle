@@ -1,15 +1,22 @@
-// The hero's portrait for the screens that draw in 2D (the station plate, the main screen's lanes and
-// line-up): the knight's head and shoulders wearing the player's face, drawn once by the station that
-// took the hero photo and sent to the server with it. Lit like the battle room, on a see-through
-// background, so it sits in any frame.
+// A hero drawn as a picture, lit like the battle room on a see-through background, so it sits in any
+// frame. Two uses:
+//   - a hero photo's portrait: the player's hero, head and shoulders, wearing their face. The station
+//     that took the photo draws it once and sends it to the server, for every screen that draws in 2D
+//     (the plate, the main screen's lanes and line-up).
+//   - the heroes' own pictures in media/heroes (the lobby, and players without a photo), made with
+//     /dev/heroes.
 
 import * as THREE from 'three';
 import { Actor } from './actor.js';
 
-/** A size x size canvas of the knight (in the station's colour) wearing this face (a URL of a FaceCutout face). */
-export async function heroPortrait(faceUrl, color, size = 256) {
-    const actor = await Actor.create('hero', 0, color);
-    await actor.wearFace(faceUrl);
+/**
+ * A canvas of a hero in the station's colour, wearing this face (a URL of a FaceCutout face; null: its own).
+ * options: hero ('knight', 'mage'...), framing ('head': head and shoulders, square; 'body': all of it,
+ * 3 wide by 4 high), size (the width, in pixels).
+ */
+export async function heroPortrait(faceUrl, color, { hero = 'knight', framing = 'head', size = 256 } = {}) {
+    const actor = await Actor.create(hero, 0, color);
+    if (faceUrl) await actor.wearFace(faceUrl);
     actor.apply({ clip: actor.spec.idle, time: 0 });
     actor.shadow.visible = false;
 
@@ -23,27 +30,38 @@ export async function heroPortrait(faceUrl, color, size = 256) {
     fill.position.set(-6, 2, 4);
     scene.add(fill);
 
-    // Framed tight on the helmet, from the height of the face, so the brim doesn't shade the eyes.
+    // Head: framed tight on the face, from its own height, so a brim doesn't shade the eyes. Body: all of it,
+    // from a little below its middle, the way a hero card looks up at its hero.
     actor.root.updateMatrixWorld(true);
-    const head = new THREE.Box3().expandByObject(actor.model.getObjectByName('Knight_Helmet') || actor.model, true);
-    const centre = head.getCenter(new THREE.Vector3());
-    const height = head.getSize(new THREE.Vector3()).y;
-    centre.y -= height * 0.08;
-    const camera = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
-    const distance = (height * 0.56) / Math.tan(THREE.MathUtils.degToRad(14));
-    camera.position.set(centre.x, centre.y, centre.z + distance);
-    camera.lookAt(centre);
+    const width = size;
+    const height = framing === 'body' ? Math.round((size * 4) / 3) : size;
+    const camera = new THREE.PerspectiveCamera(28, width / height, 0.01, 100);
+    const tan = Math.tan(THREE.MathUtils.degToRad(14));
+    if (framing === 'body') {
+        const box = new THREE.Box3().expandByObject(actor.model, true);
+        const centre = box.getCenter(new THREE.Vector3());
+        const distance = (box.getSize(new THREE.Vector3()).y * 0.58) / tan;
+        camera.position.set(centre.x, centre.y * 0.8, centre.z + distance);
+        camera.lookAt(centre);
+    } else {
+        const spec = actor.spec.face;
+        const eyes = new THREE.Vector3(0, spec.eyes - 0.03, 0.4).applyMatrix4(actor.model.matrixWorld);
+        const distance = 0.62 / tan;
+        camera.position.set(eyes.x, eyes.y, eyes.z + distance);
+        camera.lookAt(eyes);
+    }
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
     try {
-        renderer.setSize(size, size, false);
+        renderer.setSize(width, height, false);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.0;
         renderer.setClearColor(0x000000, 0);
         renderer.render(scene, camera);
         const portrait = document.createElement('canvas');
-        portrait.width = portrait.height = size;
+        portrait.width = width;
+        portrait.height = height;
         portrait.getContext('2d').drawImage(renderer.domElement, 0, 0);
         return portrait;
     } finally {

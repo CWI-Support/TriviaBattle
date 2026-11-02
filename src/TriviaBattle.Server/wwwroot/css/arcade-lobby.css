@@ -1,0 +1,80 @@
+/* The arcade lobby (js/arcade-lobby.js): a station between games (press any button, choose a hero, choose
+   a game, wait for the party), and the room's lobby on the main screen. Uses the theme's tokens
+   (css/screens.css); the answer rows reuse .answer, so the options look like the questions. */
+
+.lb {
+    height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3vmin; padding: 4vmin; text-align: center;
+}
+.lb-title { margin: 0; font-family: var(--font-display); font-size: calc(7vmin * var(--fit)); color: var(--title-color); text-shadow: var(--title-shadow); }
+.lb-keys { font-size: 3.4vmin; color: var(--text-dim); }
+
+/* ---------- Idle: press any button ---------- */
+.lb-logo { font-size: 12vmin; }
+.lb-lineup { display: flex; justify-content: center; }
+.lb-lineup img { width: 19vmin; margin: 0 -1.5vmin; animation: lb-bob 1.6s ease-in-out calc(var(--i) * -0.3s) infinite; }
+@keyframes lb-bob { 50% { transform: translateY(-1.5vmin); } }
+.lb-press {
+    font-family: var(--font-display); font-size: 7vmin; color: var(--accent);
+    animation: lb-blink 1.2s steps(2) infinite;
+}
+@keyframes lb-blink { 50% { opacity: 0.35; } }
+.lb-swipe { font-size: 4vmin; color: var(--text-dim); }
+.lb-call {
+    padding: 2vmin 3vmin; border-radius: var(--radius); background: var(--panel);
+    border: 0.6vmin solid var(--station-color, var(--accent)); box-shadow: 0 0 3vmin var(--station-color, var(--accent));
+    font-family: var(--font-display); font-size: 4.6vmin; color: var(--text);
+}
+.lb-call b { color: var(--accent); }
+
+/* ---------- Hero: one at a time, A and B to turn ---------- */
+.lb-hello { font-size: 4.4vmin; color: var(--text-dim); }
+.lb-carousel { display: flex; align-items: center; justify-content: center; gap: 2vmin; }
+.lb-card { width: 60vmin; aspect-ratio: 3 / 4; filter: drop-shadow(0 2vmin 3vmin rgba(0, 0, 0, 0.6)); animation: lb-card-in 0.25s ease-out both; }
+@keyframes lb-card-in { from { transform: scale(0.92); opacity: 0.4; } }
+.lb-turn {
+    display: flex; align-items: center; gap: 1vmin; font-size: 6vmin; color: var(--answer-color);
+}
+.lb-turn[data-letter="A"] { --answer-color: var(--answer-a); }
+.lb-turn[data-letter="B"] { --answer-color: var(--answer-b); }
+.lb-turn .answer-letter { background: var(--answer-color); }
+.lb-hero-name { font-family: var(--font-display); font-size: 9vmin; color: var(--accent); line-height: 1; }
+.lb-hero-line { font-size: 4vmin; color: var(--text); max-width: 80vmin; }
+.lb-dots { display: flex; gap: 1.6vmin; }
+.lb-dots i { width: 2.2vmin; height: 2.2vmin; border-radius: 50%; background: var(--panel-light); }
+.lb-dots i.is-on { background: var(--accent); box-shadow: 0 0 1.5vmin var(--accent); }
+
+/* ---------- Game: the choices, like a question ---------- */
+.lb-me { display: flex; align-items: center; gap: 2vmin; font-family: var(--font-display); font-size: 5vmin; color: var(--accent); }
+.lb-me img { width: 16vmin; height: 16vmin; }
+.lb-options { width: 100%; }
+.lb-option b { display: block; font-size: 5vmin; }
+.lb-option small { display: block; font-size: 3.2vmin; color: var(--text-dim); }
+
+/* ---------- Waiting: the party forming ---------- */
+.lb-starts { display: flex; flex-direction: column; align-items: center; }
+.lb-starts small { font-size: 3.6vmin; color: var(--text-dim); }
+.lb-starts b { font-family: var(--font-display); font-size: 18vmin; line-height: 1; color: var(--accent); }
+.lb-members { display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5vmin; }
+.lb-member {
+    display: flex; flex-direction: column; align-items: center; width: 24vmin; padding: 1.5vmin;
+    border-radius: var(--radius); background: var(--panel); border: 0.5vmin solid var(--panel-light);
+}
+.lb-member img { width: 20vmin; height: 20vmin; }
+.lb-member b { font-size: 3.4vmin; }
+.lb-member small { font-size: 3vmin; color: var(--text-dim); }
+.lb-member.is-ready { border-color: var(--correct); box-shadow: 0 0 2.5vmin var(--correct); }
+.lb-member.is-ready small { color: var(--correct); }
+
+/* ---------- The main screen: the room's stations ---------- */
+.lb-room { display: flex; flex-direction: column; align-items: center; gap: 2vmin; margin-top: 2vmin; }
+.lb-room .lb-call { font-size: 3.4vmin; }
+.lb-room-seats { display: flex; gap: 2vmin; justify-content: center; flex-wrap: wrap; }
+.lb-room-seat {
+    display: flex; flex-direction: column; align-items: center; min-width: 22vmin; padding: 1.2vmin 2vmin;
+    border-radius: var(--radius); background: var(--panel); opacity: 0.55;
+}
+.lb-room-seat.is-busy { opacity: 1; border: 0.4vmin solid var(--accent); }
+.lb-room-seat img { width: 10vmin; height: 10vmin; }
+.lb-room-seat small { font-size: 2.2vmin; color: var(--text-dim); }
+.lb-room-seat span { font-size: 2.6vmin; }

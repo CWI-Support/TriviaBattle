@@ -59,13 +59,14 @@ const HeroCamera = {
         if (HeroCamera.running?.key === key && !you.photoAtMs)
             HeroCamera.running.cancelled = true;
 
-        const arrived = match.players.find(p => p.stationId === you.stationId)?.photo > 0;
-        if (!you.photoAtMs || HeroCamera.taken === key || arrived || clock() - you.photoAtMs > 10000) return;
+        const player = match.players.find(p => p.stationId === you.stationId);
+        if (!you.photoAtMs || HeroCamera.taken === key || player?.photo > 0 || clock() - you.photoAtMs > 10000) return;
         HeroCamera.taken = key;
-        HeroCamera.run(match.matchId, you.stationId, you.photoAtMs, clock, color);
+        HeroCamera.run(match.matchId, you.stationId, you.photoAtMs, clock, { color, hero: player?.hero });
     },
 
-    async run(matchId, stationId, takeAtMs, clock, color) {
+    /** look: the station's colour and the player's hero, for the portrait. */
+    async run(matchId, stationId, takeAtMs, clock, look) {
         const run = (HeroCamera.running = { key: `${matchId}/${stationId}`, cancelled: false });
         const box = HeroCamera.overlay();
         const video = box.querySelector('video');
@@ -94,7 +95,7 @@ const HeroCamera = {
                 return;
             }
             const faceUrl = face.toDataURL('image/png');
-            const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, color) : face;
+            const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, look.color, { hero: look.hero }) : face;
             if (run.cancelled) return await HeroCamera.skipped(box, video, line);
             box.querySelector('.photo-result').src = portrait.toDataURL('image/png');
             line.innerHTML = Theme.text('dungeon.photoDone', {}, seed);

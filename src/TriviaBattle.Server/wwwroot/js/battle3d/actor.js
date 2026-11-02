@@ -12,7 +12,7 @@ import { paintFace } from './face.js';
 
 export class Actor {
     /**
-     * Builds the actor for a sprite key ('hero', 'goblin', ...). facing: which way it turns (radians round
+     * Builds the actor for a model key (a hero's, 'knight', or a monster's sprite key, 'goblin', ...). facing: which way it turns (radians round
      * the vertical; 0 = towards the camera). color: the station's colour, for the hero's tinted part.
      */
     static async create(key, facing, color) {
@@ -45,7 +45,7 @@ export class Actor {
 
         model.traverse(part => {
             if (!part.isMesh) return;
-            // Gear the hero isn't wearing yet stays hidden (see MODELS.hero.gear).
+            // Gear the hero isn't wearing yet stays hidden (see HEROES in models.js).
             if (spec.allGear?.includes(part.name)) part.visible = spec.gear.includes(part.name);
             // Each actor gets its own materials, so a flash or a tint only touches this one.
             part.material = part.material.clone();

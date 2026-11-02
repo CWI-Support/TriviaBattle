@@ -310,6 +310,13 @@ permanent and levels you up. Levels unlock things; gold keeps a run tense.
 **Guests** can play without a card. At the end: *"Swipe a card now to save this run."* That's the
 conversion moment.
 
+**The arcade lobby (built, Nov 2026):** you start at the station, not the kiosk. Press any button (or
+swipe your card: a new card gets a made-up hero name and keeps it), pick one of five heroes (Knight,
+Barbarian, Mage, Rogue, Ranger: a look for now, classes later), then a game laid out like a question:
+Solo quest, Start a party (co-op), Start a race, or Join the one forming. A party or race waits 20
+seconds for joiners (or until everyone presses ACTION for ready). The main screen shows who's where.
+Next: real profiles behind a QR code ("continue your journey"), and classes with their own powers.
+
 **Hero photos (built, Nov 2026):** a webcam on each station puts your face on your hero. When the intro
 starts the camera comes up ("Press ACTION to skip"), a 3, 2, 1 follows, and a face finder cuts out just your face
 and paints it onto the 3D knight's face, inside the helmet, where it moves with every swing. A portrait of

@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Arcade;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Snapshots;
 using TriviaBattle.Core.Stations;
@@ -29,7 +30,8 @@ public sealed record RoomInfo(string Id, string Name, IReadOnlyList<StationInfo>
 /// </param>
 /// <param name="Cue">Media to play in sync (e.g. the intro video), or null.</param>
 /// <param name="Theme">The active theme folder name (wwwroot/themes/...). Also pushed on its own as "Theme" when it changes.</param>
-public sealed record ScreenState(RoomInfo Room, StationInfo? Station, MatchSnapshot? Match, IReadOnlyList<MatchSnapshot> Matches, MediaCue? Cue, string Theme);
+/// <param name="Lobby">The room's arcade lobby: where every station not in a game is (picking a hero, a game), and any party forming.</param>
+public sealed record ScreenState(RoomInfo Room, StationInfo? Station, MatchSnapshot? Match, IReadOnlyList<MatchSnapshot> Matches, MediaCue? Cue, string Theme, LobbyView Lobby);
 
 /// <summary>
 /// "Play this media at exactly this server time." Every screen converts StartAtMs to its own

@@ -1,5 +1,5 @@
 // The 3D models for the battle scene, by the same keys config/dungeon.json uses for a monster's Sprite
-// (plus 'hero'). Placeholders for now (CC0 packs, see media/models/CREDITS.md); the real art drops in
+// (plus the heroes, by Core's hero keys). Placeholders for now (CC0 packs, see media/models/CREDITS.md); the real art drops in
 // here. A Sprite with no entry here (a new monster, or a picture path) is shown as its flat 2D picture
 // standing in the room, so nothing is ever missing.
 //
@@ -12,43 +12,92 @@
 // height  how tall it stands in the room (the knight is about 2.3; a back wall is 4)
 // turn    extra rotation (radians) if the model doesn't face +Z like glTF models should
 // hover   how high it floats (the bat)
-// face    the hero only: where a player's hero photo goes (js/battle3d/face.js). The head mesh, the height
+// face    heroes only: where a player's hero photo goes (js/battle3d/face.js). The head mesh, the height
 //         of its eyes, mouth, chin and forehead and the distance between its pupils, all in the model's own
 //         units (it faces +Z), and the square of the head front the face map covers.
 
-export const MODELS = {
-    hero: {
+// The heroes a player picks at their station (Core's Heroes.All): KayKit adventurers, all on one rig with
+// the same clips and nearly the same head, so they share these numbers and only say what's theirs.
+const ADVENTURER = { height: 2.3, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer' };
+
+/**
+ * Where a hero photo goes on an adventurer's head: its own face, inside the helmet, hat or hood (about 1.40
+ * to 1.70 high). The face's curve was measured from the knight's skin; the heights set by eye. lift moves it
+ * all up (the mage's face sits higher, under his hat).
+ */
+const face = (mesh, lift = 0) => ({
+    mesh,
+    top: 2.0 + lift, eyes: 1.61 + lift, mouth: 1.445 + lift, chin: 1.345 + lift, eyeSpan: 0.34,
+    skin: '#f6c29e', // the head's skin, round the edge of the face
+    area: { left: -0.55, bottom: 1.21 + lift, side: 1.1 },
+    surface: { front: 0.45, curve: 1.25, area: { from: 0.2, halfWidth: 0.42, bottom: 1.36 + lift, top: 1.8 + lift } },
+});
+
+const melee = (clip, contact) => ({ clip, contact });
+
+export const HEROES = {
+    knight: {
+        ...ADVENTURER,
         file: '/media/models/characters/knight.glb',
-        height: 2.3,
-        idle: 'Idle',
         // A few different swings, picked per beat so the 40th hit doesn't look like the first.
-        attacks: [
-            { clip: '1H_Melee_Attack_Chop', contact: 0.42 },
-            { clip: '1H_Melee_Attack_Slice_Diagonal', contact: 0.38 },
-            { clip: '1H_Melee_Attack_Stab', contact: 0.55 },
-        ],
-        critAttack: { clip: '1H_Melee_Attack_Slice_Horizontal', contact: 0.42 },
-        comboAttack: { clip: 'Dualwield_Melee_Attack_Slice', contact: 0.45 },
-        hurt: 'Hit_A',
-        block: 'Block_Hit',   // a Shield takes the hit
-        death: 'Death_A',
-        cheer: 'Cheer',
-        // The knight comes with all its gear as separate parts. Only these show; the rest are for
-        // later (power-ups and loot can swap in another shield or the big sword).
+        attacks: [melee('1H_Melee_Attack_Chop', 0.42), melee('1H_Melee_Attack_Slice_Diagonal', 0.38), melee('1H_Melee_Attack_Stab', 0.55)],
+        critAttack: melee('1H_Melee_Attack_Slice_Horizontal', 0.42),
+        comboAttack: melee('Dualwield_Melee_Attack_Slice', 0.45),
+        // Each comes with all its gear as separate parts. Only these show; the rest are for later
+        // (power-ups and loot can swap in another shield or the big sword).
         gear: ['1H_Sword', 'Round_Shield', 'Knight_Helmet', 'Knight_Cape'],
         allGear: ['1H_Sword', '1H_Sword_Offhand', '2H_Sword', 'Badge_Shield', 'Rectangle_Shield', 'Round_Shield', 'Spike_Shield', 'Knight_Helmet', 'Knight_Cape'],
-        // The part dyed the station's colour.
-        tinted: 'Knight_Cape',
-        // A hero photo: the player's face painted on the knight's own face, inside the helmet's opening
-        // (about 1.40 to 1.70 high). The face's curve was measured from the head's skin; the rest set by eye.
-        face: {
-            mesh: 'Knight_Head',
-            top: 2.0, eyes: 1.61, mouth: 1.445, chin: 1.345, eyeSpan: 0.34,
-            skin: '#f6c29e', // the head's skin, round the edge of the face
-            area: { left: -0.55, bottom: 1.21, side: 1.1 },
-            surface: { front: 0.45, curve: 1.25, area: { from: 0.2, halfWidth: 0.42, bottom: 1.36, top: 1.8 } },
-        },
+        tinted: 'Knight_Cape', // the part dyed the station's colour
+        face: face('Knight_Head'),
     },
+    barbarian: {
+        ...ADVENTURER,
+        file: '/media/models/characters/barbarian.glb',
+        attacks: [melee('1H_Melee_Attack_Chop', 0.42), melee('1H_Melee_Attack_Slice_Diagonal', 0.38), melee('1H_Melee_Attack_Slice_Horizontal', 0.42)],
+        critAttack: melee('Dualwield_Melee_Attack_Chop', 0.5),
+        comboAttack: melee('Dualwield_Melee_Attack_Slice', 0.45),
+        gear: ['1H_Axe', 'Barbarian_Round_Shield', 'Barbarian_Hat', 'Barbarian_Cape'],
+        allGear: ['1H_Axe', '1H_Axe_Offhand', '2H_Axe', 'Barbarian_Round_Shield', 'Mug', 'Barbarian_Hat', 'Barbarian_Cape'],
+        tinted: 'Barbarian_Cape',
+        face: face('Barbarian_Head'),
+    },
+    mage: {
+        ...ADVENTURER,
+        file: '/media/models/characters/mage.glb',
+        attacks: [melee('Spellcast_Shoot', 0.45), melee('1H_Melee_Attack_Chop', 0.42)],
+        critAttack: melee('Spellcast_Shoot', 0.45),
+        comboAttack: melee('Spellcast_Shoot', 0.45),
+        gear: ['2H_Staff', 'Mage_Hat', 'Mage_Cape'],
+        allGear: ['Spellbook', 'Spellbook_open', '1H_Wand', '2H_Staff', 'Mage_Hat', 'Mage_Cape'],
+        tinted: 'Mage_Cape',
+        face: face('Mage_Head', 0.1),
+    },
+    rogue: {
+        ...ADVENTURER,
+        file: '/media/models/characters/rogue.glb',
+        attacks: [melee('Dualwield_Melee_Attack_Chop', 0.5), melee('Dualwield_Melee_Attack_Slice', 0.45), melee('Dualwield_Melee_Attack_Stab', 0.6)],
+        critAttack: melee('1H_Melee_Attack_Slice_Horizontal', 0.42),
+        comboAttack: melee('Dualwield_Melee_Attack_Slice', 0.45),
+        gear: ['Knife', 'Knife_Offhand', 'Rogue_Cape'],
+        allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
+        tinted: 'Rogue_Cape',
+        face: face('Rogue_Head'),
+    },
+    ranger: {
+        ...ADVENTURER,
+        file: '/media/models/characters/ranger.glb',
+        attacks: [melee('1H_Ranged_Shoot', 0.35), melee('Throw', 0.5)],
+        critAttack: melee('1H_Ranged_Shoot', 0.35),
+        comboAttack: melee('Dualwield_Melee_Attack_Stab', 0.6),
+        gear: ['1H_Crossbow', 'Knife_Offhand', 'Rogue_Cape'],
+        allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
+        tinted: 'Rogue_Cape',
+        face: face('Rogue_Head_Hooded'),
+    },
+};
+
+export const MODELS = {
+    ...HEROES,
     rat: {
         file: '/media/models/characters/rat.glb',
         height: 1.0, idle: 'RatArmature|Rat_Idle', death: 'RatArmature|Rat_Death',

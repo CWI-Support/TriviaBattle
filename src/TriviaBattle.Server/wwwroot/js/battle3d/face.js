@@ -11,7 +11,7 @@
 //
 // The knight is a chibi (a big head, a short lower face inside the helmet), so the face is redrawn to fit
 // it first (the "face map"): the player's eyes, mouth and chin at set heights on the head, which squashes
-// the lower face a little, like a cartoon. The numbers are in MODELS.hero.face.
+// the lower face a little, like a cartoon. The numbers are in each hero's face (HEROES in models.js).
 //
 // Needs js/face-cutout.js on the page (its layout numbers and helpers).
 

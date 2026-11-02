@@ -63,6 +63,7 @@ public sealed record MatchSnapshot(
 /// <param name="LockedOutUntilMs">Set while a wrong-answer lockout is running for whoever they answer as.</param>
 /// <param name="Delve">Dungeon format: their party's delve and their own HP. Null in Classic, and in 2v2 Group (the team is one adventurer: <see cref="TeamView.Delve"/>).</param>
 /// <param name="Photo">Dungeon format: their hero photo's number (0 = none). Screens fetch it from /api/photos/{matchId}/{stationId}.</param>
+/// <param name="Hero">The hero they play ("knight", "mage"...): which 3D model and pictures the screens show.</param>
 public sealed record PlayerView(
     string StationId,
     string Name,
@@ -73,7 +74,8 @@ public sealed record PlayerView(
     AnswerOutcomeView? LastAnswer,
     long? LockedOutUntilMs,
     DelveView? Delve,
-    int Photo);
+    int Photo,
+    string Hero);
 
 /// <param name="LastAnswer">Only in 2v2 Group, where the team answers as one.</param>
 /// <param name="Delve">

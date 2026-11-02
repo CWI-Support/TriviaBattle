@@ -27,12 +27,15 @@ public sealed class Tally
 }
 
 /// <summary>A player in a running match.</summary>
-public sealed class Player(string stationId, string name, int? playerProfileId, string? teamId)
+public sealed class Player(string stationId, string name, int? playerProfileId, string? teamId, string hero)
 {
     public string StationId { get; } = stationId;
     public string Name { get; } = name;
     public int? PlayerProfileId { get; } = playerProfileId;
     public string? TeamId { get; } = teamId;
+
+    /// <summary>The hero they play (<see cref="Arcade.Heroes"/>): how they look on the screens.</summary>
+    public string Hero { get; } = hero;
     public Tally Tally { get; } = new();
 
     /// <summary>
@@ -90,7 +93,8 @@ public sealed class MatchRoster
                 s.StationId,
                 s.PlayerName.Trim(),
                 s.PlayerProfileId,
-                Teams.FirstOrDefault(t => t.StationIds.Contains(s.StationId))?.Id))
+                Teams.FirstOrDefault(t => t.StationIds.Contains(s.StationId))?.Id,
+                s.Hero ?? Arcade.Heroes.Default))
             .ToList();
     }
 

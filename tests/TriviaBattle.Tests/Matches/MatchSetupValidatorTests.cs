@@ -48,7 +48,15 @@ public class MatchSetupValidatorTests
     {
         var problems = MatchSetupValidator.Validate(Setup(GameModeKind.TeamCombinedScore, FourSeats()), Layout);
 
-        Assert.Contains(problems, p => p.Contains("two teams"));
+        Assert.Contains(problems, p => p.Contains("at least one team"));
+    }
+
+    [Fact]
+    public void One_team_on_its_own_is_a_co_op_party()
+    {
+        var party = new List<TeamSetup> { new("party", "Ann's party", ["A1", "A2", "A3", "A4"]) };
+
+        Assert.Empty(MatchSetupValidator.Validate(Setup(GameModeKind.TeamCombinedScore, FourSeats(), party), Layout));
     }
 
     [Fact]

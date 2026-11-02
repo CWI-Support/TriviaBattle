@@ -23,8 +23,8 @@
   },
   "lobby": {
     "subtitle": [
-      "Swipe in at the spellbook to begin your quest",
-      "The dungeon is hungry. Swipe in at the spellbook.",
+      "Press any button at a station to begin your quest",
+      "The dungeon is hungry. Press any button to feed it.",
       "Knowledge is a weapon. Come and swing it."
     ],
     "leaderboardEmpty": "Nobody has survived yet. Be the first!"

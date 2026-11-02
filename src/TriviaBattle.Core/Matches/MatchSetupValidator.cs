@@ -28,6 +28,8 @@ public static class MatchSetupValidator
                 problems.Add($"Station {seat.StationId} needs a player name.");
             else if (seat.PlayerName.Trim().Length > MaxNameLength)
                 problems.Add($"'{seat.PlayerName}' is longer than {MaxNameLength} characters.");
+            if (!Arcade.Heroes.IsKnown(seat.Hero))
+                problems.Add($"There's no hero called '{seat.Hero}'.");
         }
 
         var seatedStations = setup.Seats.Select(s => s.StationId).ToList();
@@ -44,9 +46,10 @@ public static class MatchSetupValidator
 
     private static void ValidateTeams(MatchSetup setup, List<string> seatedStations, List<string> problems)
     {
-        if (setup.Teams.Count < 2)
+        // One team is a co-op party (everyone against the dungeon); two or more play each other.
+        if (setup.Teams.Count < 1)
         {
-            problems.Add("Team modes need at least two teams.");
+            problems.Add("Team modes need at least one team.");
             return;
         }
 

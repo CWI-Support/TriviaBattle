@@ -5,7 +5,7 @@ domain): free for commercial use, no credit required. Credit is still nice, so h
 
 | Files | Pack | Author | Source |
 |---|---|---|---|
-| `characters/knight.glb` | KayKit Adventurers Character Pack 1.0 (Knight) | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 |
+| `characters/knight.glb`, `barbarian.glb`, `mage.glb`, `rogue.glb`, `ranger.glb` (Rogue_Hooded) | KayKit Adventurers Character Pack 1.0 | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 |
 | `characters/skeleton-minion.glb` | KayKit Skeletons Character Pack 1.0 (Skeleton Minion) | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0 |
 | `room/*.glb` | KayKit Dungeon Remastered 1.0 | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 |
 | `characters/slime.glb` | Slime | Quaternius | https://poly.pizza/m/LyjSUKHKnh |
@@ -14,6 +14,6 @@ domain): free for commercial use, no credit required. Credit is still nice, so h
 | `characters/goblin.glb` | Goblin | Quaternius | https://poly.pizza/m/OdCOFSmEhl |
 | `characters/orc.glb` (stands in for the Goblin Quizmaster) | Orc | Quaternius | https://poly.pizza/m/5vO2YJsPEf |
 
-The knight has all its gear as separate parts (shields, swords, helmet, cape); `js/battle3d/models.js`
-picks which show. To swap in new art, put the .glb here and point its entry in `models.js` at it, with
+The heroes have all their gear as separate parts (shields, weapons, hats, capes); `HEROES` in
+`js/battle3d/models.js` picks which show. `../heroes/*.png` are pictures of them, drawn by `/dev/heroes`. To swap in new art, put the .glb here and point its entry in `models.js` at it, with
 the names of its idle, attack, hurt and death clips.

@@ -1,10 +1,11 @@
 # Trivia Battle
 
-A 4-player trivia room for an entertainment venue. Players swipe in at a kiosk outside the room,
-pick a mode, one or more categories and a difficulty, then race the clock on physical answer
-buttons while a main screen and four player screens show the action. Several groups can play at
-once (a solo player on one station, a trio on the other three): the kiosk only blocks stations
-that are busy, and the main screen splits into a panel per game.
+A 4-player trivia room for an entertainment venue, played like an arcade: walk up to a station,
+press any button (or swipe a card), pick one of five heroes and a game (solo, or a party or race the
+other stations can join), then race the clock on the physical buttons while a main screen and the
+player screens show the action. Several groups can play at once (a solo player on one station, a
+trio on the other three), and the main screen splits into a panel per game. The kiosk outside the
+room can still start games too.
 
 The room is becoming **Dungeon Quiz Quest** (design: [docs/DUNGEON-QUIZ-QUEST.md](docs/DUNGEON-QUIZ-QUEST.md)):
 every right answer is an attack on a monster, wrong answers and slow ones get you hit back, and you
@@ -37,11 +38,14 @@ dotnet test
                                   # (also wipes match history, leaderboards and players)
 ```
 
-1. **Kiosk window**: pick a mode, add players with *Simulate card swipe* or *Play as guest*, then start.
-2. **Player windows**: each one is that player's keypad. Click into a player window and press
-   `1` `2` `3` `4` (or `A`–`D`, or the numpad), or just click/tap an answer. `5` or `Enter` is the
-   action button (uses the power-up you hold). `Space` is a card swipe at that station: it takes a
-   continue when a solo dungeon game's "Continue?" is up.
+1. **Player windows**: each one is a station and its keypad. Click into a player window and press
+   `1` `2` `3` `4` (or `A`–`D`, or the numpad) for buttons A–D, or click/tap them on screen. `5` or
+   `Enter` is the action button. Any button wakes the station; `A`/`B` flip through the heroes and
+   ACTION picks one; then A, B, C... pick a game, as on screen (D goes back). In a party or race that's
+   forming, ACTION is ready and D leaves. `Space` is a card swipe at that station (a pretend card per
+   station): it signs you in, or takes a continue when a solo dungeon game's "Continue?" is up.
+2. **Kiosk window** (optional): pick a mode, add players with *Simulate card swipe* or *Play as guest*,
+   then start. It plays the knight.
 3. Close the screens with `.	ools\launch-screens.ps1 -Close`, and close the server's window to stop it.
 
 This works the same with the screens on separate devices (e.g. four tablets as player screens):
@@ -69,7 +73,8 @@ Screen URLs and what they show:
 | `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health, and Insights (time in use, dwell time, returning players) |
 | `/dev/buttons` | Dev stand-in for the buttons (only when dev tools are on) |
 | `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
-| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options |
+| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=mage` for another hero) |
+| `/dev/heroes` | Draws every hero's pictures for `media/heroes` (hero cards and portraits), to save after changing a hero |
 
 Add `?room=B` to any URL when there's more than one room. It doesn't matter which machine a screen
 runs on. Point a browser at `http://<server-ip>:5000/...`.
@@ -100,6 +105,29 @@ comes from the server's room audio (`Audio:IntroSound`, see Room audio below).
 
 You can also drive a match with no screens at all, using the requests in
 `src/TriviaBattle.Server/TriviaBattle.http`.
+
+### The arcade lobby (starting a game at a station)
+
+A station not in a game is the lobby (`Core/Arcade/Lobby.cs`, drawn by `js/arcade-lobby.js`). It
+uses the five buttons:
+
+1. **Press any button**, or swipe a card. A card the game knows plays under its name. A card seen
+   for the first time is given a made-up hero name and keeps it. Without a card you're a guest
+   with a made-up name.
+2. **Choose your hero**: Knight, Barbarian, Mage, Rogue or Ranger. A and B flip through them, ACTION
+   picks one. For now it's just a look; it's the hero you see fight.
+3. **Choose your game**, laid out like a question: A *Solo quest* (starts at once, on the arcade
+   clock), B *Start a party* (co-op: one shared dungeon), C *Start a race* (everyone on their own
+   delve), D back. While a party or race is forming, the other stations show "…is forming! Press
+   any button to join", and their choices are A *Join* and B *Solo*. Only one forms at a time.
+4. **Waiting**: everyone in it presses ACTION when ready. It starts when all are ready, or when its
+   join timer (`Game:Arcade:JoinSeconds`, 20) runs out. A late joiner gets at least `LateJoinSeconds`
+   (6). Alone, it starts as a solo game.
+
+A station left choosing for `Game:Arcade:IdleSeconds` (30) goes back to "press any button". Games
+started here use every active category and `Game:Arcade:Difficulty` (Easy). The main screen shows
+the room's lobby under its title. A station's card reader calls `POST /api/stations/{id}/swipe`
+with `{ "cardId": "..." }`.
 
 ### Hero photos (a camera at each station)
 

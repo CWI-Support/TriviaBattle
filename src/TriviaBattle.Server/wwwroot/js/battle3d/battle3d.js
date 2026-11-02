@@ -12,7 +12,7 @@
 // Needs the import map for 'three' (see screens/dev-battle3d.html), and loads as a module:
 //   Battle3D.start(container, clock)   once; clock() = the server's time now (ms)
 //   Battle3D.show({ match, you, color }) after every redraw
-//   HeroPortrait.render(faceUrl, color)  the knight wearing a hero photo's face, as a canvas (js/battle3d/portrait.js)
+//   HeroPortrait.render(faceUrl, color, options)  a hero (wearing a hero photo's face) as a canvas (js/battle3d/portrait.js)
 
 import * as THREE from 'three';
 import { Stage } from './stage.js';
@@ -44,7 +44,7 @@ class Battle {
         this.fx = new Effects(this.stage.scene);
         this.view = null;
         this.hero = null;
-        this.heroLoading = false;
+        this.heroKey = null;   // the hero being shown (or loading): the player's pick
         this.foe = null;
         this.foeKey = null;
         this.foeLoadingKey = null;
@@ -56,10 +56,14 @@ class Battle {
 
     show(view) {
         this.view = view;
-        if (!this.hero && !this.heroLoading) {
-            this.heroLoading = true;
-            Actor.create('hero', HERO_FACING, view.color).then(hero => this.place(hero, HERO_HOME)).then(hero => (this.hero = hero));
-        }
+        const key = view.match?.players?.find(p => p.stationId === view.you?.stationId)?.hero || 'knight';
+        if (key === this.heroKey) return;
+        this.heroKey = key;
+        Actor.create(key, HERO_FACING, view.color).then(hero => {
+            if (this.heroKey !== key) return hero.dispose(this.stage.scene); // another hero was picked meanwhile
+            this.hero?.dispose(this.stage.scene);
+            this.hero = this.place(hero, HERO_HOME);
+        });
     }
 
     place(actor, home) {

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Hero Pictures</title>
+    <link rel="icon" href="/favicon.svg">
+    <style>
+        body { margin: 0; padding: 16px; background: #2a2630; color: #eee; font: 14px sans-serif; }
+        .hero { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 12px 16px 0; vertical-align: top; }
+        .hero canvas { background: #3a3440; }
+        .hero .body { width: 240px; height: 320px; }
+        .hero .head { width: 128px; height: 128px; }
+        a { color: #8cf; }
+    </style>
+    <!-- three.js is vendored (the venue LAN may be offline); modules find it through this map. -->
+    <script type="importmap">
+        { "imports": { "three": "/lib/three/three.module.min.js", "three/addons/": "/lib/three/addons/" } }
+    </script>
+</head>
+<body>
+    <!-- Dev page: draws every hero's pictures for media/heroes (the lobby's hero cards, and the portrait of a
+         player without a hero photo). Save each with its link into wwwroot/media/heroes/ after changing a
+         hero's model or look. The page title says "done" when they're all drawn. -->
+    <p>Each hero, full body (<code>{hero}.png</code>) and head (<code>{hero}-head.png</code>). Save them into <code>wwwroot/media/heroes/</code>.</p>
+    <div id="heroes"></div>
+    <script src="/js/face-cutout.js"></script>
+    <script type="module">
+        import { heroPortrait } from '/js/battle3d/portrait.js';
+        import { HEROES } from '/js/battle3d/models.js';
+
+        // A neutral colour for the parts each station dyes in its own (capes).
+        const COLOR = '#8a6e4b';
+        const list = document.getElementById('heroes');
+        for (const hero of Object.keys(HEROES)) {
+            const body = await heroPortrait(null, COLOR, { hero, framing: 'body', size: 480 });
+            const head = await heroPortrait(null, COLOR, { hero, framing: 'head', size: 256 });
+            body.className = 'body';
+            head.className = 'head';
+            const card = document.createElement('div');
+            card.className = 'hero';
+            card.dataset.hero = hero;
+            card.append(body, head);
+            card.insertAdjacentHTML('beforeend', `
+                <a download="${hero}.png" href="${body.toDataURL('image/png')}">${hero}.png</a>
+                <a download="${hero}-head.png" href="${head.toDataURL('image/png')}">${hero}-head.png</a>`);
+            list.appendChild(card);
+        }
+        document.title = 'done';
+    </script>
+</body>
+</html>

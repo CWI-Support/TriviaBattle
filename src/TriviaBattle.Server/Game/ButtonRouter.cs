@@ -4,13 +4,15 @@ namespace TriviaBattle.Server.Game;
 
 /// <summary>
 /// The boundary between hardware and game: listens to every <see cref="IButtonInput"/>,
-/// translates raw button ids (10-25) to station + answer with the <see cref="ButtonMap"/>,
-/// and hands them to the <see cref="MatchHost"/>. This is the only place raw button ids are converted.
+/// translates raw button ids (10-29) to station + answer with the <see cref="ButtonMap"/>,
+/// and hands them to the <see cref="MatchHost"/> when that station is in a game, or to the arcade lobby
+/// (<see cref="LobbyHost"/>) when it isn't. This is the only place raw button ids are converted.
 /// </summary>
 public sealed class ButtonRouter(
     IEnumerable<IButtonInput> inputs,
     ButtonMap buttonMap,
     MatchHost host,
+    LobbyHost lobby,
     ILogger<ButtonRouter> logger)
 {
     /// <summary>Subscribes to all inputs. Called once at startup from Program.cs.</summary>
@@ -32,6 +34,9 @@ public sealed class ButtonRouter(
             return;
         }
 
-        host.HandlePress(press);
+        if (host.IsPlaying(press.StationId))
+            host.HandlePress(press);
+        else
+            lobby.HandlePress(press);
     }
 }

@@ -10,6 +10,7 @@
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
 //   /dev/battle3d                    the same, drawn in 3D (js/battle3d); takes the same options
 //
+//   /dev/battle3d?hero=mage          another hero fights (knight, barbarian, mage, rogue, ranger)
 //   /dev/battle3d?photo=/path/picture.jpg   the hero wears a hero photo made from that picture (any picture
 //                                    with a face in it, on the server), as js/hero-camera.js makes them
 //
@@ -25,6 +26,7 @@ const params = new URLSearchParams(location.search);
 const only = params.get('kind');
 const frozenAt = params.has('at') ? Number(params.get('at')) : null;
 const COLOR = '#2a8cff';
+const HERO = params.get('hero') || 'knight'; // ?hero=mage: who fights (Core's Heroes.All)
 
 // The clock everything is drawn by. Frozen (?at=), it stands still, so the 3D scene holds its moment too.
 const pageOpened = Date.now();
@@ -46,7 +48,7 @@ async function usePhoto(source) {
     const face = await FaceCutout.cut(picture);
     if (!face) return console.warn('No face found in', source);
     const faceUrl = face.toDataURL('image/png');
-    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR) : face;
+    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR, { hero: HERO }) : face;
     HeroPhoto.use('dev', 'A1', 1, { face: faceUrl, portrait: portrait.toDataURL('image/png') });
 }
 
@@ -164,6 +166,6 @@ function fakeState(kind, startedAt, question) {
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
     const match = { matchId: 'dev', category: 'Movies', soloClock: true, phaseEndsAtMs: Date.now() + 75000,
-                    players: [{ stationId: 'A1', photo: params.has('photo') ? 1 : 0 }] };
+                    players: [{ stationId: 'A1', photo: params.has('photo') ? 1 : 0, hero: HERO }] };
     return { match, you };
 }

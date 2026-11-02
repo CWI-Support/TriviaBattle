@@ -148,6 +148,18 @@ The rules:
   next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
   to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
+- **The arcade lobby** (`Core/Arcade`). Games start at the stations: `Lobby` (one per room) is every
+  station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Game, Waiting, and the one
+  `LobbyGroup` (a party or race) that may be forming. Like `MatchEngine` it's pure: time is passed in,
+  presses and card swipes go in, and it hands back `LobbyStart`s. `LobbyStart.ToSetup` makes the
+  `MatchSetup`: solo and race are free-for-all, and a party is one team in 2v2 Combined (a single team is
+  allowed: a co-op party). `Heroes` lists the five heroes (`SeatSetup.Hero`, then `Player.Hero` and
+  `PlayerView.Hero`); `HeroNames` makes up names. On the server, `ButtonRouter` sends a press to
+  `MatchHost` when its station is playing (`IsPlaying`), and to `LobbyHost` otherwise. `LobbyHost` drives
+  the room's `Lobby` (held by `Lobbies`, behind one lock), ticks with `MatchTicker`, looks cards up (a new
+  card is registered with a made-up name) and starts games with `MatchHost.StartMatchAsync` (every active
+  category). `LobbyBroadcaster` pushes the change. Every `ScreenState` carries the room's `LobbyView`.
+  Settings: `Game:Arcade` (`LobbySettings`).
 - **Hero photos** (a player's face on their hero; `DungeonSettings.HeroPhotos`, `PhotoByDefault`,
   `PhotoCountdownSeconds`). By default the engine schedules everyone's photo when the intro starts
   (`Player.PhotoAt`: `PhotoLead` plus the countdown). The action button in the intro says no
@@ -180,6 +192,10 @@ The rules:
 
   `RoomSoundService` plays the countdown's blips and the shutter on the station's speaker. A station names
   its camera with `?camera=` when one PC drives several.
+- Heroes in 3D: `HEROES` in `js/battle3d/models.js` (KayKit adventurers on one rig: their gear, the
+  part dyed the station's colour, their attacks, where a face goes). The station's fight shows the
+  player's own hero (`Battle.show`); `js/battle3d/portrait.js` draws heroes as pictures, and `/dev/heroes`
+  saves each hero's card and portrait to `media/heroes` for the screens that draw in 2D.
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
   `PhotoDeclined`, `PhotoTaken`, and from `Tick`: `QuestionShown` when a battle beat ends and `PhotoCountdown`
   (alongside the usual `AnswerGiven`).
