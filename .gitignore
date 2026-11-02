@@ -12,6 +12,9 @@ obj/
 *.db-shm
 logs/
 
+# The server's own https certificate (it holds a private key; the server makes it on first run)
+src/TriviaBattle.Server/certs/
+
 # Local / secret configuration
 appsettings.Production.json
 appsettings.Development.json

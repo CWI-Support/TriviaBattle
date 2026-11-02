@@ -115,6 +115,16 @@ try
     builder.Services.AddSingleton(liveLog);
     builder.Services.AddSingleton<ScreenRegistry>();
 
+    // Station screens on other PCs need https to use a camera (hero photos): browsers only give cameras to
+    // https or localhost pages. So the server also listens on HttpsPort, with a certificate it makes for
+    // itself (LanCertificate). 0 turns it off.
+    var httpsPort = builder.Configuration.GetValue("HttpsPort", 5001);
+    if (httpsPort > 0)
+    {
+        var certificate = LanCertificate.LoadOrCreate(builder.Environment.ContentRootPath);
+        builder.WebHost.ConfigureKestrel(kestrel => kestrel.ConfigureHttpsDefaults(https => https.ServerCertificate = certificate));
+    }
+
     var app = builder.Build();
 
     await DatabaseStartup.InitializeAsync(app.Services, app.Environment.ContentRootPath);
@@ -159,7 +169,14 @@ try
 
     var port = app.Configuration.GetValue("Port", 5000);
     Log.Information("Trivia Battle server listening on port {Port}", port);
-    app.Run($"http://0.0.0.0:{port}");
+    app.Urls.Add($"http://0.0.0.0:{port}");
+    if (httpsPort > 0)
+    {
+        app.Urls.Add($"https://0.0.0.0:{httpsPort}");
+        foreach (var address in LanCertificate.LocalAddresses())
+            Log.Information("Station screens on other PCs, with a camera: https://{Address}:{Port}/display/player/1 (2, 3...). Accept the certificate warning once.", address, httpsPort);
+    }
+    app.Run();
 }
 catch (Exception ex) when (ex is not HostAbortedException) // EF migration tooling stops the host on purpose
 {

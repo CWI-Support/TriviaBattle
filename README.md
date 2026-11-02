@@ -161,9 +161,14 @@ database, and it's forgotten when the match ends.
   a station's camera came on and when its photo arrived, or why a photo couldn't be taken: not an
   https/localhost page, no camera, the camera refused or busy, no face found. A station page that isn't
   https or localhost also says so on its intro screen.
-- Browsers only let `https` or `localhost` pages use a camera. A station PC that opens
-  `http://<server-ip>:5000/...` needs Chrome started with
-  `--unsafely-treat-insecure-origin-as-secure=http://<server-ip>:5000`. A kiosk window also needs
+- Browsers only let `https` or `localhost` pages use a camera, so the server also listens on
+  `https://<server-ip>:5001` (setting `HttpsPort`; `0` turns it off), with a certificate it makes for
+  itself on first run (`certs/lan-https.pfx`, never committed; delete it to make a new one, e.g. after the
+  PC's address changes). Open a station PC's screen at `https://<server-ip>:5001/display/player/N`: the
+  first time, the browser warns about the certificate (Advanced, then Proceed), then asks to use the
+  camera (Allow). Both are remembered. The server's log lists the exact addresses when it starts. If
+  other PCs can't reach port 5001, allow it in Windows Firewall. Instead of https, a station's Chrome can
+  also be started with `--unsafely-treat-insecure-origin-as-secure=http://<server-ip>:5000`. A kiosk window also needs
   camera permission for that address, granted once by hand in that profile or by the Chrome policy
   `VideoCaptureAllowedUrls`. `--use-fake-ui-for-media-stream` grants every camera and microphone
   prompt automatically, so only use it on a PC that shows nothing but the game.
