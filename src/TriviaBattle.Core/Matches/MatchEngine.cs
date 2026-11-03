@@ -60,7 +60,8 @@ public sealed class MatchEngine
         Setup = setup;
         Mode = mode;
         Settings = settings;
-        Roster = new MatchRoster(setup);
+        // A photo from the lobby only counts in a game with photos (not Classic, not with them switched off).
+        Roster = new MatchRoster(setup, takesPhotos: settings.Format == GameFormat.Dungeon && settings.Dungeon.HeroPhotos);
         StartedAt = now;
         CategoryName = string.Join(", ", questions.Select(q => q.Category).Distinct().Order());
 

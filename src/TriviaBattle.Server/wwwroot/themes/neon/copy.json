@@ -34,6 +34,8 @@
     "chooseHero": "Choose your hero",
     "heroKeys": "A and B to look · ACTION to choose",
     "photoTitle": "Put your face on your hero!",
+    "photoOffer": "Put your face on your hero?",
+    "photoOfferKeys": "ACTION: yes please · D: no thanks",
     "photoKeysTaking": "D: no photo",
     "photoKeysTaken": "ACTION: keep it · B: try again · D: no photo",
     "photoKeysFailed": "B: try again · D: no photo",

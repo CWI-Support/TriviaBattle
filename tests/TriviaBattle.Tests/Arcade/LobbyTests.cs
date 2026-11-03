@@ -48,6 +48,9 @@ public class LobbyTests
 
     private LobbySeat Seat(string station) => _lobby.Seat(station)!;
 
+    /// <summary>The station's photo arrives, for the take it's on (or for none, if it isn't taking one).</summary>
+    private bool Arrived(string station) => _lobby.PhotoArrived(station, Seat(station).PhotoTakeAt?.ToUnixTimeMilliseconds() ?? 0);
+
     [Fact]
     public void Any_button_wakes_a_station_with_a_made_up_name_then_A_and_B_flip_the_heroes()
     {
@@ -286,12 +289,12 @@ public class LobbyTests
         Press("A1", Action);                             // nothing to keep yet
         Assert.Equal(LobbyStep.Photo, Seat("A1").Step);
 
-        Assert.True(_lobby.PhotoArrived("A1"));
-        Assert.False(_lobby.PhotoArrived("A1"));         // one per take
+        Assert.True(Arrived("A1"));
+        Assert.False(Arrived("A1"));         // one per take
         Press("A1", B);                                  // another
         Assert.False(Seat("A1").HasPhoto);
         Assert.Equal(_now + TimeSpan.FromSeconds(4), Seat("A1").PhotoTakeAt);
-        Assert.True(_lobby.PhotoArrived("A1"));
+        Assert.True(Arrived("A1"));
         Assert.Equal(2, Seat("A1").PhotoVersion);        // screens fetch the new one
 
         Press("A1", Action);
@@ -308,7 +311,7 @@ public class LobbyTests
         Press("A1", A, Action, D);
 
         Assert.Equal(LobbyStep.Game, Seat("A1").Step);
-        Assert.False(_lobby.PhotoArrived("A1"));         // too late: not taking one any more
+        Assert.False(Arrived("A1"));         // too late: not taking one any more
         var start = Assert.Single(Press("A1", A, Action).Starts);
         Assert.False(start.ToSetup([1], Difficulty.Easy).Seats[0].Photo);
     }
@@ -329,6 +332,73 @@ public class LobbyTests
         Press("A1", B);                                  // another: quiet until its camera is on again
         Assert.Empty(_lobby.PhotoCountdowns(Seat("A1").PhotoTakeAt!.Value));
         Assert.False(_lobby.PhotoCameraOn("A2"));        // not taking one
+    }
+
+    [Fact]
+    public void A_photo_is_for_its_own_take_so_a_late_upload_from_the_last_one_doesn_t_count()
+    {
+        _settings.HeroPhotos = true;
+        Press("A1", A, Action);
+        var first = Seat("A1").PhotoTakeAt!.Value.ToUnixTimeMilliseconds();
+        Press("A1", B);                                  // another, before the first one's upload landed
+
+        Assert.False(_lobby.PhotoArrived("A1", first));
+        Assert.True(Arrived("A1"));
+    }
+
+    [Fact]
+    public void Where_the_venue_asks_first_ACTION_says_yes_and_D_no()
+    {
+        _settings.HeroPhotos = true;
+        _lobby.SetPhotoRule(LobbyPhotoRule.AskFirst);
+        Press("A1", A, Action);
+        Assert.Equal((LobbyStep.Photo, (DateTimeOffset?)null), (Seat("A1").Step, Seat("A1").PhotoTakeAt)); // asking
+        Press("A1", B);                                  // nothing to take again yet
+        Assert.Null(Seat("A1").PhotoTakeAt);
+
+        Press("A1", Action);                             // yes
+        Assert.Equal(_now + TimeSpan.FromSeconds(4), Seat("A1").PhotoTakeAt);
+
+        Press("A2", A, Action, D);                       // no
+        Assert.Equal(LobbyStep.Game, Seat("A2").Step);
+    }
+
+    [Fact]
+    public void With_photos_off_there_is_no_photo_step()
+    {
+        _settings.HeroPhotos = true;
+        _lobby.SetPhotoRule(LobbyPhotoRule.Off);         // a Classic venue, or photos switched off
+
+        Press("A1", A, Action);
+
+        Assert.Equal(LobbyStep.Game, Seat("A1").Step);
+    }
+
+    [Fact]
+    public void Someone_else_s_card_mid_steps_starts_afresh_without_the_last_player_s_photo()
+    {
+        _settings.HeroPhotos = true;
+        Press("A1", A, B, Action);                       // a guest picks the barbarian
+        Arrived("A1");
+        Press("A1", Action);                             // keeps the photo, then walks away on the games
+
+        _lobby.Swipe("A1", "Brett", 42, _now);
+
+        Assert.Equal((LobbyStep.Hero, "knight", false), (Seat("A1").Step, Seat("A1").Hero, Seat("A1").HasPhoto));
+        _lobby.Swipe("A1", "Brett", 42, _now);           // the same card again changes nothing
+        Assert.Equal(LobbyStep.Hero, Seat("A1").Step);
+    }
+
+    [Fact]
+    public void Leaving_a_game_that_formed_for_a_long_time_doesn_t_count_as_idle()
+    {
+        Press("A1", A, Action, B, Action);               // a party, forming
+        _now += TimeSpan.FromSeconds(35);                // late joiners kept it going
+        Press("A1", D);                                  // leaves it: back to the games
+
+        _lobby.Tick(_now + TimeSpan.FromSeconds(1));
+
+        Assert.Equal(LobbyStep.Game, Seat("A1").Step);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 // Hero photos on the station (Dungeon format): the camera. Two places take one:
-//   - the lobby, right after choosing a hero (the Photo step: lobby seat's photoTakeAtMs). The camera comes
+//   - the lobby, right after choosing a hero (the Photo step: lobby seat's photoTakeAtMs; none while a venue
+//     that asks first is still asking, js/arcade-lobby.js shows the question). The camera comes
 //     on with an outline to put your face in, counts "3, 2, 1" and takes it; then you see your hero wearing
 //     your face (the "3, 2, 1" and the shutter come from the station's speaker once it says its camera is on:
 //     POST .../lobby/{stationId}/camera). ACTION keeps it, B takes another, D goes on without. It's sent to the server
@@ -32,7 +33,7 @@ const HeroCamera = {
     taken: null,       // `${matchId}/${stationId}` of the intro photo taken (or tried), so it's only done once
     running: null,     // the intro's { key, cancelled } while its camera window is up
     lobbyRun: null,    // the lobby's { takeAtMs, cancelled } while its camera window is up
-    skippedAt: null,   // the lobby photo step this station (with no camera) already skipped
+    skipped: false,    // this station (with no camera) has already skipped the lobby photo step it's on
     stream: null,      // the camera, while it's on
 
     /**
@@ -106,21 +107,27 @@ const HeroCamera = {
      * away) closes the camera window. A station without a camera skips the step.
      */
     followLobby(seat, clock, color) {
-        const takeAtMs = seat?.step === 'Photo' ? seat.photoTakeAtMs : null;
+        const onStep = seat?.step === 'Photo';
+        const takeAtMs = onStep ? seat.photoTakeAtMs : null;
         if (HeroCamera.lobbyRun && HeroCamera.lobbyRun.takeAtMs !== takeAtMs) {
             HeroCamera.lobbyRun.cancelled = true;
             HeroCamera.lobbyRun = null;
             HeroCamera.close();
         }
-        if (!takeAtMs || HeroCamera.lobbyRun || !HeroCamera.checked) return;
+        if (!onStep) HeroCamera.skipped = false; // the next visit to the step may skip again
+        if (!onStep || !HeroCamera.checked) return;
 
+        // No camera here: skip the step as soon as it starts (asked first too: a yes would get nothing). The
+        // server refuses if another screen open as this station has a camera; that one takes the photo.
         if (!HeroCamera.hasCamera) {
-            if (HeroCamera.skippedAt === takeAtMs) return;
-            HeroCamera.skippedAt = takeAtMs;
+            if (HeroCamera.skipped) return;
+            HeroCamera.skipped = true;
             if (HeroCamera.noCamera) HeroCamera.report(`none at ${seat.stationId} (lobby): ${HeroCamera.noCamera}`);
             fetch(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}/skip`, { method: 'POST' }).catch(() => {});
             return;
         }
+        // Still asking; or this take's photo is already in (a reloaded page shows it rather than taking another).
+        if (!takeAtMs || HeroCamera.lobbyRun || seat.photo > 0) return;
         HeroCamera.lobbyRun = { takeAtMs, cancelled: false };
         HeroCamera.runLobby(HeroCamera.lobbyRun, seat, clock, color);
     },
@@ -139,8 +146,10 @@ const HeroCamera = {
             }
             const portrait = await HeroCamera.portraitOf(face, { color, hero: seat.hero });
             if (run.cancelled) return;
-            HeroCamera.reveal(box, portrait, Theme.text('dungeon.photoDone', {}, `${seat.stationId}:${run.takeAtMs}`), Theme.text('arcade.photoKeysTaken'));
-            await HeroCamera.send(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}`, face, portrait);
+            HeroCamera.reveal(box, portrait, Theme.text('dungeon.photoDone', {}, `${seat.stationId}:${run.takeAtMs}`));
+            await HeroCamera.send(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}`, face, portrait, { takeAtMs: run.takeAtMs });
+            // What to press now, once the server has it (a keep pressed before it lands wouldn't count).
+            if (!run.cancelled) box.querySelector('.photo-skip').innerHTML = Theme.text('arcade.photoKeysTaken');
         } catch (err) {
             if (run.cancelled) return;
             HeroCamera.report(`failed at ${seat.stationId} (lobby): ${err.name || 'Error'}: ${err.message || err}`);
@@ -291,12 +300,13 @@ const HeroCamera = {
         });
     },
 
-    /** Both pictures, as a form (see PhotosController). */
-    async send(url, face, portrait) {
+    /** Both pictures, as a form (see PhotosController), with any other fields it wants (the lobby's takeAtMs). */
+    async send(url, face, portrait, fields = {}) {
         const png = canvas => new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const form = new FormData();
         form.append('face', await png(face), 'face.png');
         form.append('portrait', await png(portrait), 'portrait.png');
+        for (const [name, value] of Object.entries(fields)) form.append(name, String(value));
         const response = await fetch(url, { method: 'PUT', body: form });
         if (!response.ok) throw new Error(`the server said ${response.status}`);
     },

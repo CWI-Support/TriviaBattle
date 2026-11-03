@@ -164,18 +164,23 @@ The rules:
   category). `LobbyBroadcaster` pushes the change. Every `ScreenState` carries the room's `LobbyView`.
   Settings: `Game:Arcade` (`LobbySettings`).
 - **Hero photos** (a player's face on their hero). At the stations the photo is the lobby's Photo step,
-  right after the hero (`LobbySettings.HeroPhotos`, `PhotoSeconds`): the seat's `PhotoTakeAt` goes out as
-  `LobbySeatView.PhotoTakeAtMs`, the station takes it (`HeroCamera.followLobby`) and sends it to
-  `PUT /api/photos/lobby/{stationId}`, which `PhotoStore` keeps by station (`KeepLobby`) while
-  `Lobby.PhotoArrived` counts it (`LobbySeat.HasPhoto`, `PhotoVersion`; screens fetch
+  right after the hero (`LobbySettings.HeroPhotos`, `PhotoSeconds`), following the venue's rule for games
+  (`Lobby.SetPhotoRule`, set by `LobbyHost` from the game rules: `LobbyPhotoRule.Off` in Classic or with
+  `Dungeon.HeroPhotos` off, `AskFirst` with `PhotoByDefault` off: the step asks, `PhotoTakeAt` null until
+  ACTION). The seat's `PhotoTakeAt` goes out as `LobbySeatView.PhotoTakeAtMs`, the station takes it
+  (`HeroCamera.followLobby`) and sends it, with that `takeAtMs`, to `PUT /api/photos/lobby/{stationId}`,
+  which `PhotoStore` keeps by station (`KeepLobby`) while `Lobby.PhotoArrived` counts it (only for the
+  take it's on: a late upload from a replaced take is refused) (`LobbySeat.HasPhoto`, `PhotoVersion`; screens fetch
   `GET /api/photos/lobby/{stationId}/portrait`). ACTION keeps it, B retakes, D drops it; a station without
-  a camera posts `.../skip`. Its camera coming on (`POST .../lobby/{stationId}/camera`, `Lobby.PhotoCameraOn`)
+  a camera posts `.../skip`, refused while another screen open as that station has one (station screens
+  tell the hub after each join: `GameHub.ReportCamera`, `ScreenRegistry.AnyWithCamera`). Its camera coming on (`POST .../lobby/{stationId}/camera`, `Lobby.PhotoCameraOn`)
   lets `LobbyHost.Tick` play the "3, 2, 1" and the shutter on its speaker (`Lobby.PhotoCountdowns`,
   `RoomSoundService.PlayPhotoCountdown`, the same sounds as the intro's). `LobbyHost` forgets a lobby photo as soon as its seat has none, and when a
   game starts moves its players' photos into the match (`TakeLobby`, then `Keep` under the new match id in
   `StartMatchAsync`'s `created`, before any screen hears of it). `SeatSetup.Photo` tells the
   engine what the lobby settled (`Player.PhotoFromLobby`: brought one, `Photo` 1, or chose none,
-  `PhotoDeclined`): it schedules no intro photo for them, and their intro ACTION does nothing.
+  `PhotoDeclined`): it schedules no intro photo for them, offers none, and their intro ACTION does
+  nothing. In a game without photos (`MatchRoster`'s `takesPhotos`) the lobby's photo doesn't count.
 
   A kiosk game takes them in the intro (`DungeonSettings.HeroPhotos`, `PhotoByDefault`,
   `PhotoCountdownSeconds`). By default the engine schedules everyone's photo when the intro starts

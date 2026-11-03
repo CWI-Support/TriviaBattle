@@ -87,7 +87,8 @@ public sealed class Team(string id, string name, IReadOnlyList<string> stationId
 /// <summary>The players and teams in one match, with lookups.</summary>
 public sealed class MatchRoster
 {
-    public MatchRoster(MatchSetup setup)
+    /// <param name="takesPhotos">The game has hero photos: a seat's photo settled in the lobby (<see cref="SeatSetup.Photo"/>) counts.</param>
+    public MatchRoster(MatchSetup setup, bool takesPhotos = false)
     {
         Teams = setup.Teams.Select(t => new Team(t.TeamId, t.Name.Trim(), t.StationIds)).ToList();
 
@@ -98,7 +99,7 @@ public sealed class MatchRoster
                 s.PlayerProfileId,
                 Teams.FirstOrDefault(t => t.StationIds.Contains(s.StationId))?.Id,
                 s.Hero ?? Arcade.Heroes.Default,
-                s.Photo))
+                takesPhotos ? s.Photo : null))
             .ToList();
     }
 

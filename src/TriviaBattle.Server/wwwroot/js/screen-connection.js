@@ -103,6 +103,7 @@ class ScreenConnection {
         this.serverId = serverId;
 
         const state = await this.hub.invoke('Join', this.role, this.roomId, this.stationNumber);
+        this.joins = (this.joins || 0) + 1; // a screen can tell the server things about itself again after each (re)join
         this.lastVersion = -1; // after a (re)join, always accept the fresh state
         this.receiveState(state);
         await this.syncClock();

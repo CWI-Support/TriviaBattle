@@ -58,12 +58,20 @@ const ArcadeLobby = {
             </div>`;
     },
 
-    /** Under the camera window (it covers this): the hero, and what's happening. */
+    /**
+     * The photo step under the camera window (it covers this while it's up): asking first, where the venue
+     * asks (no photoTakeAtMs yet); otherwise the hero, wearing the photo once there is one (a reloaded page
+     * shows it here rather than taking another).
+     */
     photoStep(seat) {
+        const asking = !seat.photoTakeAtMs;
+        const keys = asking ? 'arcade.photoOfferKeys' : seat.photo ? 'arcade.photoKeysTaken' : 'arcade.photoKeysTaking';
+        const picture = (seat.photo && HeroPhoto.lobby(seat.stationId, seat.photo)) || ArcadeLobby.picture(seat.hero);
         return `
             <div class="lb lb-hero">
-                <h1 class="lb-title">${Theme.text('arcade.photoTitle')}</h1>
-                <img class="lb-card" src="${ArcadeLobby.picture(seat.hero)}" alt="">
+                <h1 class="lb-title">${Theme.text(asking ? 'arcade.photoOffer' : 'arcade.photoTitle')}</h1>
+                <img class="lb-card" src="${picture}" alt="">
+                <div class="lb-keys">${Theme.text(keys)}</div>
             </div>`;
     },
 

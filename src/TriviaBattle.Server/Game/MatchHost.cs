@@ -38,10 +38,10 @@ public sealed class MatchHost(
     private readonly HashSet<string> _savedMatchIds = new();
 
     /// <summary>
-    /// Starts a match, if the setup is valid and its stations are free. created(matchId) runs before any
+    /// Starts a match, if the setup is valid and its stations are free. created(match) runs before any
     /// screen hears of it (the lobby moves its players' hero photos in then, so the first fetch finds them).
     /// </summary>
-    public async Task<StartMatchResult> StartMatchAsync(MatchSetup setup, Action<string>? created = null)
+    public async Task<StartMatchResult> StartMatchAsync(MatchSetup setup, Action<MatchEngine>? created = null)
     {
         var problems = MatchSetupValidator.Validate(setup, stations);
         if (problems.Count > 0)
@@ -80,7 +80,7 @@ public sealed class MatchHost(
                 match.MatchId, matchSettings.Format, match.Mode.DisplayName, setup.Seats.Count, match.RoundSeconds,
                 match.HasSoloClock ? $" (solo clock, up to {matchSettings.Dungeon.SoloMaxSeconds}s)" : "", questions.Count, matchSettings.WrongAnswerPenalty);
 
-            created?.Invoke(match.MatchId);
+            created?.Invoke(match);
             Publish(match, [new PhaseChanged(match.Phase)]);
             return new StartMatchResult(match.MatchId, []);
         }

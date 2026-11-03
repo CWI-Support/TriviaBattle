@@ -158,6 +158,20 @@ public class HeroPhotoTests
     }
 
     [Fact]
+    public void A_lobby_photo_counts_only_in_a_game_with_photos_and_isn_t_offered_again()
+    {
+        var classic = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { Format = GameFormat.Classic }, stations: ["A1"],
+            lobbyPhotos: new Dictionary<string, bool> { ["A1"] = true });
+        Assert.Equal(0, PlayerAt(classic, "A1").Photo); // no faces in Classic, wherever they came from
+
+        var askFirst = Match(byDefault: false);
+        var brought = new TestMatch(GameModeKind.FreeForAll, askFirst.Settings, stations: ["A1", "A2"],
+            lobbyPhotos: new Dictionary<string, bool> { ["A1"] = true });
+        Assert.Null(You(brought, "A1").PhotoOfferUntilMs);    // they have one: nothing to ask
+        Assert.NotNull(You(brought, "A2").PhotoOfferUntilMs); // a kiosk player is still asked
+    }
+
+    [Fact]
     public void The_lobby_keeps_a_photo_by_station_until_its_game_takes_it()
     {
         var store = new PhotoStore();

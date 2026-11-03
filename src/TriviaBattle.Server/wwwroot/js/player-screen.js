@@ -15,6 +15,7 @@ let myPlacement = null;     // set if this player/team made a leaderboard this m
 let lastAnswerShown = null; // number of the last answer we drew feedback for, so new feedback can pop
 let beatTimer = null;       // redraws when a battle beat ends (no update comes from the server then)
 let sharedChecked = false;  // asked once whether another screen is open as this station
+let cameraToldAt = 0;       // the join the server last heard about this screen's camera on
 
 const connection = new ScreenConnection({ role: 'player', stationNumber, onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
@@ -72,6 +73,11 @@ function canDraw3d() {
 }
 
 function render(state) {
+    if (HeroCamera.checked && cameraToldAt !== connection.joins) {
+        // After each (re)join: a screen without a camera mustn't skip the lobby's photo for one that has one.
+        cameraToldAt = connection.joins;
+        connection.hub.invoke('ReportCamera', HeroCamera.hasCamera).catch(() => {});
+    }
     if (!sharedChecked) {
         sharedChecked = true;
         warnIfShared();
@@ -116,9 +122,10 @@ function render(state) {
         }
     }
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
-    if (match && you) HeroCamera.follow(match, you, () => connection.serverNow(), state.station.color); // a kiosk game's intro photo
+    // The lobby's photo step first: a game taking over mid-photo closes its window before the intro's opens.
     const seat = match ? null : state.lobby.seats.find(s => s.stationId === state.station.id);
-    HeroCamera.followLobby(seat, () => connection.serverNow(), state.station.color); // the lobby's photo step
+    HeroCamera.followLobby(seat, () => connection.serverNow(), state.station.color);
+    if (match && you) HeroCamera.follow(match, you, () => connection.serverNow(), state.station.color); // a kiosk game's intro photo
     if (fighting) window.Battle3D?.show({ match, you, color: state.station.color, colors: stationColors(state) }); // once the 3D has loaded
 
     // A battle beat is playing: the next question appears when it ends, so redraw then.

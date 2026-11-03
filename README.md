@@ -113,7 +113,8 @@ uses the five buttons:
 
 1. **Press any button**, or swipe a card. A card the game knows plays under its name. A card seen
    for the first time is given a made-up hero name and keeps it. Without a card you're a guest
-   with a made-up name.
+   with a made-up name. A different card swiped at a station someone left half-way starts afresh
+   (their hero and photo don't carry over).
 2. **Choose your hero**: Knight, Barbarian, Mage, Rogue or Ranger. A and B flip through them, ACTION
    picks one. For now it's just a look; it's the hero you see fight.
 3. **Your hero photo** (see "Hero photos" below): the camera comes on, counts 3, 2, 1 and shows your
@@ -149,7 +150,9 @@ with `{ "cardId": "..." }`.
 
 ### Hero photos (a camera at each station)
 
-At the stations the photo comes right after choosing a hero (`Game:Arcade:HeroPhotos`, `true`). The
+At the stations the photo comes right after choosing a hero (`Game:Arcade:HeroPhotos`, `true`), following
+the same rule as games: none in Classic or with `Game:Dungeon:HeroPhotos` off, and where the venue asks
+first (`PhotoByDefault` false) the step asks "Put your face on your hero?" (ACTION yes, D no). The
 station shows the player's camera picture, with an outline to put their face in, and counts 3, 2, 1
 (`Game:Arcade:PhotoSeconds`, 4, from the step starting to the photo), with the blips and the shutter
 from their station's speaker once its camera is on. The station then finds the face
@@ -169,10 +172,10 @@ player drops it, takes another or walks away from the lobby, and when their matc
 
 - `Game:Dungeon:PhotoByDefault` (`true`) takes everyone's photo in a kiosk game's intro unless they skip.
   Set it to `false` to ask first: the intro then offers "Put your face on your hero? Press ACTION", and
-  only those who press get one. Some venues and regions need that, especially where children play
-  (at the stations, set `Game:Arcade:HeroPhotos` to `false` there too).
+  only those who press get one; the stations' photo step asks first too. Some venues and regions need
+  that, especially where children play. A photo from the stations never shows in a game without photos.
 - A station needs a webcam on its screen. Without one nothing is shown, the lobby's photo step skips
-  itself, and no intro countdown is heard (the station tells the server when its camera is on). The server log (and the admin's Live log) says when
+  itself (unless another screen open as that station has a camera: that one takes it), and no intro countdown is heard (the station tells the server when its camera is on). The server log (and the admin's Live log) says when
   a station's camera came on and when its photo arrived, or why a photo couldn't be taken: not an
   https/localhost page, no camera, the camera refused or busy, no face found. A station page that isn't
   https or localhost also says so on its intro screen. It also warns when a station has more than one

@@ -20,6 +20,16 @@ public sealed class ScreenRegistry
 
     public IReadOnlyList<ConnectedScreen> All => _byConnection.Values.ToList();
 
+    /// <summary>A screen says whether it has a camera it may use (station screens, after each join).</summary>
+    public void SetCamera(string connectionId, bool hasCamera)
+    {
+        if (Find(connectionId) is { } screen)
+            _byConnection[connectionId] = screen with { HasCamera = hasCamera };
+    }
+
+    /// <summary>True if any screen open as this one (say "player:A1") has a camera.</summary>
+    public bool AnyWithCamera(string key) => _byConnection.Values.Any(s => s.Key == key && s.HasCamera);
+
     /// <summary>The other connections open as the same screen as this one (two windows both set to Player 1, say).</summary>
     public IReadOnlyList<ConnectedScreen> SameAs(string connectionId) =>
         Find(connectionId) is { } me
@@ -30,7 +40,8 @@ public sealed class ScreenRegistry
 /// <param name="Key">Which screen it is: "main:A", "kiosk:A" or "player:A2".</param>
 /// <param name="Name">For people: "Main screen", "Kiosk", "Player 2".</param>
 /// <param name="Address">The screen PC's IP address.</param>
-public sealed record ConnectedScreen(string Key, string Name, string? Address, DateTimeOffset ConnectedAt);
+/// <param name="HasCamera">A station screen with a camera it may use (it says so after joining).</param>
+public sealed record ConnectedScreen(string Key, string Name, string? Address, DateTimeOffset ConnectedAt, bool HasCamera = false);
 
 /// <summary>
 /// Changes every time the server starts. Screens remember it, and reload themselves when they reconnect

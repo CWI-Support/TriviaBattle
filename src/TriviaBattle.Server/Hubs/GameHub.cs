@@ -69,6 +69,12 @@ public class GameHub(
 
     public long Ping(long clientTimeMs) => clock.GetUtcNow().ToUnixTimeMilliseconds();
 
+    /// <summary>
+    /// A station screen says whether it has a camera it may use (after each join). A screen without one
+    /// can't skip the lobby's photo for a station that has another screen with a camera.
+    /// </summary>
+    public void ReportCamera(bool hasCamera) => screens.SetCamera(Context.ConnectionId, hasCamera);
+
     /// <summary>The addresses of other screens open as this same screen (a station's screen warns: only one of them should be there).</summary>
     public IReadOnlyList<string?> OtherScreensHere() => screens.SameAs(Context.ConnectionId).Select(s => s.Address).ToList();
 

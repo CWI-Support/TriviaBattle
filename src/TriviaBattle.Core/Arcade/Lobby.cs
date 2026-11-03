@@ -15,8 +15,9 @@ public enum LobbyStep
 
     /// <summary>
     /// The hero photo: the station's camera counts down and takes it, then shows the hero wearing the player's
-    /// face. ACTION keeps it, B takes another, D goes on without one. Skipped where photos are off; a station
-    /// without a camera skips it by itself.
+    /// face. ACTION keeps it, B takes another, D goes on without one. Where the venue asks first
+    /// (<see cref="LobbyPhotoRule.AskFirst"/>) it starts with the question: ACTION yes, D no. Skipped where
+    /// photos are off; a station without a camera skips it by itself.
     /// </summary>
     Photo,
 
@@ -52,6 +53,19 @@ public enum GameChoice
     JoinOtherSide,
 }
 
+/// <summary>Hero photos in the lobby, as the venue's game rules have them (the same rule as a kiosk game's intro).</summary>
+public enum LobbyPhotoRule
+{
+    /// <summary>No photos (Classic format, or hero photos switched off): straight from the hero to the games.</summary>
+    Off,
+
+    /// <summary>Photos asked for first: the Photo step asks, and ACTION says yes.</summary>
+    AskFirst,
+
+    /// <summary>Photos by default: the Photo step takes it, and D says no.</summary>
+    Take,
+}
+
 /// <summary>A category of questions a player can pick (only ones with active questions are offered).</summary>
 public sealed record LobbyCategory(int Id, string Name);
 
@@ -70,7 +84,10 @@ public sealed class LobbySettings
     /// <summary>The questions' difficulty for games started at the stations.</summary>
     public Difficulty Difficulty { get; set; } = Difficulty.Easy;
 
-    /// <summary>The hero photo step after choosing a hero. Off: straight on to the games.</summary>
+    /// <summary>
+    /// The hero photo step after choosing a hero. Off: straight on to the games. On, it follows the venue's
+    /// photo rule (<see cref="Lobby.SetPhotoRule"/>).
+    /// </summary>
     public bool HeroPhotos { get; set; } = true;
 
     /// <summary>From the photo step starting (or a retake) to the photo being taken: the camera comes on, then "3, 2, 1".</summary>
@@ -131,6 +148,15 @@ public sealed class LobbySeat(string stationId)
     public void Pressed(DateTimeOffset now) => LastPressAt = now;
     public void TurnHero(int by) => HeroIndex = (HeroIndex + by + Heroes.All.Count) % Heroes.All.Count;
     public void GoTo(LobbyStep step) => Step = step;
+
+    /// <summary>To the Photo step, asking first (the venue's rule): nothing is taken until they say yes.</summary>
+    public void OfferPhoto()
+    {
+        Step = LobbyStep.Photo;
+        PhotoTakeAt = null;
+        PhotoCameraOn = false;
+        HasPhoto = false;
+    }
 
     /// <summary>To the Photo step (or a retake): the station takes a new photo after the countdown.</summary>
     public void TakePhoto(DateTimeOffset takeAt)
@@ -315,6 +341,17 @@ public sealed class Lobby
     /// <summary>The game that's forming, if any (only one at a time).</summary>
     public LobbyGroup? Forming { get; private set; }
 
+    /// <summary>The venue's photo rule (kept up to date by the server from its game rules); only with <see cref="LobbySettings.HeroPhotos"/> on.</summary>
+    public LobbyPhotoRule PhotoRule { get; private set; } = LobbyPhotoRule.Take;
+
+    public void SetPhotoRule(LobbyPhotoRule rule)
+    {
+        if (rule == PhotoRule)
+            return;
+        PhotoRule = rule;
+        Version++;
+    }
+
     /// <summary>Goes up with every change, like <see cref="MatchEngine.Version"/>.</summary>
     public int Version { get; private set; }
 
@@ -351,15 +388,18 @@ public sealed class Lobby
                 if (button == A) seat.TurnHero(-1);
                 else if (button == B) seat.TurnHero(+1);
                 else if (button != Action) return LobbyResult.Nothing;
-                else if (_settings.HeroPhotos) seat.TakePhoto(now + TimeSpan.FromSeconds(_settings.PhotoSeconds));
-                else seat.GoTo(LobbyStep.Game);
+                else if (!_settings.HeroPhotos || PhotoRule == LobbyPhotoRule.Off) seat.GoTo(LobbyStep.Game);
+                else if (PhotoRule == LobbyPhotoRule.AskFirst) seat.OfferPhoto();
+                else seat.TakePhoto(now + TimeSpan.FromSeconds(_settings.PhotoSeconds));
                 return Changed();
 
             case LobbyStep.Photo:
                 seat.Pressed(now);
+                var asking = seat.PhotoTakeAt == null;
                 if (button == D) seat.LeavePhoto(keep: false);
+                else if (button == Action && asking) seat.TakePhoto(now + TimeSpan.FromSeconds(_settings.PhotoSeconds)); // yes please
                 else if (button == Action && seat.HasPhoto) seat.LeavePhoto(keep: true);
-                else if (button == B) seat.TakePhoto(now + TimeSpan.FromSeconds(_settings.PhotoSeconds));
+                else if (button == B && !asking) seat.TakePhoto(now + TimeSpan.FromSeconds(_settings.PhotoSeconds));
                 else return LobbyResult.Nothing;
                 return Changed();
 
@@ -383,6 +423,7 @@ public sealed class Lobby
                 return Changed();
 
             case LobbyStep.Waiting:
+                seat.Pressed(now); // leaving a long-forming game mustn't find them idle
                 if (button == D)
                 {
                     Leave(seat);
@@ -405,14 +446,27 @@ public sealed class Lobby
     {
         if (Seat(stationId) is not { } seat)
             return LobbyResult.Nothing;
+        // A different card at a station still choosing: whoever was there walked away (or it's someone
+        // new), so start afresh, without their hero, their game or their face.
+        if (seat.Step != LobbyStep.Idle && seat.PlayerProfileId != playerProfileId)
+        {
+            if (seat.Group != null)
+                Leave(seat);
+            seat.Clear();
+        }
         seat.Arrive(name, playerProfileId, now);
         return Changed();
     }
 
-    /// <summary>The station sent the hero photo it took. Only while it's on the Photo step and hasn't one yet.</summary>
-    public bool PhotoArrived(string stationId)
+    /// <summary>
+    /// The station sent the hero photo it took for the take counting down to takeAtMs (the seat's
+    /// PhotoTakeAtMs). Only while it's on the Photo step for that same take, without one yet: an upload from
+    /// a take they've already replaced (B) doesn't count for the new one.
+    /// </summary>
+    public bool PhotoArrived(string stationId, long takeAtMs)
     {
-        if (Seat(stationId) is not { Step: LobbyStep.Photo, HasPhoto: false } seat)
+        if (Seat(stationId) is not { Step: LobbyStep.Photo, HasPhoto: false, PhotoTakeAt: { } takeAt } seat
+            || takeAt.ToUnixTimeMilliseconds() != takeAtMs)
             return false;
         seat.PhotoArrived();
         Version++;

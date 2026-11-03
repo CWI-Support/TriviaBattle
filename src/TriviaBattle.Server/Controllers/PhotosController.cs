@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TriviaBattle.Server.Diagnostics;
 using TriviaBattle.Server.Game;
 
 namespace TriviaBattle.Server.Controllers;
@@ -11,21 +12,22 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/photos")]
-public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby, ILogger<PhotosController> logger) : ControllerBase
+public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby, ScreenRegistry screens, ILogger<PhotosController> logger) : ControllerBase
 {
     /// <summary>
-    /// The photo taken in the lobby, right after choosing a hero: the same two PNGs. Only while that station
-    /// is on the Photo step, with no photo yet. It goes into the player's game when it starts.
+    /// The photo taken in the lobby, right after choosing a hero: the same two PNGs, and takeAtMs, the take
+    /// it's for (the seat's photoTakeAtMs). Only while that station is on the Photo step for that take, with
+    /// no photo yet. It goes into the player's game when it starts.
     /// </summary>
     [HttpPut("lobby/{stationId}")]
     [RequestSizeLimit(PhotoStore.MaxBytes)]
-    public async Task<IActionResult> PutLobby(string stationId, IFormFile face, IFormFile portrait)
+    public async Task<IActionResult> PutLobby(string stationId, IFormFile face, IFormFile portrait, [FromForm] long takeAtMs)
     {
         var picture = new HeroPicture(await ReadAsync(face), await ReadAsync(portrait));
         if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
             return BadRequest(new { problems = new[] { "A hero photo is two PNGs: the face and the portrait." } });
 
-        if (lobby.PhotoArrived(stationId, picture))
+        if (lobby.PhotoArrived(stationId, takeAtMs, picture))
             return NoContent();
         return Conflict(new { problems = new[] { "That station isn't taking a hero photo, or already has one." } });
     }
@@ -35,10 +37,15 @@ public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby
     public IActionResult LobbyCameraOn(string stationId) =>
         lobby.PhotoCameraOn(stationId) ? NoContent() : Conflict(new { problems = new[] { "That station isn't taking a hero photo." } });
 
-    /// <summary>A station without a camera skips the lobby's photo step.</summary>
+    /// <summary>
+    /// A station without a camera skips the lobby's photo step. Not if another screen open as that station
+    /// has one (a laptop on http beside the station's own PC, say): that one takes the photo.
+    /// </summary>
     [HttpPost("lobby/{stationId}/skip")]
     public IActionResult SkipLobby(string stationId)
     {
+        if (screens.AnyWithCamera($"player:{stationId}"))
+            return Conflict(new { problems = new[] { "Another screen at that station has a camera: it takes the photo." } });
         lobby.SkipPhoto(stationId);
         return NoContent();
     }

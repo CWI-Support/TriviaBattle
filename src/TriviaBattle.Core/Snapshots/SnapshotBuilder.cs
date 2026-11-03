@@ -103,7 +103,7 @@ public static class SnapshotBuilder
             ToDelve(match, stream.OwnerId),
             ToHelping(match, stream),
             ToBeat(match, stream),
-            player.PhotoAt == null && !player.PhotoDeclined ? ToUnixMs(match.PhotoOfferEndsAt) : null,
+            player.PhotoAt == null && !player.PhotoDeclined && !player.PhotoFromLobby ? ToUnixMs(match.PhotoOfferEndsAt) : null,
             ToUnixMs(player.PhotoAt));
     }
 

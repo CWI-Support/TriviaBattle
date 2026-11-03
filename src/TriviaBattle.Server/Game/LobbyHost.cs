@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TriviaBattle.Core.Arcade;
 using TriviaBattle.Core.Input;
+using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Stations;
 using TriviaBattle.Server.Audio;
 using TriviaBattle.Server.Data;
@@ -24,6 +25,7 @@ public sealed class LobbyHost(
     LobbyBroadcaster broadcaster,
     PhotoStore photos,
     RoomSoundService sounds,
+    GameRulesService gameRules,
     IServiceScopeFactory scopes,
     IOptions<LobbySettings> settings,
     TimeProvider clock,
@@ -82,13 +84,13 @@ public sealed class LobbyHost(
     /// A station sent the hero photo it took in the lobby: kept (<see cref="PhotoStore"/>) if that station is
     /// taking one. False if it isn't, or already has one (a second screen open as the same station).
     /// </summary>
-    public bool PhotoArrived(string stationId, HeroPicture picture)
+    public bool PhotoArrived(string stationId, long takeAtMs, HeroPicture picture)
     {
         if (stations.Find(stationId)?.RoomId is not { } roomId)
             return false;
         var accepted = lobbies.Use(roomId, lobby =>
         {
-            if (!lobby.PhotoArrived(stationId))
+            if (!lobby.PhotoArrived(stationId, takeAtMs))
                 return false;
             photos.KeepLobby(stationId, picture);
             return true;
@@ -99,7 +101,7 @@ public sealed class LobbyHost(
             broadcaster.LobbyChanged(roomId);
         }
         else
-            logger.LogWarning("Lobby {Station}: a hero photo was refused (is another screen open as that station?)", stationId);
+            logger.LogWarning("Lobby {Station}: a hero photo was refused (a take already replaced, or another screen open as that station)", stationId);
         return accepted;
     }
 
@@ -135,7 +137,16 @@ public sealed class LobbyHost(
         }
     }
 
-    /// <summary>Reads the categories with active questions and gives them to every room's lobby.</summary>
+    /// <summary>
+    /// The lobby's photos follow the venue's rule for games: none in Classic or with hero photos off, asked
+    /// first where the venue asks first (PhotoByDefault false), otherwise taken unless the player says no.
+    /// </summary>
+    private static LobbyPhotoRule PhotoRuleOf(MatchSettings rules) =>
+        rules.Format != GameFormat.Dungeon || !rules.Dungeon.HeroPhotos ? LobbyPhotoRule.Off
+        : rules.Dungeon.PhotoByDefault ? LobbyPhotoRule.Take
+        : LobbyPhotoRule.AskFirst;
+
+    /// <summary>Reads the categories with active questions and the photo rule, and gives them to every room's lobby.</summary>
     private async Task RefreshCategoriesAsync()
     {
         try
@@ -147,12 +158,14 @@ public sealed class LobbyHost(
                 .OrderBy(c => c.Name)
                 .Select(c => new LobbyCategory(c.Id, c.Name))
                 .ToListAsync();
+            var photoRule = PhotoRuleOf(await gameRules.SettingsForNewMatchAsync());
             foreach (var roomId in lobbies.RoomIds)
             {
                 var changed = lobbies.Use(roomId, lobby =>
                 {
                     var before = lobby.Version;
                     lobby.SetCategories(categories);
+                    lobby.SetPhotoRule(photoRule);
                     return lobby.Version != before;
                 });
                 if (changed)
@@ -218,11 +231,11 @@ public sealed class LobbyHost(
                 .ToListAsync();
 
             // The photos move in before the screens hear of the match, so their first fetch finds them.
-            var result = await host.StartMatchAsync(start.ToSetup(categoryIds, settings.Value.Difficulty), matchId =>
+            var result = await host.StartMatchAsync(start.ToSetup(categoryIds, settings.Value.Difficulty), match =>
             {
                 foreach (var (stationId, picture) in lobbyPhotos)
-                    if (start.Players.Any(p => p.StationId == stationId))
-                        photos.Keep(matchId, stationId, picture);
+                    if (match.Roster.FindPlayer(stationId)?.Photo > 0) // the game takes photos (not Classic, say)
+                        photos.Keep(match.MatchId, stationId, picture);
             });
             if (!result.Started)
                 logger.LogWarning("A {Game} game from the lobby didn't start: {Problems}", start.Game, string.Join(" ", result.Problems));
