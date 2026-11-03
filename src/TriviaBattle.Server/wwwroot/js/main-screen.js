@@ -370,8 +370,9 @@ function playerChip(player, match = null) {
         </div>`;
 }
 
-/** The mode's name as the theme words it. */
+/** The mode's name as the theme words it. One team on its own (a co-op party from the lobby) isn't racing anyone. */
 function modeName(match) {
+    if (match.mode === 'TeamCombinedScore' && match.teams?.length === 1) return Theme.text('modes.Coop.name');
     return Theme.text(`modes.${match.mode}.name`);
 }
 

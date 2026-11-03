@@ -322,7 +322,7 @@ const DungeonView = {
             <div class="dg-lane ${isLeader ? 'is-leader' : ''} ${shake.cls}" style="--lane-color: ${color}; --t0: ${shake.t0}ms">
                 <div class="dg-lane-head">
                     ${rank ? `<span class="dg-rank">${UI.ordinal(rank)}</span>` : ''}
-                    <span class="dg-lane-name">${name}</span>
+                    <span class="dg-lane-name ${name.replace(/&[^;]+;/g, 'x').length > 16 ? 'is-long' : ''}">${name}</span>
                     <span class="dg-floor-badge">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</span>
                 </div>
                 ${DungeonView.trail(delve)}

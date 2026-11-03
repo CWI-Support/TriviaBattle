@@ -8,7 +8,8 @@
   "modes": {
     "FreeForAll": { "name": "Free-for-All", "description": "Everyone for themselves. Highest score wins." },
     "TeamSharedAnswer": { "name": "2v2 Group", "description": "Teammates share one set of questions. Either of you can answer!" },
-    "TeamCombinedScore": { "name": "2v2 Combined", "description": "Everyone gets their own questions. Your points add up to your team score." }
+    "TeamCombinedScore": { "name": "2v2 Combined", "description": "Everyone gets their own questions. Your points add up to your team score." },
+    "Coop": { "name": "Co-op", "description": "One team together: everyone gets their own questions, and your points add up." }
   },
 
   "teams": {

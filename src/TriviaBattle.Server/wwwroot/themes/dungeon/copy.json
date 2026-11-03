@@ -15,6 +15,10 @@
     "TeamCombinedScore": {
       "name": "Party Race",
       "description": "Everyone fights their own monsters. Your damage adds up for your party."
+    },
+    "Coop": {
+      "name": "Co-op Delve",
+      "description": "One party, one dungeon: everyone fights the same monsters together."
     }
   },
   "teams": {

@@ -391,6 +391,7 @@
 }
 .dg-lane.is-leader .dg-rank { background: var(--accent); color: var(--accent-text); }
 .dg-lane-name { flex: 1; min-width: 0; font-family: var(--dg-font-pixel); font-size: 2.4vmin; color: var(--lane-color); overflow-wrap: anywhere; }
+.dg-lane-name.is-long { font-size: 1.9vmin; } /* "Count Factsworth's team" stays on one line */
 .dg-lane .dg-floor-badge { font-size: 2.2vmin; }
 
 .dg-lane .dg-trail { --step-max: 4.5vmin; }
@@ -416,7 +417,8 @@
 /* ---------- Parties: teammates' HP, revives, shouting a teammate the answer ---------- */
 
 .dg-party { display: flex; gap: 2vmin; }
-.dg-party.is-lane { flex: 1; flex-direction: column; gap: 0.8vh; }
+/* In a main-screen lane, two members to a row: a 2v2 (or a party of four) still fits above the Host. */
+.dg-party.is-lane { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8vh 1.5vw; }
 .dg-member { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.4vh; font-family: var(--dg-font-pixel); font-size: 2.4vmin; }
 .dg-member-line { display: flex; justify-content: space-between; gap: 1vmin; }
 .dg-member-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
