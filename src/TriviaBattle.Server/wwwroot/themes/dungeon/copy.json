@@ -47,7 +47,7 @@
     "playerTeam": "You fight for {team}",
     "playerTeamWith": "You fight for {team}, beside {teammates}",
     "rules": "{seconds} seconds. Every right answer is an attack!",
-    "soloClock": [
+    "earnTime": [
       "Slay monsters to buy yourself more time.",
       "Every kill puts sand back in your hourglass.",
       "Kill fast and the dungeon lets you stay longer."

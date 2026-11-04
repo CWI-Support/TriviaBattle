@@ -4,16 +4,20 @@ using TriviaBattle.Core.Snapshots;
 
 namespace TriviaBattle.Tests.Dungeon;
 
-// A solo game runs on an arcade clock (kills add time, up to a hard cap); groups play a fixed round.
-// Uses TestMatch.Dungeon: floor 1 = two rats (40 HP), floor 2 = a boss (60 HP). Slow presses (4 seconds)
-// do 20 damage, 30 from the third in a row (combo), so a rat dies every two presses.
+// Every Dungeon game runs on an arcade clock: kills add time, as much as they earn; when it runs
+// out a swipe continues (a new session). There is no cap. Uses TestMatch.Dungeon: floor 1 = two rats (40 HP), floor 2 = a
+// boss (60 HP). Slow presses (4 seconds) do 20 damage, so a rat dies every two presses and the boss in three.
 public class DungeonClockTests
 {
-    private static MatchSettings Settings(double soloMaxSeconds = 1000) => new()
+    private static MatchSettings Settings() => new()
     {
         Format = GameFormat.Dungeon,
-        MatchSeconds = 120,
-        Dungeon = { SoloStartSeconds = 60, SoloSecondsPerKill = 10, SoloSecondsPerBoss = 30, SoloMaxSeconds = soloMaxSeconds },
+        MatchSeconds = 120, // Classic's round: a Dungeon game doesn't use it
+        Dungeon =
+        {
+            ClockStartSeconds = 60, SecondsPerKill = 10, SecondsPerBoss = 30,
+            ContinueSeconds = 60, ContinueCountdownSeconds = 10, PartyHpPerMember = 0.75,
+        },
     };
 
     private static TestMatch Solo(MatchSettings settings)
@@ -32,7 +36,7 @@ public class DungeonClockTests
 
         Assert.Equal(TimeSpan.FromSeconds(60), ClockLength(match));
         var snapshot = SnapshotBuilder.Build(match.Engine, Viewer.Main);
-        Assert.True(snapshot.SoloClock);
+        Assert.True(snapshot.EarnsTime);
         Assert.Equal(60, snapshot.MatchSeconds);
     }
 
@@ -54,7 +58,7 @@ public class DungeonClockTests
     {
         var match = Solo(Settings());
 
-        for (var i = 0; i < 6; i++) // two rats (+10 each), then the boss (+30)
+        for (var i = 0; i < 7; i++) // two rats (+10 each), then the boss (+30)
             match.Press("A1", 0, afterSeconds: 4);
 
         Assert.Equal(3, match.DelveOf("A1").Kills);
@@ -62,36 +66,45 @@ public class DungeonClockTests
     }
 
     [Fact]
-    public void The_solo_clock_never_runs_past_the_hard_cap()
+    public void There_is_no_cap_the_clock_keeps_growing_while_they_keep_killing()
     {
-        var match = Solo(Settings(soloMaxSeconds: 65));
+        var match = Solo(Settings());
 
-        match.Press("A1", 0, afterSeconds: 4);
-        match.Press("A1", 0, afterSeconds: 4); // rat dead: would be 70
+        for (var i = 0; i < 40; i++) // rats and the boss, round and round the dungeon: far more time than it started with
+            match.Press("A1", 0, afterSeconds: 1);
 
-        Assert.Equal(TimeSpan.FromSeconds(65), ClockLength(match));
+        Assert.True(match.DelveOf("A1").Kills > 10);
+        Assert.True(ClockLength(match) > TimeSpan.FromSeconds(150));
+        Assert.Equal(MatchPhase.Playing, match.Engine.Phase);
     }
 
     [Fact]
-    public void The_solo_starting_time_is_cut_to_the_hard_cap()
-    {
-        var match = Solo(Settings(soloMaxSeconds: 45));
-
-        Assert.Equal(TimeSpan.FromSeconds(45), ClockLength(match));
-    }
-
-    [Fact]
-    public void A_group_game_plays_a_fixed_round()
+    public void In_a_race_each_party_s_kills_earn_their_share_of_the_shared_clock()
     {
         var match = new TestMatch(GameModeKind.FreeForAll, Settings(), stations: ["A1", "A2"]);
         match.StartPlaying();
 
         match.Press("A1", 0, afterSeconds: 4);
-        match.Press("A1", 0, afterSeconds: 4); // rat dead
+        match.Press("A1", 0, afterSeconds: 4); // rat dead: 10 seconds, shared by two parties
 
         Assert.Equal(1, match.DelveOf("A1").Kills);
-        Assert.Equal(TimeSpan.FromSeconds(120), ClockLength(match));
-        Assert.False(SnapshotBuilder.Build(match.Engine, Viewer.Main).SoloClock);
+        Assert.Equal(TimeSpan.FromSeconds(65), ClockLength(match));
+        Assert.True(SnapshotBuilder.Build(match.Engine, Viewer.Main).EarnsTime);
+    }
+
+    [Fact]
+    public void A_party_faces_tougher_monsters_and_earns_less_time_per_kill()
+    {
+        // 2v2 Combined: two parties of two. Monsters have 175% HP for them; a kill earns 10 x 1.75 / 2, shared by the two parties.
+        var match = new TestMatch(GameModeKind.TeamCombinedScore, Settings());
+        match.StartPlaying();
+        Assert.Equal(70, match.DelveOf("A1").MonsterHp);
+
+        for (var i = 0; i < 3; i++)
+            match.Press("A1", 0, afterSeconds: 1); // 30 a crit: dead on the third (only Ann answers, so no party combo)
+
+        Assert.Equal(1, match.DelveOf("A1").Kills);
+        Assert.Equal(TimeSpan.FromSeconds(60 + 10 * 1.75 / 2 / 2), ClockLength(match));
     }
 
     [Fact]
@@ -100,11 +113,11 @@ public class DungeonClockTests
         var match = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { MatchSeconds = 120 }, stations: ["A1"]);
         match.StartPlaying();
 
-        Assert.False(match.Engine.HasSoloClock);
+        Assert.False(match.Engine.EarnsTime);
         Assert.Equal(TimeSpan.FromSeconds(120), ClockLength(match));
     }
 
-    // ---------------------------------------------------------------- Continue? (solo only)
+    // ---------------------------------------------------------------- Continue? (a swipe: a second paid session)
 
     [Fact]
     public void When_the_solo_clock_runs_out_it_waits_for_a_continue()
@@ -115,7 +128,7 @@ public class DungeonClockTests
 
         Assert.Equal(MatchPhase.Continue, match.Engine.Phase);
         Assert.Equal(MatchPhase.Continue, Assert.Single(events.OfType<PhaseChanged>()).Phase);
-        Assert.Equal(TimeSpan.FromSeconds(10), ClockLength(match)); // SoloContinueCountdownSeconds
+        Assert.Equal(TimeSpan.FromSeconds(10), ClockLength(match)); // ContinueCountdownSeconds
         Assert.Equal(60, SnapshotBuilder.Build(match.Engine, Viewer.Main).ContinueSeconds);
     }
 
@@ -142,7 +155,7 @@ public class DungeonClockTests
         var events = match.Engine.Continue(match.Now);
 
         Assert.Equal(MatchPhase.Playing, Assert.Single(events.OfType<PhaseChanged>()).Phase);
-        Assert.Equal(TimeSpan.FromSeconds(60), ClockLength(match)); // SoloContinueSeconds
+        Assert.Equal(TimeSpan.FromSeconds(60), ClockLength(match)); // ContinueSeconds
         Assert.Equal(1, match.Engine.ContinuesUsed);
         Assert.Equal(2, match.DelveOf("A1").Encounter.Room);
         Assert.Equal(90, match.AdventurerOf("A1").Hp);
@@ -154,28 +167,27 @@ public class DungeonClockTests
     }
 
     [Fact]
-    public void Continues_count_toward_the_hard_cap()
+    public void Each_continue_is_a_fresh_session_that_earns_time_too()
     {
-        var match = Solo(Settings(soloMaxSeconds: 130)); // 60 to start, continues of 60
-        match.FinishPhase();                              // 60 played
-        match.Engine.Continue(match.Now);                 // 60 + 60 fits under 130
+        var match = Solo(Settings()); // 60 to start, continues of 60
+        match.FinishPhase();
+        match.Engine.Continue(match.Now);                 // a fresh session
 
         match.Press("A1", 0, afterSeconds: 4);
-        match.Press("A1", 0, afterSeconds: 4);            // a kill: +10, the cap allows 70 in this stretch
-        match.Press("A1", 0, afterSeconds: 4);
-        match.Press("A1", 0, afterSeconds: 4);            // another: still 70
+        match.Press("A1", 0, afterSeconds: 4);            // a kill: +10
         Assert.Equal(TimeSpan.FromSeconds(70), ClockLength(match));
 
-        match.FinishPhase();                              // 130 played: no whole continue fits any more
-
-        Assert.Equal(MatchPhase.Results, match.Engine.Phase);
+        match.FinishPhase();
+        Assert.Equal(MatchPhase.Continue, match.Engine.Phase); // and another can follow, however many came before
+        match.Engine.Continue(match.Now);
+        Assert.Equal(2, match.Engine.ContinuesUsed);
     }
 
     [Fact]
     public void No_continues_when_they_are_turned_off()
     {
         var settings = Settings();
-        settings.Dungeon.SoloContinueSeconds = 0;
+        settings.Dungeon.ContinueSeconds = 0;
         var match = Solo(settings);
 
         match.FinishPhase();
@@ -184,14 +196,21 @@ public class DungeonClockTests
     }
 
     [Fact]
-    public void A_group_game_never_waits_for_a_continue()
+    public void A_group_game_waits_for_a_continue_too_and_one_swipe_brings_everyone_back()
     {
         var match = new TestMatch(GameModeKind.FreeForAll, Settings(), stations: ["A1", "A2"]);
         match.StartPlaying();
+        match.Press("A2", 1, afterSeconds: 4); // Bob is hit: 90 HP
 
         match.FinishPhase();
+        Assert.Equal(MatchPhase.Continue, match.Engine.Phase);
 
-        Assert.Equal(MatchPhase.Results, match.Engine.Phase);
+        match.Engine.Continue(match.Now);
+
+        Assert.Equal(MatchPhase.Playing, match.Engine.Phase);
+        Assert.Equal(TimeSpan.FromSeconds(60), ClockLength(match));
+        Assert.Equal(90, match.AdventurerOf("A2").Hp);
+        Assert.NotNull(match.AdventurerOf("A1").AttackAt); // both are fighting again
     }
 
     [Fact]
@@ -209,8 +228,8 @@ public class DungeonClockTests
         var configured = Settings();
 
         var copy = configured.Copy();
-        copy.Dungeon.SoloStartSeconds = 5;
+        copy.Dungeon.ClockStartSeconds = 5;
 
-        Assert.Equal(60, configured.Dungeon.SoloStartSeconds);
+        Assert.Equal(60, configured.Dungeon.ClockStartSeconds);
     }
 }

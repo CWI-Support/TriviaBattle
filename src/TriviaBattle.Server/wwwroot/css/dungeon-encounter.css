@@ -49,9 +49,88 @@
     text-overflow: ellipsis;
 }
 .dg-foe-plate.is-boss .dg-foe-name { color: #ffd23f; }
+/* The name, with a Healer's poison badge beside it when there is one. */
+.dg-foe-name-line { display: flex; align-items: center; justify-content: center; gap: 1.6vw; margin-bottom: 0.8vh; min-width: 0; }
+.dg-foe-name-line .dg-foe-name { margin: 0; min-width: 0; }
+.dg-foe-name-line .dg-poison { margin: 0; font-size: 2.6vmin; }
 .dg-foe-hp { display: flex; align-items: center; gap: 1.6vw; }
 .dg-foe-hp .dg-bar { flex: 1; height: 4vmin; }
 .dg-foe-hp .dg-bar-fill { background: var(--dg-enemy-hp); }
+.dg-foe-plate.is-poisoned .dg-foe-hp .dg-bar-fill { background: var(--dg-poison); }
+.dg-foe-plate.is-poisoned .dg-foe-hp .dg-gem.is-red { --gem: var(--dg-poison); }
+
+/* ---------- A boss's charge (DungeonEncounter.chargeMeter) ---------- */
+
+/* Under the HP bar: the word, then a pip per step of the charge, filled up to this question's (the last one
+   red). Calm while it builds. At full charge (.is-full-charge on the station) it has to be impossible to
+   miss from across the room: the plate and the monster's room pulse red, the word flashes, and a warning
+   banner sits in the room. The pulse runs on the shared idle beat (--charge0), so redraws don't jolt it. */
+.dg-charge { display: flex; align-items: center; gap: 2vw; margin-top: 0.8vh; padding: 0 4.4vmin; }
+.dg-charge-word {
+    flex: 0 0 auto;
+    min-width: 30%;
+    font-family: var(--dg-font-pixel);
+    font-size: 2.6vmin;
+    color: #e9a15a;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dg-charge-pips { flex: 1; display: flex; gap: 1vmin; }
+.dg-charge-pip {
+    flex: 1;
+    height: 2.6vmin;
+    background: #15121a;
+    border: 0.4vmin solid #000;
+    box-shadow: inset 0 0 0 0.3vmin #3a3440;
+}
+.dg-charge-pip.is-lit { background: linear-gradient(#ffc26a, #e8762a); box-shadow: 0 0 1.2vmin rgba(232, 118, 42, 0.6); }
+.dg-charge-pip.is-last { border-color: #5c0d0d; }
+.dg-charge-pip.is-last.is-lit { background: linear-gradient(#ff7a7a, #d61a1a); box-shadow: 0 0 2.4vmin #ff2a2a; }
+
+.dg-charge.is-full .dg-charge-word { font-size: 3.6vmin; color: #ff4a4a; text-shadow: 0.4vmin 0.4vmin 0 #000, 0 0 2vmin #ff2a2a; }
+.dg-charge.is-full .dg-charge-pip { height: 3.6vmin; background: linear-gradient(#ff7a7a, #d61a1a); box-shadow: 0 0 2.4vmin #ff2a2a; }
+.dg-station.is-full-charge .dg-charge-word { animation: dg-charge-blink 900ms steps(1) var(--charge0) infinite; }
+@keyframes dg-charge-blink { 50% { color: #fff; } }
+
+.dg-station.is-full-charge .dg-foe-plate {
+    border-color: #ff3b3b;
+    animation: dg-charge-plate 900ms ease-in-out var(--charge0) infinite;
+}
+@keyframes dg-charge-plate {
+    0%, 100% { box-shadow: inset 0 0 0 0.4vmin #000, 0 0 2vmin rgba(255, 30, 30, 0.5); }
+    50% { box-shadow: inset 0 0 0 0.4vmin #000, inset 0 0 5vmin rgba(255, 30, 30, 0.45), 0 0 6vmin rgba(255, 30, 30, 0.95); }
+}
+/* The room burns red round its edges (over the 3D scene too, which burns the boss itself red). */
+.dg-station.is-full-charge .dg-stage { animation: dg-charge-room 900ms ease-in-out var(--charge0) infinite; border-color: #ff3b3b; }
+@keyframes dg-charge-room {
+    0%, 100% { box-shadow: inset 0 0 6vmin 1vmin rgba(120, 0, 0, 0.8); }
+    50% { box-shadow: inset 0 0 12vmin 3vmin rgba(255, 20, 20, 0.85); }
+}
+
+/* The warning across the bottom of the room, in the Host's place (the Host's line can wait: what's at
+   stake on this one answer matters more). A Warlock's patron's whisper keeps its place under it. */
+.dg-station.is-full-charge .dg-stage .dg-feedback:not(.is-patron) { display: none; }
+.dg-charge-warning {
+    position: absolute;
+    left: 2vw;
+    right: 2vw;
+    bottom: 0.8vh;
+    z-index: 3;
+    padding: 0.6vh 2vw;
+    text-align: center;
+    font-family: var(--dg-font-pixel);
+    font-size: calc(3.2vmin * var(--fit));
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(150, 8, 8, 0.92);
+    border: 0.6vmin solid #ff5a5a;
+    box-shadow: 0 0 0 0.4vmin #000, 0 0 4vmin rgba(255, 30, 30, 0.8);
+    text-shadow: 0.4vmin 0.4vmin 0 #000;
+    animation: dg-charge-warning 900ms ease-in-out var(--charge0) infinite;
+}
+.dg-stage .dg-feedback.is-patron ~ .dg-charge-warning { bottom: calc(1.6vh + 3.2vmin * var(--fit) * 1.4); }
+@keyframes dg-charge-warning { 50% { transform: scale(1.03); background: rgba(200, 16, 16, 0.95); } }
 
 /* ---------- The question, hanging from the nameplate on two chains ---------- */
 
@@ -210,6 +289,27 @@
 }
 .dg-station.is-encounter .dg-answer-text b { font-weight: normal; color: var(--answer-color); }
 
+/* A Warlock's patron showing the answer: it glows purple, pulsing on the shared idle beat (--idle0). */
+.dg-station.is-encounter .dg-answer.is-revealed .dg-answer-text {
+    border-color: var(--dg-patron);
+    background: linear-gradient(#3a2356, #1d1230);
+    animation: dg-patron-glow 1.2s ease-in-out var(--idle0, 0s) infinite;
+}
+.dg-station.is-encounter .dg-answer.is-revealed .dg-rune { border-color: var(--dg-patron); box-shadow: inset 0 0 0 0.4vmin #000, 0 0 3vmin var(--dg-patron); }
+@keyframes dg-patron-glow {
+    0%, 100% { box-shadow: inset 0 0 0 0.4vmin #000, 0 0 2vmin var(--dg-patron); }
+    50% { box-shadow: inset 0 0 0 0.4vmin #000, 0 0 5vmin var(--dg-patron), 0 0 1vmin #fff; }
+}
+/* The patron's whisper takes the Host's line, sliding in once when the answer is shown (--t0). */
+.dg-station .dg-stage .dg-feedback.is-patron {
+    color: #e3c8ff;
+    background: rgba(40, 14, 64, 0.9);
+    border-left: 1vmin solid var(--dg-patron);
+    border-right: 1vmin solid var(--dg-patron);
+    text-shadow: 0 0 1.5vmin var(--dg-patron);
+    animation: dg-q-rise 300ms ease-out var(--t0, 0ms) both;
+}
+
 /* ---------- You, in an iron frame with gems ---------- */
 
 .dg-station.is-encounter .dg-plate { position: relative; }
@@ -219,3 +319,10 @@
 .dg-station.is-encounter.is-after-beat .dg-foe-plate { animation: dg-q-rise 200ms ease-out var(--q0) both; }
 .dg-station.is-encounter.is-after-beat .dg-stage { animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both; }
 .dg-station.is-encounter.is-new-foe .dg-stage .dg-monster-wrap { animation: dg-drop 450ms cubic-bezier(0.3, 1.5, 0.6, 1) calc(var(--q0) + 60ms) both; }
+/* At full charge after a beat, the plate and the room do both: come in, then keep pulsing red. */
+.dg-station.is-encounter.is-after-beat.is-full-charge .dg-foe-plate {
+    animation: dg-q-rise 200ms ease-out var(--q0) both, dg-charge-plate 900ms ease-in-out var(--charge0) infinite;
+}
+.dg-station.is-encounter.is-after-beat.is-full-charge .dg-stage {
+    animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both, dg-charge-room 900ms ease-in-out var(--charge0) infinite;
+}

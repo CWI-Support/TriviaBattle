@@ -17,8 +17,14 @@
 //         of its eyes, mouth, chin and forehead and the distance between its pupils, all in the model's own
 //         units (it faces +Z), and the square of the head front the face map covers.
 
-// The heroes a player picks at their station (Core's Heroes.All): KayKit adventurers, all on one rig with
-// the same clips and nearly the same head, so they share these numbers and only say what's theirs.
+// The heroes a player picks at their station (Core's Heroes.All, one per hero class): KayKit adventurers, all on
+// one rig with the same clips and nearly the same head, so they share these numbers and only say what's theirs.
+// Two classes have no model of their own yet and borrow one with different gear: the Healer is the mage without
+// his hat, with a wand and a book; the Warlock is the hooded ranger, casting spells.
+//
+// A new model: put its .glb in media/models/characters (credit it in CREDITS.md), give its key an entry here
+// (file, which clips are its attacks, which gear shows, which part is dyed the station's colour, where a
+// face goes), then save its pictures with /dev/heroes. A hero class needs its key in Core's Heroes.All too.
 const ADVENTURER = { height: 2.3, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer' };
 
 /**
@@ -37,7 +43,7 @@ const face = (mesh, lift = 0) => ({
 const melee = (clip, contact) => ({ clip, contact });
 
 export const HEROES = {
-    knight: {
+    tank: {
         ...ADVENTURER,
         file: '/media/models/characters/knight.glb',
         // A few different swings, picked per beat so the 40th hit doesn't look like the first.
@@ -51,7 +57,7 @@ export const HEROES = {
         tinted: 'Knight_Cape', // the part dyed the station's colour
         face: face('Knight_Head'),
     },
-    barbarian: {
+    pugilist: {
         ...ADVENTURER,
         file: '/media/models/characters/barbarian.glb',
         attacks: [melee('1H_Melee_Attack_Chop', 0.42), melee('1H_Melee_Attack_Slice_Diagonal', 0.38), melee('1H_Melee_Attack_Slice_Horizontal', 0.42)],
@@ -62,13 +68,24 @@ export const HEROES = {
         tinted: 'Barbarian_Cape',
         face: face('Barbarian_Head'),
     },
-    mage: {
+    wizard: {
         ...ADVENTURER,
         file: '/media/models/characters/mage.glb',
         attacks: [melee('Spellcast_Shoot', 0.45), melee('1H_Melee_Attack_Chop', 0.42)],
         critAttack: melee('Spellcast_Shoot', 0.45),
         comboAttack: melee('Spellcast_Shoot', 0.45),
         gear: ['2H_Staff', 'Mage_Hat', 'Mage_Cape'],
+        allGear: ['Spellbook', 'Spellbook_open', '1H_Wand', '2H_Staff', 'Mage_Hat', 'Mage_Cape'],
+        tinted: 'Mage_Cape',
+        face: face('Mage_Head', 0.1),
+    },
+    healer: { // the mage's model (no model of its own yet): no hat, a wand and a book
+        ...ADVENTURER,
+        file: '/media/models/characters/mage.glb',
+        attacks: [melee('Spellcast_Shoot', 0.45), melee('1H_Melee_Attack_Chop', 0.42)],
+        critAttack: melee('Spellcast_Shoot', 0.45),
+        comboAttack: melee('Spellcast_Shoot', 0.45),
+        gear: ['1H_Wand', 'Spellbook', 'Mage_Cape'],
         allGear: ['Spellbook', 'Spellbook_open', '1H_Wand', '2H_Staff', 'Mage_Hat', 'Mage_Cape'],
         tinted: 'Mage_Cape',
         face: face('Mage_Head', 0.1),
@@ -91,6 +108,17 @@ export const HEROES = {
         critAttack: melee('1H_Ranged_Shoot', 0.35),
         comboAttack: melee('Dualwield_Melee_Attack_Stab', 0.6),
         gear: ['1H_Crossbow', 'Knife_Offhand', 'Rogue_Cape'],
+        allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
+        tinted: 'Rogue_Cape',
+        face: face('Rogue_Head_Hooded'),
+    },
+    warlock: { // the ranger's model (no model of its own yet), hooded and casting
+        ...ADVENTURER,
+        file: '/media/models/characters/ranger.glb',
+        attacks: [melee('Spellcast_Shoot', 0.45), melee('Throw', 0.5)],
+        critAttack: melee('Spellcast_Shoot', 0.45),
+        comboAttack: melee('Spellcast_Shoot', 0.45),
+        gear: ['Knife_Offhand', 'Rogue_Cape'],
         allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
         tinted: 'Rogue_Cape',
         face: face('Rogue_Head_Hooded'),

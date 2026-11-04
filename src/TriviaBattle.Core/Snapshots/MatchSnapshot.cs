@@ -28,9 +28,9 @@ public sealed record Viewer(ViewerRole Role, string? StationId = null)
 /// <summary>The full state of one match, as one screen is allowed to see it.</summary>
 /// <param name="PhaseEndsAtMs">While Playing, this is the match clock running out.</param>
 /// <param name="MatchSeconds">How long the clock runs when it starts, for "60 seconds: go!" before it starts.</param>
-/// <param name="SoloClock">A solo Dungeon game: every monster slain adds time to the clock.</param>
-/// <param name="ContinueSeconds">Solo Dungeon games: the time a continue adds (0 = no continues), for "swipe for 60 more seconds".</param>
-/// <param name="ContinuesUsed">Solo Dungeon games: how many times the player has continued.</param>
+/// <param name="EarnsTime">A Dungeon game (solo or group): every monster slain adds time to the clock.</param>
+/// <param name="ContinueSeconds">Dungeon games: a continue's clock, a second paid session (0 = no continues), for "swipe for 140 more seconds".</param>
+/// <param name="ContinuesUsed">Dungeon games: how many times the players have continued.</param>
 /// <param name="You">Only for player screens.</param>
 /// <param name="Streams">Only for admin: every player's/team's current question, with its answer.</param>
 /// <param name="Format">"Classic" or "Dungeon": which game the screens draw.</param>
@@ -47,7 +47,7 @@ public sealed record MatchSnapshot(
     string Category,
     string Difficulty,
     double MatchSeconds,
-    bool SoloClock,
+    bool EarnsTime,
     double ContinueSeconds,
     int ContinuesUsed,
     IReadOnlyList<PlayerView> Players,
@@ -63,7 +63,7 @@ public sealed record MatchSnapshot(
 /// <param name="LockedOutUntilMs">Set while a wrong-answer lockout is running for whoever they answer as.</param>
 /// <param name="Delve">Dungeon format: their party's delve and their own HP. Null in Classic, and in 2v2 Group (the team is one adventurer: <see cref="TeamView.Delve"/>).</param>
 /// <param name="Photo">Dungeon format: their hero photo's number (0 = none). Screens fetch it from /api/photos/{matchId}/{stationId}.</param>
-/// <param name="Hero">The hero they play ("knight", "mage"...): which 3D model and pictures the screens show.</param>
+/// <param name="Hero">The hero they play ("tank", "wizard"...: their hero class): which 3D model and pictures the screens show.</param>
 public sealed record PlayerView(
     string StationId,
     string Name,
@@ -101,6 +101,10 @@ public sealed record AnswerOutcomeView(int Number, bool IsCorrect, int Points, s
 /// <param name="Number">Their 1st, 2nd, 3rd... question.</param>
 /// <param name="Category">The question's own category (a match can mix several).</param>
 /// <param name="Hidden">Dungeon format: answers a 50/50 took away (always wrong ones; the correct one is never sent).</param>
+/// <param name="PeekFromMs">A Ranger's own screen: show the question from this time, before <paramref name="ShownAtMs"/> (during the
+/// battle beat). Presses only count from ShownAtMs, as for everyone. Null for everyone else.</param>
+/// <param name="Revealed">A Warlock's own screen, once their patron has shown it: the right answer's index. The one time a
+/// question's answer is sent while it's on screen, and only to that player.</param>
 public sealed record QuestionView(
     int Number,
     int Id,
@@ -109,7 +113,9 @@ public sealed record QuestionView(
     IReadOnlyList<string> Answers,
     string? MediaUrl,
     long? ShownAtMs,
-    IReadOnlyList<int>? Hidden);
+    IReadOnlyList<int>? Hidden,
+    long? PeekFromMs = null,
+    int? Revealed = null);
 
 /// <summary>
 /// The answer just given for a player screen's feedback ("Correct! +100" / "Nope, it was B").
@@ -183,6 +189,11 @@ public sealed record HelpView(string Name, QuestionView Question);
 /// <param name="Shielded">The next hit they take does no damage.</param>
 /// <param name="FrozenUntilMs">Their hourglass is frozen until then.</param>
 /// <param name="LastPowerUp">The last power-up they used; its Number changes with each use.</param>
+/// <param name="Foes">Every monster still alive in the room, the one being fought (<paramref name="Monster"/>) first.</param>
+/// <param name="HeroClass">The hero class they fight as ("tank", "healer"...: the hero keys).</param>
+/// <param name="BossCharge">Fighting a boss: its charge for their question now, 0-based, of <paramref name="BossChargeSteps"/>
+/// (the last step is full charge: a miss takes its big blow, a right answer staggers it).</param>
+/// <param name="BossChargeSteps">How many steps the boss's charge cycle has; 0 when they aren't fighting a boss.</param>
 public sealed record DelveView(
     int Floor,
     int Room,
@@ -208,17 +219,22 @@ public sealed record DelveView(
     bool FireballReady,
     bool Shielded,
     long? FrozenUntilMs,
-    PowerUpUse? LastPowerUp);
+    PowerUpUse? LastPowerUp,
+    IReadOnlyList<MonsterView> Foes,
+    string HeroClass,
+    int BossCharge = 0,
+    int BossChargeSteps = 0);
 
 /// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
 /// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>
 public sealed record PartyMemberView(string OwnerId, string Name, int Hp, int MaxHp, long? DownedUntilMs, int ReviveProgress);
 
-/// <summary>One monster on the path through a Depth.</summary>
-public sealed record PathStepView(int Floor, int Room, string Name, string Sprite, bool IsBoss);
+/// <summary>One monster on the path through a Depth. A pack's monsters share a Room; Slot is each one's place in it (1 = in front).</summary>
+public sealed record PathStepView(int Floor, int Room, string Name, string Sprite, bool IsBoss, int Slot = 1);
 
 /// <param name="Sprite">A built-in placeholder sprite key, or a picture path once real art exists.</param>
-public sealed record MonsterView(string Name, string Sprite, int Hp, int MaxHp, bool IsBoss);
+/// <param name="PoisonStacks">A Healer's poison on it: each stack hurts it every tick.</param>
+public sealed record MonsterView(string Name, string Sprite, int Hp, int MaxHp, bool IsBoss, int PoisonStacks = 0);
 
 /// <summary>Admin only: where one player/team is up to.</summary>
 public sealed record StreamView(string OwnerId, int Number, string QuestionText, string CorrectAnswer, int Answered, int Correct);

@@ -65,7 +65,8 @@ public class DungeonBeatTests
         Assert.Equal("kill", BeatOf(match)!.Kind);
         Assert.Equal(match.Now.AddSeconds(2), match.StreamOf("A1").CurrentShownAt);
 
-        match.Press("A1", 0, afterSeconds: 4); // crit + combo: 45, second rat dead, floor 1 cleared, the boss steps up
+        match.Press("A1", 0, afterSeconds: 4); // a crit (2 s: the kill beat took 2): 30 of the second rat's 40
+        match.Press("A1", 0, afterSeconds: 4); // a crit: second rat dead, floor 1 cleared, the boss steps up
 
         Assert.Equal("boss", BeatOf(match)!.Kind);
         Assert.Equal(match.Now.AddSeconds(3), match.StreamOf("A1").CurrentShownAt);

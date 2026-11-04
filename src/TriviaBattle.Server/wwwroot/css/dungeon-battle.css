@@ -13,6 +13,20 @@
      kill 2 s     hit, then 720 the monster flashes and bursts, 1000 SLAIN!
      floor 3 s    kill, then 1330 dark, 1650 FLOOR 3 (the dark stays up to the end)
      boss 3 s     kill, then 1280 red, 1400 WARNING!, 1900 the boss slams down, 2150 its name
+   Hero classes, on any hit or hurt beat (the notes under the damage number, --at):
+                  190 a Wizard's splash: the waiting pack flinches (a splash kill bursts at 720 like a kill),
+                  250 their strip's bars drain, 260 SPLASH 15 · 15; 300 a Tank's ARMOUR; 420 a Healer's
+                  +15 / Healed Cat +15 (the healed one's HP bar flashes then, css/dungeon.css) or POISONED x3;
+                  560 a Warlock's patron's price
+     a Ranger     the next question slides in over the bottom of the fight at its peekFromMs (--p0), and
+                  goes with the fight's fade-out
+   A boss's charge (the hurt or hit beat's own length; these only make it bigger):
+     charged      a miss at full charge (taken.charged, on a hurt or downed beat): 0 the boss winds up red and
+                  leaps, 240 it slams down: CRUSHING BLOW! (instead of WRONG!), a white-then-red flash, the
+                  bigger number, a double shake (240, 620); your knight is thrown further back (to ~1100)
+     staggered    a right answer at full charge (hit.staggered, on a hit or a kill): 190 STAGGERED! with the
+                  blow, a gold slash and number; on a hit the boss then reels back (610-1410), dazed stars
+                  circling its head (420-1370)
    The blow always lands early (190 / 240): the server plays its sound the moment the beat starts. So a
    longer beat goes into the aftermath, never a slower run-up.
    Every beat opens like a shutter and fades out over its last 200 ms, timed from --t1 (how long until
@@ -188,6 +202,26 @@
     to { transform: translateX(-4vmin) translateY(20%) rotate(-90deg); filter: grayscale(1) brightness(0.55); }
 }
 
+/* A pack: the monsters waiting their turn stand small and dark further back, behind the one fighting
+   (the 3D scene hides .dg-pack and draws them itself). A Wizard's splash makes them flinch with the blow;
+   one it kills bursts like a kill. */
+.dg-arena .dg-pack-member { bottom: 40%; width: 18vmin; height: auto; }
+.dg-arena .dg-pack-member:nth-child(1) { left: auto; right: 1%; }
+.dg-arena .dg-pack-member:nth-child(2) { right: 40%; bottom: 42%; }
+.dg-arena .dg-pack-member:nth-child(n + 3) { left: auto; right: 22%; bottom: 46%; width: 14vmin; }
+.dg-arena .dg-pack-sprite {
+    width: 100%;
+    height: auto;
+    filter: brightness(0.5) saturate(0.8) drop-shadow(0 1vmin 0 rgba(0, 0, 0, 0.45));
+    animation: dg-bob 0.8s steps(2) var(--t0) infinite;
+}
+.dg-pack-member.is-splashed { animation: dg-foe-hit 420ms steps(7) calc(var(--t0) + 190ms) both; }
+.dg-pack-member.is-splash-killed {
+    animation:
+        dg-foe-hit 420ms steps(7) calc(var(--t0) + 190ms) both,
+        dg-foe-die 650ms steps(8) calc(var(--t0) + 720ms) forwards;
+}
+
 /* ---------- Effects ---------- */
 
 /* Your sword's arc: a white crescent sweeping over the monster (gold, and twice, for a crit). */
@@ -282,6 +316,49 @@
     30% { transform: scale(1); }
     80% { opacity: 1; transform: translateY(-25%); }
     100% { opacity: 0; transform: translateY(-45%); }
+}
+
+/* What the hero's class added, in a fixed spot under the damage number (on its side: right for your
+   blow, left when you're hit), so they read the same over the 3D scene. Each pops in at its --at. */
+.dg-beat-notes {
+    position: absolute;
+    right: 4%;
+    top: 44%;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1.2vh;
+    pointer-events: none;
+}
+.is-hurting .dg-beat-notes { right: auto; left: 4%; align-items: flex-start; }
+.dg-note {
+    display: flex;
+    align-items: center;
+    gap: 1.2vmin;
+    padding: 0.8vmin 1.8vmin;
+    font-family: var(--dg-font-pixel);
+    font-size: 4.4vmin;
+    line-height: 1.1;
+    white-space: nowrap;
+    text-transform: uppercase;
+    color: var(--note, #fff);
+    background: rgba(10, 8, 12, 0.88);
+    border: 0.5vmin solid var(--note, #fff);
+    box-shadow: 0 0 3vmin color-mix(in srgb, var(--note, #fff) 45%, transparent);
+    text-shadow: 0.4vmin 0.4vmin 0 #000;
+    animation: dg-note 420ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + var(--at, 300ms)) both;
+}
+.dg-note b { font-weight: normal; color: #fff; }
+.dg-note .dg-icon { width: 4.4vmin; }
+.dg-note.is-splash { --note: var(--dg-splash); }
+.dg-note.is-heal { --note: var(--dg-hero-hp); }
+.dg-note.is-poison { --note: var(--dg-poison); }
+.dg-note.is-patron { --note: var(--dg-patron); font-size: 3.4vmin; }
+.dg-note.is-armour { --note: #c9d6e3; font-size: 3.4vmin; }
+@keyframes dg-note {
+    0% { opacity: 0; transform: scale(0.3) translateY(40%); }
+    100% { opacity: 1; transform: none; }
 }
 
 /* Stamped words: early (CRITICAL!, COMBO x4, PARTY COMBO!, WRONG!) and late (SLAIN!, DOWN!). */
@@ -410,7 +487,14 @@
 .dg-battle-bar .dg-bar { height: 5vmin; }
 .dg-battle-bar .dg-bar-text { font-size: 2.4vmin; }
 .dg-battle-bar.for-hero .dg-bar-fill { background: var(--dg-hero-hp); }
+.dg-battle-bar.is-poisoned .dg-bar-fill { background: var(--dg-poison); }
+.dg-battle-bar-name .dg-poison { font-size: 2.6vmin; }
 .dg-battle .dg-bar-fill { transition: none; }
+/* The pack's strip under the big bar. A splash kill's entry greys out as the monster bursts. */
+.dg-pack-strip.is-battle { margin-top: 0.8vh; padding: 0.6vh 0; background: rgba(20, 16, 24, 0.88); border: 0.5vmin solid var(--dg-frame-edge); }
+.dg-pack-strip.is-battle .dg-pack-foe.is-splashed { border-color: var(--dg-splash); }
+.dg-pack-strip.is-battle .dg-pack-foe.is-dead { animation: dg-strip-dead 300ms steps(3) calc(var(--t0) + 900ms) both; }
+@keyframes dg-strip-dead { to { opacity: 0.4; filter: grayscale(1); } }
 
 /* The bar drains from before to after (in steps, like an old console); the chunk knocked off flashes white, then fades. */
 .dg-drain { animation: dg-drain 460ms steps(10) calc(var(--t0) + 250ms) both; }
@@ -428,6 +512,136 @@
 }
 .dg-battle-line.is-go { background: rgba(10, 8, 12, 0.88); }
 @keyframes dg-line-in { from { opacity: 0; transform: translateY(40%); } }
+
+/* ---------- A boss's charge: its full-charge blow, and a stagger ---------- */
+
+/* The crushing blow: the boss winds up glowing red, leaps, and slams down on you far harder. */
+.is-charged .dg-actor.is-foe { animation: dg-foe-slam 900ms cubic-bezier(0.5, 0, 0.25, 1) var(--t0) both; }
+@keyframes dg-foe-slam {
+    0% { transform: none; filter: none; }
+    14% { transform: translateX(6vmin) scale(0.9, 1.05); filter: drop-shadow(0 0 3vmin #ff2020) brightness(1.3); }
+    22% { transform: translateX(-14vmin) translateY(-22%) scale(1.25); filter: drop-shadow(0 0 4vmin #ff2020) brightness(1.4); }
+    27% { transform: translateX(-26vmin) translateY(4%) scale(1.42, 1.22); filter: drop-shadow(0 0 4vmin #ff2020); }
+    40% { transform: translateX(-25vmin) scale(1.36); filter: none; }
+    62% { transform: translateX(-23vmin) scale(1.3); }
+    100% { transform: none; filter: none; }
+}
+.is-charged .dg-actor.is-hero { animation: dg-hero-crushed 860ms steps(9) calc(var(--t0) + 240ms) both; }
+.is-charged.is-downed .dg-actor.is-hero {
+    animation:
+        dg-hero-crushed 860ms steps(9) calc(var(--t0) + 240ms) both,
+        dg-hero-fall 380ms ease-in calc(var(--t0) + 700ms) forwards;
+}
+@keyframes dg-hero-crushed {
+    0% { transform: none; filter: none; }
+    10% { transform: translateX(-26%) translateY(6%) rotate(-16deg) scale(1.05, 0.85); filter: brightness(0.7) sepia(1) saturate(9) hue-rotate(-35deg); }
+    24% { filter: none; }
+    36% { transform: translateX(-18%) rotate(-9deg); filter: brightness(0.7) sepia(1) saturate(9) hue-rotate(-35deg); }
+    56% { transform: translateX(-14%) rotate(-7deg); filter: none; }
+    78% { transform: translateX(-5%) rotate(3deg); }
+    100% { transform: none; filter: none; }
+}
+.is-charged .dg-fx-claws { transform: rotate(-22deg) scale(1.3); }
+.is-charged .dg-fx-claws i { width: 3.8vmin; box-shadow: 0 0 3.4vmin var(--blood); }
+.is-charged .dg-bignum { left: 30%; bottom: 42%; font-size: 17vmin; color: #fff; -webkit-text-stroke: 0.5vmin #a00000; text-shadow: 0.8vmin 0.8vmin 0 #000, 0 0 5vmin var(--blood); }
+/* CRUSHING BLOW! lands with the slam, huge, on two lines if it needs them. */
+.is-charged .dg-stamp.is-early {
+    width: 92%;
+    font-size: 10vmin;
+    line-height: 1.05;
+    white-space: normal;
+    text-align: center;
+    color: #fff;  /* white on the red flash: red on red wouldn't read */
+    -webkit-text-stroke: 0.4vmin #5c0000;
+    text-shadow: 0.8vmin 0.8vmin 0 #000, 0 0 4vmin #ff2020, 0 0 1.5vmin #ff2020;
+    animation: dg-stamp-crush 1100ms ease-out calc(var(--t0) + 240ms) both;
+}
+@keyframes dg-stamp-crush {
+    0% { opacity: 0; transform: translateX(-50%) scale(4) rotate(-14deg); }
+    12% { opacity: 1; transform: translateX(-50%) scale(0.86) rotate(-5deg); }
+    20% { transform: translateX(-50%) scale(1.04) rotate(-5deg); }
+    28% { transform: translateX(-50%) scale(1) rotate(-5deg); }
+    88% { opacity: 1; transform: translateX(-50%) scale(1.04) rotate(-5deg); }
+    100% { opacity: 0; transform: translateX(-50%) scale(1.08) rotate(-5deg); }
+}
+.is-charged .dg-arena {
+    animation:
+        dg-shake-big 380ms steps(10) calc(var(--t0) + 240ms) both,
+        dg-shake 320ms steps(8) calc(var(--t0) + 620ms) forwards;
+}
+@keyframes dg-shake-big {
+    0%, 100% { transform: none; }
+    15% { transform: translate(-3.6vmin, 2vmin); }
+    30% { transform: translate(3.2vmin, -2.4vmin); }
+    45% { transform: translate(-2.6vmin, -1.4vmin); }
+    60% { transform: translate(2.2vmin, 2.2vmin); }
+    80% { transform: translate(-1.2vmin, 0.8vmin); }
+}
+/* White first (the blow), then the red at the edges stays a moment longer. */
+.is-charged .dg-battle-flash {
+    --flash: 1;
+    background: radial-gradient(ellipse at center, rgba(255, 40, 40, 0.25) 15%, rgba(255, 10, 10, 0.95));
+    animation: dg-flash-crush 700ms ease-out calc(var(--t0) + 240ms) both;
+}
+@keyframes dg-flash-crush {
+    0% { opacity: 0; background-color: #fff; }
+    5% { opacity: 1; background-color: rgba(255, 255, 255, 0.9); }
+    16% { background-color: transparent; opacity: 0.9; }
+    100% { opacity: 0; background-color: transparent; }
+}
+
+/* A stagger: the blow breaks the boss's charge. STAGGERED! lands with it, the hit looks like a crit, and
+   (if it lives) the boss reels back further than any normal hit, dazed stars circling its head. */
+.is-staggered .dg-stamp.is-early {
+    color: #7fe8ff;
+    text-shadow: 0.7vmin 0.7vmin 0 #000, 0 0 4vmin rgba(127, 232, 255, 0.7);
+    animation-delay: calc(var(--t0) + 190ms);
+}
+.is-staggered .dg-fx-slash { box-shadow: inset 3.8vmin -1.9vmin 0 0 var(--gold); filter: drop-shadow(0 0 2.6vmin var(--gold)); }
+.is-staggered .dg-bignum { color: var(--gold); font-size: 15vmin; text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 4vmin var(--gold); }
+.is-staggered .dg-battle-flash { --flash: 0.75; }
+.is-hit.is-staggered .dg-arena { animation: dg-shake 420ms steps(10) calc(var(--t0) + 200ms) both; }
+.is-hit.is-staggered .dg-actor.is-foe {
+    animation:
+        dg-foe-hit 420ms steps(7) calc(var(--t0) + 190ms) both,
+        dg-foe-reel 800ms steps(10) calc(var(--t0) + 610ms) forwards;
+}
+@keyframes dg-foe-reel {
+    0% { transform: none; }
+    18% { transform: translateX(14%) rotate(10deg) scale(1, 0.94); }
+    36% { transform: translateX(10%) rotate(-7deg); }
+    54% { transform: translateX(12%) rotate(6deg); }
+    72% { transform: translateX(6%) rotate(-4deg); }
+    100% { transform: none; }
+}
+/* The dazed stars sit in the fight's HTML over where the 2D boss's head is (the 3D hides them: its boss stumbles instead). */
+.dg-fx-daze {
+    position: absolute;
+    right: 30%;
+    bottom: 86%;
+    z-index: 3;
+    width: 0;
+    height: 0;
+    transform: scaleY(0.4);  /* a flat ring round its head; each star undoes the squash */
+    filter: drop-shadow(0 0 0.6vmin #000) drop-shadow(0 0 1.4vmin #ffe14d);
+    animation: dg-daze-show 950ms linear calc(var(--t0) + 420ms) both;
+}
+.dg-fx-daze i {
+    position: absolute;
+    width: 5.4vmin;
+    height: 5.4vmin;
+    margin: -2.7vmin;
+    background: #fff8c8;
+    clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%);
+    animation: dg-daze-orbit 700ms linear calc(var(--t0) + 420ms) infinite;
+}
+.dg-fx-daze i:nth-child(2) { animation-delay: calc(var(--t0) + 420ms - 233ms); }
+.dg-fx-daze i:nth-child(3) { animation-delay: calc(var(--t0) + 420ms - 467ms); }
+@keyframes dg-daze-orbit {
+    from { transform: rotate(0deg) translateX(10vmin) rotate(0deg) scaleY(2.5); }
+    to { transform: rotate(360deg) translateX(10vmin) rotate(-360deg) scaleY(2.5); }
+}
+@keyframes dg-daze-show { 0% { opacity: 0; } 10%, 85% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---------- Floor cleared / boss: the curtain over everything ---------- */
 
@@ -491,3 +705,43 @@
 }
 .is-boss .dg-curtain-title { color: var(--blood); font-size: 8vmin; animation-delay: calc(var(--t0) + 2150ms); }
 .is-boss .dg-curtain-sub { animation-delay: calc(var(--t0) + 2350ms); }
+
+/* ---------- A Ranger's peek: the next question over the end of the fight ---------- */
+
+/* It slides up over the bars and the Host's line at the Ranger's peekFromMs (--p0), above the curtain too,
+   and goes with the fight's fade-out. The answers are greyed and dashed: presses only count once it's up. */
+.dg-peek {
+    position: absolute;
+    left: 2.4vw;
+    right: 2.4vw;
+    bottom: 1.2vh;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+    padding: 1.2vh 2.4vw 1.6vh;
+    background: rgba(12, 14, 10, 0.95);
+    border: 0.6vmin solid var(--dg-ranger);
+    box-shadow: 0 0 4vmin rgba(181, 217, 74, 0.35), inset 0 0 0 0.4vmin #000;
+    animation: dg-peek-in 320ms cubic-bezier(0.2, 1.2, 0.4, 1) var(--p0) both;
+}
+@keyframes dg-peek-in { from { opacity: 0; transform: translateY(110%); } }
+.dg-peek-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 2vw;
+    font-family: var(--dg-font-pixel);
+    font-size: 2.2vmin;
+    color: var(--dg-ranger);
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dg-peek-label > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dg-peek-wait { color: var(--text); }
+.dg-peek-question.dg-scroll { font-size: 4.6vmin; text-transform: uppercase; padding: 1.2vh 2.4vw; }
+.dg-peek-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1vh 2vw; }
+.dg-peek .dg-answer { font-size: 3.8vmin; padding: 0.8vh 1.4vw; gap: 1.4vw; }
+.dg-peek .dg-rune { width: 5.4vmin; height: 5.4vmin; font-size: 2.6vmin; }
+.dg-peek .dg-answer-text { min-width: 0; text-transform: uppercase; }
+.dg-peek .dg-answer.is-locked { border-style: dashed; opacity: 0.7; filter: saturate(0.5); }

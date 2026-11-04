@@ -22,7 +22,7 @@ public enum PowerUp
     /// <summary>The next hit the monster lands on them does no damage, and their streak survives it.</summary>
     Shield,
 
-    /// <summary>Solo games only: <see cref="DungeonSettings.TimeCrystalSeconds"/> more on the clock.</summary>
+    /// <summary><see cref="DungeonSettings.TimeCrystalSeconds"/> more on the clock.</summary>
     TimeCrystal,
 }
 

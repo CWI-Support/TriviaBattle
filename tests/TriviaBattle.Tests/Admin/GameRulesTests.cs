@@ -25,17 +25,16 @@ public class GameRulesTests : IDisposable
     public void Dispose() => _connection.Dispose();
 
     [Fact]
-    public async Task Saved_solo_clock_rules_reach_the_next_match_and_leave_the_configured_defaults_alone()
+    public async Task Saved_clock_rules_reach_the_next_match_and_leave_the_configured_defaults_alone()
     {
-        var rules = await _service.GetAsync() with { SoloStartSeconds = 75, SoloSecondsPerBoss = 45, SoloMaxSeconds = 300 };
+        var rules = await _service.GetAsync() with { ClockStartSeconds = 75, SecondsPerBoss = 45 };
         await _service.SaveAsync(rules);
 
         var settings = await _service.SettingsForNewMatchAsync();
 
-        Assert.Equal(75, settings.Dungeon.SoloStartSeconds);
-        Assert.Equal(45, settings.Dungeon.SoloSecondsPerBoss);
-        Assert.Equal(300, settings.Dungeon.SoloMaxSeconds);
-        Assert.Equal(90, _configured.Dungeon.SoloStartSeconds);
+        Assert.Equal(75, settings.Dungeon.ClockStartSeconds);
+        Assert.Equal(45, settings.Dungeon.SecondsPerBoss);
+        Assert.Equal(new MatchSettings().Dungeon.ClockStartSeconds, _configured.Dungeon.ClockStartSeconds);
     }
 
     [Fact]
@@ -45,9 +44,9 @@ public class GameRulesTests : IDisposable
     }
 
     [Fact]
-    public async Task The_longest_solo_game_cannot_be_shorter_than_its_starting_time()
+    public async Task A_clock_that_starts_too_short_is_refused()
     {
-        var rules = await _service.GetAsync() with { SoloStartSeconds = 120, SoloMaxSeconds = 60 };
+        var rules = await _service.GetAsync() with { ClockStartSeconds = 5 };
 
         var problem = Assert.Single(GameRulesService.Validate(rules));
 

@@ -1,18 +1,28 @@
+using TriviaBattle.Core.Dungeon;
+
 namespace TriviaBattle.Core.Arcade;
 
 /// <summary>
-/// The heroes a player can pick at their station, in the order the station shows them. The keys are the
-/// screens' keys for each hero's 3D model and pictures (js/battle3d/models.js, media/heroes); their names
-/// are in the theme's copy ("heroes.knight"). Just a look for now: classes with their own powers come later.
+/// The heroes a player can pick at their station, in the order the station shows them. Each one is a
+/// <see cref="HeroClass"/>: the key is the class's name in lower case ("tank"). The keys are also the screens'
+/// keys for each hero's 3D model and pictures (js/battle3d/models.js, media/heroes); their names and what
+/// they do are in the theme's copy ("heroes.tank", "heroes.tankLine").
+///
+/// To add a hero: add a <see cref="HeroClass"/> value (and its rules in DungeonRun), its key here, its model in
+/// HEROES (js/battle3d/models.js), its two lines in the copy, and save its pictures with /dev/heroes.
 /// </summary>
 public static class Heroes
 {
-    public static readonly IReadOnlyList<string> All = ["knight", "barbarian", "mage", "rogue", "ranger"];
+    public static readonly IReadOnlyList<string> All = ["tank", "healer", "wizard", "rogue", "ranger", "pugilist", "warlock"];
 
     /// <summary>Who you play when nobody chose (a match started from the kiosk).</summary>
-    public const string Default = "knight";
+    public const string Default = "tank";
 
     public static bool IsKnown(string? key) => key == null || All.Contains(key);
+
+    /// <summary>The class a hero key plays as (an unknown key plays the default).</summary>
+    public static HeroClass ClassOf(string? key) =>
+        Enum.TryParse<HeroClass>(key, ignoreCase: true, out var heroClass) && All.Contains(key!) ? heroClass : ClassOf(Default);
 }
 
 /// <summary>

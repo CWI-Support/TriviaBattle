@@ -30,12 +30,11 @@ const OperatorTab = {
         document.getElementById('l-rules-lockout').value = rules.lockoutSeconds;
         document.getElementById('l-rules-points').value = rules.wrongAnswerPoints;
         document.getElementById('l-rules-format').value = rules.format;
-        document.getElementById('l-rules-solo-start').value = rules.soloStartSeconds;
-        document.getElementById('l-rules-solo-kill').value = rules.soloSecondsPerKill;
-        document.getElementById('l-rules-solo-boss').value = rules.soloSecondsPerBoss;
-        document.getElementById('l-rules-solo-max').value = rules.soloMaxSeconds;
-        document.getElementById('l-rules-solo-continue').value = rules.soloContinueSeconds;
-        document.getElementById('l-rules-solo-countdown').value = rules.soloContinueCountdownSeconds;
+        document.getElementById('l-rules-solo-start').value = rules.clockStartSeconds;
+        document.getElementById('l-rules-solo-kill').value = rules.secondsPerKill;
+        document.getElementById('l-rules-solo-boss').value = rules.secondsPerBoss;
+        document.getElementById('l-rules-solo-continue').value = rules.continueSeconds;
+        document.getElementById('l-rules-solo-countdown').value = rules.continueCountdownSeconds;
         OperatorTab.showPenaltyFields();
         OperatorTab.showSoloFields();
     },
@@ -49,12 +48,11 @@ const OperatorTab = {
                 lockoutSeconds: Number(document.getElementById('l-rules-lockout').value),
                 wrongAnswerPoints: Number(document.getElementById('l-rules-points').value),
                 format: document.getElementById('l-rules-format').value,
-                soloStartSeconds: Number(document.getElementById('l-rules-solo-start').value),
-                soloSecondsPerKill: Number(document.getElementById('l-rules-solo-kill').value),
-                soloSecondsPerBoss: Number(document.getElementById('l-rules-solo-boss').value),
-                soloMaxSeconds: Number(document.getElementById('l-rules-solo-max').value),
-                soloContinueSeconds: Number(document.getElementById('l-rules-solo-continue').value),
-                soloContinueCountdownSeconds: Number(document.getElementById('l-rules-solo-countdown').value),
+                clockStartSeconds: Number(document.getElementById('l-rules-solo-start').value),
+                secondsPerKill: Number(document.getElementById('l-rules-solo-kill').value),
+                secondsPerBoss: Number(document.getElementById('l-rules-solo-boss').value),
+                continueSeconds: Number(document.getElementById('l-rules-solo-continue').value),
+                continueCountdownSeconds: Number(document.getElementById('l-rules-solo-countdown').value),
             });
             status.textContent = 'Saved. The next match uses these rules.';
         } catch (err) {

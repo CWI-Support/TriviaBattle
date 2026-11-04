@@ -35,8 +35,8 @@ public sealed class MatchSettings
     public DungeonSettings Dungeon { get; set; } = new();
 
     /// <summary>
-    /// How long the clock runs: answer as many questions as you can in this time. A solo Dungeon game
-    /// uses the arcade clock instead (<see cref="DungeonSettings.SoloStartSeconds"/>).
+    /// How long the clock runs in Classic: answer as many questions as you can in this time. A Dungeon game
+    /// uses the arcade clock instead (<see cref="DungeonSettings.ClockStartSeconds"/>).
     /// </summary>
     public double MatchSeconds { get; set; } = 60;
 

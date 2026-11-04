@@ -209,25 +209,30 @@ const ArcadeLobby = {
         return `/media/heroes/${encodeURIComponent(hero)}${framing === 'head' ? '-head' : ''}.png`;
     },
 
-    /** The hero's name and line, in the theme's words. Literal keys, so ThemeFilesTests can check them. */
+    /** The hero's name, in the theme's words. Literal keys, so ThemeFilesTests can check them. */
     heroName(hero) {
         switch (hero) {
-            case 'knight': return Theme.text('heroes.knight');
-            case 'barbarian': return Theme.text('heroes.barbarian');
-            case 'mage': return Theme.text('heroes.mage');
+            case 'tank': return Theme.text('heroes.tank');
+            case 'healer': return Theme.text('heroes.healer');
+            case 'wizard': return Theme.text('heroes.wizard');
             case 'rogue': return Theme.text('heroes.rogue');
             case 'ranger': return Theme.text('heroes.ranger');
+            case 'pugilist': return Theme.text('heroes.pugilist');
+            case 'warlock': return Theme.text('heroes.warlock');
             default: return UI.escape(hero);
         }
     },
 
+    /** What the hero's class does in a fight, in a line (each hero is a class: Core's HeroClass). */
     heroLine(hero) {
         switch (hero) {
-            case 'knight': return Theme.text('heroes.knightLine');
-            case 'barbarian': return Theme.text('heroes.barbarianLine');
-            case 'mage': return Theme.text('heroes.mageLine');
+            case 'tank': return Theme.text('heroes.tankLine');
+            case 'healer': return Theme.text('heroes.healerLine');
+            case 'wizard': return Theme.text('heroes.wizardLine');
             case 'rogue': return Theme.text('heroes.rogueLine');
             case 'ranger': return Theme.text('heroes.rangerLine');
+            case 'pugilist': return Theme.text('heroes.pugilistLine');
+            case 'warlock': return Theme.text('heroes.warlockLine');
             default: return '';
         }
     },

@@ -16,8 +16,10 @@
 // lasting(). Idle loops (the monster's bob) run on one shared beat (--idle0), so a redraw doesn't restart them.
 //
 // Both screens group things the same way so they read at a glance:
-//   - the trail: where you are on the way to the boss (beaten monsters greyed, the current one framed)
-//   - the monster: its name, its HP (red) and how long until it attacks, right under it
+//   - the trail: where you are on the way to the boss (beaten monsters greyed, the current one framed,
+//     a pack's monsters grouped as one room)
+//   - the monster: its name, its HP (red, green while poisoned) and how long until it attacks, right under
+//     it; in a pack, the ones waiting their turn in a strip with their own little HP bars (packStrip)
 //   - you: your name, your HP (green), score and kills
 //   - your party (2v2 Combined): each teammate's HP, and "DOWN 1/3" while they wait for a revive.
 //     Downed in a party, you get a teammate's question instead of your own, to shout them the answer.
@@ -28,6 +30,7 @@ const DungeonView = {
     seen: {},    // owner key -> { dealt, taken, monster } as last drawn
     effects: {}, // key -> [{ html, at, ms }]: short effects still playing (see effect / activeEffects)
     states: {},  // key -> { cls, at }: short animation states still playing (see lasting)
+    firstSeen: {}, // key -> when it was first drawn (see since)
 
     /** Starts a short effect under a key: it's drawn by activeEffects until it has played for ms. */
     effect(key, html, ms) {
@@ -58,6 +61,16 @@ const DungeonView = {
         return { cls: state.cls, t0: state.at - now };
     },
 
+    /**
+     * Minus how long ago something was first drawn under this key (for --t0): for a state the server turns
+     * on mid-question (a Warlock's patron showing the answer), so it animates in once, not on every redraw.
+     */
+    since(key) {
+        const now = Date.now();
+        DungeonView.firstSeen[key] ??= now;
+        return DungeonView.firstSeen[key] - now;
+    },
+
     /** The shared beat for idle loops: as a negative delay, every redraw joins the loop where it is. */
     idlePhase(loopMs) {
         return -(Date.now() % loopMs);
@@ -75,7 +88,8 @@ const DungeonView = {
         return {
             dealt: now.dealt > before.dealt ? delve.lastHit : null,
             taken: now.taken > before.taken ? delve.lastTaken : null,
-            newMonster: now.monster !== before.monster,
+            // A kill in a pack keeps the room number, but the next monster still steps up.
+            newMonster: now.monster !== before.monster || (now.dealt > before.dealt && !!delve.lastHit?.killed),
         };
     },
 
@@ -99,17 +113,21 @@ const DungeonView = {
         DungeonView.seen = {};
         DungeonView.effects = {};
         DungeonView.states = {};
+        DungeonView.firstSeen = {};
     },
 
     icon(name) {
         return PixelSprites.html(`icon-${name}`, 'dg-icon');
     },
 
-    /** A hit-point bar with a heart in front: red for the monster, green for the adventurer. */
-    hp(value, max, cssClass) {
+    /**
+     * A hit-point bar with a heart in front: red for the monster, green for the adventurer. cssClass can
+     * add is-poisoned (a monster's bar turns poison green) or is-healed (a heal flashes it, from --t0).
+     */
+    hp(value, max, cssClass, style = '') {
         const percent = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
         return `
-            <div class="dg-hp ${cssClass}">
+            <div class="dg-hp ${cssClass}" ${style ? `style="${style}"` : ''}>
                 ${DungeonView.icon('heart')}
                 <div class="dg-bar">
                     <div class="dg-bar-fill" style="width: ${percent}%"></div>
@@ -118,27 +136,109 @@ const DungeonView = {
             </div>`;
     },
 
+    /** A Healer's poison on a monster: a green skull and its stacks ("x3"). Nothing when it isn't poisoned. */
+    poisonBadge(stacks) {
+        if (!stacks) return '';
+        return `<span class="dg-poison">${PixelSprites.html('icon-skull', 'dg-poison-icon', { w: '#9be35a' })}${Theme.text('dungeon.poisonBadge', { stacks })}</span>`;
+    },
+
     /**
-     * The way down to the Depth's boss: a little icon per monster, grouped by floor with stairs between.
-     * Beaten ones are greyed out, the one being fought is framed in gold, the boss is framed in red.
+     * A hero class's name in the theme's words ("tank" -> "Tank"). Literal keys, so ThemeFilesTests can check
+     * them. (ArcadeLobby.heroName says the same, but not every page that draws the fight loads the lobby.)
+     */
+    className(heroClass) {
+        switch (heroClass) {
+            case 'tank': return Theme.text('heroes.tank');
+            case 'healer': return Theme.text('heroes.healer');
+            case 'wizard': return Theme.text('heroes.wizard');
+            case 'rogue': return Theme.text('heroes.rogue');
+            case 'ranger': return Theme.text('heroes.ranger');
+            case 'pugilist': return Theme.text('heroes.pugilist');
+            case 'warlock': return Theme.text('heroes.warlock');
+            default: return UI.escape(heroClass || '');
+        }
+    },
+
+    /** The trail's monsters in the room the delve is in (one, or a pack). */
+    roomSteps(delve) {
+        return delve.path.filter(step => step.floor === delve.floor && step.room === delve.room);
+    },
+
+    /**
+     * How many of the current room's monsters are already beaten: the room's monsters less the ones still
+     * alive (delve.foes). The trail greys out that many from the front.
+     */
+    beatenInRoom(delve) {
+        return Math.max(0, DungeonView.roomSteps(delve).length - (delve.foes?.length || 1));
+    },
+
+    /**
+     * The way down to the Depth's boss: a little icon per monster, grouped by floor with stairs between,
+     * and a pack's monsters grouped as one room. Beaten ones are greyed out, the one being fought is framed
+     * in gold, the ones waiting behind it in its room are dimmed, the boss is framed in red.
      */
     trail(delve) {
-        const floors = [];
+        const floors = []; // floors -> rooms -> steps
         for (const step of delve.path) {
-            if (floors.at(-1)?.[0].floor !== step.floor) floors.push([]);
-            floors.at(-1).push(step);
+            if (floors.at(-1)?.[0][0].floor !== step.floor) floors.push([]);
+            const rooms = floors.at(-1);
+            if (rooms.at(-1)?.[0].room !== step.room) rooms.push([]);
+            rooms.at(-1).push(step);
         }
-        const state = step =>
-            step.floor === delve.floor && step.room === delve.room ? 'is-current'
-            : step.floor < delve.floor || (step.floor === delve.floor && step.room < delve.room) ? 'is-beaten'
-            : 'is-ahead';
+        const beatenHere = DungeonView.beatenInRoom(delve);
+        const state = step => {
+            if (step.floor < delve.floor || (step.floor === delve.floor && step.room < delve.room)) return 'is-beaten';
+            if (step.floor > delve.floor || step.room > delve.room) return 'is-ahead';
+            const slot = step.slot || 1; // in the current room: the first ones are dead, then the one in front
+            return slot <= beatenHere ? 'is-beaten' : slot === beatenHere + 1 ? 'is-current' : 'is-waiting';
+        };
+        const stepHtml = step => `<span class="dg-step ${state(step)} ${step.isBoss ? 'is-boss' : ''}">${PixelSprites.html(step.sprite)}</span>`;
         return `
             <div class="dg-trail" style="--steps: ${delve.path.length + (floors.length - 1) * 0.5}">
-                ${floors.map(floor => `
-                    <div class="dg-trail-floor ${floor[0].floor === delve.floor ? 'is-here' : ''}">
-                        ${floor.map(step => `
-                            <span class="dg-step ${state(step)} ${step.isBoss ? 'is-boss' : ''}">${PixelSprites.html(step.sprite)}</span>`).join('')}
+                ${floors.map(rooms => `
+                    <div class="dg-trail-floor ${rooms[0][0].floor === delve.floor ? 'is-here' : ''}">
+                        ${rooms.map(room => room.length > 1
+                            ? `<span class="dg-trail-room is-pack">${room.map(stepHtml).join('')}</span>`
+                            : stepHtml(room[0])).join('')}
                     </div>`).join(`<span class="dg-trail-stairs">${DungeonView.icon('stairs')}</span>`)}
+            </div>`;
+    },
+
+    /**
+     * The monsters waiting their turn in the room (a pack), as small sprites behind the one in front, in a
+     * .dg-pack (the 3D scene hides it and draws the pack itself). foes: [{ sprite, isBoss, cssClass }].
+     */
+    packSprites(foes) {
+        if (!foes.length) return '';
+        return `<div class="dg-pack" style="--idle0: ${DungeonView.idlePhase(1200)}ms">${foes.map((f, i) =>
+            `<div class="dg-pack-member ${f.cssClass || ''}" style="--n: ${i}">${PixelSprites.html(f.sprite, `dg-pack-sprite ${f.isBoss ? 'is-boss' : ''}`)}</div>`).join('')}</div>`;
+    },
+
+    /**
+     * The strip of monsters waiting their turn: each one's picture, a mini HP bar and its poison. Shown in
+     * both the 2D and the 3D fight (it isn't in .dg-pack). foes: [{ sprite, hp, maxHp, poisonStacks }], plus
+     * in the battle beat before (its HP before a Wizard's splash: the bar drains, from --t0) and killed.
+     */
+    packStrip(foes, cssClass = '') {
+        if (!foes.length) return '';
+        const percent = (value, max) => (max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0).toFixed(1);
+        return `
+            <div class="dg-pack-strip ${cssClass}">
+                <span class="dg-pack-label">${Theme.text('dungeon.packNext')}</span>
+                ${foes.map(f => {
+                    const drains = f.before !== undefined && f.before !== f.hp;
+                    const fill = drains
+                        ? `<div class="dg-bar-fill dg-drain" style="--from: ${percent(f.before, f.maxHp)}%; --to: ${percent(f.hp, f.maxHp)}%"></div>`
+                        : `<div class="dg-bar-fill" style="width: ${percent(f.hp, f.maxHp)}%"></div>`;
+                    return `
+                        <div class="dg-pack-foe ${f.poisonStacks ? 'is-poisoned' : ''} ${f.killed ? 'is-dead' : ''} ${drains ? 'is-splashed' : ''}">
+                            ${PixelSprites.html(f.sprite, 'dg-pack-foe-sprite')}
+                            <div class="dg-pack-foe-info">
+                                <div class="dg-bar">${fill}<span class="dg-bar-text">${f.hp}</span></div>
+                                ${DungeonView.poisonBadge(f.poisonStacks)}
+                            </div>
+                        </div>`;
+                }).join('')}
             </div>`;
     },
 
@@ -150,13 +250,17 @@ const DungeonView = {
         const m = delve.monster;
         const moment = DungeonView.lasting(`${key}:monster`, news.newMonster ? 'is-new' : news.dealt ? 'is-hit' : news.taken ? 'is-attacking' : null, 650);
         const big = news.dealt && (news.dealt.crit || news.dealt.partyCombo);
-        const floater = news.dealt
+        // A Healer's poison finishing a monster off is a "hit" of its own with no damage number to show.
+        const byPoison = !!news.dealt?.poison;
+        const floater = news.dealt && !byPoison
             ? `<div class="dg-float ${big ? 'is-crit' : ''}">-${news.dealt.damage}${big ? '!' : ''}</div>`
             : news.taken ? `<div class="dg-float is-taken">-${news.taken.damage}</div>` : '';
         const partyCombo = news.dealt?.partyCombo ? `<div class="dg-party-combo">${Theme.text('dungeon.partyComboShort')}</div>` : '';
-        const slain = news.dealt?.killed
-            ? `<div class="dg-slain">${Theme.text(news.dealt.floorCleared ? 'dungeon.floorCleared' : 'dungeon.slain', { monster: news.dealt.monsterName })}</div>`
-            : '';
+        const slainText = !news.dealt?.killed ? ''
+            : news.dealt.floorCleared ? Theme.text('dungeon.floorCleared')
+            : byPoison ? Theme.text('dungeon.slainByPoison', { monster: news.dealt.monsterName })
+            : Theme.text('dungeon.slain', { monster: news.dealt.monsterName });
+        const slain = slainText ? `<div class="dg-slain ${byPoison ? 'is-poison' : ''}">${slainText}</div>` : '';
         if (floater || slain || partyCombo)
             DungeonView.effect(key, floater + slain + partyCombo, 1800);
         return `
@@ -183,8 +287,8 @@ const DungeonView = {
             : `<div class="dg-hourglass is-stopped"></div>`;
         return `
             <div class="dg-enemy ${m.isBoss ? 'is-boss' : ''}">
-                <div class="dg-enemy-name">${UI.escape(m.name)}</div>
-                ${DungeonView.hp(m.hp, m.maxHp, 'is-enemy')}
+                <div class="dg-enemy-name">${UI.escape(m.name)}${DungeonView.poisonBadge(m.poisonStacks)}</div>
+                ${DungeonView.hp(m.hp, m.maxHp, `is-enemy ${m.poisonStacks ? 'is-poisoned' : ''}`)}
                 <div class="dg-attack ${running ? '' : 'is-stopped'} ${frozenFor ? 'is-frozen' : ''}" style="--thaw: ${frozenFor}ms">
                     ${DungeonView.icon('sword')}
                     <span class="dg-attack-label">${label}</span>
@@ -205,14 +309,17 @@ const DungeonView = {
 
         if (lastAnswer.isCorrect && delve.lastDealt) {
             const hit = delve.lastDealt;
-            const values = { monster: hit.monsterName, damage: hit.damage, streak: delve.streak };
+            // {streak} in a combo line is the Pugilist's combo count (the only class with one).
+            const values = { monster: hit.monsterName, damage: hit.damage, streak: hit.comboCount || delve.streak };
             if (hit.revivedOwnerId) {
                 const name = delve.party.find(m => m.ownerId === hit.revivedOwnerId)?.name || '';
                 return { html: Theme.text('dungeon.revived', { ...values, name }, s), tone: 'is-great' };
             }
             if (hit.floorCleared) return { html: Theme.text('dungeon.floorClearedLine', values, s), tone: 'is-great' };
+            if (hit.bossAhead) return { html: Theme.text('dungeon.bossAheadLine', values, s), tone: 'is-great' }; // the room before the boss's
             if (hit.partyCombo) return { html: Theme.text('dungeon.partyCombo', values, s), tone: 'is-great' };
             if (hit.killed) return { html: Theme.text('dungeon.kill', values, s), tone: 'is-great' };
+            if (hit.staggered) return { html: Theme.text('dungeon.staggered', values, s), tone: 'is-great' }; // right at a boss's full charge
             if (hit.combo) return { html: Theme.text('dungeon.combo', values, s), tone: 'is-great' };
             if (hit.crit) return { html: Theme.text('dungeon.crit', values, s), tone: 'is-great' };
             return { html: Theme.text('dungeon.hit', values, s), tone: 'is-good' };
@@ -221,15 +328,20 @@ const DungeonView = {
         const taken = delve.lastTaken;
         const values = { monster: taken?.monsterName || delve.monster.name, damage: taken?.damage || 0 };
         const headline = taken?.blocked ? Theme.text('dungeon.blocked', values, s)
+            : taken?.charged ? Theme.text('dungeon.chargedHit', values, s)   // a boss's full-charge blow
             : lastAnswer.timedOut ? Theme.text('dungeon.tooSlow', values, s)
             : Theme.text('dungeon.wrong', values, s);
         const itWas = Theme.text('player.itWas', { letter: UI.ANSWER_LETTERS[lastAnswer.correctIndex], answer: lastAnswer.correctAnswer });
         return { html: `${headline}<div class="dg-feedback-detail">${itWas}</div>`, tone: 'is-bad' };
     },
 
-    /** One party member: their portrait (their face, or their hero), name, HP, and "DOWN 1/3" while they wait for their teammates to revive them. */
-    member(m, reviveNeeded, match) {
+    /**
+     * One party member: their portrait (their face, or their hero), name, HP, and "DOWN 1/3" while they wait
+     * for their teammates to revive them. healed (see healFlash): their HP bar flashes for a Healer's heal.
+     */
+    member(m, reviveNeeded, match, healed = null) {
         const down = !!m.downedUntilMs;
+        const flash = healed?.ownerId === m.ownerId;
         return `
             <div class="dg-member ${down ? 'is-down' : ''}">
                 <div class="dg-member-line">
@@ -237,15 +349,24 @@ const DungeonView = {
                     <span class="dg-member-name">${UI.escape(m.name)}</span>
                     ${down ? `<span class="dg-member-down">${Theme.text('dungeon.memberDown', { progress: m.reviveProgress, needed: reviveNeeded })}</span>` : ''}
                 </div>
-                ${DungeonView.hp(m.hp, m.maxHp, 'is-hero')}
+                ${DungeonView.hp(m.hp, m.maxHp, `is-hero ${flash ? 'is-healed' : ''}`, flash ? `--t0: ${healed.t0}ms` : '')}
             </div>`;
     },
 
     /** Your teammates on your station screen (not you: your HP is on your plate). Nothing in a party of one. */
-    teammates(delve, stationId, match) {
+    teammates(delve, stationId, match, healed = null) {
         if (delve.party.length < 2) return '';
         const others = delve.party.filter(m => m.ownerId !== stationId);
-        return `<div class="dg-party">${others.map(m => DungeonView.member(m, delve.reviveNeeded, match)).join('')}</div>`;
+        return `<div class="dg-party">${others.map(m => DungeonView.member(m, delve.reviveNeeded, match, healed)).join('')}</div>`;
+    },
+
+    /**
+     * A Healer in the party just healed someone (you, or anyone, when you're the Healer): { ownerId, t0 }
+     * while that member's HP bar flashes, else null. Kept with its start time, so a redraw carries it on.
+     */
+    healFlash(key, news) {
+        const flash = DungeonView.lasting(key, news.dealt?.healedOwnerId || null, 1600);
+        return flash.cls ? { ownerId: flash.cls, t0: flash.t0 } : null;
     },
 
     /** Score and kills, each with its label/icon so neither is just a bare number. */
@@ -280,12 +401,21 @@ const DungeonView = {
                 </div>
                 ${DungeonView.trail(delve)}
             </div>`;
+
+        // A Healer's heal flashes the healed one's HP bar: with the blow in your own beat, or when a
+        // teammate's heal reaches you (no beat of yours plays then).
+        const beatHit = DungeonBattle.isPlaying(you, serverNow) && !['hurt', 'downed'].includes(you.beat.kind) ? delve.lastDealt : null;
+        const healed = beatHit?.healedOwnerId
+            ? { ownerId: beatHit.healedOwnerId, t0: Math.round(you.beat.startedAtMs - serverNow) }
+            : DungeonView.healFlash(`heal:${you.stationId}`, news);
+        const selfHealed = healed && (healed.ownerId === you.stationId || delve.party.length < 2);
+
         const plate = `
             <div class="dg-plate">
                 ${HeroPhoto.portrait(match, you.stationId, 'dg-portrait', stationColor)}
                 <div class="dg-plate-info">
-                    <div class="dg-plate-name">${UI.escape(you.name)}</div>
-                    ${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}
+                    <div class="dg-plate-name"><span class="dg-plate-name-text">${UI.escape(you.name)}</span>${DungeonView.classBadge(delve.heroClass)}</div>
+                    ${DungeonView.hp(delve.hp, delve.maxHp, `is-hero ${selfHealed ? 'is-healed' : ''}`, selfHealed ? `--t0: ${healed.t0}ms` : '')}
                 </div>
                 ${DungeonView.stats(you.score, delve.kills)}
                 ${DungeonPowerUps.slot(delve)}
@@ -301,16 +431,23 @@ const DungeonView = {
                 <div class="dg-station is-battle">
                     ${top}
                     ${DungeonBattle.scene(match, you, stationColor, serverNow)}
-                    ${DungeonView.teammates(delve, you.stationId, match)}
+                    ${DungeonView.teammates(delve, you.stationId, match, healed)}
                     ${plate}
                 </div>`;
         }
 
-        return DungeonEncounter.view(match, you, serverNow, { news, plate, clockKey, powerUpKey });
+        return DungeonEncounter.view(match, you, serverNow, { news, plate, clockKey, powerUpKey, healed });
+    },
+
+    /** The player's hero class on their plate ("WIZARD"), in that class's colour. */
+    classBadge(heroClass) {
+        if (!heroClass) return '';
+        return `<span class="dg-class-badge is-${UI.escape(heroClass)}">${DungeonView.className(heroClass)}</span>`;
     },
 
     /**
      * One adventurer's (or party's) column on the main screen. rank is 1-based, or null with one lane.
+     * A pack shows its waiting monsters small beside the one being fought, and in a strip under its nameplate.
      * A party of separate adventurers (2v2 Combined) shows each member's HP instead of one hero bar.
      * A player with a hero photo has their face where the knight's portrait would be.
      */
@@ -318,6 +455,7 @@ const DungeonView = {
         const news = DungeonView.news(`lane:${key}`, delve);
         const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
         const shake = DungeonView.lasting(`lane:${key}:hurt`, news.taken ? 'is-hurt' : null, 450);
+        const waiting = delve.foes?.slice(1) || []; // a pack: the monsters behind the one being fought
         return `
             <div class="dg-lane ${isLeader ? 'is-leader' : ''} ${shake.cls}" style="--lane-color: ${color}; --t0: ${shake.t0}ms">
                 <div class="dg-lane-head">
@@ -327,8 +465,10 @@ const DungeonView = {
                 </div>
                 ${DungeonView.trail(delve)}
                 <div class="dg-lane-stage">
+                    ${DungeonView.packSprites(waiting)}
                     ${DungeonView.monster(delve, news, `fx:lane:${key}`)}
                     ${downed ? `<div class="dg-overlay is-downed small">${Theme.text('dungeon.downedShort')}</div>` : ''}
+                    ${DungeonView.packStrip(waiting, 'is-lane')}
                 </div>
                 ${DungeonView.enemy(delve)}
                 <div class="dg-lane-hero">
@@ -368,7 +508,7 @@ const DungeonView = {
             banner('slain', Theme.text('dungeon.momentBossSlain', { name: who, monster: hit.monsterName }), hit.monsterSprite);
             host('dungeon.hostBossSlain', { name: who, monster: hit.monsterName });
         }
-        else if (hit.floorCleared && delve.monster.isBoss) {
+        else if (hit.bossAhead || (hit.floorCleared && delve.monster.isBoss)) { // a boss steps up (bossAhead: its room is next)
             banner('boss', Theme.text('dungeon.momentBoss', { name: who, monster: delve.monster.name }), delve.monster.sprite);
             host('dungeon.hostBoss', { name: who, monster: delve.monster.name });
         }

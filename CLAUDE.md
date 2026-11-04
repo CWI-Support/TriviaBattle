@@ -12,9 +12,17 @@ The room is moving to Dungeon Quiz Quest (`docs/DUNGEON-QUIZ-QUEST.md`): Dungeon
 Classic format working until it's formally dropped. `MatchSettings.Format` picks the game (default in `appsettings.json`,
 changeable on the Operator screen). In Dungeon format `MatchEngine` hands every answer and tick to a `DungeonRun`,
 which holds all combat rules: each party (a team, or a solo player) shares one `Delve` (floor, monster), and each answer
-owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
+owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold, their `HeroClass`). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
+Every class has basic stats (`ClassStats`: `Hp`, `DamageDealt`, `DamageTaken`, shares where 1 = normal; `ClassSettings.StatsFor`).
+Bosses end each floor: the kill before one is `DealtHit.BossAhead` (beat `boss`, its entrance; `FloorCleared` is the boss's own
+death). A boss charges up per adventurer (`BossChargeSteps`, `DungeonSettings.BossHitAt`): at full charge a miss is `TakenHit.Charged`
+(a big blow), a right answer `DealtHit.Staggered`; snapshots carry `DelveView.BossCharge`/`BossChargeSteps`.
+A room can hold a pack of monsters (`Delve.Foes`, `FloorDef.Rooms`): the one in front is fought and attacks. Every hero is a
+class (`HeroClass`, key = class name in lower case, numbers in `ClassSettings` / `Game:Dungeon:Classes`); "fast" is a set
+`CritWithinSeconds` (3 s), longer for the Tank. Only the Pugilist combos. Tests play `TestMatch.PlainHero` (the Ranger, whose
+only power is on screen) unless they pass `heroes:`.
 Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
-Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any button or swipe, pick one of five heroes,
+Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any button or swipe, pick one of seven heroes (classes),
 have the hero photo taken, pick solo / party / race / team battle or join the one forming, pick a category) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
 a game to `LobbyHost`; `js/arcade-lobby.js` draws it. The kiosk can still start games. Heroes: `Core/Arcade/Heroes.cs`,
 their models in `HEROES` (`js/battle3d/models.js`), their pictures in `media/heroes` (made by `/dev/heroes`).
@@ -34,7 +42,12 @@ beat's server start (`--t0`) so redraws don't restart them; keep their offsets i
 Stations draw the fight in 3D (`js/battle3d/`, three.js; `?view=2d` or no WebGL 2 falls back to the CSS version; preview at
 `/dev/battle3d`): it shares the HTML words and bars, and `js/battle3d/beats.js` follows the same timing table.
 Combat numbers are `Game:Dungeon` (`DungeonSettings`);
-floors and monsters are `config/dungeon.json`, loaded by `Server/Game/DungeonContent.cs` at startup.
+floors and monsters are `config/dungeon.json`, loaded by `Server/Game/DungeonContent.cs` at startup as a `DungeonPlan`;
+each match lays out its own `DungeonMap` (`DungeonPlan.Build`: made-up floors are `RoomCount` rooms filled from a `Pool` to
+`RoomHp`, then the `Boss`), and each floor's `Questions` weights pick its questions' difficulty. Every Dungeon game earns time
+per kill (solo and group; a party's monsters have more HP, `PartyHpPerMember`, and its time per kill is scaled to match), and a
+swipe on "Continue?" is a second paid session. The target is 3-4 minutes and about two bosses for an average player:
+`DungeonPacingTests` simulates it on the shipped content, so run it after changing monsters, floors or clock numbers.
 
 Three projects: `TriviaBattle.Core` (game rules), `TriviaBattle.Hardware` (keyboard and PLC input, PLC/console
 outputs, the audio engine), `TriviaBattle.Server` (ASP.NET host, EF Core, SignalR, admin, every screen in `wwwroot`).
@@ -111,8 +124,9 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 - Broadcasters run inside `MatchHost`'s lock. They must build what they need from the engine there,
   then start network sends without awaiting them (see `SignalRMatchBroadcaster.Send`).
 - Every visibility rule lives in `SnapshotBuilder`: a player sees only its own (or team's) current question, never its
-  correct answer until answered (exception: downed in a Dungeon party, it also sees a teammate's question, to shout the
-  answer); main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
+  correct answer until answered (exceptions: downed in a Dungeon party, it also sees a teammate's question, to shout the
+  answer; a Warlock's own screen gets `QuestionView.Revealed` once their patron shows it; a Ranger's own screen gets
+  `PeekFromMs`); main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
 - At the kiosk, starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`),
   not hub calls, so the kiosk gets validation problems back as a 400. A match takes `categoryIds` (one or more,
   mixed). At the stations the lobby starts them (`LobbyHost`); a station's card reader calls `POST /api/stations/{id}/swipe`.
@@ -125,15 +139,18 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
 - Screens are served from routes like `/display/player/2`, so asset and script paths in `wwwroot` must be absolute
   (`/js/ui.js`). Third-party scripts are vendored under `wwwroot/lib` (the venue LAN may be offline).
   Always pass user-typed text through `UI.escape()`.
+- Station screens are locked to portrait 9:16: `/display/player/{n}` is `screens/portrait-frame.html`, an iframe of that
+  shape around the real page at `/display/player/{n}/screen` (also `/dev/battle`, `/dev/battle3d`). Write station CSS for
+  portrait only; links out of a station page need `target="_top"`. See ARCHITECTURE "Screens".
 - Each screen script follows the same pattern: `new ScreenConnection({ role, onState: render })` + one `render(state)`
   switching on `state.match.phase`. Countdowns come from `data-ends-at` attributes (server-clock ms) via `UI.startCountdowns`.
 
 ## Key places
 
-- `Core/Matches/MatchEngine.cs`: phase state machine (Intro → Playing → Results → Finished; solo Dungeon games can go
-  Playing → Continue → Playing on a swipe). Every match is a timed round;
+- `Core/Matches/MatchEngine.cs`: phase state machine (Intro → Playing → Results → Finished; Dungeon games can go
+  Playing → Continue → Playing on a swipe, a second paid session). Dungeon games earn time per kill (party-scaled), Classic is a fixed round;
   each answer owner has a `QuestionStream` (answer → next question at once). Wrong answers: lockout or lose points.
 - `Core/Modes`: strategy classes for game modes (selected in `GameModes.Create`).
-- `Server/Game/GameRulesService.cs`: round length, wrong-answer penalty, format and the solo dungeon clock set on the Operator screen, `/operator` = admin's first tab (AppSettings table), laid over `"Game"`.
+- `Server/Game/GameRulesService.cs`: round length, wrong-answer penalty, format and the Dungeon clock set on the Operator screen, `/operator` = admin's first tab (AppSettings table), laid over `"Game"`.
 - `Server/Game/MatchHost.cs`, `Server/Hubs/` (`GameHub` at `/gamehub`, `ScreenState`, groups per room/station).
 - `Server/config/*.json`: stations, button map, keyboard map. `appsettings.json` `"Game"`: timings, points, penalty defaults.

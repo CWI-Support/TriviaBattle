@@ -11,10 +11,10 @@ import { Actor } from './actor.js';
 
 /**
  * A canvas of a hero in the station's colour, wearing this face (a URL of a FaceCutout face; null: its own).
- * options: hero ('knight', 'mage'...), framing ('head': head and shoulders, square; 'body': all of it,
+ * options: hero ('tank', 'wizard'...), framing ('head': head and shoulders, square; 'body': all of it,
  * 3 wide by 4 high), size (the width, in pixels).
  */
-export async function heroPortrait(faceUrl, color, { hero = 'knight', framing = 'head', size = 256 } = {}) {
+export async function heroPortrait(faceUrl, color, { hero = 'tank', framing = 'head', size = 256 } = {}) {
     const actor = await Actor.create(hero, 0, color);
     if (faceUrl) await actor.wearFace(faceUrl);
     actor.apply({ clip: actor.spec.idle, time: 0 });

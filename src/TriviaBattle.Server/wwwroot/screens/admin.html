@@ -142,7 +142,7 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
             <div id="l-volumes"></div>
             <div id="l-audio"></div>
             <h2>Game rules</h2>
-            <p class="dim">Dungeon Quiz Quest: answers are attacks on monsters, floor by floor (monsters are in config/dungeon.json). Groups play one round of the round length. A player on their own plays on the solo clock instead: every monster slain adds time. When it runs out, "Continue?" counts down: a swipe at the station (for now: the dev buttons page, or "Give a continue" below) adds more time. The longest game includes continues. Classic: everyone answers as many as they can in the round length. Changes apply from the next match.</p>
+            <p class="dim">Dungeon Quiz Quest: answers are attacks on monsters, floor by floor (monsters and floors are in config/dungeon.json). Every game, solo or group, runs on a clock that every monster slain adds to (groups earn a little less per kill, since they kill faster), so the better they play, the longer they play (there is no cap). When it runs out, "Continue?" counts down: a card swipe at a station pays for a second session that picks up where they left off (in a group, one swipe brings everyone back; "Give a continue" below does the same). Classic: everyone answers as many as they can in the round length. Changes apply from the next match.</p>
             <form id="l-rules" class="form-row">
                 <label>Game
                     <select id="l-rules-format">
@@ -150,13 +150,12 @@ Science,Hard,"Which gas, by volume, fills most of the air?",Oxygen,Nitrogen,Argo
                         <option value="Classic">Classic quiz</option>
                     </select>
                 </label>
-                <label>Round length (seconds) <input id="l-rules-seconds" type="number" min="15" max="600" step="5"></label>
-                <label class="l-rules-solo">Solo: starting time (seconds) <input id="l-rules-solo-start" type="number" min="15" max="600" step="5"></label>
-                <label class="l-rules-solo">Solo: + per monster (seconds) <input id="l-rules-solo-kill" type="number" min="0" max="60" step="1"></label>
-                <label class="l-rules-solo">Solo: + per boss (seconds) <input id="l-rules-solo-boss" type="number" min="0" max="120" step="5"></label>
-                <label class="l-rules-solo">Solo: longest game (seconds) <input id="l-rules-solo-max" type="number" min="30" max="1800" step="30"></label>
-                <label class="l-rules-solo">Solo: + per continue (seconds, 0 = none) <input id="l-rules-solo-continue" type="number" min="0" max="300" step="10"></label>
-                <label class="l-rules-solo">Solo: continue countdown (seconds) <input id="l-rules-solo-countdown" type="number" min="3" max="30" step="1"></label>
+                <label>Round length, Classic (seconds) <input id="l-rules-seconds" type="number" min="15" max="600" step="5"></label>
+                <label class="l-rules-solo">Clock: starting time (seconds) <input id="l-rules-solo-start" type="number" min="15" max="600" step="5"></label>
+                <label class="l-rules-solo">Clock: + per monster (seconds) <input id="l-rules-solo-kill" type="number" min="0" max="60" step="1"></label>
+                <label class="l-rules-solo">Clock: + per boss (seconds) <input id="l-rules-solo-boss" type="number" min="0" max="120" step="5"></label>
+                <label class="l-rules-solo">Continue: a new session's clock (seconds, 0 = no continues) <input id="l-rules-solo-continue" type="number" min="0" max="600" step="10"></label>
+                <label class="l-rules-solo">Continue countdown (seconds) <input id="l-rules-solo-countdown" type="number" min="3" max="30" step="1"></label>
                 <label>Wrong answers
                     <select id="l-rules-penalty">
                         <option value="Lockout">Lock the buttons for a moment</option>

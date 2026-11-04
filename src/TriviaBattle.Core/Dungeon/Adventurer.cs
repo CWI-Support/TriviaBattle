@@ -10,13 +10,17 @@ namespace TriviaBattle.Core.Dungeon;
 /// </summary>
 public sealed class Adventurer
 {
-    public Adventurer(string ownerId, string partyId, int maxHp)
+    public Adventurer(string ownerId, string partyId, int maxHp, HeroClass heroClass = HeroClass.Tank)
     {
         OwnerId = ownerId;
         PartyId = partyId;
         MaxHp = maxHp;
         Hp = maxHp;
+        Class = heroClass;
     }
+
+    /// <summary>What they can do in a fight: the hero they picked (see <see cref="HeroClass"/>).</summary>
+    public HeroClass Class { get; }
 
     /// <summary>The answer owner: a station id, or a team id in 2v2 Group.</summary>
     public string OwnerId { get; }
@@ -70,6 +74,36 @@ public sealed class Adventurer
     /// <summary>The last power-up they used. Its Number counts up so screens can tell a new use from an old one.</summary>
     public PowerUpUse? LastPowerUp { get; private set; }
 
+    /// <summary>A Warlock: the question number their patron's offer was decided for (decided once per question).</summary>
+    public int RevealDecidedFor { get; private set; }
+
+    /// <summary>A Warlock: their patron will show the right answer to that question as the hourglass runs low.</summary>
+    public bool RevealComing { get; private set; }
+
+    /// <summary>A Warlock: when their patron shows it, on the hourglass running now (null: not coming, or it's stopped).</summary>
+    public DateTimeOffset? RevealAt { get; private set; }
+
+    /// <summary>A Warlock: the question number their patron has shown the right answer to (0 = none).</summary>
+    public int RevealedOnQuestion { get; private set; }
+
+    /// <summary>The boss their charge cycle is against (each adventurer has their own cycle, as each has their own questions).</summary>
+    private Foe? _chargingBoss;
+    private int _bossCharge;
+
+    /// <summary>The step of a boss's charge cycle for their question now (0 = weak; a boss they haven't faced yet starts at 0).</summary>
+    public int ChargeAgainst(Foe boss) => _chargingBoss == boss ? _bossCharge : 0;
+
+    /// <summary>
+    /// They answered (or ran out of time) against this boss: its charge moves on a step, or after the last step
+    /// (full charge, whatever the answer) starts over.
+    /// </summary>
+    public void ChargeUp(Foe boss, int steps)
+    {
+        var step = ChargeAgainst(boss);
+        _chargingBoss = boss;
+        _bossCharge = step >= steps - 1 ? 0 : step + 1;
+    }
+
     /// <summary>Turns the hourglass over: the monster attacks after <paramref name="attackSeconds"/>.</summary>
     public void StartHourglass(DateTimeOffset now, double attackSeconds)
     {
@@ -81,6 +115,7 @@ public sealed class Adventurer
     {
         AttackStartedAt = null;
         AttackAt = null;
+        RevealAt = null; // planned again when it turns over
     }
 
     public bool IsAttackDue(DateTimeOffset now) => AttackAt != null && now >= AttackAt;
@@ -108,11 +143,16 @@ public sealed class Adventurer
     /// The monster hits them, ending the streak. At 0 HP they're downed for <paramref name="downedSeconds"/>.
     /// A Shield takes the whole hit instead (and the streak survives), then it's gone.
     /// </summary>
-    public TakenHit TakeHit(MonsterDef monster, HitReason reason, DateTimeOffset now, double downedSeconds)
+    /// <param name="encounter">The monster hitting them, with its damage for that floor.</param>
+    /// <param name="damageTaken">The share of the monster's damage they take (their class's DamageTaken), rounded.</param>
+    /// <param name="patronPrice">A Warlock's slow answer: what their patron already took (recorded on the hit).</param>
+    /// <param name="charged">A boss at full charge landed its big blow (recorded on the hit; the damage is already in damageTaken).</param>
+    public TakenHit TakeHit(Encounter encounter, HitReason reason, DateTimeOffset now, double downedSeconds, double damageTaken = 1, int patronPrice = 0,
+        bool charged = false)
     {
         var blocked = Shielded;
         Shielded = false;
-        var damage = blocked ? 0 : monster.Damage;
+        var damage = blocked ? 0 : (int)Math.Round(encounter.Damage * damageTaken);
         if (!blocked)
             Streak = 0;
         Hp = Math.Max(0, Hp - damage);
@@ -125,7 +165,8 @@ public sealed class Adventurer
             StopHourglass();
         }
 
-        LastTaken = new TakenHit((LastTaken?.Number ?? 0) + 1, damage, reason, downed, monster.Name, monster.Sprite, Hp, blocked);
+        LastTaken = new TakenHit((LastTaken?.Number ?? 0) + 1, damage, reason, downed, encounter.Monster.Name, encounter.Monster.Sprite, Hp, blocked, patronPrice,
+            charged && !blocked);
         return LastTaken;
     }
 
@@ -167,6 +208,36 @@ public sealed class Adventurer
     {
         LastPowerUp = new PowerUpUse((LastPowerUp?.Number ?? 0) + 1, powerUp, targetOwnerId, amount, revived);
         return LastPowerUp;
+    }
+
+    /// <summary>
+    /// A Warlock's slow answer: their patron takes up to <paramref name="amount"/> HP. It never downs them (it
+    /// stops at 1 HP). Returns what it took.
+    /// </summary>
+    public int PayPatron(int amount)
+    {
+        var paid = Math.Min(amount, Hp - 1);
+        if (paid <= 0)
+            return 0;
+        Hp -= paid;
+        return paid;
+    }
+
+    /// <summary>A Warlock's patron decided, for question <paramref name="questionNumber"/>, whether it will show the answer.</summary>
+    public void DecideReveal(int questionNumber, bool coming)
+    {
+        RevealDecidedFor = questionNumber;
+        RevealComing = coming;
+    }
+
+    /// <summary>When the patron's answer shows on the hourglass that just turned over (null: not on this one).</summary>
+    public void ScheduleReveal(DateTimeOffset? at) => RevealAt = at;
+
+    /// <summary>Their patron shows them the right answer to the question they're on.</summary>
+    public void Reveal(int questionNumber)
+    {
+        RevealedOnQuestion = questionNumber;
+        RevealAt = null;
     }
 
     /// <summary>Back on their feet after being downed (their time ran out, or teammates revived them), at full HP.</summary>

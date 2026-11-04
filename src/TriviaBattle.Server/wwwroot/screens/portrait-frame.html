@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Player Screen</title>
+    <link rel="icon" href="/favicon.svg">
+    <style>
+        /* The station screens are made for one shape only: a standard monitor stood on its side
+           (9:16, e.g. 1080 x 1920). This page shows the real screen in a frame of exactly that shape,
+           as big as the window allows, with black bars around it on any other window. Inside the
+           frame the screen's vw/vh/vmin are the frame's, so it always lays out as it will at the venue. */
+        html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+        body { display: grid; place-items: center; }
+        #screen {
+            display: block;
+            border: 0;
+            aspect-ratio: 9 / 16;
+            width: min(100vw, 100vh * 9 / 16);
+        }
+    </style>
+</head>
+<body>
+    <!-- Serves /display/player/{n} (and the station previews /dev/battle, /dev/battle3d): the real page is the
+         same address plus /screen, with the same ?query. js/portrait-frame.js fills in the frame. -->
+    <iframe id="screen" allow="camera; microphone; autoplay; fullscreen"></iframe>
+    <script src="/js/portrait-frame.js"></script>
+</body>
+</html>

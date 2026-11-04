@@ -77,22 +77,27 @@
   "feed": {
     "revivedYou": ["{name} revived you!", "{name} dragged you back up!"],
     "partyCombo": "{name} landed a party combo!",
-    "bossSlain": ["{name} slew {monster}!", "{name} beat the boss!"],
+    "bossSlain": ["{name} slew the {monster}!", "{name} beat the boss!"],
     "teammateDown": ["{name} is down! Answer right to revive them!", "{name} needs you! Right answers revive!"],
-    "overtook": ["{name} overtook you!", "{name} just passed you!"]
+    "overtook": ["{name} overtook you!", "{name} just passed you!"],
+    "healedYou": ["{name} healed you +{amount}!", "{name} patched you up: +{amount}!"]
   },
 
   "heroes": {
-    "knight": "Knight",
-    "knightLine": "Shield up, sword out, questions answered.",
-    "barbarian": "Barbarian",
-    "barbarianLine": "Hits first. Reads the question second.",
-    "mage": "Mage",
-    "mageLine": "Knows a spell for everything. Except humility.",
+    "tank": "Tank",
+    "tankLine": "More time to answer fast. Monsters hit you softer.",
+    "healer": "Healer",
+    "healerLine": "Fast answers heal your party. Nobody hurt? They poison the monster instead.",
+    "wizard": "Wizard",
+    "wizardLine": "Fast answers blast every monster in the room.",
     "rogue": "Rogue",
-    "rogueLine": "Two knives, zero hesitation.",
+    "rogueLine": "Fast answers hit for huge damage.",
     "ranger": "Ranger",
-    "rangerLine": "Never misses. Well, rarely."
+    "rangerLine": "See each question early. Press when everyone else can.",
+    "pugilist": "Pugilist",
+    "pugilistLine": "Every right answer in a row hits harder. Don't break the chain.",
+    "warlock": "Warlock",
+    "warlockLine": "Your patron may whisper the answer as time runs out. Slow answers cost you HP."
   },
 
   "intro": {
@@ -102,7 +107,7 @@
     "playerTeam": "You're on {team}",
     "playerTeamWith": "You're on {team} with {teammates}",
     "rules": "{seconds} seconds. Answer as many as you can!",
-    "soloClock": "Every monster you beat wins you more time!"
+    "earnTime": "Every monster you beat wins you more time!"
   },
 
   "playing": {
@@ -112,15 +117,16 @@
   },
 
   "continue": {
-    "_about": "Solo Dungeon games: the clock ran out and the player can swipe their card for more time. {seconds} = time a continue adds, {name} = the player.",
+    "_about": "Dungeon games: the clock ran out and a card swipe (a second paid session) carries on from the same floor. In a group any one swipe brings everyone back. {seconds} = the new session's clock, {name} = the player (solo).",
     "title": "Continue?",
     "swipe": "Swipe your card for {seconds} more seconds!",
     "mainSwipe": "{name}, swipe your card for {seconds} more seconds!",
+    "mainSwipeGroup": "One swipe keeps the whole party going: {seconds} more seconds!",
     "progress": "Floor {floor} · {kills} beaten · {score} points"
   },
 
   "dungeon": {
-    "_about": "Dungeon Quiz Quest. The Host is a charismatic, unhinged AI game-show host tormenting the adventurers. Roast the play, never the person. {monster} {damage} {streak} {floor} {seconds} are filled in.",
+    "_about": "Dungeon Quiz Quest. The Host is a charismatic, unhinged AI game-show host tormenting the adventurers. Roast the play, never the person. {monster} {damage} {streak} {floor} {seconds} are filled in ({streak} in a combo is the Pugilist's combo; {stacks} = poison stacks, {amount} = HP healed or paid).",
     "mainTitle": [
       "Answer to attack!",
       "Knowledge is a weapon. Swing it.",
@@ -161,6 +167,21 @@
       "Floor cleared! Down you go.",
       "Floor cleared. The stairs only go down from here.",
       "Floor cleared! Don't get cocky."
+    ],
+    "bossAheadLine": [
+      "Room cleared. The boss's door creaks open...",
+      "That was the last of them. Except the big one.",
+      "Room cleared! Something large is clearing its throat."
+    ],
+    "staggered": [
+      "STAGGERED! {damage} damage, and its big blow fizzles.",
+      "You broke its charge! {damage} damage. It looks dizzy.",
+      "Right at full power: {damage}! {monster} reels."
+    ],
+    "chargedHit": [
+      "CRUSHING BLOW! {monster} hits you for {damage}.",
+      "Full power, wrong answer. {damage} damage. Ouch.",
+      "{monster} was saving that one. {damage} damage!"
     ],
     "wrong": [
       "WRONG! The {monster} hits you for {damage}.",
@@ -233,9 +254,31 @@
     "usedShield": "Shield up. The next hit bounces off.",
     "usedTimeCrystal": "+{amount}s on the clock!",
     "stampSlain": ["SLAIN!", "DESTROYED!", "K.O.!"],
+    "packNext": "Next",
+    "poisonBadge": "x{stacks}",
+    "poisoned": ["POISONED x{stacks}", "TOXIC x{stacks}"],
+    "slainByPoison": "POISON GOT IT!",
+    "splash": "SPLASH",
+    "healedSelf": "+{amount} HP",
+    "healedTeammate": "Healed {name} +{amount}",
+    "patronPrice": ["-{amount} Patron's price", "-{amount} The patron takes its cut"],
+    "patronWhispers": ["Your patron whispers... this one.", "A voice in your head points the way.", "Your patron knows. Don't ask what it costs."],
+    "armour": "ARMOUR",
+    "peekLabel": ["Ranger's eye: next up!", "You spot it first!"],
+    "peekWait": "Press in {seconds}",
     "stampWarning": "WARNING!",
+    "chargeWeak": "Winding up",
+    "charging": "Charging...",
+    "chargeFull": "FULL POWER!",
+    "chargeWarning": [
+      "Answer right to stagger it! A miss hurts!",
+      "Get this one right, or take a BIG hit!",
+      "Right: it reels. Wrong: you get crushed!"
+    ],
+    "stampCharged": ["CRUSHING BLOW!", "MEGA SMASH!", "KA-THOOM!"],
+    "stampStaggered": ["STAGGERED!", "IT REELS!", "CHARGE BROKEN!"],
     "bossApproaches": ["A boss blocks the way down!", "The floor's boss wants a word.", "This one doesn't die easy."],
-    "momentBossSlain": "{name} slew {monster}!",
+    "momentBossSlain": "{name} slew the {monster}!",
     "momentBoss": "{name} faces the boss: {monster}!",
     "momentFloor": ["{name} heads down to floor {floor}!", "{name} descends: floor {floor}!"],
     "momentRevived": "{name} is back on their feet!",
@@ -261,9 +304,9 @@
     "photoLook": ["Look at the camera!", "Face in the outline, hero!", "Your most heroic face. Go!"],
     "photoDone": ["Looking heroic!", "Legendary.", "That face could slay a dragon."],
     "photoSkip": "Press ACTION to skip",
-    "photoSkipped": "No photo. Your knight keeps their own face.",
-    "photoNoFace": "Couldn't see your face! Your knight keeps their own.",
-    "photoFailed": "No camera today. Your knight keeps their own face.",
+    "photoSkipped": "No photo. Your hero keeps their own face.",
+    "photoNoFace": "Couldn't see your face! Your hero keeps their own.",
+    "photoFailed": "No camera today. Your hero keeps their own face.",
     "photoNoHttps": "No hero photo on this screen: it needs https (or localhost) to use a camera.",
     "photoSecureButton": "Turn on this station's camera",
     "photoSecureSteps": "Click here. On the next page: Advanced, then Proceed. Then Allow the camera."

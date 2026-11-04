@@ -56,7 +56,7 @@ public sealed class RoomSoundService(
     private const double CurtainFalls = 1.3;
 
     /// <summary>When the LOOT! card comes up (DungeonBattle.loot): after a kill, over the curtain on a floor cleared, soon after a plain hit.</summary>
-    private static double LootShows(DealtHit hit) => hit.FloorCleared ? 1.45 : hit.Killed ? 1.25 : 0.6;
+    private static double LootShows(DealtHit hit) => hit.FloorCleared || hit.BossAhead ? 1.45 : hit.Killed ? 1.25 : 0.6;
 
     // Held while this process owns the room audio. Named, so every process on the PC sees it.
     private Mutex? _audioOwner;
@@ -223,6 +223,8 @@ public sealed class RoomSoundService(
             case AdventurerHit { OwnerId: var ownerId, Hit: var taken }:
                 var hurt = StationsOf(match, ownerId);
                 room.PlayEffect(hurt, taken.Blocked ? _settings.Dungeon.Block : _settings.Dungeon.Hurt, ClawsLand);
+                if (taken.Charged) // a boss's full-charge blow: its roar with it
+                    room.PlayEffect(hurt, _settings.Dungeon.Boss, ClawsLand);
                 if (taken.Downed)
                     room.PlayEffect(hurt, _settings.Dungeon.Downed, KnightFalls);
                 break;
@@ -264,19 +266,20 @@ public sealed class RoomSoundService(
         var sounds = _settings.Dungeon;
         var striker = StationsOf(match, ownerId);
         var party = PartyStationsOf(match, ownerId);
-        var bossNext = match.Dungeon?.FindAdventurer(ownerId) is { } adventurer && match.Dungeon.DelveOf(adventurer).Encounter.Monster.IsBoss;
 
         if (hit.RevivedOwnerId != null)
             room.PlayEffect(party, sounds.Revive, BlowLands);
         else if (hit.PartyCombo)
             room.PlayEffect(party, sounds.PartyCombo, BlowLands);
         else
-            room.PlayEffect(striker, hit.Crit || hit.Fireball ? sounds.Crit : sounds.Hit, BlowLands);
+            room.PlayEffect(striker, hit.Crit || hit.Fireball || hit.Staggered ? sounds.Crit : sounds.Hit, BlowLands);
 
         if (hit.Killed)
-            room.PlayEffect(hit.FloorCleared ? party : striker, sounds.Kill, MonsterBursts);
-        if (hit.FloorCleared)
-            room.PlayEffect(party, bossNext ? sounds.Boss : sounds.Floor, CurtainFalls);
+            room.PlayEffect(hit.FloorCleared || hit.BossAhead ? party : striker, sounds.Kill, MonsterBursts);
+        if (hit.BossAhead) // the room it emptied leads to a boss: its entrance, for the whole party
+            room.PlayEffect(party, sounds.Boss, CurtainFalls);
+        else if (hit.FloorCleared)
+            room.PlayEffect(party, sounds.Floor, CurtainFalls);
         if (hit.Found != null)
             room.PlayEffect(striker, sounds.Loot, LootShows(hit));
     }

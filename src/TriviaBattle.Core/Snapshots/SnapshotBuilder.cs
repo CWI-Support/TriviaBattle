@@ -10,7 +10,10 @@ namespace TriviaBattle.Core.Snapshots;
 ///   <item>A player screen sees only its own current question (its team's in 2v2 Group), and only while Playing.
 ///     The one exception: while downed in a Dungeon party, it also sees a standing teammate's question, so
 ///     the player can shout the answer to them.</item>
-///   <item>Nobody but Admin is ever told the correct answer to a question that's still on screen.</item>
+///   <item>Nobody but Admin is ever told the correct answer to a question that's still on screen. The one
+///     exception: a Dungeon Warlock's own screen, once their patron has shown it (<see cref="QuestionView.Revealed"/>).</item>
+///   <item>A Dungeon Ranger's own screen gets its next question a moment early, during the battle beat
+///     (<see cref="QuestionView.PeekFromMs"/>); it's their own question, and presses still only count once it's up.</item>
 ///   <item>After answering, a player screen sees that answer's correct answer (the question is behind them).</item>
 ///   <item>Main screen and others see scores and right/wrong, never which answer anyone pressed.</item>
 ///   <item>Admin sees everything, always.</item>
@@ -36,8 +39,8 @@ public static class SnapshotBuilder
             match.CategoryName,
             match.Setup.Difficulty.ToString(),
             match.RoundSeconds,
-            match.HasSoloClock,
-            match.HasSoloClock ? match.Settings.Dungeon.SoloContinueSeconds : 0,
+            match.EarnsTime,
+            match.EarnsTime ? match.Settings.Dungeon.ContinueSeconds : 0,
             match.ContinuesUsed,
             players,
             teams,
@@ -97,7 +100,7 @@ public static class SnapshotBuilder
             team?.Name,
             player.Tally.Score,
             team?.Tally.Score,
-            question == null ? null : ToQuestion(match, stream),
+            question == null ? null : ToQuestion(match, stream, ownScreen: true),
             ToUnixMs(stream.LockedOutUntil),
             ToYourAnswer(match, stream.LastAnswer),
             ToDelve(match, stream.OwnerId),
@@ -119,7 +122,8 @@ public static class SnapshotBuilder
 
         var kind = !answer.IsCorrect ? (adventurer.LastTaken?.Downed == true ? "downed" : "hurt")
             : adventurer.LastDealt is not { } hit ? "hit"
-            : hit.FloorCleared ? (match.Dungeon!.DelveOf(adventurer).Encounter.Monster.IsBoss ? "boss" : "floor")
+            : hit.BossAhead ? "boss" // the room it emptied leads to a boss's: its entrance
+            : hit.FloorCleared ? "floor"
             : hit.Killed ? "kill"
             : "hit";
         return new BeatView(kind, answer.PressedAt.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds());
@@ -127,13 +131,17 @@ public static class SnapshotBuilder
 
     /// <summary>
     /// The question on a stream's screen now. Never includes which answer is correct; a 50/50's hidden
-    /// answers are wrong ones, so sending those is fine.
+    /// answers are wrong ones, so sending those is fine. The one exception: on a Warlock's own screen, once
+    /// their patron has shown it (<see cref="Dungeon.Adventurer.RevealedOnQuestion"/>). A Ranger's own screen
+    /// also gets the time to start showing it, before it counts (<see cref="QuestionView.PeekFromMs"/>).
     /// </summary>
-    private static QuestionView ToQuestion(MatchEngine match, QuestionStream stream)
+    /// <param name="ownScreen">The question is for the screen of whoever answers it (not a downed teammate helping).</param>
+    private static QuestionView ToQuestion(MatchEngine match, QuestionStream stream, bool ownScreen = false)
     {
         var question = stream.CurrentQuestion;
         var adventurer = match.Dungeon?.FindAdventurer(stream.OwnerId);
         var hidden = adventurer != null && adventurer.HiddenOnQuestion == stream.CurrentNumber ? adventurer.HiddenAnswers : null;
+        var revealed = ownScreen && adventurer != null && adventurer.RevealedOnQuestion == stream.CurrentNumber ? question.CorrectIndex : (int?)null;
         return new QuestionView(
             stream.CurrentNumber,
             question.Id,
@@ -142,7 +150,22 @@ public static class SnapshotBuilder
             question.Answers,
             question.MediaUrl,
             ToUnixMs(stream.CurrentShownAt),
-            hidden);
+            hidden,
+            ownScreen ? ToUnixMs(PeekFrom(match, stream)) : null,
+            revealed);
+    }
+
+    /// <summary>
+    /// A Ranger's next question shows a moment before their battle beat ends (never before the beat starts).
+    /// Null when there's no beat on, or they aren't a Ranger.
+    /// </summary>
+    private static DateTimeOffset? PeekFrom(MatchEngine match, QuestionStream stream)
+    {
+        var peek = match.Dungeon?.PeekSecondsFor(stream.OwnerId) ?? 0;
+        if (peek <= 0 || stream.LastAnswer is not { } answer || stream.CurrentShownAt is not { } shownAt || shownAt <= answer.PressedAt)
+            return null;
+        var from = shownAt - TimeSpan.FromSeconds(peek);
+        return from > answer.PressedAt ? from : answer.PressedAt;
     }
 
     /// <summary>
@@ -187,13 +210,14 @@ public static class SnapshotBuilder
 
         var delve = match.Dungeon!.DelveOf(adventurer);
         var encounter = delve.Encounter;
+        var charge = match.Dungeon.BossChargeOf(ownerId);
         return new DelveView(
             encounter.Floor,
             encounter.Room,
             encounter.RoomsOnFloor,
             encounter.Depth.Id,
             encounter.Depth.Name,
-            new MonsterView(encounter.Monster.Name, encounter.Monster.Sprite, delve.MonsterHp, encounter.MaxHp, encounter.Monster.IsBoss),
+            ToMonster(delve.Foes[0]),
             adventurer.Hp,
             adventurer.MaxHp,
             adventurer.Streak,
@@ -205,7 +229,7 @@ public static class SnapshotBuilder
             adventurer.LastDealt,
             adventurer.LastTaken,
             delve.DepthPath()
-                .Select(e => new PathStepView(e.Floor, e.Room, e.Monster.Name, e.Monster.Sprite, e.Monster.IsBoss))
+                .Select(e => new PathStepView(e.Floor, e.Room, e.Monster.Name, e.Monster.Sprite, e.Monster.IsBoss, e.Slot))
                 .ToList(),
             adventurer.ReviveProgress,
             match.Dungeon.ReviveAnswers,
@@ -216,8 +240,15 @@ public static class SnapshotBuilder
             adventurer.FireballReady,
             adventurer.Shielded,
             ToUnixMs(adventurer.FrozenUntil), // the screen shows it frozen while that is still to come
-            adventurer.LastPowerUp);
+            adventurer.LastPowerUp,
+            delve.Foes.Select(ToMonster).ToList(),
+            adventurer.Class.ToString().ToLowerInvariant(),
+            charge.Step,
+            charge.Steps);
     }
+
+    private static MonsterView ToMonster(Dungeon.Foe foe) =>
+        new(foe.Monster.Name, foe.Monster.Sprite, foe.Hp, foe.MaxHp, foe.Monster.IsBoss, foe.PoisonStacks);
 
     /// <summary>
     /// A whole party's fight, for its lane on the main screen when teammates are separate adventurers

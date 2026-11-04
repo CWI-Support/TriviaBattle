@@ -162,7 +162,7 @@ function renderIntro(match) {
                 <p class="subtitle intro-rise" ${at(400)}>${modeName(match)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</p>
                 ${lineup}
                 <p class="subtitle intro-rise" ${at(1700)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, momentSeed(match))}</p>
-                ${match.soloClock ? `<p class="subtitle intro-rise" ${at(2100)}>${Theme.text('intro.soloClock', {}, momentSeed(match))}</p>` : ''}
+                ${match.earnsTime ? `<p class="subtitle intro-rise" ${at(2100)}>${Theme.text('intro.earnTime', {}, momentSeed(match))}</p>` : ''}
             </div>
             ${UI.introCountdown(match.phaseEndsAtMs)}
         </div>`;
@@ -291,14 +291,20 @@ function winnerHeadline(match) {
         : Theme.text('results.winner', { name: winners[0].name }, match.matchId);
 }
 
-/** Solo Dungeon: the player's clock ran out. "Continue?" counts down until they swipe or time's up. */
+/**
+ * Dungeon: the clock ran out. "Continue?" counts down until someone swipes (a second paid session; in a group
+ * one swipe brings everyone back) or time's up.
+ */
 function renderContinue(match) {
     const seed = `${momentSeed(match)}:${match.continuesUsed}`;
+    const swipe = match.players.length === 1
+        ? Theme.text('continue.mainSwipe', { name: match.players[0].name, seconds: match.continueSeconds }, seed)
+        : Theme.text('continue.mainSwipeGroup', { seconds: match.continueSeconds }, seed);
     document.getElementById('view-continue').innerHTML = `
         <div class="center-stack">
             <h1 class="big-title">${Theme.text('continue.title', {}, seed)}</h1>
             <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="4"></div>
-            <p class="subtitle">${Theme.text('continue.mainSwipe', { name: match.players[0].name, seconds: match.continueSeconds }, seed)}</p>
+            <p class="subtitle">${swipe}</p>
         </div>`;
     showFitted('view-continue');
 }

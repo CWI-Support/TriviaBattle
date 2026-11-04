@@ -9,9 +9,9 @@ hourglass, getting hit for wrong or slow answers, being downed and getting back 
 Depth 1 boss from `config/dungeon.json`, endless deeper loops. The station screen follows the
 reference layout; the main screen shows a lane per adventurer or party; a `dungeon` theme with pixel
 fonts, placeholder pixel monsters and the Host's first lines. A party (a team, or a solo player) shares
-one monster and floor, and each member keeps their own HP (`DungeonRun`). Groups play a fixed round;
-a solo game runs on the arcade clock (kills add time, up to a hard cap), all set on the Operator
-screen. When a solo clock runs out, "Continue?" counts down: a swipe adds time (for now from the dev
+one monster and floor, and each member keeps their own HP (`DungeonRun`). Every game, solo or group,
+runs on the arcade clock (kills add time, with no cap), all set on the Operator
+screen. When the clock runs out, "Continue?" counts down: a swipe pays for a second session (or from the dev
 buttons page or the Operator screen). Parties revive their downed members (3 right answers; the downed
 player shouts answers from a teammate's question meanwhile), land party combos, and get one lane per
 party on the main screen. Between questions a battle beat plays the fight full screen (your knight's
@@ -63,8 +63,8 @@ as for one player: the social side is vital.
 - **The party owns the run.** A solo player is a party of one, so solo and group play share one set of
   rules. Party members share the monster and floor, and each keeps their own HP. (Built.)
 
-**Operator settings:** round length (groups); solo starting time, time per monster, time per boss and
-the longest a solo game can last (the hard cap, continues included); time per continue (0 = none)
+**Operator settings:** round length (Classic); the clock's starting time, time per monster, time per boss;
+a continue's clock (0 = none)
 and the continue countdown. Done.
 
 **Social mechanics** (switch on in parties of 2 or more):
@@ -91,7 +91,7 @@ damage, more time (solo), or a power-up. The clock pauses; after 8 seconds one i
 
 **Build order** (each step ends in a playable build):
 1. Done: `DungeonRun` split out of `MatchEngine`; parties share the monster and floor.
-2. Done: the clock: fixed for groups, stretchable for solo, the Operator settings and the hard cap.
+2. Done: the clock: every game earns time per kill (groups scaled to their size), no cap, the Operator settings.
    Starting defaults: 90 s solo start, +10 s a monster, +30 s a boss, 8 minutes at most.
 3. Done: the Continue screen, triggered from the dev buttons page or the Operator screen ("Give a
    continue") until the station card readers exist. Defaults: +60 s a continue, 10 s to swipe.
@@ -581,8 +581,8 @@ Writing (Host lines) and art (sprites, UI kit, cutscenes) run alongside from pha
 
 - [ ] Party Race (VS) as the headline mode, co-op, or both?
 - [x] Delve length: groups get a fixed round length (Operator setting); solo gets an arcade clock that
-      stretches, with swipe-to-continue and a hard cap (Operator setting). See "Direction update".
-- [ ] Default numbers for the above (group round, solo start, time per kill and boss, continue time, hard cap): playtest.
+      stretches (groups too, scaled), with swipe-to-continue as a second paid session and no cap. See "Direction update".
+- [ ] Default numbers for the above (start, time per kill and boss, continue time): set by DungeonPacingTests for 3-4 minutes; playtest.
 - [ ] The station card readers: what a swipe charges (the venue's game-card system, or our own cards)
       and how they connect (a coin pulse into the PLC, or USB on the station PC).
 - [ ] What death costs: gold only, or floor progress too?

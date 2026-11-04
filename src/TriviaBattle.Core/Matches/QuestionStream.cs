@@ -33,15 +33,19 @@ public sealed record GivenAnswer(
 ///
 /// Each stream has its own question order (so neighbours can't read ahead on each other's
 /// screens). If someone gets through every question, the order starts again from the top.
+/// A Dungeon floor can ask for a difficulty: the next question is then the first in the order of
+/// that difficulty not yet asked (or the first not yet asked, if none of that difficulty is left).
 /// </summary>
 public sealed class QuestionStream(string ownerId, IReadOnlyList<Question> questionOrder)
 {
     private readonly List<GivenAnswer> _answers = new();
+    private readonly bool[] _asked = new bool[questionOrder.Count];
+    private int _current;
 
     public string OwnerId { get; } = ownerId;
 
     /// <summary>The question on screen now (also the one shown first, before Playing starts).</summary>
-    public Question CurrentQuestion => questionOrder[_answers.Count % questionOrder.Count];
+    public Question CurrentQuestion => questionOrder[_current];
 
     /// <summary>1-based number of the current question for this owner.</summary>
     public int CurrentNumber => _answers.Count + 1;
@@ -65,10 +69,39 @@ public sealed class QuestionStream(string ownerId, IReadOnlyList<Question> quest
     /// Records an answer to the current question and moves on to the next one, which appears at
     /// <paramref name="nextShownAt"/>: straight away, or after a Dungeon battle beat.
     /// </summary>
-    public void Record(GivenAnswer answer, DateTimeOffset nextShownAt)
+    /// <param name="wanted">The difficulty the next question should be (a Dungeon floor's mix); null = the next in order.</param>
+    public void Record(GivenAnswer answer, DateTimeOffset nextShownAt, Difficulty? wanted = null)
     {
         _answers.Add(answer);
+        _asked[_current] = true;
+        _current = NextIndex(wanted);
         CurrentShownAt = nextShownAt;
+    }
+
+    /// <summary>Before any answer: makes the first question one of this difficulty (if there is one).</summary>
+    public void Prefer(Difficulty wanted)
+    {
+        if (_answers.Count == 0)
+            _current = NextIndex(wanted);
+    }
+
+    /// <summary>The first question in the order not asked yet, of the wanted difficulty if one is left. All asked: start over.</summary>
+    private int NextIndex(Difficulty? wanted)
+    {
+        if (_asked.All(asked => asked))
+            Array.Clear(_asked);
+
+        var fallback = -1;
+        for (var i = 0; i < questionOrder.Count; i++)
+        {
+            if (_asked[i])
+                continue;
+            if (wanted == null || questionOrder[i].Difficulty == wanted)
+                return i;
+            if (fallback < 0)
+                fallback = i;
+        }
+        return fallback;
     }
 
     public void LockOut(DateTimeOffset until) => LockedOutUntil = until;

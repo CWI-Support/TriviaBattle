@@ -15,6 +15,12 @@ public sealed class TestMatch
 {
     public static readonly DateTimeOffset Start = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
 
+    /// <summary>
+    /// The hero tests play unless they say otherwise: the Ranger, whose only power is on the screen (it sees
+    /// questions early), so its fights follow the plain rules: crit within 3 seconds, full damage taken, no combo.
+    /// </summary>
+    public const string PlainHero = "ranger";
+
     private long _nextSequence = 1;
 
     /// <param name="stations">Free-for-all only: which stations play (default all four), e.g. a solo game on ["A1"].</param>
@@ -23,9 +29,14 @@ public sealed class TestMatch
     /// "press, wait a second, press" timings read simply; DungeonBeatTests turn them on.
     /// </param>
     /// <param name="lobbyPhotos">Players whose hero photo was settled in the arcade lobby: true brought one, false chose none.</param>
+    /// <param name="heroes">
+    /// Dungeon format: each station's hero ("tank", "wizard"...). Everyone else plays <see cref="PlainHero"/>.
+    /// </param>
+    /// <param name="dungeon">Dungeon format: the floors and monsters (default <see cref="Dungeon"/>).</param>
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
         IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false,
-        IReadOnlyDictionary<string, bool>? lobbyPhotos = null)
+        IReadOnlyDictionary<string, bool>? lobbyPhotos = null, IReadOnlyDictionary<string, string>? heroes = null,
+        DungeonMap? dungeon = null)
     {
         Settings = settings ?? new MatchSettings();
         if (!battleBeats)
@@ -44,6 +55,7 @@ public sealed class TestMatch
         string[] names = ["Ann", "Bob", "Cat", "Dan"];
         var seats = (stations ?? ["A1", "A2", "A3", "A4"])
             .Select(id => new SeatSetup(id, names[int.Parse(id[1..]) - 1],
+                Hero: heroes != null && heroes.TryGetValue(id, out var hero) ? hero : PlainHero,
                 Photo: lobbyPhotos != null && lobbyPhotos.TryGetValue(id, out var photo) ? photo : null))
             .ToList();
 
@@ -62,7 +74,7 @@ public sealed class TestMatch
             Settings,
             Now,
             new Random(1), // seeded, so question orders are the same every run
-            Settings.Format == GameFormat.Dungeon ? Dungeon : null);
+            Settings.Format == GameFormat.Dungeon ? dungeon ?? Dungeon : null);
     }
 
     /// <summary>

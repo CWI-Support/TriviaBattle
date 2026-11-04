@@ -81,9 +81,9 @@ public sealed class MatchEngine
             _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon, random);
         }
 
-        HasSoloClock = _dungeon is { IsSolo: true };
-        RoundSeconds = HasSoloClock
-            ? Math.Min(settings.Dungeon.SoloStartSeconds, settings.Dungeon.SoloMaxSeconds)
+        EarnsTime = _dungeon != null;
+        RoundSeconds = EarnsTime
+            ? settings.Dungeon.ClockStartSeconds
             : settings.MatchSeconds;
 
         EnterPhase(MatchPhase.Intro, now, settings.IntroSeconds);
@@ -107,20 +107,18 @@ public sealed class MatchEngine
     public string CategoryName { get; }
 
     /// <summary>
-    /// A solo Dungeon game: the clock is an arcade clock. It starts at the solo starting time and
-    /// every kill adds time (see <see cref="DungeonRun.SecondsEarnedBy"/>), up to the hard cap.
-    /// Every other match plays a fixed round of <see cref="MatchSettings.MatchSeconds"/>.
+    /// A Dungeon game (solo or group): the clock is an arcade clock. A paid session starts at
+    /// <see cref="DungeonSettings.ClockStartSeconds"/> and every kill adds time (see
+    /// <see cref="DungeonRun.SecondsEarnedBy"/>), with no cap: it lasts until it runs out. Then a swipe continues
+    /// (a new paid session). Classic plays a fixed round of <see cref="MatchSettings.MatchSeconds"/>.
     /// </summary>
-    public bool HasSoloClock { get; }
+    public bool EarnsTime { get; }
 
-    /// <summary>How long the clock runs when Playing starts (a solo game's can grow from there).</summary>
+    /// <summary>How long the clock runs when Playing starts (a Dungeon game's grows from there).</summary>
     public double RoundSeconds { get; }
 
-    /// <summary>Solo games: how many times the player continued (swiped for more time).</summary>
+    /// <summary>Dungeon games: how many times the players continued (a swipe: another paid session).</summary>
     public int ContinuesUsed { get; private set; }
-
-    /// <summary>Solo games: play time used before the last continue. It counts toward the hard cap.</summary>
-    private TimeSpan _playedBeforeContinue;
 
     public MatchPhase Phase { get; private set; }
     public DateTimeOffset PhaseStartedAt { get; private set; }
@@ -183,8 +181,24 @@ public sealed class MatchEngine
             foreach (var stream in _streams.Values.Where(s => s.LastAnswer != null && s.CurrentShownAt > _lastTickAt && s.CurrentShownAt <= now))
                 events.Add(new QuestionShown(stream.OwnerId));
 
+            // A Warlock's patron shows the answer as the hourglass runs low (before the monster can attack).
+            foreach (var warlock in _dungeon.RevealsDue(now))
+            {
+                Version++;
+                events.Add(new PatronRevealed(warlock.OwnerId));
+            }
+
             foreach (var adventurer in _dungeon.AttacksDue(now))
                 events.AddRange(MonsterAttacks(adventurer.OwnerId, now));
+
+            // A Healer's poison: damage every tick, and a kill like any other (it earns time on the clock).
+            foreach (var (partyId, damage, kill) in _dungeon.TickPoison(now))
+            {
+                Version++;
+                events.Add(new MonsterPoisoned(partyId, damage, kill));
+                if (kill != null)
+                    AddTime(_dungeon.SecondsEarnedBy(partyId, kill));
+            }
         }
 
         // Hero photos: each second of the station's countdown, and the moment it's taken (0), where the camera is on.
@@ -235,9 +249,10 @@ public sealed class MatchEngine
         var isCorrect = press.AnswerIndex == question.CorrectIndex;
         var losesPoints = !isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.LosePoints;
 
-        // Dungeon format: a correct answer is an attack, and its points are the damage it did.
+        // Dungeon format: a correct answer is an attack, and its points are what it did: all the damage
+        // (a Wizard's splash included) plus any HP a Healer's answer healed.
         var dealt = isCorrect ? _dungeon?.Strike(stream.OwnerId, question.Difficulty, press.PressedAt - shownAt, now) : null;
-        var correctPoints = dealt?.Damage ?? Settings.CorrectPoints;
+        var correctPoints = dealt != null ? dealt.TotalDamage + dealt.Healed : Settings.CorrectPoints;
 
         var answer = new GivenAnswer(
             stream.OwnerId,
@@ -251,7 +266,7 @@ public sealed class MatchEngine
             ResponseTime: press.PressedAt - shownAt);
 
         // Dungeon format: the next question waits while the screen shows the fight (a battle beat).
-        stream.Record(answer, now + TimeSpan.FromSeconds(_dungeon?.BeatSecondsAfter(dealt) ?? 0));
+        stream.Record(answer, now + TimeSpan.FromSeconds(_dungeon?.BeatSecondsAfter(dealt) ?? 0), _dungeon?.NextDifficulty(stream.OwnerId));
         Mode.ScoreAnswer(answer, player, Roster);
 
         if (!isCorrect && Settings.WrongAnswerPenalty == WrongAnswerPenalty.Lockout)
@@ -269,11 +284,11 @@ public sealed class MatchEngine
                 events.Add(new PowerUpFound(stream.OwnerId, found));
             if (dealt.RevivedOwnerId is { } revived)
                 events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
-            AddTime(_dungeon.SecondsEarnedBy(dealt));
+            AddTime(_dungeon.SecondsEarnedBy(_dungeon.FindAdventurer(stream.OwnerId)!.PartyId, dealt));
         }
         else
         {
-            events.Add(new AdventurerHit(stream.OwnerId, _dungeon.TakeHit(stream.OwnerId, HitReason.WrongAnswer, now)));
+            events.Add(new AdventurerHit(stream.OwnerId, _dungeon.TakeHit(stream.OwnerId, HitReason.WrongAnswer, now, answer.ResponseTime)));
         }
 
         _dungeon.AfterTurn(stream, now);
@@ -382,24 +397,20 @@ public sealed class MatchEngine
     }
 
     /// <summary>
-    /// The solo arcade clock: pushes the end of Playing back, but never past the hard cap
-    /// (<see cref="DungeonSettings.SoloMaxSeconds"/> of play in all, continues included).
+    /// The arcade clock: pushes the end of Playing back. There's no cap: as long as they keep earning time,
+    /// they keep playing.
     /// </summary>
     private void AddTime(double seconds)
     {
-        if (!HasSoloClock || seconds <= 0)
-            return;
-
-        var cap = PhaseStartedAt + TimeSpan.FromSeconds(Settings.Dungeon.SoloMaxSeconds) - _playedBeforeContinue;
-        var endsAt = PhaseEndsAt + TimeSpan.FromSeconds(seconds);
-        PhaseEndsAt = endsAt < cap ? endsAt : cap;
+        if (EarnsTime && seconds > 0)
+            PhaseEndsAt += TimeSpan.FromSeconds(seconds);
     }
 
     /// <summary>
-    /// A continue (a swipe at the station, or the operator giving one). While the match waits on
-    /// <see cref="MatchPhase.Continue"/>, the solo player goes back to Playing for
-    /// <see cref="DungeonSettings.SoloContinueSeconds"/> more, on the same floor with the same HP.
-    /// Ignored at any other time.
+    /// A continue: a card swipe at any station in the match (or the operator giving one), paying for a second
+    /// session. While the match waits on <see cref="MatchPhase.Continue"/>, everyone goes back to Playing on a
+    /// fresh <see cref="DungeonSettings.ContinueSeconds"/> clock, on the same floor with the same HP. Ignored at
+    /// any other time.
     /// </summary>
     public IReadOnlyList<MatchEvent> Continue(DateTimeOffset now)
     {
@@ -407,7 +418,7 @@ public sealed class MatchEngine
             return NothingHappened;
 
         ContinuesUsed++;
-        EnterPhase(MatchPhase.Playing, now, Settings.Dungeon.SoloContinueSeconds);
+        EnterPhase(MatchPhase.Playing, now, Settings.Dungeon.ContinueSeconds);
         foreach (var stream in _streams.Values)
         {
             stream.Start(now); // the question they were on shows again, with a fresh hourglass
@@ -416,10 +427,8 @@ public sealed class MatchEngine
         return [new PhaseChanged(Phase)];
     }
 
-    /// <summary>Solo games, when the clock has run out: continues are on, and a whole one still fits under the hard cap.</summary>
-    private bool CanContinue =>
-        Settings.Dungeon.SoloContinueSeconds > 0 &&
-        _playedBeforeContinue.TotalSeconds + Settings.Dungeon.SoloContinueSeconds <= Settings.Dungeon.SoloMaxSeconds;
+    /// <summary>Dungeon games, when the clock has run out: continues are on. Each is a paid session of its own, so there's no limit.</summary>
+    private bool CanContinue => EarnsTime && Settings.Dungeon.ContinueSeconds > 0;
 
     /// <summary>An owner's hourglass ran out: the monster attacks, and the question it was guarding is lost.</summary>
     private IReadOnlyList<MatchEvent> MonsterAttacks(string ownerId, DateTimeOffset now)
@@ -436,7 +445,7 @@ public sealed class MatchEngine
             now,
             ResponseTime: now - stream.CurrentShownAt!.Value,
             TimedOut: true);
-        stream.Record(lost, now + TimeSpan.FromSeconds(_dungeon!.BeatSecondsAfter(dealt: null)));
+        stream.Record(lost, now + TimeSpan.FromSeconds(_dungeon!.BeatSecondsAfter(dealt: null)), _dungeon.NextDifficulty(ownerId));
 
         var hit = _dungeon.TakeHit(ownerId, HitReason.TooSlow, now);
         _dungeon.AfterTurn(stream, now);
@@ -472,14 +481,10 @@ public sealed class MatchEngine
 
             case MatchPhase.Playing:
                 _dungeon?.Stop();
-                if (HasSoloClock)
+                if (CanContinue)
                 {
-                    _playedBeforeContinue += PhaseEndsAt - PhaseStartedAt;
-                    if (CanContinue)
-                    {
-                        EnterPhase(MatchPhase.Continue, now, Settings.Dungeon.SoloContinueCountdownSeconds);
-                        return [new PhaseChanged(Phase)];
-                    }
+                    EnterPhase(MatchPhase.Continue, now, Settings.Dungeon.ContinueCountdownSeconds);
+                    return [new PhaseChanged(Phase)];
                 }
                 EnterPhase(MatchPhase.Results, now, Settings.ResultsSeconds);
                 return [new PhaseChanged(Phase)];

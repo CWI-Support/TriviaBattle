@@ -56,7 +56,7 @@ Phase flow:
 ```
 Intro → Playing (the clock runs for Game:MatchSeconds) → Results → Finished
            ↑   ↓
-         Continue?   solo Dungeon games only: the clock ran out; a swipe goes back to Playing
+         Continue?   Dungeon games: the clock ran out; a swipe (a second paid session) goes back to Playing
 ```
 
 Every match is a **timed rapid-fire round**: answer as many questions as you can before the clock
@@ -101,15 +101,37 @@ In Dungeon format the engine has a `DungeonRun` (`Core/Dungeon`), which holds th
 `MatchEngine` runs the match as usual (phases, question streams, scoring) and hands it every answer and
 tick. The run is built around parties, so solo and group play share one set of rules:
 - A **party** is a team, or a player on their own (a solo game is a party of one). Each party has one
-  `Delve`: its floor and the monster it's fighting. Parties race each other down.
-- Each answer owner is an **`Adventurer`** with their own HP, streak and hourglass. Every adventurer in a
-  party hits the same monster. In 2v2 Group teammates share their question, so the team is one adventurer;
-  in 2v2 Combined each teammate is an adventurer on the team's delve.
+  `Delve`: its floor, its room and the monsters in it (`Delve.Foes`, each a `Foe` with its own HP and poison).
+  A room holds one monster or a pack (`FloorDef.Rooms` in `config/dungeon.json`); the party fights the one in
+  front (`Delve.Encounter`), whose hourglass and attacks count, and the others wait their turn. When the one in
+  front dies the next in the room steps up; an empty room leads to the next. Parties race each other down.
+- Each answer owner is an **`Adventurer`** with their own HP, streak, hourglass and hero class. Every
+  adventurer in a party hits the same monster. In 2v2 Group teammates share their question, so the team is one
+  adventurer (fighting as the first teammate's hero); in 2v2 Combined each teammate is an adventurer on the
+  team's delve.
 
 The rules:
-- A correct answer is `DungeonRun.Strike`: damage by difficulty, a crit if fast, a combo on the
-  adventurer's streak, taken off the party's monster. The answer's points are the damage, so scores,
-  results and leaderboards work unchanged.
+- A correct answer is `DungeonRun.Strike`: damage by difficulty and a crit if fast (within
+  `CritWithinSeconds`, a set 3 seconds), taken off the monster in front. The answer's points are what it did
+  (`DealtHit.TotalDamage` plus any HP healed), so scores, results and leaderboards work unchanged.
+- **Class stats** (`ClassStats`, one per class in `ClassSettings`, `StatsFor`): `Hp` (of `AdventurerHp`), `DamageDealt` (of a right
+  answer's damage, before crits and combos; a Wizard's splash follows it) and `DamageTaken` (of a monster's hit), all shares
+  where 1 is normal. Every class is tuned the same way; upgrades between floors are meant to raise these. Monsters
+  hit harder on each loop through the dungeon (`LoopDamageBonus`, beside `LoopHpBonus`): an `Encounter` carries its
+  `MaxHp` and `Damage` for its floor.
+- **Hero classes** (`HeroClass`, numbers in `ClassSettings`, all in `DungeonRun`): the Rogue's crits use
+  `RogueCritMultiplier`; the Tank's fast window is `TankFastSeconds` and it takes `Tank.DamageTaken` of a hit; the
+  Healer's fast answer heals the standing party member lowest on HP (`DealtHit.HealedOwnerId`), or with nobody hurt
+  adds a poison stack to the monster in front (`Delve.Poison`; `DungeonRun.TickPoison` does its damage every
+  tick, raising `MonsterPoisoned`, and a poison kill is a kill but scores nothing); the Wizard's fast answer splashes
+  every other monster in the room (`DealtHit.Splashes`); the Pugilist is the only class with a combo
+  (`DealtHit.Combo`, `ComboCount`); the Warlock's patron decides once per question (`PlanReveal`, when the hourglass
+  turns over) whether to show the answer when the hourglass is down to `WarlockRevealSecondsLeft`
+  (`DungeonRun.RevealsDue`, raising `PatronRevealed`; the snapshot sends `QuestionView.Revealed` to that screen
+  only), and any answer after `WarlockSlowSeconds` costs `WarlockSlowDamage` HP (`PatronPrice`, never downing
+  them); the Ranger's screen gets `QuestionView.PeekFromMs`, `RangerPeekSeconds` before the beat ends (only what
+  it shows changes: presses before the question is up are ignored as always). A hero's key is its class name
+  (`Heroes.ClassOf`); a kiosk game plays the default, the Tank.
 - A wrong answer, or the adventurer's hourglass running out (`Tick`), is `DungeonRun.TakeHit`. A timeout
   is recorded as a `GivenAnswer` with `TimedOut` (no press) and the question moves on.
 - At 0 HP an adventurer is downed: their stream is locked out, then they get up at full HP. On their own
@@ -121,22 +143,47 @@ The rules:
   `PartyComboSeconds`, the hit that completes it does `PartyComboBonus` more damage
   (`DealtHit.PartyCombo`). Then everyone needs a fresh right answer for the next one.
 - The hourglass only runs while their buttons work: it stops during a lockout and restarts after.
-- **The clock.** Groups play a fixed round of `MatchSeconds`, so everyone starts and ends together. A
-  solo game (one player in the match) runs on an arcade clock: Playing starts at `SoloStartSeconds`,
-  and every kill adds time (`DungeonRun.SecondsEarnedBy`: `SoloSecondsPerKill`, or `SoloSecondsPerBoss`
-  for a boss). `MatchEngine` moves `PhaseEndsAt` back, never past `SoloMaxSeconds` after Playing
-  started (the hard cap). `MatchEngine.RoundSeconds` is the starting length, `HasSoloClock` says which
-  clock it is; the snapshot carries both (`MatchSeconds`, `SoloClock`), and screens pop "+10s" when
-  the end time moves.
-- **Continue?** When a solo clock runs out, the match goes to `MatchPhase.Continue` for
-  `SoloContinueCountdownSeconds` instead of Results. `MatchEngine.Continue(now)` (a swipe) goes back
-  to Playing for `SoloContinueSeconds`, same floor, same HP, the same question shown again; no swipe
-  and the countdown runs into Results. The hard cap counts every stretch of play, so a continue is
-  only offered while a whole one still fits. `MatchHost.ContinueAtStation` is what the station card
-  readers will call; until they exist it's `POST /api/dev/continue/{stationId}` (the dev buttons page)
-  or the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and
-  continue numbers are Operator-screen rules (`GameRulesService`).
-- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal (solo only). Each
+- **The clock.** Every Dungeon game, solo or group, runs on an arcade clock, one per match: a paid session
+  starts at `ClockStartSeconds` and every kill adds time (`DungeonRun.SecondsEarnedBy`: `SecondsPerKill`, or
+  `SecondsPerBoss` for a boss; a Wizard's splash kills count), so the better they play, the longer they play.
+  `MatchEngine` moves `PhaseEndsAt` back, with no cap: a session lasts until the clock runs out. Time per kill
+  is scaled two ways: a party faces monsters with `PartyHpPerMember` more HP per extra member
+  (`DungeonRun.HpScaleFor`, applied by `Delve`), so its kills earn `HpScaleFor(n) / n` of the time; and parties
+  racing on one clock each earn their share of it (divided by the number of parties). The defaults aim at 3-4
+  minutes for an average player, about two bosses; `DungeonPacingTests` plays simulated games on the shipped
+  `config/dungeon.json` to keep it there (run it after changing the content or the clock). `MatchEngine.RoundSeconds`
+  is the starting length, `EarnsTime` says it's the arcade clock (Classic plays a fixed `MatchSeconds`); the
+  snapshot carries both (`MatchSeconds`, `EarnsTime`), and screens pop "+10s" when the end time moves.
+- **Continue?** When the clock runs out, the match goes to `MatchPhase.Continue` for `ContinueCountdownSeconds`
+  instead of Results. `MatchEngine.Continue(now)` (a card swipe at any station in the match: a second paid
+  session) goes back to Playing for everyone on a fresh `ContinueSeconds` clock, same floor, same HP, the same
+  question shown again; no swipe and the countdown runs into Results. Each continue is a session of its own, so
+  there's no limit on how many. `MatchHost.ContinueAtStation` is what the station
+  card readers call (`POST /api/stations/{id}/swipe`), as does `POST /api/dev/continue/{stationId}` (the dev buttons
+  page) and the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and continue
+  numbers are Operator-screen rules (`GameRulesService`).
+- **Floors made up per match** (`DungeonPlan`). `config/dungeon.json` is loaded as a plan; a floor written with
+  `RoomCount`, `RoomHp`, `Pool` and `Boss` is laid out fresh for each match by `DungeonPlan.Build` (`MatchHost`
+  calls it per match, so every party in a match fights the same rooms): `RoomCount` rooms, each filled at random
+  from the pool to about `RoomHp` (a monster that would take the room more than a quarter over isn't picked, up to
+  `MaxPack` monsters), then the boss's room. The result is a plain `DungeonMap`; floors written out room by room
+  still work.
+- **Bosses.** A made-up floor ends in its boss's room. The kill that empties the room before it is marked
+  `DealtHit.BossAhead`: the beat is `boss` (the boss's entrance, with `FloorBeatSeconds`), the room hears the boss
+  sound and the main screen shows its banner. (A floor cleared, `FloorCleared`, is the boss's own death, which leads
+  to the next floor.) Against a boss each adventurer's questions go round a **charge cycle** of `BossChargeSteps`
+  (`Adventurer.ChargeAgainst` / `ChargeUp`, per adventurer, since each has their own questions): its hits build from
+  `BossWeakHit` to normal (`DungeonSettings.BossHitAt`), and on the last step, full charge, a miss or a timeout takes
+  `BossChargedHit` of its damage (`TakenHit.Charged`) while a right answer staggers it for `StaggerBonus` more
+  (`DealtHit.Staggered`). Any answer then starts the cycle over. The snapshot carries the step for the question now
+  (`DelveView.BossCharge`, of `BossChargeSteps`; 0 steps = not fighting a boss) so the screens can warn of the blow.
+- **Each floor's questions.** A floor's `Questions` weights (`{ "Easy": 80, "Medium": 20 }`) pick each next
+  question's difficulty (`DungeonRun.NextDifficulty`, by the adventurer's floor); `QuestionStream.Record` takes it
+  and gives the first question of that difficulty not yet asked (any, if none is left), and `QuestionStream.Prefer`
+  picks the first question. Harder questions also hit harder (`DungeonSettings.DamageFor`), so a deeper floor's
+  tougher monsters come with bigger blows. Without weights the match's chosen difficulty comes first, as in Classic
+  (the kiosk's difficulty only matters there now).
+- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal. Each
   adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (a boss
   always) and every `PowerUpStreak` right answers in a row earn one, only with empty hands
   (`DungeonRun.FindPowerUp`; it's recorded on the hit as `DealtHit.Found`). The action button (the fifth
@@ -146,7 +193,7 @@ The rules:
   then it starts over); a 50/50 hides two wrong answers of the current question, which the snapshot
   sends as `QuestionView.Hidden` (wrong ones only) and presses on them are ignored; a Shield blocks the
   next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
-  to a solo clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
+  to the clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
 - **The arcade lobby** (`Core/Arcade`). Games start at the stations: `Lobby` (one per room) is every
   station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Photo, Game, Category, Waiting, and
@@ -233,7 +280,7 @@ The rules:
   strike, and your monster flinches (`showIdle`'s `foeFlinch`). A new `lastTaken` makes them reel, and
   `downedUntilMs` keeps them on the floor. A rival's moment in the caption (`DungeonFeed.showing` with
   `rival`) pops their hero up beside your monster, cheering. None of it is a beat: it's timed from when the
-  screen saw it and never holds up your question. `/dev/battle3d?team=barbarian,mage` and `?cameo` preview it.
+  screen saw it and never holds up your question. `/dev/battle3d?team=pugilist,wizard` and `?cameo` preview it.
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
   `PhotoDeclined`, `PhotoTaken`, and from `Tick`: `QuestionShown` when a battle beat ends and `PhotoCountdown`
   (alongside the usual `AnswerGiven`).
@@ -380,6 +427,17 @@ function render(state) { /* pick a view from state.match.phase and fill it in */
 Answer colors (A red, B blue, C yellow, D green) match the physical button pads and live in
 `css/screens.css`.
 
+**Station screens are portrait only, 9:16** (a standard monitor stood on its side, 1080 x 1920).
+`/display/player/{n}` serves `screens/portrait-frame.html`, which shows the real page
+(`/display/player/{n}/screen`, same query) in an iframe of exactly that shape, as big as the window
+allows, with black bars around it (`js/portrait-frame.js`). Inside the frame `vw`/`vh`/`vmin` and
+`window.innerWidth` are the frame's, so the station CSS and the 3D stage work unchanged and always lay out
+as they will at the venue, whatever monitor a developer tests on. That's why it's a frame and not CSS: the
+station styles use viewport units throughout, and those always measure the window. `/dev/battle` and
+`/dev/battle3d` use the same frame. Two things follow: a link that should leave the station page needs
+`target="_top"`, and the https switch for cameras moves the whole page (`HeroCamera.goSecure`), since a
+framed page only counts as secure when the page around it is. Write station CSS for portrait only.
+
 Dungeon screens: `js/dungeon-view.js` draws the main screen's lanes and hands the station's question view
 to `js/dungeon-encounter.js` (`css/dungeon-encounter.css`), laid out like the design lead's example
 (`docs/design/station-example.png`): the monster's nameplate and HP, the question scroll hanging from it,
@@ -396,6 +454,19 @@ elsewhere are kept with their start time (`DungeonView.effect`), so a redraw hal
 restarts or cuts them. `/dev/battle` plays
 every beat on a loop with made-up data (`?kind=boss&at=2100` freezes a moment) for tuning the animations.
 
+Packs and hero classes on the 2D screens (all drawn from the snapshot, no rules): a pack's waiting monsters
+(`Delve.Foes` after the first) stand small behind the one in front in a `.dg-pack` (the 3D scene hides it and
+draws its own), and their strip of mini HP bars (`DungeonView.packStrip`) shows in both versions, under the
+nameplate on the station and in the corner of a main-screen lane. The trail groups a pack's monsters as one
+room and greys out the room's first (room's monsters - `foes.length`) slots. Poisoned monsters get a green
+skull badge and a green HP bar everywhere. In the beat, each class's extra is a note in a fixed spot under the
+damage number, so it reads over the 3D scene too (`DungeonBattle.notes`: a Wizard's SPLASH, a Healer's heal or
+POISONED, a Warlock's patron's price, a Tank's ARMOUR); a heal also flashes the healed member's HP bar, and
+reaches a healed teammate's screen as a feed caption. The Pugilist's stamp counts `ComboCount`. A Warlock's
+revealed answer glows purple and the Host's line becomes the patron's whisper. A Ranger's next question slides
+in over the end of the beat from `PeekFromMs` (`DungeonBattle.peek`, timed by `--p0`; `player-screen.js` also
+redraws then), greyed until `ShownAtMs`. The plate shows the player's class (`DungeonView.classBadge`).
+
 The fight in 3D (the default; `?view=2d` on a station, or a PC without WebGL 2, gets the CSS version; preview at
 `/dev/battle3d`): the art direction is
 3D models that read like 2D paintings (Hearthstone-like). `js/battle3d/` draws the room, the fighters and
@@ -405,11 +476,19 @@ station's HTML. The HTML marks where it goes with `data-stage`: `fight` on the b
 The words, damage number, flash, HP bar, the Host's line and the floor curtain stay HTML, so both versions
 share them; `css/battle3d.css` hides what the 3D replaces. One file per job: `models.js` (which model and
 clips each Sprite key uses; a key with no model stands in the room as its flat picture), `stage.js`
-(renderer, camera, lights, room), `actor.js` (one fighter), `effects.js`, `beats.js` (the timelines) and
-`battle3d.js` (the entry point). Like the CSS version, every frame is worked out from the time since the
-beat's server start (clips are set to a time, never left playing), so a redraw can't put it out of step;
-`beats.js` keeps its moments in step with the table at the top of `css/dungeon-battle.css`. The models are
-CC0 placeholders (`media/models/CREDITS.md`) until the real art exists.
+(renderer, camera, lights, room), `actor.js` (one fighter), `pack.js` (the monsters waiting in the room:
+their spots, gliding up one when one ahead leaves, the next stepping up to the front after a kill),
+`effects.js`, `beats.js` (the timelines) and `battle3d.js` (the entry point). Like the CSS version, every frame
+is worked out from the time since the beat's server start (clips are set to a time, never left playing), so a
+redraw can't put it out of step; `beats.js` keeps its moments in step with the table at the top of
+`css/dungeon-battle.css`. During a beat the snapshot is already after the hit, so `packView` (battle3d.js)
+works the pack back to how it stood when the blow landed. The hero classes show in 3D too: a Wizard's
+splash sends bolts to every waiting monster (landing at the 190 ms impact), poisoned monsters glow green with
+bubbles by their stacks, a heal sparkles on whoever it healed (you, or a teammate in `others.js`), the
+Warlock's price drains purple from the hero, a Tank blocks (`Block_Hit`) instead of reeling, and the
+Pugilist's swing grows with `comboCount`. Moments outside a beat (a poison kill, a teammate's heal) are
+timed from when the screen saw them, as `others.js` does. The models are CC0 placeholders
+(`media/models/CREDITS.md`) until the real art exists.
 
 ### Themes
 

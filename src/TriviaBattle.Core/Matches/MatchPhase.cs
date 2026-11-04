@@ -5,7 +5,7 @@ namespace TriviaBattle.Core.Matches;
 /// <code>
 /// Intro -> Playing (the match clock runs; everyone answers at their own pace) -> Results -> Finished
 ///                    |                ^
-///                    +-> Continue? ---+   (solo Dungeon games only: a swipe goes back to Playing)
+///                    +-> Continue? ---+   (Dungeon games: a swipe, a second paid session, goes back to Playing)
 /// </code>
 /// Before a match exists, the room is in "Lobby" (kiosk setup). That isn't a match phase
 /// because there is no match yet; the server reports it separately.
@@ -22,8 +22,8 @@ public enum MatchPhase
     Playing,
 
     /// <summary>
-    /// Solo Dungeon games only: the arcade clock ran out. A short countdown runs; a continue (a swipe)
-    /// goes back to Playing with more time, on the same floor; otherwise Results. Never in group games.
+    /// Dungeon games: the arcade clock ran out. A short countdown runs; a continue (a swipe at any station)
+    /// goes back to Playing on a fresh session clock, on the same floor; otherwise Results.
     /// </summary>
     Continue,
 

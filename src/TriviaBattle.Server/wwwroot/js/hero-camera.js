@@ -78,10 +78,13 @@ const HeroCamera = {
         try {
             const { httpsPort } = await (await fetch('/api/display')).json();
             if (!httpsPort) return;
-            const origin = `https://${location.hostname}:${httpsPort}`;
-            HeroCamera.secureUrl = origin + location.pathname + location.search;
+            // The station page sits in a 9:16 frame (js/portrait-frame.js). The frame's page must switch too:
+            // a page counts as secure only when the page around it is.
+            const page = window.top.location;
+            const origin = `https://${page.hostname}:${httpsPort}`;
+            HeroCamera.secureUrl = origin + page.pathname + page.search;
             await fetch(`${origin}/api/display`, { mode: 'no-cors' }); // fails until this browser trusts the address
-            location.replace(HeroCamera.secureUrl);
+            page.replace(HeroCamera.secureUrl);
         } catch {
             if (HeroCamera.secureUrl) HeroCamera.showSecureOffer(); // not trusted yet (or not reachable)
         }
@@ -95,6 +98,7 @@ const HeroCamera = {
         const bar = document.createElement('a');
         bar.className = 'photo-secure';
         bar.href = HeroCamera.secureUrl;
+        bar.target = '_top'; // the whole page, frame and all (see goSecure)
         bar.innerHTML = `<b>${Theme.text('dungeon.photoSecureButton')}</b><small>${Theme.text('dungeon.photoSecureSteps')}</small>`;
         document.body.appendChild(bar);
     },

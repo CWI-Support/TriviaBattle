@@ -5,12 +5,20 @@
 //   hit     your knight charges in and strikes (bigger for a crit, a combo or a party combo)
 //   kill    the strike, then the monster flashes and bursts apart: SLAIN!
 //   floor   the kill, then the screen goes dark: down the stairs to the next floor
-//   boss    the kill, then WARNING!: the floor's boss slams down with its name card
+//   boss    the kill emptied the room before the boss's: WARNING!, the boss slams down with its name card
 //   hurt    the monster lunges at you and claws you (a wrong answer, or too slow), then the right
-//           answer flips over like a card. A Shield blocks it: BLOCKED!, no damage
+//           answer flips over like a card. A Shield blocks it: BLOCKED!, no damage. A boss at full
+//           charge (taken.charged) lands its big blow: CRUSHING BLOW!, a heavier slam, shake and flash
+// A right answer at a boss's full charge (hit.staggered) gets STAGGERED!, and the boss reels.
 // A Fireball hit gets its own stamp, and a power-up found with the hit (dropped, or earned by the
 // streak) is held up as LOOT!.
 //   downed  the same, and your knight falls
+//
+// In a pack the monsters waiting their turn stand small behind the one fighting (.dg-pack; the 3D draws
+// its own), and their strip of mini HP bars sits under the big bar. The hero classes add notes in a fixed
+// spot under the damage number, so they read the same over the 3D scene: a Wizard's SPLASH (the pack
+// flinches and its bars drain), a Healer's heal or POISONED x3, a Warlock's patron's price, a Tank's
+// ARMOUR. A Ranger sees the next question slide in over the end of the fight (peek), greyed until it's up.
 //
 // Every animation is timed from the beat's start on the server clock: the scene carries
 // --t0 (minus how long ago it started) and each animation's delay is calc(var(--t0) + its offset).
@@ -44,7 +52,10 @@ const DungeonBattle = {
             hit?.partyCombo ? 'is-party-combo' : '',
             hit?.isBoss ? 'is-boss-foe' : '',
             hit?.fireball ? 'is-fireball' : '',
+            hit?.splashes?.length ? 'is-splash' : '',
             taken?.blocked ? 'is-blocked' : '',
+            taken?.charged && !taken.blocked ? 'is-charged' : '',  // a boss's full-charge blow
+            hit?.staggered ? 'is-staggered' : '',                  // a right answer at a boss's full charge
         ].join(' ');
 
         // The monster in the fight: the one you hit (it may already be dead), or the one hitting you.
@@ -52,6 +63,9 @@ const DungeonBattle = {
             ? { sprite: hit.monsterSprite, name: hit.monsterName, isBoss: hit.isBoss, max: hit.monsterMaxHp, after: hit.monsterHpLeft,
                 before: Math.min(hit.monsterMaxHp, hit.monsterHpLeft + hit.damage) }
             : { sprite: taken?.monsterSprite || delve.monster.sprite, name: taken?.monsterName || delve.monster.name, isBoss: delve.monster.isBoss };
+        // Still alive, it's the one in front: its poison (this hit's, if a Healer just poisoned it) shows on its bar.
+        const foePoison = hit && !hit.killed ? delve.monster.poisonStacks || hit.poisonStacks || 0 : 0;
+        const pack = DungeonBattle.pack(delve, hit);
 
         const feedback = DungeonView.feedback(delve, you.lastAnswer, `${match.matchId}:${you.stationId}`);
 
@@ -59,24 +73,110 @@ const DungeonBattle = {
             <div class="${classes}" data-stage="fight" style="--t0: ${Math.round(beat.startedAtMs - serverNow)}ms; --t1: ${Math.round(beat.endsAtMs - serverNow)}ms">
                 ${DungeonBattle.room()}
                 <div class="dg-arena">
+                    ${DungeonView.packSprites(pack)}
                     <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}<i class="dg-shadow"></i></div>
                     <div class="dg-actor is-foe ${foe.isBoss ? 'is-boss' : ''}">${PixelSprites.html(foe.sprite, 'dg-actor-sprite')}<i class="dg-shadow"></i></div>
                     ${hurt ? DungeonBattle.claws() : '<div class="dg-fx-slash"></div>'}
+                    ${hit?.staggered && !hit.killed ? '<div class="dg-fx-daze"><i></i><i></i><i></i></div>' : ''}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}
                     ${beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.sparks(22, 'is-death') : ''}
-                    ${taken?.blocked ? '' : `<div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo || hit?.fireball ? '!' : ''}</div>`}
+                    ${taken?.blocked ? '' : `<div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || taken?.charged ? '!' : ''}</div>`}
                     ${DungeonBattle.stamps(beat, hit, taken, delve, seed)}
+                    ${DungeonBattle.notes(hit, taken, delve, you, seed)}
                     ${hurt ? DungeonBattle.reveal(you.lastAnswer, seed) : ''}
                     ${hit?.found ? DungeonBattle.loot(hit.found, beat.kind, seed) : ''}
                 </div>
                 <div class="dg-battle-bars">
                     ${hit
-                        ? DungeonBattle.bar(foe.name, foe.before, foe.after, foe.max, 'for-foe')
+                        ? DungeonBattle.bar(foe.name, foe.before, foe.after, foe.max, `for-foe ${foePoison ? 'is-poisoned' : ''}`, DungeonView.poisonBadge(foePoison))
                         : DungeonBattle.bar(you.name, Math.min(delve.maxHp, (taken?.hpLeft ?? delve.hp) + (taken?.damage || 0)), taken?.hpLeft ?? delve.hp, delve.maxHp, 'for-hero')}
+                    ${DungeonView.packStrip(pack, 'is-battle')}
                 </div>
                 <div class="dg-battle-line dg-feedback ${feedback.tone}">${feedback.html}</div>
                 <div class="dg-battle-flash"></div>
                 ${beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.curtain(beat.kind, delve, seed) : ''}
+                ${DungeonBattle.peek(you.question, serverNow, seed)}
+            </div>`;
+    },
+
+    /**
+     * The monsters waiting in the room while the beat plays, for the small sprites and the strip. After a
+     * Wizard's splash: the ones it hit, as they were (before) and are now (some may have died). Otherwise
+     * the room's others: behind the one in front, or after a kill, the ones still standing in that room
+     * (the next is already in front in the snapshot; a new room's monsters don't belong in this fight).
+     */
+    pack(delve, hit) {
+        const foes = delve.foes || [];
+        if (hit?.splashes?.length) {
+            // The survivors are in the snapshot in the same order as the splashes, so their max HP and poison come from there.
+            const alive = hit.killed ? foes.slice() : foes.slice(1);
+            return hit.splashes.map(s => {
+                const foe = s.killed ? null : alive.shift();
+                return {
+                    name: s.monsterName, sprite: s.monsterSprite, isBoss: !!foe?.isBoss, killed: s.killed,
+                    hp: s.hpLeft, before: s.hpLeft + s.damage, maxHp: foe?.maxHp ?? s.hpLeft + s.damage, poisonStacks: foe?.poisonStacks || 0,
+                    cssClass: s.killed ? 'is-splash-killed' : 'is-splashed',
+                };
+            });
+        }
+        if (!hit?.killed) return foes.slice(1);
+        return DungeonView.beatenInRoom(delve) > 0 ? foes : [];
+    },
+
+    /**
+     * What the hero's class added to this blow, in a fixed spot under the damage number (so it reads over
+     * the 3D scene as well), each timed after the blow (--at): a Wizard's splash on the pack, a Healer's heal
+     * or poison, the price a Warlock's patron took, a Tank's armour softening the hit.
+     */
+    notes(hit, taken, delve, you, seed) {
+        const notes = [];
+        const note = (cssClass, at, html) => notes.push(`<div class="dg-note ${cssClass}" style="--at: ${at}ms">${html}</div>`);
+
+        if (hit?.splashes?.length) {
+            const numbers = hit.splashes.map(s => `<b>${s.damage}</b>${s.killed ? DungeonView.icon('skull') : ''}`).join(' &middot; ');
+            note('is-splash', 260, `${Theme.text('dungeon.splash')} ${numbers}`);
+        }
+        if (hit?.healedOwnerId) {
+            const self = hit.healedOwnerId === you.stationId || delve.party.length < 2;
+            const name = delve.party.find(m => m.ownerId === hit.healedOwnerId)?.name || '';
+            note('is-heal', 420, self
+                ? Theme.text('dungeon.healedSelf', { amount: hit.healed })
+                : Theme.text('dungeon.healedTeammate', { name, amount: hit.healed }));
+        }
+        if (hit?.poisonStacks)
+            note('is-poison', 420, Theme.text('dungeon.poisoned', { stacks: hit.poisonStacks }, seed));
+        const price = hit?.patronPrice || taken?.patronPrice;
+        if (price)
+            note('is-patron', 560, Theme.text('dungeon.patronPrice', { amount: price }, seed));
+        if (taken && !taken.blocked && delve.heroClass === 'tank')
+            note('is-armour', 300, `${DungeonPowerUps.icon('Shield')}${Theme.text('dungeon.armour')}`);
+
+        return notes.length ? `<div class="dg-beat-notes">${notes.join('')}</div>` : '';
+    },
+
+    /**
+     * A Ranger sees the next question early: from q.peekFromMs it slides in over the bottom of the fight
+     * (timed by --p0, so no redraw is needed for it to appear), its answers greyed with "Press in 1" until
+     * the question is up (q.shownAtMs), when the beat ends and the question view takes over.
+     */
+    peek(q, serverNow, seed) {
+        if (!q?.peekFromMs || !q.shownAtMs) return '';
+        const answers = q.answers.map((text, i) => {
+            const letter = UI.ANSWER_LETTERS[i];
+            return `
+                <div class="dg-answer is-locked ${q.hidden?.includes(i) ? 'is-eliminated' : ''}" data-letter="${letter}">
+                    <span class="dg-rune">${letter}</span>
+                    <span class="dg-answer-text">${UI.escape(text)}</span>
+                </div>`;
+        }).join('');
+        return `
+            <div class="dg-peek" style="--p0: ${Math.round(q.peekFromMs - serverNow)}ms">
+                <div class="dg-peek-label">
+                    <span>${Theme.text('dungeon.peekLabel', {}, seed)}</span>
+                    <span class="dg-peek-wait">${Theme.text('dungeon.peekWait', { seconds: Theme.raw(`<span data-ends-at="${q.shownAtMs}"></span>`) })}</span>
+                </div>
+                <div class="dg-scroll dg-peek-question">${UI.escape(q.text)}</div>
+                <div class="dg-peek-answers">${answers}</div>
             </div>`;
     },
 
@@ -111,7 +211,8 @@ const DungeonBattle = {
 
     /**
      * The words slammed onto the fight. Early: what kind of hit (CRITICAL!, COMBO x4, PARTY COMBO!,
-     * someone revived) or what went wrong (WRONG!, TOO SLOW!). Late: SLAIN! or DOWN!.
+     * someone revived, a boss STAGGERED!) or what went wrong (WRONG!, TOO SLOW!, a boss's CRUSHING BLOW!).
+     * Late: SLAIN! or DOWN!.
      */
     stamps(beat, hit, taken, delve, seed) {
         let early = '';
@@ -119,10 +220,12 @@ const DungeonBattle = {
             const name = delve.party.find(m => m.ownerId === hit.revivedOwnerId)?.name || '';
             early = Theme.text('dungeon.stampRevived', { name }, seed);
         }
+        else if (hit?.staggered) early = Theme.text('dungeon.stampStaggered', {}, seed);
         else if (hit?.fireball) early = Theme.text('dungeon.stampFireball', {}, seed);
         else if (taken?.blocked) early = Theme.text('dungeon.stampBlocked', {}, seed);
+        else if (taken?.charged) early = Theme.text('dungeon.stampCharged', {}, seed);
         else if (hit?.partyCombo) early = Theme.text('dungeon.partyComboShort');
-        else if (hit?.combo) early = Theme.text('dungeon.stampCombo', { streak: delve.streak });
+        else if (hit?.combo) early = Theme.text('dungeon.stampCombo', { streak: hit.comboCount || delve.streak }); // a Pugilist's
         else if (hit?.crit) early = Theme.text('dungeon.stampCrit', {}, seed);
         else if (taken) early = Theme.text(taken.reason === 'TooSlow' ? 'dungeon.stampSlow' : 'dungeon.stampWrong', {}, seed);
 
@@ -165,12 +268,12 @@ const DungeonBattle = {
             </div>`;
     },
 
-    /** A big HP bar under the fight that drains from before to after as the hit lands. */
-    bar(name, before, after, max, cssClass) {
+    /** A big HP bar under the fight that drains from before to after as the hit lands. badge: HTML after the name (poison). */
+    bar(name, before, after, max, cssClass, badge = '') {
         const percent = value => (max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0).toFixed(1);
         return `
             <div class="dg-battle-bar ${cssClass}">
-                <div class="dg-battle-bar-name">${UI.escape(name)}</div>
+                <div class="dg-battle-bar-name">${UI.escape(name)}${badge}</div>
                 <div class="dg-bar">
                     <div class="dg-bar-ghost" style="width: ${percent(before)}%"></div>
                     <div class="dg-bar-fill dg-drain" style="--from: ${percent(before)}%; --to: ${percent(after)}%"></div>
@@ -180,8 +283,9 @@ const DungeonBattle = {
     },
 
     /**
-     * Floor cleared: the screen goes dark while you head down the stairs ("FLOOR 3", the Depth's name),
-     * or turns red for a boss (WARNING! and its name card). It stays up until the beat ends; the next
+     * Floor cleared: the screen goes dark while you head down the stairs ("FLOOR 3", the Depth's name).
+     * The boss's room next (kind 'boss': the boss waits in the last room of its floor, so no new floor is
+     * claimed): it turns red, WARNING! and the boss's name card. delve.monster is already the boss. It stays up until the beat ends; the next
      * monster then drops into the question screen's strip (see is-new-foe in css/dungeon.css).
      */
     curtain(kind, delve, seed) {

@@ -6,11 +6,16 @@
 //   - Rivals (the other racers, or the other team) fight their own monsters, so they only drop in for a
 //     moment: while the caption says one overtook you or slew a boss (js/dungeon-feed.js), their hero
 //     pops up beside your monster and cheers.
+//   - Heals: a Healer's heal sparkles on the hero it healed: a teammate here, healed by your beat or by
+//     another teammate's blow, or you, healed by a teammate (update says when, for battle3d.js to draw).
+//     A Tank teammate takes its hits on the shield.
 // None of this is a beat: their moments are timed from when this screen saw them, play alongside your own
-// fight and never hold up your question. Nothing here is a rule; it only shows what the snapshot says.
+// fight and never hold up your question (a heal from your own beat is timed from that beat, like the beat).
+// Nothing here is a rule; it only shows what the snapshot says.
 
 import { Actor } from './actor.js';
-import { mix, easeOut, easeInOut, pulse, kick } from './beats.js';
+import { HealSparkle } from './effects.js';
+import { mix, easeOut, easeInOut, pulse, kick, HEAL_AT } from './beats.js';
 
 // Where teammates stand, in joining order: behind and beside your hero. x is along the floor; back is how
 // far behind the slanted line the fight is staged on (your hero and the monster stand on it); reach is how
@@ -22,6 +27,7 @@ const RIVAL_SIDE = 0.7;    // a rival's cameo: this far out from your monster's 
 const RIVAL_BACK = 1.0;    // a step behind it (heroes are taller than most monsters: nearer, they'd fill the picture),
 const RIVAL_FACING = -0.4; // turned to the camera
 const CAMEO_MS = 2600;     // as long as the caption shows (DungeonFeed.SHOW_MS)
+const NOTHING = { flinch: 0, youHealedAt: null };
 
 export class Others {
     /** zAt: the fight's slanted line (x to z); homes: where your hero and the monster stand (x); facing: how heroes turn. */
@@ -30,15 +36,16 @@ export class Others {
         this.zAt = zAt;
         this.homes = homes;
         this.facing = facing;
-        this.allies = new Map();  // stationId -> { slot, actor, dealt, taken, struckAt, swings, hurtAt, upAt, wasDown }
+        this.allies = new Map();  // stationId -> { slot, actor, sparkle, dealt, taken, struckAt, swings, healed, hurtAt, upAt, wasDown }
         this.cameo = null;        // { key, stationId, from, actor }
         this.matchId = null;
     }
 
     /**
      * Every frame. view: what Battle3D.show was given ({ match, you, colors }); now: the server clock (ms);
-     * foe: your monster (null while it loads). Returns how hard a teammate's blow is landing on the monster
-     * right now (0..1), for its idle pose to flinch.
+     * foe: your monster (null while it loads). Returns { flinch: how hard a teammate's blow is landing on
+     * the monster right now (0..1), for its idle pose to flinch; youHealedAt: when a teammate's heal landed
+     * on you (server ms, or null) }.
      */
     update(view, now, foe) {
         const match = view?.match;
@@ -47,7 +54,7 @@ export class Others {
             this.clear();
             this.matchId = match?.matchId ?? null;
         }
-        if (!match || !you) return 0;
+        if (!match || !you) return NOTHING;
 
         // Teammates with a delve of their own (in 2v2 Group the team is one adventurer: nobody else to show).
         const teammates = match.players
@@ -64,8 +71,35 @@ export class Others {
             flinch = Math.max(flinch, this.pose(ally, p, now, foe));
             wearFaceOf(ally.actor, match, p.stationId);
         });
+        const youHealedAt = this.showHeals(you, now);
         this.showCameo(view, foe);
-        return flinch;
+        return { flinch, youHealedAt };
+    }
+
+    /**
+     * Every heal that could be sparkling now: your own beat's (it lands HEAL_AT into the beat, as on your
+     * hero, beats.js) and each teammate's last blow (it lands with the blow). Each teammate here sparkles
+     * with the latest one on them; the latest one on you is handed back to battle3d.js.
+     */
+    showHeals(you, now) {
+        const byTeammates = [...this.allies.values()]
+            .filter(ally => ally.healed && ally.struckAt !== null)
+            .map(ally => ({ target: ally.healed, landsAt: ally.struckAt + STRIKE_AT }));
+        const all = [...byTeammates];
+        const beat = you.beat;
+        const hurt = beat?.kind === 'hurt' || beat?.kind === 'downed';
+        const yourHeal = you.delve?.lastDealt?.healedOwnerId;
+        if (beat && !hurt && yourHeal && now >= beat.startedAtMs && now < beat.endsAtMs)
+            all.push({ target: yourHeal, landsAt: beat.startedAtMs + HEAL_AT });
+
+        for (const [stationId, ally] of this.allies) {
+            if (!ally.actor) continue;
+            const at = latest(all, [stationId]);
+            if (at === null) ally.sparkle.hide();
+            else ally.sparkle.show(ally.actor.chest(), (now - at) / 1000);
+        }
+        // Your own beat's heal on yourself is drawn by the beat (beats.js); only a teammate's is handed back.
+        return latest(byTeammates, [you.stationId, you.teamId]);
     }
 
     add(player, slot, color) {
@@ -76,12 +110,14 @@ export class Others {
             taken: player.delve.lastTaken?.number || 0,
             struckAt: null,
             swings: 0,
+            healed: null,   // who their last blow healed (a Healer's fast answer), by answer owner id
+            sparkle: new HealSparkle(this.scene),
             hurtAt: null,
             upAt: null,
             wasDown: false,
         };
         this.allies.set(player.stationId, ally);
-        Actor.create(player.hero || 'knight', this.facing, color).then(actor => {
+        Actor.create(player.hero || 'tank', this.facing, color).then(actor => {
             if (this.allies.get(player.stationId) !== ally) return actor.dispose(this.scene); // gone meanwhile
             actor.zAt = x => this.zAt(x) - slot.back;
             actor.root.position.set(slot.x, 0, actor.zAt(slot.x));
@@ -92,7 +128,9 @@ export class Others {
     }
 
     remove(stationId) {
-        this.allies.get(stationId)?.actor?.dispose(this.scene);
+        const ally = this.allies.get(stationId);
+        ally?.actor?.dispose(this.scene);
+        ally?.sparkle.dispose();
         this.allies.delete(stationId);
     }
 
@@ -102,6 +140,7 @@ export class Others {
         if (dealt > ally.dealt) {
             ally.struckAt = now;
             ally.swings++;
+            ally.healed = player.delve.lastDealt?.healedOwnerId ?? null;
         }
         ally.dealt = dealt;
         const taken = player.delve.lastTaken?.number || 0;
@@ -144,13 +183,14 @@ export class Others {
             return pulse(s - STRIKE_AT, 200);
         }
 
-        // Hit: they reel back, flashing red.
+        // Hit: they reel back, flashing red (a Tank takes it on the shield, as yours does in its beat).
         const h = ally.hurtAt === null ? Infinity : now - ally.hurtAt;
-        const hurtMs = actor.duration(spec.hurt) * 1000;
+        const reel = player.hero === 'tank' && actor.has(spec.block) ? spec.block : spec.hurt;
+        const hurtMs = actor.duration(reel) * 1000;
         if (h < hurtMs + 200) {
             const clip = h < hurtMs
-                ? { clip: spec.hurt, time: h / 1000, from: idle, fade: Math.min(1, h / 60) }
-                : { ...idle, from: { clip: spec.hurt, time: hurtMs / 1000 }, fade: (h - hurtMs) / 200 };
+                ? { clip: reel, time: h / 1000, from: idle, fade: Math.min(1, h / 60) }
+                : { ...idle, from: { clip: reel, time: hurtMs / 1000 }, fade: (h - hurtMs) / 200 };
             actor.apply({ x: slot.x - 0.3 * kick(h, 60, 500), flash: pulse(h, 260), flashColor: 0xff2020, ...clip });
             return 0;
         }
@@ -184,7 +224,7 @@ export class Others {
 
     addCameo(key, moment, view) {
         const cameo = { key, actor: null };
-        const hero = view.match.players.find(p => p.stationId === moment.stationId)?.hero || 'knight';
+        const hero = view.match.players.find(p => p.stationId === moment.stationId)?.hero || 'tank';
         Actor.create(hero, RIVAL_FACING, view.colors?.[moment.stationId]).then(actor => {
             if (this.cameo !== cameo) return actor.dispose(this.scene); // its moment is over already
             actor.zAt = () => this.zAt(this.homes.foe) - RIVAL_BACK; // level with the monster, not on the slant
@@ -201,6 +241,12 @@ export class Others {
         this.cameo?.actor?.dispose(this.scene);
         this.cameo = null;
     }
+}
+
+/** When the latest of these heals on any of these answer owners lands (server ms), or null. */
+function latest(heals, ownerIds) {
+    const on = heals.filter(h => h.target && ownerIds.includes(h.target));
+    return on.length ? Math.max(...on.map(h => h.landsAt)) : null;
 }
 
 /** Their hero photo on their hero's face (js/hero-photo.js has it once loaded); their hero's own face without one. */

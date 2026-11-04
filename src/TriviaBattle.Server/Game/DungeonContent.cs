@@ -15,8 +15,11 @@ public static class DungeonContent
         AllowTrailingCommas = true,
     };
 
-    /// <summary>Reads and checks the file. A broken file stops the server at startup with the problem spelled out.</summary>
-    public static DungeonMap Load(string contentRoot)
+    /// <summary>
+    /// Reads and checks the file. A broken file stops the server at startup with the problem spelled out. Each
+    /// match lays out its own dungeon from the plan (<see cref="DungeonPlan.Build"/>), so made-up floors differ.
+    /// </summary>
+    public static DungeonPlan Load(string contentRoot)
     {
         var path = Path.Combine(contentRoot, FilePath);
         var file = JsonSerializer.Deserialize<DungeonFile>(File.ReadAllText(path), Json)
@@ -24,7 +27,7 @@ public static class DungeonContent
 
         try
         {
-            return new DungeonMap(file.Depths ?? [], file.Monsters ?? [], file.LoopHpBonus);
+            return new DungeonPlan(file.Depths ?? [], file.Monsters ?? [], file.LoopHpBonus, file.LoopDamageBonus);
         }
         catch (ArgumentException ex)
         {
@@ -32,5 +35,5 @@ public static class DungeonContent
         }
     }
 
-    private sealed record DungeonFile(double LoopHpBonus, List<DepthDef>? Depths, List<MonsterDef>? Monsters);
+    private sealed record DungeonFile(double LoopHpBonus, List<DepthDef>? Depths, List<MonsterDef>? Monsters, double LoopDamageBonus = 0);
 }

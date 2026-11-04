@@ -13,6 +13,7 @@
 .is-3d .dg-battle .dg-actor,
 .is-3d .dg-battle .dg-fx-slash,
 .is-3d .dg-battle .dg-fx-claws,
+.is-3d .dg-battle .dg-fx-daze,
 .is-3d .dg-battle .dg-sparks { display: none; }
 .is-3d .dg-battle .dg-arena { animation: none; }  /* the camera shakes instead */
 
@@ -21,3 +22,9 @@
 .is-3d .dg-stage .dg-room { display: none; }
 .is-3d .dg-stage .dg-monster { visibility: hidden; }
 .is-3d .dg-stage { background: transparent; }
+
+/* The monsters waiting their turn stand in the 3D room (js/battle3d/pack.js), in the fight and while a
+   question is up, so the 2D pack's pictures give way. visibility, not display, so the layout round it stays
+   put, and a child can still show (visibility: visible), like the pack's HP bars and splash numbers. */
+.is-3d .dg-battle .dg-pack,
+.is-3d .dg-stage .dg-pack { visibility: hidden; }

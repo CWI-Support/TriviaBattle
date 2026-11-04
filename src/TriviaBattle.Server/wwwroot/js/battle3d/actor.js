@@ -99,10 +99,13 @@ export class Actor {
     }
 
     /**
-     * Shows one moment. pose = { x, lift, tilt, squash, scale, visible, clip, time, from, fade, flash, flashColor }:
+     * Shows one moment. pose = { x, lift, tilt, squash, scale, visible, clip, time, from, fade, flash, flashColor, glow, glowColor }:
      *   clip/time    the animation and how far into it (seconds; loops for idle, holds the last frame otherwise)
      *   from/fade    the clip it's blending out of ({ clip, time }) and how far the blend has got (0..1)
      *   flash        0..1, how strongly it glows flashColor (hit, or hurt)
+     *   glow         0..1, a tint in glowColor under any flash (poison, the Warlock's patron)
+     * z follows x along the fight's slant when zAt is set (the hero and the monster in front); the waiting
+     * monsters (js/battle3d/pack.js) have none and set root.position.z themselves.
      */
     apply(pose) {
         this.root.visible = pose.visible !== false;
@@ -115,11 +118,14 @@ export class Actor {
         this.holder.scale.set(scale * (1 + squash), scale * (1 - squash), scale * (1 + squash));
         this.shadow.material.opacity = Math.max(0, 0.7 - (pose.lift || 0) * 0.3) * Math.min(1, scale);
 
-        const flash = pose.flash || 0;
+        // A flash (a hit) shows over a glow (poison's green, the patron's purple): whichever is stronger.
+        const flash = (pose.flash || 0) * 0.9;
+        const glow = pose.glow || 0;
+        const color = glow > flash ? pose.glowColor : (pose.flashColor || 0xffffff);
         for (const material of this.materials) {
             if (!material.emissive) continue;
-            material.emissive.set(pose.flashColor || 0xffffff);
-            material.emissiveIntensity = flash * 0.9;
+            material.emissive.set(color);
+            material.emissiveIntensity = Math.max(flash, glow);
         }
         if (this.mixer && pose.clip) this.pose(pose, this.model);
     }

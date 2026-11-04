@@ -6,7 +6,8 @@ using TriviaBattle.Core.Snapshots;
 namespace TriviaBattle.Tests.Dungeon;
 
 // Uses TestMatch.Dungeon: floor 1 = two rats (40 HP, hit for 10), floor 2 = a boss (60 HP, hits for 50).
-// Easy questions do 20 damage; an answer within 3 seconds crits (x1.5); 3 in a row is a combo (+50%).
+// Easy questions do 20 damage; an answer within 3 seconds crits (x1.5). Players are the plain hero
+// (TestMatch.PlainHero); each class's own powers are in HeroClassTests.
 // TestMatch.Press waits 1 second by default (a crit), so "slow" presses below wait 4.
 public class DungeonCombatTests
 {
@@ -46,7 +47,7 @@ public class DungeonCombatTests
     }
 
     [Fact]
-    public void Three_in_a_row_is_a_combo()
+    public void A_streak_is_no_combo_except_for_the_pugilist()
     {
         var match = Solo();
 
@@ -55,8 +56,8 @@ public class DungeonCombatTests
         match.Press("A1", 0, afterSeconds: 4);
 
         var hit = match.AdventurerOf("A1").LastDealt!;
-        Assert.True(hit.Combo);
-        Assert.Equal(30, hit.Damage);
+        Assert.False(hit.Combo);
+        Assert.Equal(20, hit.Damage);
     }
 
     [Fact]
@@ -163,7 +164,7 @@ public class DungeonCombatTests
     [Fact]
     public void In_2v2_Combined_teammates_hit_the_same_monster_with_their_own_HP()
     {
-        var match = new TestMatch(GameModeKind.TeamCombinedScore, new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300 });
+        var match = new TestMatch(GameModeKind.TeamCombinedScore, new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300, Dungeon = { PartyHpPerMember = 0 } });
         match.StartPlaying();
 
         match.Press("A1", 0, afterSeconds: 4); // Red: rat down to 20
@@ -182,7 +183,7 @@ public class DungeonCombatTests
     [Fact]
     public void The_monster_heals_only_when_the_whole_party_is_down()
     {
-        var settings = new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300 };
+        var settings = new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300, Dungeon = { PartyHpPerMember = 0 } };
         settings.Dungeon.AdventurerHp = 10;
         var match = new TestMatch(GameModeKind.TeamCombinedScore, settings);
         match.StartPlaying();
@@ -211,16 +212,20 @@ public class DungeonCombatTests
         Assert.Equal(100, delve.Hp);
         Assert.NotNull(delve.AttackAtMs);
         Assert.Equal(["Rat", "Rat", "Boss"], delve.Path.Select(s => s.Name));
-        var (noPath, noParty) = (Array.Empty<PathStepView>(), Array.Empty<PartyMemberView>());
-        Assert.Equal(delve with { Path = noPath, Party = noParty }, snapshot.Players[0].Delve! with { Path = noPath, Party = noParty });
+        Assert.Equal(["Rat"], delve.Foes.Select(f => f.Name)); // the room: just the one rat
+        Assert.Equal(TestMatch.PlainHero, delve.HeroClass);
+        var (noPath, noParty, noFoes) = (Array.Empty<PathStepView>(), Array.Empty<PartyMemberView>(), Array.Empty<MonsterView>());
+        Assert.Equal(delve with { Path = noPath, Party = noParty, Foes = noFoes }, snapshot.Players[0].Delve! with { Path = noPath, Party = noParty, Foes = noFoes });
     }
 
     // ---------------------------------------------------------------- Parties: revives and party combos
     // 2v2 Combined: Red = A1 (Ann) + A3 (Cat), each answering their own questions, sharing one monster.
+    // Monsters keep their plain HP here (PartyHpPerMember 0), so the numbers read as in the solo tests;
+    // DungeonClockTests checks that a party's monsters are tougher.
 
     private static TestMatch Party(Action<MatchSettings>? configure = null)
     {
-        var settings = new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300 };
+        var settings = new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300, Dungeon = { PartyHpPerMember = 0 } };
         configure?.Invoke(settings);
         var match = new TestMatch(GameModeKind.TeamCombinedScore, settings);
         match.StartPlaying();
@@ -336,7 +341,7 @@ public class DungeonCombatTests
     {
         var map = TestMatch.Dungeon; // 2 floors; +50% HP per loop
 
-        var third = map.EncounterAt(3, 1);
+        var third = Assert.Single(map.RoomAt(3, 1));
 
         Assert.Equal("Rat", third.Monster.Name);
         Assert.Equal(60, third.MaxHp);

@@ -14,6 +14,7 @@ let lastState = null;
 let myPlacement = null;     // set if this player/team made a leaderboard this match
 let lastAnswerShown = null; // number of the last answer we drew feedback for, so new feedback can pop
 let beatTimer = null;       // redraws when a battle beat ends (no update comes from the server then)
+let peekTimer = null;       // a Ranger: redraws when the next question starts to show during the beat (nor then)
 let sharedChecked = false;  // asked once whether another screen is open as this station
 let cameraToldAt = 0;       // the join the server last heard about this screen's camera on
 
@@ -53,6 +54,7 @@ async function warnIfShared() {
         bar = document.createElement('a');
         bar.className = 'station-shared';
         bar.href = '/';
+        bar.target = '_top'; // out of the 9:16 frame (js/portrait-frame.js)
         document.body.appendChild(bar);
     }
     bar.innerHTML = `<b>${Theme.text('station.alsoOpen', { name: lastState?.station.label || '', where: others.map(a => a || '?').join(', ') })}</b>
@@ -132,6 +134,12 @@ function render(state) {
     clearTimeout(beatTimer);
     if (fighting && DungeonBattle.isPlaying(you, connection.serverNow()))
         beatTimer = setTimeout(() => render(lastState), you.beat.endsAtMs - connection.serverNow() + 20);
+    // A Ranger's peek at the next question: its slide-in is timed in CSS (--p0), but redraw as it starts
+    // too, so everything drawn from the snapshot (the 3D scene included) knows it's showing.
+    clearTimeout(peekTimer);
+    const peekIn = fighting && you.question?.peekFromMs ? you.question.peekFromMs - connection.serverNow() : 0;
+    if (peekIn > 0)
+        peekTimer = setTimeout(() => render(lastState), peekIn + 20);
 }
 
 /** Leaderboard placements arrive shortly after Results appears; show ours if we got one. */
@@ -171,7 +179,7 @@ function intro(match, you) {
                 <div class="intro-slam" ${at(0)}><h1 class="big-title">${Theme.text('intro.playerTitle', { name: you.name }, seedFor(match, you))}</h1></div>
                 <p class="subtitle intro-rise" ${at(600)}>${teamLine}</p>
                 <p class="subtitle intro-rise" ${at(1100)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, seedFor(match))}</p>
-                ${match.soloClock ? `<p class="subtitle intro-rise" ${at(1500)}>${Theme.text('intro.soloClock', {}, seedFor(match))}</p>` : ''}
+                ${match.earnsTime ? `<p class="subtitle intro-rise" ${at(1500)}>${Theme.text('intro.earnTime', {}, seedFor(match))}</p>` : ''}
                 ${HeroCamera.offer(you, connection.serverNow())}
                 ${HeroCamera.hint(you)}
             </div>
@@ -257,7 +265,7 @@ function lockoutBanner(match, you) {
 
 // ---------------------------------------------------------------- Results
 
-/** Solo Dungeon: the clock ran out. "Continue?" with a big countdown: swipe your card for more time. */
+/** Dungeon: the clock ran out. "Continue?" with a big countdown: swipe your card (a second session; in a group, anyone's will do). */
 function continueOffer(match, you) {
     const seed = `${seedFor(match, you)}:${match.continuesUsed}`;
     const progress = you.delve

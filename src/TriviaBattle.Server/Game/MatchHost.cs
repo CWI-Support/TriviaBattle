@@ -30,7 +30,7 @@ public sealed class MatchHost(
     IEnumerable<IMatchBroadcaster> broadcasters,
     MatchHistory history,
     LeaderboardService leaderboards,
-    DungeonMap dungeon,
+    DungeonPlan dungeon,
     ILogger<MatchHost> logger)
 {
     private readonly object _lock = new();
@@ -73,12 +73,12 @@ public sealed class MatchHost(
                 matchSettings,
                 clock.GetUtcNow(),
                 Random.Shared,
-                dungeon);
+                dungeon.Build(Random.Shared)); // this match's own layout of the made-up floors, the same for every party in it
 
             _matches.Add(match.MatchId, match);
             logger.LogInformation("Match {Id} started: {Format} {Mode}, {Players} players, {Seconds}s{Clock}, {Questions} questions in the pool, wrong answers: {Penalty}",
                 match.MatchId, matchSettings.Format, match.Mode.DisplayName, setup.Seats.Count, match.RoundSeconds,
-                match.HasSoloClock ? $" (solo clock, up to {matchSettings.Dungeon.SoloMaxSeconds}s)" : "", questions.Count, matchSettings.WrongAnswerPenalty);
+                match.EarnsTime ? $" (kills earn time, no cap)" : "", questions.Count, matchSettings.WrongAnswerPenalty);
 
             created?.Invoke(match);
             Publish(match, [new PhaseChanged(match.Phase)]);
@@ -139,9 +139,9 @@ public sealed class MatchHost(
     }
 
     /// <summary>
-    /// A swipe at a station: if that station's match is waiting on "Continue?" (solo Dungeon), the
-    /// player goes back in with more time. False if there's no continue on offer there.
-    /// The station card readers will call this; until they exist, the dev buttons page does.
+    /// A swipe at a station: if that station's match is waiting on "Continue?" (any Dungeon game), the swipe
+    /// pays for a second session and everyone in the match goes back in where they left off. False if there's
+    /// no continue on offer there. The station card readers call this (StationsController); so do the dev tools.
     /// </summary>
     public bool ContinueAtStation(string stationId)
     {

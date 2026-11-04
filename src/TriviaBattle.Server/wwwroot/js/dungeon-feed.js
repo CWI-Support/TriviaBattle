@@ -1,7 +1,7 @@
 // The other players on your station (Dungeon format): the moments of theirs that matter to you, with
 // their face (their hero photo, or their hero), so a group game feels like one game. Only a few kinds, so
-// they mean something: a teammate revived you, a teammate is down (answer right to revive them), a party
-// combo, a boss slain by anyone, a rival overtaking you.
+// they mean something: a teammate revived or healed you, a teammate is down (answer right to revive them), a
+// party combo, a boss slain by anyone, a rival overtaking you.
 //
 // They have their own place: the caption bar across the top of the monster's room, under the question,
 // one at a time (a short queue), and only while a question is up, never over your own fight. So nothing
@@ -44,6 +44,7 @@ const DungeonFeed = {
             });
 
             if (hit?.revivedOwnerId === you.stationId) say('feed.revivedYou');
+            if (hit?.healedOwnerId === you.stationId) say('feed.healedYou', { amount: hit.healed }); // a teammate's Healer
             if (teammate && taken?.downed) say('feed.teammateDown');
             if (teammate && hit?.partyCombo) say('feed.partyCombo');
             if (hit?.killed && hit.isBoss) say('feed.bossSlain', { monster: hit.monsterName });

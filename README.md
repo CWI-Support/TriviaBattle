@@ -43,9 +43,9 @@ dotnet test
    `Enter` is the action button. Any button wakes the station; `A`/`B` flip through the heroes and
    ACTION picks one; then A, B, C... pick a game, as on screen (D goes back). In a party or race that's
    forming, ACTION is ready and D leaves. `Space` is a card swipe at that station (a pretend card per
-   station): it signs you in, or takes a continue when a solo dungeon game's "Continue?" is up.
+   station): it signs you in, or takes a continue when a dungeon game's "Continue?" is up.
 2. **Kiosk window** (optional): pick a mode, add players with *Simulate card swipe* or *Play as guest*,
-   then start. It plays the knight.
+   then start. Everyone plays the Tank.
 3. Close the screens with `.	ools\launch-screens.ps1 -Close`, and close the server's window to stop it.
 
 This works the same with the screens on separate devices (e.g. four tablets as player screens):
@@ -53,7 +53,7 @@ open `http://<server-ip>:5000/display/player/1` on each and tap the answers.
 
 Other ways to press buttons without hardware:
 - `/dev/buttons`: all 20 buttons on one page (4 answers and the action button per station), plus a
-  "card swipe" per station to continue a solo dungeon game when its "Continue?" is up, and buttons to
+  "card swipe" per station to continue a dungeon game when its "Continue?" is up, and buttons to
   hand any power-up to that station's player.
 - `/display/main?devkeys=1`: type for every player from the main screen
   (`12345` = Player 1, `QWERT` = Player 2, `ASDFG` = Player 3, `ZXCVB` = Player 4: answers A-D, then the
@@ -68,12 +68,12 @@ Screen URLs and what they show:
 |---|---|
 | `/kiosk` | Touchscreen setup outside the room |
 | `/display/main` | Main room screen: clock and live scores, split into halves/quadrants when several groups play at once; leaderboards between matches |
-| `/display/player/{n}` | Player station screen (portrait). The Dungeon fight is drawn in 3D; `?view=2d` for the older CSS version |
+| `/display/player/{n}` | Player station screen, locked to portrait 9:16 (a standard 1080p monitor on its side): on any other window it's shown as big as fits, with black bars. The Dungeon fight is drawn in 3D; `?view=2d` for the older CSS version. `/display/player/{n}/screen` is the same page without the frame |
 | `/display/leaderboard` | Stand-alone rotating leaderboards, e.g. for a lobby TV |
 | `/admin` | Operator admin: questions, categories, import/export, players, live matches and PLC health, and Insights (time in use, dwell time, returning players) |
 | `/dev/buttons` | Dev stand-in for the buttons (only when dev tools are on) |
 | `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
-| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=mage` for another hero, `?rival=/picture.jpg` for a rival's face on the monsters) |
+| `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=wizard` for another hero, `?rival=/picture.jpg` for a rival's face on the monsters) |
 | `/dev/heroes` | Draws every hero's pictures for `media/heroes` (hero cards and portraits), to save after changing a hero |
 
 Add `?room=B` to any URL when there's more than one room. It doesn't matter which machine a screen
@@ -115,8 +115,8 @@ uses the five buttons:
    for the first time is given a made-up hero name and keeps it. Without a card you're a guest
    with a made-up name. A different card swiped at a station someone left half-way starts afresh
    (their hero and photo don't carry over).
-2. **Choose your hero**: Knight, Barbarian, Mage, Rogue or Ranger. A and B flip through them, ACTION
-   picks one. For now it's just a look; it's the hero you see fight.
+2. **Choose your hero**: Tank, Healer, Wizard, Rogue, Ranger, Pugilist or Warlock. A and B flip through
+   them, ACTION picks one. Each is a class with its own power in the fight (see "Hero classes" below).
 3. **Your hero photo** (see "Hero photos" below): the camera comes on, counts 3, 2, 1 and shows your
    hero wearing your face. ACTION keeps it, B takes another, D goes on without one. A station without
    a camera skips this step by itself.
@@ -147,6 +147,48 @@ your monster, when one is hit they reel, and a downed one lies on the floor unti
 overtakes you or slays a boss, their hero pops up beside your monster and cheers. The main screen shows
 the room's lobby under its title. A station's card reader calls `POST /api/stations/{id}/swipe`
 with `{ "cardId": "..." }`.
+
+### Hero classes
+
+Every hero is a class with its own power (`Core/Dungeon/HeroClass.cs`; the rules are in `DungeonRun`, the
+numbers in `ClassSettings`, set under `"Game:Dungeon:Classes"` in `appsettings.json`). A **fast** answer is a
+right answer within a set time: 3 seconds (`Game:Dungeon:CritWithinSeconds`), the same for every question.
+Fast answers are critical hits (x1.5) for everyone.
+
+Every class also has three basic stats, set in `"Game:Dungeon:Classes"` in `appsettings.json` (all seven are
+written out there): `Hp` (a share of the 100 HP everyone starts with), `DamageDealt` (a share of a right answer's
+damage) and `DamageTaken` (a share of a monster's hit). 1 is normal: `"Wizard": { "Hp": 0.8, "DamageDealt": 1.2 }` is a
+frailer, harder-hitting Wizard. All are 1 except the Tank, which takes 0.6. Changes apply from the next match.
+
+| Class | Power | Numbers (defaults) |
+|---|---|---|
+| **Rogue** | Fast answers do much more damage. | crit x2.5 instead of x1.5 |
+| **Tank** | Has longer to answer fast, and takes less damage from monsters. | fast within 5 s; takes 60% |
+| **Healer** | A fast answer heals whoever in the party is lowest on HP (themselves included). With nobody hurt, it poisons the monster instead: one stack more each time, every stack hurting it every second until it dies. Healing scores like damage; poison scores nothing. | heals 15; 2 per stack per second |
+| **Wizard** | A fast answer hits every monster in the room: the one in front fully, the others half as hard. | splash 50% |
+| **Warlock** | Half the time, as the hourglass gets down to its last 4 seconds, their patron shows them the right answer (only on their screen). Any answer after 6 seconds costs them 8 HP (it never downs them). | 50%, at 4 s left; after 6 s, 8 HP |
+| **Pugilist** | The only class with a combo: every right answer in a row does 15% more, up to +150%. A wrong answer or a hit ends it. | +15% a step, max +150% |
+| **Ranger** | Sees the next question 1.5 seconds before the pause after each answer ends. Buttons, the hourglass and the fast window still start when it ends. | 1.5 s early |
+
+Rooms can hold several monsters at once (`config/dungeon.json`: `"Rooms": [["rat", "slime"]]`). The party
+fights the one in front; the others wait their turn, and only the one in front attacks.
+
+**Bosses** end each floor. Clearing the room before one plays its entrance on the station (and its sound, and a
+banner on the main screen). A boss powers up: each player's questions against it go round a cycle where it hits
+for 50% of its damage, then 100%, then at **full charge** 250%. At full charge a wrong answer (or running out of
+time) takes that big blow, and a right answer **staggers** it instead (50% more damage). Either way it starts over.
+The station shows the charge, and warns at full power. Set in `"Game:Dungeon"`: `BossChargeSteps` (3; 0 = no
+cycle), `BossWeakHit` (0.5), `BossChargedHit` (2.5), `StaggerBonus` (0.5).
+
+A kiosk game has no hero choice: everyone plays the Tank. In 2v2 Group, where teammates share one question,
+the team fights as the first teammate's hero.
+
+To add a hero (a new class, or a new model for one): put the model in `wwwroot/media/models/characters`
+(a `.glb`; credit it in `media/models/CREDITS.md`), give it an entry in `HEROES` in
+`wwwroot/js/battle3d/models.js`, add its key to `Heroes.All` (`Core/Arcade/Heroes.cs`) and its two lines to
+`heroes` in `themes/neon/copy.json`, then open `/dev/heroes` and save its pictures into `wwwroot/media/heroes`.
+The Healer and Warlock borrow the mage's and ranger's models for now; their pictures in `media/heroes` are
+copies of the Wizard's and Ranger's until someone saves theirs from `/dev/heroes`.
 
 ### Hero photos (a camera at each station)
 
@@ -245,11 +287,14 @@ to add a game mode, station or button mapping.
 | What | Where |
 |---|---|
 | Rooms and stations (count, labels, colors) | `src/TriviaBattle.Server/config/stations.json` |
-| Dungeon floors and monsters (HP, damage, hourglass, sprite) | `src/TriviaBattle.Server/config/dungeon.json` |
-| Dungeon combat numbers (adventurer HP, damage per difficulty, crits, combos, downed time, revives, party combos, battle beat lengths) | `"Game:Dungeon"` in `appsettings.json` |
+| Dungeon floors and monsters (HP, damage, hourglass, sprite; HP and damage added per loop) | `src/TriviaBattle.Server/config/dungeon.json` (read at startup: restart after editing) |
+| Dungeon combat numbers (adventurer HP, damage per difficulty, crits, downed time, revives, party combos, battle beat lengths) | `"Game:Dungeon"` in `appsettings.json` |
+| Hero class powers (Rogue's crit, Tank's fast window and armour, Healer's heal and poison, Wizard's splash, Warlock's patron, Pugilist's combo, Ranger's early look) | `"Game:Dungeon:Classes"` in `appsettings.json` (see "Hero classes") |
 | Classic quiz or Dungeon Quiz Quest | Operator screen, `/operator` (default: `"Game:Format"` in `appsettings.json`) |
 | Round length (groups, and every Classic game) | Operator screen (default: `"Game:MatchSeconds"`) |
-| Solo dungeon clock: starting time, time per monster and per boss, longest solo game, time per continue, continue countdown | Operator screen (defaults: `"Game:Dungeon:Solo*"`) |
+| Dungeon clock (solo and group, no cap): starting time, time per monster and per boss, a continue's clock, continue countdown | Operator screen (defaults: `"Game:Dungeon"`: `ClockStartSeconds`, `SecondsPerKill`, ...) |
+| Floors: how many rooms, each room's HP budget and monster pool, the boss, each floor's question mix | `config/dungeon.json` (made up fresh for each match) |
+| How much tougher monsters are for a party | `"Game:Dungeon:PartyHpPerMember"` |
 | Button id -> station + answer | `src/TriviaBattle.Server/config/buttons.json` |
 | Keyboard key -> button id (dev stand-in for buttons) | `src/TriviaBattle.Server/config/keyboard.json` |
 | PLC on/off, address, register map, button codes, LED registers | `src/TriviaBattle.Server/config/plc.json` (see docs/PLC-PROTOCOL.md) |
@@ -290,7 +335,7 @@ Open **/admin**. If `AdminApiKey` is set in `appsettings.json`, the page asks fo
 - **Players**: rename or forget RFID cards.
 - **Operator** (the default tab, also at `/operator`, linked from the start page): the venue staff's
   screen. Sound (volume sliders, sound card status, a test button per speaker), game rules
-  (round length, solo clock, wrong-answer penalty), theme, running matches (with the correct answers) and abort,
+  (the Dungeon clock, Classic's round length, wrong-answer penalty), theme, running matches (with the correct answers) and abort,
   and PLC health.
 - **Live log**: is anything going wrong right now? Which screens are connected (a missing one shows
   red), and the server log as it happens: matches, buttons, sound, rejected requests (e.g. a kiosk

@@ -18,9 +18,10 @@ import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
-import { showBeat, showIdle } from './beats.js';
+import { showBeat, showIdle, mix, easeInOut } from './beats.js';
 import { heroPortrait } from './portrait.js';
 import { Others } from './others.js';
+import { Pack, PACK_MAX } from './pack.js';
 
 // Where the fighters stand. The fight is staged on a slant (the knight nearer the camera, the monster
 // further back) so a tall, narrow station screen can show both big: side by side they'd be tiny.
@@ -37,6 +38,9 @@ const HERO_FACING = Math.atan2(FOE_HOME.x - HERO_HOME.x, FOE_HOME.z - HERO_HOME.
 const FOE_FACING = Math.atan2(HERO_HOME.x - FOE_HOME.x, HERO_HOME.z - FOE_HOME.z) + 0.35;
 
 const FOV = 32;
+const KILLS = ['kill', 'floor', 'boss'];
+const STEP_MS = 500;        // a waiting monster stepping up to the front between beats (the poison killed the one there)
+const POISON_DEATH_MS = 900;
 
 class Battle {
     constructor(container, clock) {
@@ -53,13 +57,18 @@ class Battle {
         this.foeYaw = FOE_FACING;
         this.foesMet = 0;      // counts the monsters, so each wears a rival's face in turn
         this.others = new Others(this.stage.scene, { zAt, homes: HOMES, facing: HERO_FACING }); // teammates, and rivals dropping in
+        this.pack = new Pack(this.stage.scene, FOE_HOME, FOE_FACING, clock); // the monsters waiting their turn
+        this.roomSeen = null;  // the room (floor:room) last seen between beats: a kill that emptied it has no pack to step up
+        this.deathsSeen = null; // the front monster's last deaths seen: { beat (a kill beat's start), poison (the poison kill's hit number) }
+        this.foeStep = null;   // the monster in front stepping up from the pack between beats: { from: { x, z, scale }, at }
+        this.poisonDeath = null; // the one the poison killed between beats, going up in smoke: { at, chest }
         this.lastFrame = performance.now();
         requestAnimationFrame(time => this.frame(time));
     }
 
     show(view) {
         this.view = view;
-        const key = view.match?.players?.find(p => p.stationId === view.you?.stationId)?.hero || 'knight';
+        const key = view.match?.players?.find(p => p.stationId === view.you?.stationId)?.hero || 'tank';
         if (key === this.heroKey) return;
         this.heroKey = key;
         Actor.create(key, HERO_FACING, view.color).then(hero => {
@@ -77,19 +86,24 @@ class Battle {
     }
 
     /**
-     * The monster to show: during a beat, the one in it (the one you hit may already be dead in the
-     * snapshot, replaced by the next); otherwise the one you're facing now. A new one is loaded in the
+     * The monster to show in front: during a beat, the one in it (the one you hit may already be dead in
+     * the snapshot, replaced by the next); otherwise the one you're facing now. died: the one in front just
+     * died ('beat' or 'poison', see frontDied), so the next takes its place even if it looks the same.
+     * The next one steps up from the pack when it was waiting in the room; otherwise it's loaded in the
      * background and then swapped in, dropping into the room.
      */
-    wantFoe(you, now) {
+    wantFoe(you, now, playing, died) {
         const beat = you.beat;
         const delve = you.delve;
-        const playing = beat && now < beat.endsAtMs;
         const hurt = beat?.kind === 'hurt' || beat?.kind === 'downed';
         const key = !playing ? delve.monster.sprite
             : hurt ? delve.lastTaken?.monsterSprite || delve.monster.sprite
             : delve.lastDealt?.monsterSprite || delve.monster.sprite;
-        if (key === this.foeKey || key === this.foeLoadingKey) return;
+        if (died === 'poison' && this.foe) this.poisonDeath = { at: now, chest: this.foe.chest() };
+        if (!died && (key === this.foeKey || key === this.foeLoadingKey)) return;
+
+        const next = died ? this.pack.take(key, now) : null;
+        if (next) return this.promote(next, key, now);
 
         this.foeLoadingKey = key;
         Actor.create(key, FOE_FACING).then(foe => {
@@ -103,6 +117,76 @@ class Battle {
         });
     }
 
+    /**
+     * A waiting monster takes the front. After a kill beat it has already walked there (beats.js); after
+     * the poison killed the one in front between beats it walks there now, from where it stood.
+     */
+    promote(member, key, now) {
+        this.foe?.dispose(this.stage.scene);
+        this.foe = member.actor;
+        this.foe.zAt = zAt;
+        this.foe.rivalTurn = this.foesMet++;
+        this.foeKey = key;
+        this.foeLoadingKey = null;
+        this.foeArrivedAt = null;
+        this.foeStep = { from: member.drawn ?? member.base, at: now };    }
+
+    /**
+     * Whether the monster in front has just died: its kill beat is over ('beat'), or between beats the
+     * poison killed it ('poison'). Remembered by the beat's start and the hit's number, so each counts once,
+     * and what was already over when the screen opened doesn't count. Waits while a beat plays.
+     */
+    frontDied(you, now, playing) {
+        if (playing) return null;
+        const beat = you.beat;
+        const hit = you.delve.lastHit;
+        const old = this.deathsSeen;
+        this.deathsSeen = {
+            beat: beat && KILLS.includes(beat.kind) && now >= beat.endsAtMs ? beat.startedAtMs : old?.beat ?? null,
+            poison: hit?.poison && hit.killed ? hit.number : old?.poison ?? null,
+        };
+        if (!old) return null;
+        if (this.deathsSeen.beat !== old.beat) return 'beat';
+        if (this.deathsSeen.poison !== old.poison) return 'poison';
+        return null;
+    }
+
+    /**
+     * Who waits behind the one in front (delve.foes after the first), for js/battle3d/pack.js, and which of
+     * them steps up during this beat (stepUp: their place in the pack, -1 for none). During a beat the
+     * snapshot is already after the hit, so the pack is worked back to what it was when the blow landed:
+     * a Wizard's splash lists every one it hit (even the ones it killed); after a kill the next one in front
+     * is still waiting, unless the kill emptied the room (the snapshot is already in the next one: a new
+     * floor, the boss's room (bossAhead), or simply a room we saw change).
+     */
+    packView(you, playing) {
+        const delve = you.delve;
+        const foes = delve.foes?.length ? delve.foes : [delve.monster];
+        const room = `${delve.floor}:${delve.room}`;
+        const waiting = list => list.slice(0, PACK_MAX).map(f => ({ key: f.sprite, poison: f.poisonStacks || 0, splash: null }));
+        const hurt = you.beat?.kind === 'hurt' || you.beat?.kind === 'downed';
+        const hit = playing && !hurt ? delve.lastDealt : null;
+        if (!playing) this.roomSeen = room;
+
+        if (!hit) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
+        if (hit.splashes?.length) {
+            const wanted = hit.splashes.slice(0, PACK_MAX).map(s => ({ key: s.monsterSprite, poison: 0, splash: s }));
+            return { wanted, stepUp: hit.killed && !hit.floorCleared ? wanted.findIndex(w => !w.splash.killed) : -1 };
+        }
+        if (!hit.killed) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
+        if (hit.floorCleared || hit.bossAhead || (this.roomSeen !== null && this.roomSeen !== room)) return { wanted: [], stepUp: -1 };
+        const wanted = waiting(foes);
+        return { wanted, stepUp: wanted.length ? 0 : -1 };
+    }
+
+    /** The poison stacks on the monster drawn in front (during a beat, the one in it: none if it died). */
+    foePoison(you, playing) {
+        const delve = you.delve;
+        const hurt = you.beat?.kind === 'hurt' || you.beat?.kind === 'downed';
+        if (playing && !hurt && delve.lastDealt?.killed) return 0;
+        return delve.monster.poisonStacks || 0;
+    }
+
     frame(time) {
         requestAnimationFrame(next => this.frame(next));
         const dt = Math.min(0.1, (time - this.lastFrame) / 1000);
@@ -111,19 +195,29 @@ class Battle {
         const you = this.view?.you;
 
         let lean = { zoom: 1, focus: 0 };
-        const foeFlinch = this.others.update(this.view, now, this.foe);
+        const { flinch: foeFlinch, youHealedAt } = this.others.update(this.view, now, this.foe);
         if (you?.delve) {
-            this.wantFoe(you, now);
+            const beat = you.beat;
+            const playing = !!beat && now >= beat.startedAtMs && now < beat.endsAtMs;
+            const { wanted, stepUp } = this.packView(you, playing);
+            this.wantFoe(you, now, playing, this.frontDied(you, now, playing));  // before the pack lets go of the one stepping up
+            this.pack.sync(wanted, now);
             if (this.hero && this.foe) {
-                const cast = { hero: this.hero, foe: this.foe, fx: this.fx, stage: this.stage, homes: HOMES, seconds: now / 1000 };
-                const beat = you.beat;
-                lean = beat && now >= beat.startedAtMs && now < beat.endsAtMs
-                    ? showBeat(beatInfo(beat, you.delve), now - beat.startedAtMs, cast)
+                const cast = {
+                    hero: this.hero, foe: this.foe, fx: this.fx, stage: this.stage, homes: HOMES, seconds: now / 1000,
+                    front: FOE_HOME, pack: this.pack.standing(now), foePoison: this.foePoison(you, playing),
+                };
+                lean = playing
+                    ? showBeat(beatInfo(beat, you, stepUp), now - beat.startedAtMs, cast)
                     : showIdle(cast, {
                         heroDown: you.delve.downedUntilMs > now,
                         foeArrivedMs: this.foeArrivedAt === null ? null : now - this.foeArrivedAt,
                         foeFlinch,
+                        heroHealMs: youHealedAt === null ? null : now - youHealedAt,
+                        charge: chargeOf(you.delve),
                     });
+                this.stepUp(now);
+                this.showPoisonDeath(now);
             }
         }
         this.wearFace();
@@ -131,6 +225,30 @@ class Battle {
         this.turnFoe(dt);
         this.aim(lean);
         this.stage.draw(now / 1000, dt);
+    }
+
+    /** The monster just promoted from the pack walks from where it stood to the front (and grows to full size). */
+    stepUp(now) {
+        if (!this.foeStep) return;
+        const p = (now - this.foeStep.at) / STEP_MS;
+        if (p >= 1) {
+            this.foeStep = null;
+            return;
+        }
+        const e = easeInOut(p);
+        const { from } = this.foeStep;
+        const at = this.foe.root.position;
+        at.x = mix(from.x, at.x, e);
+        at.z = mix(from.z, at.z, e);
+        this.foe.holder.scale.multiplyScalar(mix(from.scale, 1, e));
+    }
+
+    /** The monster the poison killed between beats, going up in smoke where it stood. */
+    showPoisonDeath(now) {
+        if (!this.poisonDeath) return;
+        const age = now - this.poisonDeath.at;
+        if (age > POISON_DEATH_MS) this.poisonDeath = null;
+        else this.fx.showPoisonDeath(this.poisonDeath.chest, age / 1000, 3);
     }
 
     /** Your hero photo on the knight's face (js/hero-photo.js has it once it has loaded); the knight's own face without one. */
@@ -160,6 +278,7 @@ class Battle {
         const wanted = this.stage.mode() === 'portrait' ? 0.25 : FOE_FACING;
         this.foeYaw += (wanted - this.foeYaw) * (1 - Math.exp(-dt / 0.15));
         this.foe.face(this.foeYaw);
+        this.pack.face(this.foeYaw);  // the waiting ones turn with it
     }
 
     /** Points the camera: the whole fight, or (while a question is up) the monster in its room. */
@@ -187,20 +306,45 @@ class Battle {
     }
 }
 
-/** What kind of blow the beat is, from the snapshot. seed: the same number for the whole beat (picks the swing, the sparks). */
-function beatInfo(beat, delve) {
+/**
+ * What kind of blow the beat is, from the snapshot. seed: the same number for the whole beat (picks the
+ * swing, the sparks). stepUp: which waiting monster steps up to the front during it (packView).
+ */
+function beatInfo(beat, you, stepUp) {
+    const delve = you.delve;
     const hurt = beat.kind === 'hurt' || beat.kind === 'downed';
     const hit = hurt ? null : delve.lastDealt;
+    const taken = hurt ? delve.lastTaken : null;
+    const isYou = ownerId => !!ownerId && (ownerId === you.stationId || ownerId === you.teamId); // 2v2 Group: the team answers as one
     return {
         kind: beat.kind,
         hurt,
         crit: !!hit?.crit,
         combo: !!hit?.combo,
+        comboCount: hit?.combo ? (hit.comboCount || 3) : 0,  // a Pugilist's streak
         partyCombo: !!hit?.partyCombo,
         fireball: !!hit?.fireball,
-        blocked: !!(hurt && delve.lastTaken?.blocked),
+        blocked: !!taken?.blocked,
+        tank: hurt && delve.heroClass === 'tank',             // takes every hit on the shield
+        stepUp,
+        poisoned: (hit?.poisonStacks || 0) > 0,               // a Healer's fast answer added a stack
+        patronPrice: (hurt ? taken?.patronPrice : hit?.patronPrice) || 0,
+        healedYou: isYou(hit?.healedOwnerId),                 // a teammate healed by it: js/battle3d/others.js
+        charged: !!taken?.charged && !taken.blocked,          // a boss's full-charge blow
+        staggered: !!hit?.staggered,                          // a right answer at a boss's full charge
         seed: Math.abs(Math.floor(beat.startedAtMs / 7)),
     };
+}
+
+/**
+ * A boss's charge for your question now, as the 3D shows it: { level (0..1, how far round its cycle: the
+ * first step already glows a little), full (the last step) }, or null when you aren't fighting a boss.
+ */
+function chargeOf(delve) {
+    const steps = delve.bossChargeSteps || 0;
+    if (steps < 2) return null;
+    const step = Math.max(0, Math.min(steps - 1, delve.bossCharge || 0));
+    return { level: (step + 1) / steps, full: step === steps - 1 };
 }
 
 let battle = null;

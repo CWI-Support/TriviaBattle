@@ -15,6 +15,10 @@
     --dg-enemy-hp: #d62828;
     --dg-hero-hp: #3ec94a;
     --dg-hourglass: #f0b429;
+    --dg-poison: #8bd63a;             /* a Healer's poison: badges, a poisoned monster's HP */
+    --dg-patron: #b56bff;             /* a Warlock's patron: the answer it shows, its price */
+    --dg-splash: #7fd4ff;             /* a Wizard's splash on the pack */
+    --dg-ranger: #b5d94a;             /* a Ranger's early look at the next question */
     --dg-font-pixel: var(--font-display);  /* nameplates, numbers */
 }
 
@@ -101,8 +105,76 @@
 }
 .dg-step.is-ahead img { filter: brightness(0.8); }
 .dg-step.is-current { outline: 0.5vmin solid var(--accent); background: rgba(240, 180, 41, 0.2); animation: dg-idle 1.2s steps(2) infinite; }
+.dg-step.is-waiting img { filter: brightness(0.9); } /* in your room, waiting its turn */
 .dg-step.is-boss { outline: 0.4vmin solid var(--wrong); }
 .dg-step.is-boss.is-current { outline-color: var(--accent); }
+/* A pack: its monsters share one room, so they sit together on a little stone slab. */
+.dg-trail-room.is-pack {
+    display: flex;
+    gap: 0.2vmin;
+    padding: 0.2vmin 0.3vmin 0.5vmin;
+    background: rgba(255, 255, 255, 0.07);
+    border-bottom: 0.4vmin solid var(--dg-frame-edge);
+}
+
+/* ---------- Packs: the monsters waiting their turn in the room ---------- */
+
+/* Small sprites behind the one in front (dg-pack is left to the 3D scene when it draws). Each member is
+   placed by its place in the queue (--n); later ones stand further back, so smaller and higher. */
+.dg-pack { position: absolute; inset: 0; pointer-events: none; }
+.dg-pack-member { position: absolute; bottom: 14%; height: 42%; display: flex; align-items: flex-end; }
+.dg-pack-member:nth-child(1) { left: 2%; }
+.dg-pack-member:nth-child(2) { right: 2%; }
+.dg-pack-member:nth-child(3) { left: 18%; bottom: 26%; height: 32%; }
+.dg-pack-member:nth-child(n + 4) { right: 18%; bottom: 26%; height: 32%; }
+.dg-pack-sprite {
+    height: 100%;
+    filter: brightness(0.62) drop-shadow(0 1vmin 0 rgba(0, 0, 0, 0.45));
+    animation: dg-idle 1.2s steps(2) var(--idle0, 0s) infinite;
+}
+
+/* The strip: each waiting monster's picture, a mini HP bar and any poison. */
+.dg-pack-strip { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1vh 1.6vw; margin-top: 0.8vh; }
+.dg-pack-label { font-family: var(--dg-font-pixel); font-size: 1.8vmin; color: var(--text-dim); text-transform: uppercase; }
+.dg-pack-foe {
+    display: flex;
+    align-items: center;
+    gap: 0.8vmin;
+    padding: 0.4vmin 1vmin;
+    background: rgba(0, 0, 0, 0.45);
+    border: 0.3vmin solid var(--dg-frame-edge);
+}
+.dg-pack-foe-sprite { width: 6vmin; height: 6vmin; }
+.dg-pack-foe-info { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4vmin; width: 14vmin; }
+.dg-pack-foe .dg-bar { flex: none; width: 100%; height: 2.6vmin; }
+.dg-pack-foe .dg-bar-text { font-size: 1.5vmin; }
+.dg-pack-foe.is-poisoned { border-color: var(--dg-poison); }
+.dg-pack-foe.is-poisoned .dg-bar-fill { background: var(--dg-poison); }
+.dg-pack-foe .dg-poison { font-size: 1.6vmin; margin: 0; }
+
+/* ---------- A Healer's poison ---------- */
+
+/* The badge: a green skull and the stacks. Its size follows the text it sits by (em). */
+.dg-poison {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    margin-left: 0.6em;
+    padding: 0.15em 0.4em;
+    vertical-align: middle;
+    background: #12240b;
+    border: 0.3vmin solid var(--dg-poison);
+    color: var(--dg-poison);
+    font-family: var(--dg-font-pixel);
+    font-size: 0.8em;
+    line-height: 1;
+    white-space: nowrap;
+    text-transform: none;
+}
+.dg-poison-icon { width: 1.2em; height: auto; }
+/* A poisoned monster's HP is poison green. */
+.dg-hp.is-enemy.is-poisoned .dg-bar-fill { background: var(--dg-poison); }
+.dg-slain.is-poison { color: var(--dg-poison); }
 
 .dg-scroll {
     background: var(--dg-parchment);
@@ -342,13 +414,40 @@
 .dg-portrait.small { width: 6vmin; height: 6vmin; }
 .dg-plate-info { flex: 1; display: flex; flex-direction: column; gap: 1vh; min-width: 0; }
 .dg-plate-name {
+    display: flex;
+    align-items: center;
+    gap: 1.4vmin;
+    min-width: 0;
     font-family: var(--dg-font-pixel);
     font-size: 3vmin;
     color: var(--station-color);
     text-transform: uppercase;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+}
+.dg-plate-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The player's hero class beside their name, a chip in the class's colour. */
+.dg-class-badge {
+    flex: 0 0 auto;
+    padding: 0.5vmin 1vmin;
+    font-size: 1.9vmin;
+    color: #000;
+    background: var(--class-color, var(--accent));
+    box-shadow: 0.3vmin 0.3vmin 0 #000;
+}
+.dg-class-badge.is-tank { --class-color: #a9b6c8; }
+.dg-class-badge.is-healer { --class-color: #6fe08a; }
+.dg-class-badge.is-wizard { --class-color: var(--dg-splash); }
+.dg-class-badge.is-rogue { --class-color: #e2e2e2; }
+.dg-class-badge.is-ranger { --class-color: var(--dg-ranger); }
+.dg-class-badge.is-pugilist { --class-color: #ff9a2e; }
+.dg-class-badge.is-warlock { --class-color: var(--dg-patron); }
+
+/* A Healer's heal: the healed one's HP bar flashes bright green, a moment after the blow (from --t0). */
+.dg-hp.is-healed .dg-bar { animation: dg-heal-flash 900ms ease-out calc(var(--t0, 0ms) + 420ms) both; }
+@keyframes dg-heal-flash {
+    0% { box-shadow: none; filter: none; }
+    20% { box-shadow: 0 0 0 0.5vmin #c8ffb8, 0 0 3vmin var(--dg-hero-hp); filter: brightness(1.7); }
+    100% { box-shadow: none; filter: none; }
 }
 
 .dg-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 0.8vh; font-family: var(--dg-font-pixel); }
@@ -413,6 +512,21 @@
 .dg-lane-hero .dg-hp { flex: 1; }
 .dg-lane .dg-stats { flex-direction: row; justify-content: space-between; align-items: center; }
 .dg-lane .dg-stat b { font-size: 3.2vmin; }
+/* A pack in a lane: the waiting ones small at the monster's feet, and a compact strip in the stage's top
+   corner (over it, not under the nameplate: a lane has no height to spare above the Host). */
+.dg-lane .dg-pack-strip.is-lane { position: absolute; top: 0; right: 0; z-index: 2; justify-content: flex-end; max-width: 100%; }
+.dg-lane .dg-pack-member { bottom: 0; height: 45%; }
+.dg-lane .dg-pack-member:nth-child(1) { left: 0; }
+.dg-lane .dg-pack-member:nth-child(2) { right: 0; }
+.dg-lane .dg-pack-member:nth-child(n + 3) { bottom: 12%; height: 34%; }
+.dg-pack-strip.is-lane { margin-top: 0; gap: 0.6vh 0.6vw; }
+.dg-pack-strip.is-lane .dg-pack-label { display: none; }
+.dg-pack-strip.is-lane .dg-pack-foe { gap: 0.5vmin; padding: 0.3vmin 0.6vmin; }
+.dg-pack-strip.is-lane .dg-pack-foe-sprite { width: 3.6vmin; height: 3.6vmin; }
+.dg-pack-strip.is-lane .dg-pack-foe-info { width: 7vmin; }
+.dg-pack-strip.is-lane .dg-bar { height: 1.8vmin; }
+.dg-pack-strip.is-lane .dg-bar-text { font-size: 1.1vmin; }
+.dg-pack-strip.is-lane .dg-poison { font-size: 1.2vmin; }
 
 /* ---------- Parties: teammates' HP, revives, shouting a teammate the answer ---------- */
 

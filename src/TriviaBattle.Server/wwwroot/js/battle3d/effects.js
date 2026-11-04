@@ -1,5 +1,8 @@
 // The fight's effects: sparks, the sword's slash, the claw marks, the shockwave on the floor, the puff of
-// smoke and the shower of gold when a monster dies. Cartoon, never gory (the design doc): getting hurt
+// smoke and the shower of gold when a monster dies, and the hero classes' own: the Wizard's spell reaching
+// the monsters waiting in the room, the Healer's poison bubbling on a monster and its heal sparkling on a
+// hero, the Warlock's patron draining HP; and a boss's: its charge crackling round it while a question is up,
+// the dazed stars when a right answer at full charge staggers it. Cartoon, never gory (the design doc): getting hurt
 // throws out stars, not blood. Like the actors, they're shown at a moment, not
 // played: every frame starts with everything hidden, then the beat asks for each effect at its age
 // ("sparks, 120 ms after the impact"). Particle paths come from the beat's seed, so the same moment
@@ -8,7 +11,7 @@
 import * as THREE from 'three';
 
 /** One burst of particles flying out from a point and falling, then fading. */
-class Burst {
+export class Burst {
     constructor(scene, { count, color, size, speed, rise, gravity, life, additive = true }) {
         this.count = count;
         this.speed = speed;
@@ -65,8 +68,27 @@ export class Effects {
         this.shockwave = flatMesh(scene, new THREE.RingGeometry(0.75, 1, 40), 0xffe6a0);
         this.shockwave.rotation.x = -Math.PI / 2;
         this.claws = [0, 1, 2].map(() => flatMesh(scene, new THREE.PlaneGeometry(2.2, 0.12), 0xff2a2a));
-        this.all = [this.slash, this.shockwave, ...this.claws];
-        this.bursts = [this.impact, this.bigImpact, this.hurtStars, this.smoke, this.gold];
+        // A Pugilist's combo of 3 or more cuts back across the first slash.
+        this.crossSlash = flatMesh(scene, new THREE.RingGeometry(1.2, 1.4, 32, 1, -Math.PI * 0.42, Math.PI * 0.84), 0xffd080);
+
+        // The pack in the room (js/battle3d/pack.js): one of each per waiting monster.
+        this.bolts = [0, 1, 2].map(() => new Bolt(scene));
+        this.spellHits = [0, 1, 2].map(() => new Burst(scene, { count: 18, color: 0x9fe0ff, size: 0.2, speed: 5, rise: 1.5, gravity: 6, life: 0.45 }));
+        this.packSmoke = [0, 1, 2].map(() => new Burst(scene, { count: 14, color: 0x9a8a9c, size: 0.7, speed: 1.4, rise: 1.1, gravity: -0.5, life: 0.9, additive: false }));
+        this.packGold = [0, 1, 2].map(() => new Burst(scene, { count: 14, color: 0xffc83a, size: 0.22, speed: 4, rise: 5, gravity: 16, life: 1.0 }));
+        // Poison: bubbles on the monster in front (0) and on each waiting one (1-3); a green puff on the hit that adds a stack.
+        this.bubbles = [0, 1, 2, 3].map(() => new Bubbles(scene));
+        this.poisonPuff = new Burst(scene, { count: 22, color: 0x5dff6e, size: 0.3, speed: 3, rise: 1.2, gravity: -1, life: 0.7 });
+        this.heal = new HealSparkle(scene);
+        this.drain = new Burst(scene, { count: 28, color: 0xb050ff, size: 0.24, speed: 1.1, rise: 2.2, gravity: -3, life: 0.8 });
+        // A boss: its charge crackling round it, and the stars round its head when it's staggered.
+        this.embers = new Embers(scene);
+        this.daze = new Daze(scene);
+        this.slamDust = new Burst(scene, { count: 30, color: 0xb9a48c, size: 0.7, speed: 3.2, rise: 0.6, gravity: 1, life: 0.7, additive: false });
+
+        this.all = [this.slash, this.crossSlash, this.shockwave, ...this.claws];
+        this.bursts = [this.impact, this.bigImpact, this.hurtStars, this.smoke, this.gold, this.poisonPuff, this.drain,
+            ...this.bolts, ...this.spellHits, ...this.packSmoke, ...this.packGold, ...this.bubbles, this.heal, this.embers, this.daze, this.slamDust];
     }
 
     /** Called first every frame: nothing shows unless the beat asks for it again. */
@@ -75,25 +97,29 @@ export class Effects {
         for (const burst of this.bursts) burst.hide();
     }
 
-    /** The sword's arc sweeping across the monster: age in seconds, from when the swing starts to cut. */
-    showSlash(at, age, tilt, big) {
+    /**
+     * The sword's arc sweeping across the monster: age in seconds, from when the swing starts to cut. size: 1
+     * for a plain hit, more for a big one. cross: the second cut of a big combo, sweeping back the other way.
+     */
+    showSlash(at, age, tilt, size, cross = false) {
         const life = 0.22;
         if (age < 0 || age > life) return;
         const p = age / life;
-        this.slash.position.copy(at);
-        this.slash.rotation.set(0, 0, tilt - 1.4 + p * 2.2);  // it sweeps round as it fades
-        this.slash.scale.setScalar(big ? 1.35 : 1);
-        this.slash.material.opacity = 1 - p * p;
-        this.slash.visible = true;
+        const slash = cross ? this.crossSlash : this.slash;
+        slash.position.copy(at);
+        slash.rotation.set(0, 0, cross ? -tilt + 1.6 - p * 2.2 : tilt - 1.4 + p * 2.2);  // it sweeps round as it fades
+        slash.scale.setScalar(size);
+        slash.material.opacity = 1 - p * p;
+        slash.visible = true;
     }
 
-    /** A ring racing out across the floor from under whoever was hit. */
-    showShockwave(at, age, big) {
+    /** A ring racing out across the floor from under whoever was hit. power: how much further it goes (a combo). */
+    showShockwave(at, age, big, power = 1) {
         const life = 0.4;
         if (age < 0 || age > life) return;
         const p = age / life;
         this.shockwave.position.set(at.x, 0.08, at.z);
-        this.shockwave.scale.setScalar((big ? 2.8 : 2) * (0.2 + p));
+        this.shockwave.scale.setScalar((big ? 2.8 : 2) * power * (0.2 + p));
         this.shockwave.material.opacity = 0.5 * (1 - p);
         this.shockwave.visible = true;
     }
@@ -125,6 +151,269 @@ export class Effects {
         this.smoke.show(at, age, seed);
         this.gold.show(at, age, seed + 1);
     }
+
+    /** The poison killing the monster in front between beats: it goes up in smoke and a green puff (no beat, so no loot). */
+    showPoisonDeath(at, age, seed) {
+        this.smoke.show(at, age, seed);
+        this.poisonPuff.show(at, age, seed + 1);
+    }
+
+    /** The Wizard's spell flying to waiting monster i: p goes 0 (leaves from) to 1 (lands on to). */
+    showBolt(i, from, to, p) {
+        this.bolts[i]?.show(from, to, p);
+    }
+
+    /** The spell landing on waiting monster i: blue sparks. */
+    showSpellHit(i, at, age, seed) {
+        this.spellHits[i]?.show(at, age, seed);
+    }
+
+    /** Waiting monster i killed by the spell: a smaller puff and shower than the one in front's. */
+    showPackDeath(i, at, age, seed) {
+        this.packSmoke[i]?.show(at, age, seed);
+        this.packGold[i]?.show(at, age, seed + 1);
+    }
+
+    /** Poison bubbling up on a monster (0 = the one in front, 1-3 the waiting ones): more and bigger with more stacks. */
+    showPoison(i, actor, seconds, stacks) {
+        this.bubbles[i]?.show(actor, seconds, stacks);
+    }
+
+    /** The hit that poisons: a green puff on the monster. */
+    showPoisonPuff(at, age, seed) {
+        this.poisonPuff.show(at, age, seed);
+    }
+
+    /** A Healer's heal landing on your hero. */
+    showHeal(at, age) {
+        this.heal.show(at, age);
+    }
+
+    /** The Warlock's patron taking its price: purple wisps drawn up out of the hero. */
+    showDrain(at, age, seed) {
+        this.drain.show(at, age, seed);
+    }
+
+    /** A boss's charge crackling up round it (level 0..1; full: at full charge, red and thick). */
+    showCharge(actor, seconds, level, full) {
+        this.embers.show(actor, seconds, level, full);
+    }
+
+    /** A staggered boss: stars circling over its head (at), age seconds after they appear. */
+    showDaze(at, age) {
+        this.daze.show(at, age);
+    }
+
+    /** A boss's charged blow slamming down: a ring of dust thrown up round where it lands. */
+    showSlamDust(at, age, seed) {
+        this.slamDust.show(at, age, seed);
+    }
+}
+
+/**
+ * A boss's charge: embers crackling up round it, on a loop (from the server clock's seconds, so a redraw
+ * doesn't restart them). More, bigger and redder as the charge rises; at full charge thick and red, flickering.
+ */
+class Embers {
+    constructor(scene) {
+        this.max = 44;
+        this.positions = new Float32Array(this.max * 3);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.points = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: 0xff8a2a, size: 0.16, map: dotTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        }));
+        this.points.frustumCulled = false;
+        this.points.visible = false;
+        scene.add(this.points);
+        const random = seededRandom(91);
+        this.embers = Array.from({ length: this.max }, () => ({ period: 0.45 + random() * 0.6, phase: random(), angle: random() * Math.PI * 2, wobble: random() * 6 }));
+    }
+
+    show(actor, seconds, level, full) {
+        if (!level || !actor?.root.visible) return;
+        const count = Math.min(this.max, Math.round(8 + 36 * level));
+        const scale = actor.holder.scale.y;
+        const height = (actor.spec.height || 2) * scale;
+        const base = actor.spec.hover || 0;
+        const { x, z } = actor.root.position;
+        const radius = actor.width * 0.55 * scale;
+        this.embers.slice(0, count).forEach((e, i) => {
+            const p = ((seconds / e.period + e.phase) % 1 + 1) % 1;
+            // Each rises round the body, drawn in towards it as it goes (like heat being pulled in).
+            const r = radius * (1.1 - 0.5 * p);
+            const angle = e.angle + Math.sin(seconds * 2 + e.wobble) * 0.3;
+            this.positions[i * 3] = x + Math.cos(angle) * r;
+            this.positions[i * 3 + 1] = base + p * height * 1.05;
+            this.positions[i * 3 + 2] = z + 0.2 + Math.sin(angle) * r * 0.6;
+        });
+        this.points.geometry.setDrawRange(0, count);
+        this.points.geometry.attributes.position.needsUpdate = true;
+        this.points.material.color.set(full ? 0xff2a1a : 0xff8a2a);
+        this.points.material.size = full ? 0.3 : 0.14 + 0.1 * level;
+        // Full charge flickers fast, like it can barely hold it in.
+        this.points.material.opacity = full ? 0.75 + 0.25 * Math.sin(seconds * 40) : 0.5 + 0.4 * level;
+        this.points.visible = true;
+    }
+
+    hide() {
+        this.points.visible = false;
+    }
+}
+
+/** Dazed stars circling over a staggered boss's head, fading in and out. Shown at an age, like the bursts. */
+class Daze {
+    constructor(scene) {
+        this.count = 4;
+        this.life = 0.95;
+        this.positions = new Float32Array(this.count * 3);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.points = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: 0xfff3a0, size: 0.55, map: starTexture(), transparent: true, depthWrite: false,
+        }));
+        this.points.frustumCulled = false;
+        this.points.visible = false;
+        this.points.renderOrder = 11;
+        scene.add(this.points);
+    }
+
+    show(at, age) {
+        if (age < 0 || age > this.life) return;
+        for (let i = 0; i < this.count; i++) {
+            const angle = (age / 0.7) * Math.PI * 2 + (i / this.count) * Math.PI * 2;
+            this.positions[i * 3] = at.x + Math.cos(angle) * 0.6;
+            this.positions[i * 3 + 1] = at.y + Math.sin(angle) * 0.08;
+            this.positions[i * 3 + 2] = at.z + Math.sin(angle) * 0.35;
+        }
+        this.points.geometry.attributes.position.needsUpdate = true;
+        const p = age / this.life;
+        this.points.material.opacity = p < 0.1 ? p / 0.1 : p > 0.85 ? (1 - p) / 0.15 : 1;
+        this.points.visible = true;
+    }
+
+    hide() {
+        this.points.visible = false;
+    }
+}
+
+/**
+ * A spell flying on an arc from one point to another: a bright head with a short trail behind it (points
+ * a little further back along the same arc). Shown at a point of its flight, like everything here.
+ */
+class Bolt {
+    constructor(scene) {
+        this.count = 9;
+        this.positions = new Float32Array(this.count * 3);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.points = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: 0x4fa8ff, size: 0.4, map: dotTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        }));
+        this.points.frustumCulled = false;
+        this.points.visible = false;
+        this.points.renderOrder = 10;
+        scene.add(this.points);
+    }
+
+    show(from, to, p) {
+        if (p < 0 || p > 1) return;
+        for (let k = 0; k < this.count; k++) {
+            const q = Math.max(0, p - k * 0.04);
+            this.positions[k * 3] = from.x + (to.x - from.x) * q;
+            this.positions[k * 3 + 1] = from.y + (to.y - from.y) * q + Math.sin(Math.PI * q) * 0.9;  // it arcs over
+            this.positions[k * 3 + 2] = from.z + (to.z - from.z) * q;
+        }
+        this.points.geometry.attributes.position.needsUpdate = true;
+        this.points.visible = true;
+    }
+
+    hide() {
+        this.points.visible = false;
+    }
+}
+
+/**
+ * Poison bubbles rising round a monster, on a loop (from the server clock's seconds, so a redraw doesn't
+ * restart them). Each bubble has its own speed and place from a fixed seed; more stacks show more bubbles,
+ * a little bigger.
+ */
+class Bubbles {
+    constructor(scene) {
+        this.max = 26;
+        this.positions = new Float32Array(this.max * 3);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.points = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: 0x6dff5a, size: 0.16, map: bubbleTexture(), transparent: true, depthWrite: false, opacity: 0.9,
+        }));
+        this.points.frustumCulled = false;
+        this.points.visible = false;
+        scene.add(this.points);
+        const random = seededRandom(77);
+        this.bubbles = Array.from({ length: this.max }, () => ({ period: 1.1 + random() * 0.9, phase: random(), x: random() - 0.5, z: random() - 0.5, wobble: random() * 6 }));
+    }
+
+    /** actor: the monster (where it stands and how big it is this frame); stacks 0 shows nothing. */
+    show(actor, seconds, stacks) {
+        if (!stacks || !actor?.root.visible) return;
+        const count = Math.min(this.max, 4 + stacks * 5);
+        const scale = actor.holder.scale.y;
+        const height = (actor.spec.height || 2) * scale;
+        const base = (actor.spec.hover || 0) + height * 0.2;
+        const { x, z } = actor.root.position;
+        this.bubbles.slice(0, count).forEach((b, i) => {
+            const p = ((seconds / b.period + b.phase) % 1 + 1) % 1;
+            this.positions[i * 3] = x + b.x * actor.width * 0.9 * scale + Math.sin(seconds * 3 + b.wobble) * 0.06;
+            this.positions[i * 3 + 1] = base + p * height * 0.95;
+            this.positions[i * 3 + 2] = z + 0.25 + b.z * 0.5;
+        });
+        this.points.geometry.setDrawRange(0, count);
+        this.points.geometry.attributes.position.needsUpdate = true;
+        this.points.material.size = Math.min(0.32, 0.14 + stacks * 0.03);
+        this.points.visible = true;
+    }
+
+    hide() {
+        this.points.visible = false;
+    }
+}
+
+/**
+ * A heal landing on a hero: green sparkles drifting up out of them and a soft green ring rising from their
+ * feet to their chest. Exported for the teammates in your room (js/battle3d/others.js), one each.
+ */
+export class HealSparkle {
+    constructor(scene) {
+        this.life = 1.0;
+        this.scene = scene;
+        // Normal blending, not additive: added light turns green white on the warm, bright room.
+        this.sparks = new Burst(scene, { count: 30, color: 0x38f070, size: 0.26, speed: 1.5, rise: 1.6, gravity: -1.5, life: this.life, additive: false });
+        this.ring = flatMesh(scene, new THREE.RingGeometry(0.5, 0.78, 40), 0x30ff70);
+        this.ring.rotation.x = -Math.PI / 2;
+    }
+
+    /** at: the hero's chest; age in seconds since the heal landed. */
+    show(at, age) {
+        this.hide();
+        if (age < 0 || age > this.life) return;
+        this.sparks.show(at, age, 31);
+        const p = age / this.life;
+        const rise = 1 - Math.pow(1 - Math.min(1, p * 1.6), 2);
+        this.ring.position.set(at.x, 0.1 + (at.y - 0.1) * rise, at.z - 0.3);
+        this.ring.scale.setScalar(1 + 0.3 * p);
+        this.ring.material.opacity = 0.7 * (1 - p);
+        this.ring.visible = true;
+    }
+
+    hide() {
+        this.sparks.hide();
+        this.ring.visible = false;
+    }
+
+    dispose() {
+        this.scene.remove(this.sparks.points, this.ring);
+    }
 }
 
 /** A flat shape that glows (adds light), always drawn over the room. */
@@ -148,6 +437,53 @@ export function seededRandom(seed) {
         t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+}
+
+let bubble = null;
+/** A bubble: a thin ring with a glint, drawn once. */
+function bubbleTexture() {
+    if (!bubble) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 32;
+        const g = canvas.getContext('2d');
+        g.beginPath();
+        g.arc(16, 16, 12, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255,255,255,0.3)';
+        g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.95)';
+        g.lineWidth = 3;
+        g.stroke();
+        g.beginPath();
+        g.arc(11, 11, 3, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255,255,255,1)';
+        g.fill();
+        bubble = new THREE.CanvasTexture(canvas);
+    }
+    return bubble;
+}
+
+let star = null;
+/** A five-pointed cartoon star with a dark edge, drawn once (the dazed stars). */
+function starTexture() {
+    if (!star) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const g = canvas.getContext('2d');
+        g.beginPath();
+        for (let i = 0; i < 10; i++) {
+            const r = i % 2 ? 12 : 28;
+            const a = -Math.PI / 2 + (i * Math.PI) / 5;
+            g.lineTo(32 + Math.cos(a) * r, 34 + Math.sin(a) * r);
+        }
+        g.closePath();
+        g.fillStyle = '#ffffff';
+        g.fill();
+        g.lineWidth = 4;
+        g.strokeStyle = 'rgba(60, 40, 0, 0.9)';
+        g.stroke();
+        star = new THREE.CanvasTexture(canvas);
+    }
+    return star;
 }
 
 let dot = null;

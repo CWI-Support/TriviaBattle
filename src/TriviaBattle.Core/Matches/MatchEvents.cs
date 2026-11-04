@@ -40,6 +40,15 @@ public sealed record PowerUpFound(string OwnerId, PowerUp PowerUp) : MatchEvent;
 /// <summary>Dungeon format: an adventurer used their power-up with the action button.</summary>
 public sealed record PowerUpUsed(string OwnerId, PowerUpUse Use) : MatchEvent;
 
+/// <summary>
+/// Dungeon format: a Healer's poison hurt a party's monsters (raised by Tick, once per tick). With
+/// <paramref name="Kill"/> it killed the one in front and the next steps up. Nobody scores for poison damage.
+/// </summary>
+public sealed record MonsterPoisoned(string PartyId, int Damage, DealtHit? Kill) : MatchEvent;
+
+/// <summary>Dungeon format: a Warlock's patron is showing them the right answer (raised by Tick; only their own screen sees it).</summary>
+public sealed record PatronRevealed(string OwnerId) : MatchEvent;
+
 /// <summary>Dungeon format: in the intro, a player said yes to a hero photo (when photos are asked for first).</summary>
 public sealed record PhotoAsked(string StationId) : MatchEvent;
 

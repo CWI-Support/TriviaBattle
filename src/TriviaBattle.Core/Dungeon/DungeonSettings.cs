@@ -16,17 +16,17 @@ public sealed class DungeonSettings
     public int MediumDamage { get; set; } = 30;
     public int HardDamage { get; set; } = 40;
 
-    /// <summary>A correct answer this fast is a critical hit.</summary>
+    /// <summary>
+    /// A correct answer this fast is a fast answer: a critical hit, and what sets off the Healer's, Wizard's
+    /// and Rogue's powers. A set time, the same for every question (the Tank gets longer: <see cref="ClassSettings.TankFastSeconds"/>).
+    /// </summary>
     public double CritWithinSeconds { get; set; } = 3;
 
-    /// <summary>A crit does this many times the damage.</summary>
+    /// <summary>A crit does this many times the damage (a Rogue's: <see cref="ClassSettings.RogueCritMultiplier"/>).</summary>
     public double CritMultiplier { get; set; } = 1.5;
 
-    /// <summary>From this many correct answers in a row, every hit is a combo.</summary>
-    public int ComboStreak { get; set; } = 3;
-
-    /// <summary>A combo adds this share of the damage on top (0.5 = +50%).</summary>
-    public double ComboBonus { get; set; } = 0.5;
+    /// <summary>What each hero class can do (combos are the Pugilist's). Bound from "Game:Dungeon:Classes".</summary>
+    public ClassSettings Classes { get; set; } = new();
 
     /// <summary>
     /// At 0 HP an adventurer is downed: their buttons are dead this long, then they get back up at
@@ -59,28 +59,55 @@ public sealed class DungeonSettings
     /// <summary>The hit that completes a party combo adds this share of the damage on top (1 = double).</summary>
     public double PartyComboBonus { get; set; } = 1;
 
-    // A solo game runs on an arcade clock: it starts at SoloStartSeconds and every monster slain adds
-    // time, up to SoloMaxSeconds of play in all. When it runs out the player can continue (a swipe)
-    // for SoloContinueSeconds more. Groups play a fixed round (MatchSettings.MatchSeconds) so everyone
-    // starts and ends together. All of these can be changed on the Operator screen.
+    // Bosses power up. Against a boss, each adventurer's questions go round a cycle of BossChargeSteps: the
+    // boss starts weak (its hit does BossWeakHit of its damage), builds up question by question to its normal
+    // damage, and on the last step is at full charge: a miss (or too slow) then takes BossChargedHit of its
+    // damage, a right answer staggers it (StaggerBonus more damage). Either way the cycle starts over. With the
+    // default 3 steps the boss hits 50%, then 100%, then 250%. 0 or 1 steps = no cycle (always normal).
 
-    public double SoloStartSeconds { get; set; } = 90;
-    public double SoloSecondsPerKill { get; set; } = 10;
-
-    /// <summary>A boss kill adds this instead of <see cref="SoloSecondsPerKill"/>.</summary>
-    public double SoloSecondsPerBoss { get; set; } = 30;
-
-    /// <summary>The hard cap: a solo game's clock never runs longer than this in all, continues included.</summary>
-    public double SoloMaxSeconds { get; set; } = 480;
+    public int BossChargeSteps { get; set; } = 3;
+    public double BossWeakHit { get; set; } = 0.5;
+    public double BossChargedHit { get; set; } = 2.5;
+    public double StaggerBonus { get; set; } = 0.5;
 
     /// <summary>
-    /// The time a continue adds. A continue is only offered while a whole one still fits under
-    /// <see cref="SoloMaxSeconds"/>. 0 = no continues.
+    /// How hard a boss hits on a step of its charge (0-based): from <see cref="BossWeakHit"/> on the first step up to
+    /// normal (1) on the one before full, then <see cref="BossChargedHit"/> at full charge. 1 with no cycle.
     /// </summary>
-    public double SoloContinueSeconds { get; set; } = 60;
+    public double BossHitAt(int step)
+    {
+        if (BossChargeSteps < 2)
+            return 1;
+        if (step >= BossChargeSteps - 1)
+            return BossChargedHit;
+        var building = BossChargeSteps - 2; // steps before full, after the first
+        return building == 0 ? BossWeakHit : BossWeakHit + (1 - BossWeakHit) * step / building;
+    }
+
+    // Every Dungeon game runs on an arcade clock: one paid session starts at ClockStartSeconds and every
+    // monster slain adds time, so the better you play, the longer you play: there's no cap, the session lasts
+    // until the clock runs out. The defaults aim at 3-4 minutes for an average player: about two floors, two bosses. A party
+    // kills faster, so its time per kill is scaled down to match (DungeonRun.SecondsEarnedBy). When the clock
+    // runs out, a card swipe continues: a second paid session, ContinueSeconds long, picking up where they
+    // left off. All of these can be changed on the Operator screen.
+
+    public double ClockStartSeconds { get; set; } = 140;
+    public double SecondsPerKill { get; set; } = 5;
+
+    /// <summary>A boss kill adds this instead of <see cref="SecondsPerKill"/>.</summary>
+    public double SecondsPerBoss { get; set; } = 15;
+
+    /// <summary>A continue's clock: a new paid session's starting time, on the same floor with the same HP. 0 = no continues.</summary>
+    public double ContinueSeconds { get; set; } = 140;
 
     /// <summary>How long "Continue?" waits for a swipe before going to the results.</summary>
-    public double SoloContinueCountdownSeconds { get; set; } = 10;
+    public double ContinueCountdownSeconds { get; set; } = 15;
+
+    /// <summary>
+    /// Monsters are tougher for a party: each member after the first adds this share of a monster's HP
+    /// (0.75: two players face 175%, four face 325%). Time per kill is scaled to match.
+    /// </summary>
+    public double PartyHpPerMember { get; set; } = 0.75;
 
     // Power-ups (see PowerUp). One held at a time, used with the action button. A kill drops one
     // PowerUpDropChance of the time (a boss always), and every PowerUpStreak right answers in a row earn one.
@@ -97,7 +124,7 @@ public sealed class DungeonSettings
     /// <summary>How long a Freeze stops the monster's hourglass.</summary>
     public double FreezeSeconds { get; set; } = 10;
 
-    /// <summary>The time a Time Crystal adds to a solo game's clock (up to the hard cap).</summary>
+    /// <summary>The time a Time Crystal adds to the clock.</summary>
     public double TimeCrystalSeconds { get; set; } = 20;
 
     /// <summary>
@@ -123,5 +150,10 @@ public sealed class DungeonSettings
         _ => MediumDamage,
     };
 
-    public DungeonSettings Copy() => (DungeonSettings)MemberwiseClone();
+    public DungeonSettings Copy()
+    {
+        var copy = (DungeonSettings)MemberwiseClone();
+        copy.Classes = Classes.Copy(); // its own, so changing one match's numbers never changes another's
+        return copy;
+    }
 }

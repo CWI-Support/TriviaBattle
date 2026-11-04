@@ -58,12 +58,12 @@ public class LobbyTests
         Assert.Equal(LobbyStep.Hero, Seat("A1").Step);
         Assert.False(string.IsNullOrEmpty(Seat("A1").Name));
         Assert.True(Seat("A1").Name.Length <= MatchSetupValidator.MaxNameLength);
-        Assert.Equal("knight", Seat("A1").Hero);
+        Assert.Equal("tank", Seat("A1").Hero);
 
         Press("A1", B, B);
-        Assert.Equal("mage", Seat("A1").Hero);
+        Assert.Equal("wizard", Seat("A1").Hero);
         Press("A1", A, A, A);
-        Assert.Equal("ranger", Seat("A1").Hero); // round the back
+        Assert.Equal("warlock", Seat("A1").Hero); // round the back
 
         Press("A1", Action);
         Assert.Equal(LobbyStep.Game, Seat("A1").Step);
@@ -78,7 +78,7 @@ public class LobbyTests
         var start = Assert.Single(result.Starts);
         Assert.Equal(GameChoice.Solo, start.Game);
         var player = Assert.Single(start.Players);
-        Assert.Equal(("A1", "barbarian"), (player.StationId, player.Hero));
+        Assert.Equal(("A1", "healer"), (player.StationId, player.Hero));
         Assert.Equal(LobbyStep.Idle, Seat("A1").Step); // the match takes over the screen
 
         var setup = start.ToSetup([1], Difficulty.Easy);
@@ -378,13 +378,13 @@ public class LobbyTests
     public void Someone_else_s_card_mid_steps_starts_afresh_without_the_last_player_s_photo()
     {
         _settings.HeroPhotos = true;
-        Press("A1", A, B, Action);                       // a guest picks the barbarian
+        Press("A1", A, B, Action);                       // a guest picks the healer
         Arrived("A1");
         Press("A1", Action);                             // keeps the photo, then walks away on the games
 
         _lobby.Swipe("A1", "Brett", 42, _now);
 
-        Assert.Equal((LobbyStep.Hero, "knight", false), (Seat("A1").Step, Seat("A1").Hero, Seat("A1").HasPhoto));
+        Assert.Equal((LobbyStep.Hero, "tank", false), (Seat("A1").Step, Seat("A1").Hero, Seat("A1").HasPhoto));
         _lobby.Swipe("A1", "Brett", 42, _now);           // the same card again changes nothing
         Assert.Equal(LobbyStep.Hero, Seat("A1").Step);
     }
