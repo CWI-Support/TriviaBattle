@@ -43,6 +43,9 @@ export class Stage {
         this.shake = new THREE.Vector2();  // set by the beat each frame, in world units
         this.rect = null;      // the box being drawn in now (glides towards the data-stage element's)
 
+        // The corridor (its pieces and its torches' lights) is one group, so the walk to the next room can scroll it.
+        this.room = new THREE.Group();
+        this.scene.add(this.room);
         this.addLights();
         this.addRoom();
         window.addEventListener('resize', () => this.resize());
@@ -63,7 +66,7 @@ export class Stage {
         this.torches = TORCH_LIGHTS.map(([x, y, z]) => {
             const light = new THREE.PointLight(0xff8a3a, 30, 14, 1.6);
             light.position.set(x, y, z);
-            this.scene.add(light);
+            this.room.add(light);
             return light;
         });
     }
@@ -74,8 +77,13 @@ export class Stage {
             const piece = gltf.scene.clone(true);
             piece.position.set(x, y, z);
             piece.rotation.y = turn;
-            this.scene.add(piece);
+            this.room.add(piece);
         }
+    }
+
+    /** Slides the corridor along (the walk to the next room: from 0 to minus ROOM_LENGTH, then back to 0). */
+    scrollRoom(x) {
+        this.room.position.x = x;
     }
 
     resize() {

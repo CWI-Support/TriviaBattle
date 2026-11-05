@@ -123,9 +123,9 @@ The rules:
   `RogueCritMultiplier`; the Tank's fast window is `TankFastSeconds` and it takes `Tank.DamageTaken` of a hit; the
   Healer's fast answer heals the standing party member lowest on HP (`DealtHit.HealedOwnerId`), or with nobody hurt
   adds a poison stack to the monster in front (`Delve.Poison`; `DungeonRun.TickPoison` does its damage every
-  tick, raising `MonsterPoisoned`, and a poison kill is a kill but scores nothing: `DungeonRun.PoisonKilled` gives the party its kill
-  beat (`Adventurer.PoisonKillAt`; the snapshot's `BeatView.ByPoison`, whose hit is `DelveView.LastHit`), and their question comes
-  back after it); the Wizard's fast answer splashes
+  tick, raising `MonsterPoisoned`, and a poison kill is a kill but scores nothing: `DungeonRun.PartyKilled` gives the party its kill
+  beat, as for a teammate's kill (`Adventurer.WatchedKill`; the snapshot's `BeatView.ByPoison`, with the killing `BeatView.Hit`),
+  and their question comes back after it); the Wizard's fast answer splashes
   every other monster in the room (`DealtHit.Splashes`); the Pugilist is the only class with a combo
   (`DealtHit.Combo`, `ComboCount`); the Warlock's patron decides once per question (`PlanReveal`, when the hourglass
   turns over) whether to show the answer when the hourglass is down to `WarlockRevealSecondsLeft`
@@ -200,7 +200,7 @@ The rules:
 - **Mini games** (`Core/Dungeon/Minigames`, numbers in `MinigameSettings`, `"Game:Dungeon:Minigames"`). `DungeonMap.MinigameOn`
   rolls every floor reached for one by `MinigameChance` (config/dungeon.json), loops included (a loop repeats a floor's
   rooms, not its mini game): its own `Random` from the match's seed and the floor number, so every party meets the same
-  ones. The kind comes from `MinigameCatalog.Pick` (every kind as likely) and it follows a random room, never the one
+  ones; after `MinigameEvery` (3) less one floors without one, the next floor that can hold one has one whatever its roll. The kind comes from `MinigameCatalog.Pick` (every kind as likely) and it follows a random room, never the one
   before the boss's. A floor written with `FloorDef.Minigame`/`MinigameAfterRoom` always has that one (tests use it). When that room empties,
   `Delve.ClearTheDead` marks the kill `DealtHit.MinigameAhead`, and `MatchEngine` calls `DungeonRun.StartMinigames`: each
   party member not already away gets their own `Minigame` (`MinigameStarted`), its intro once the kill beat ends. A
@@ -334,12 +334,21 @@ The rules:
   anyone in it faces a boss.
 
 - **Battle beats.** After every answer the next question waits a moment while the screen shows the
-  fight (`DungeonRun.BeatSecondsAfter`: `HitBeatSeconds`, `HurtBeatSeconds`, `KillBeatSeconds`,
+  fight (`DungeonRun.BeatSecondsAfter`: `HitBeatSeconds`, `HurtBeatSeconds`, `KillBeatSeconds`, `RoomBeatSeconds`,
   `FloorBeatSeconds`). It's simply the next question's `CurrentShownAt` moved later: presses before it
   are ignored like any press before a question appears, and the hourglass starts when it shows. The
   clocks keep running (time per kill and the round length allow for it). `YouView.Beat` tells the
   station what to play (`hit`, `kill`, `floor`, `boss`, `hurt`, `downed`) and from when to when; hits
   carry what the scene needs to draw them (`DealtHit.MonsterSprite`, `MonsterHpLeft`, `TakenHit.HpLeft`).
+  In a party every kill is played on every screen together: `DungeonRun.PartyKilled` gives each standing teammate
+  not away the killer's kill beat from the same moment (`Adventurer.WatchedKill`), and their question comes back
+  after it, fresh, for the monster that's up now. Their snapshot's `BeatView` carries the killing `Hit` and who
+  landed it (`By`, a name; or `ByPoison`). Without it the next monster swapped in under a teammate's question
+  while the killer's screen was still playing the death. A kill beat ends by announcing what's next
+  (`DungeonBattle.upNext`): NEXT UP and the next monster's bar, or ROOM 3 OF 4 when the kill emptied the room.
+  That kill (`DealtHit.RoomCleared`, with no boss or mini game ahead) gets the longer `RoomBeatSeconds` (3 s): the
+  walk (`DungeonBattle.walks`), where the hero runs on and the dungeon scrolls past until the next room's monsters
+  are in front, so the question comes back with the new fight already there.
 
 New dungeon rules (time, power-ups, revives) belong in `DungeonRun`, not in `MatchEngine`.
 
@@ -532,7 +541,13 @@ splash sends bolts to every waiting monster (landing at the 190 ms impact), pois
 bubbles by their stacks, a heal sparkles on whoever it healed (you, or a teammate in `others.js`), the
 Warlock's price drains purple from the hero, a Tank blocks (`Block_Hit`) instead of reeling, and the
 Pugilist's swing grows with `comboCount`; a poison kill's beat (`byPoison`) has no blow: the monster chokes green and bursts
-(`poisonKills`). Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
+(`poisonKills`); a teammate's kill (`beat.by`) is the usual kill with your knight staying home to cheer while
+theirs strikes (`others.js`). The walk: the room is a corridor of one stretch repeated (`ROOM_LENGTH`,
+`models.js`: three stretches, in one group, `Stage.scrollRoom`). From 1150 to 2550 ms the corridor scrolls left by
+exactly one stretch while the heroes run in place (`walkPose`, their `run` clip). The next room's monster
+(`Battle.arrivalOf`, loaded at the beat's start) and its pack stand in their spots, still as far off as the
+corridor has left to go. At the end the corridor goes back to 0, which looks the same, and that monster is handed
+over as the one in front. Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
 timed from when the screen saw them, as `others.js` does. The models are CC0 placeholders
 (`media/models/CREDITS.md`) until the real art exists.
 

@@ -12,10 +12,12 @@ public sealed class DungeonPlan
 
     /// <exception cref="ArgumentException">The dungeon isn't valid (every problem is spelled out).</exception>
     /// <param name="minigameChance">How likely each floor reached is to have a mini game between two of its rooms (0 = never, 1 = always).</param>
+    /// <param name="minigameEvery">At least one mini game every this many floors (0 = the rolls alone; see DungeonMap.MinigameOn).</param>
     public DungeonPlan(IReadOnlyList<DepthDef> depths, IReadOnlyList<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
-        double minigameChance = 0)
+        double minigameChance = 0, int minigameEvery = 0)
     {
         MinigameChance = minigameChance;
+        MinigameEvery = minigameEvery;
         Depths = depths;
         Monsters = monsters;
         LoopHpBonus = loopHpBonus;
@@ -36,6 +38,9 @@ public sealed class DungeonPlan
     /// <summary>How likely each floor reached is to have a mini game (config/dungeon.json's <c>MinigameChance</c>; see DungeonMap.MinigameOn).</summary>
     public double MinigameChance { get; }
 
+    /// <summary>At least one mini game every this many floors (config/dungeon.json's <c>MinigameEvery</c>; 0 = the rolls alone).</summary>
+    public int MinigameEvery { get; }
+
     /// <summary>One match's dungeon: every made-up floor laid out with <paramref name="random"/>.</summary>
     public DungeonMap Build(Random random)
     {
@@ -43,7 +48,7 @@ public sealed class DungeonPlan
             .Select(depth => depth with { Floors = depth.Floors.Select(floor => floor.IsMadeUp ? LayOut(floor, random) : floor).ToList() })
             .ToList();
         // Mini games are rolled floor by floor as they're reached (DungeonMap.MinigameOn), loops included.
-        return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus, MinigameChance, random.Next());
+        return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus, MinigameChance, random.Next(), MinigameEvery);
     }
 
     /// <summary>A made-up floor, written out: <see cref="FloorDef.RoomCount"/> rooms filled from the pool, then the boss's.</summary>

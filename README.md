@@ -164,7 +164,7 @@ frailer, harder-hitting Wizard. All are 1 except the Tank, which takes 0.6. Chan
 |---|---|---|
 | **Rogue** | Fast answers do much more damage. | crit x2.5 instead of x1.5 |
 | **Tank** | Has longer to answer fast, and takes less damage from monsters. | fast within 5 s; takes 60% |
-| **Healer** | A fast answer heals whoever in the party is lowest on HP (themselves included). With nobody hurt, it poisons the monster instead: one stack more each time, every stack hurting it every 2 seconds until it dies. A poison kill plays its own kill beat for the party. Healing scores like damage; poison scores nothing. | heals 15; 1 per stack every 2 s |
+| **Healer** | A fast answer heals whoever in the party is lowest on HP (themselves included). With nobody hurt, it poisons the monster instead: one stack more each time, every stack hurting it every 2 seconds until it dies. A poison kill plays its own kill beat for the party (as every kill does: the whole party sees it together). Healing scores like damage; poison scores nothing. | heals 15; 1 per stack every 2 s |
 | **Wizard** | A fast answer hits every monster in the room: the one in front fully, the others half as hard. | splash 50% |
 | **Warlock** | Half the time, as the hourglass gets down to its last 4 seconds, their patron shows them the right answer (only on their screen). Any answer after 6 seconds costs them 8 HP (it never downs them). | 50%, at 4 s left; after 6 s, 8 HP |
 | **Pugilist** | The only class with a combo: every right answer in a row does 15% more, up to +150%. A wrong answer or a hit ends it. | +15% a step, max +150% |
@@ -209,7 +209,7 @@ and `?kind=rewarded` preview the screens.
 
 **Mini games** break up a floor. Every floor you reach has a chance (`MinigameChance` in `config/dungeon.json`, 40%) of
 one between two of its rooms, loops back to the top included (they repeat a floor's rooms, not its mini game): at most
-one a floor, never right before the boss, and each kind of mini game as likely as the others. When the room before it is cleared, everyone in the party plays their own go on their own station:
+one a floor, never right before the boss, and each kind of mini game as likely as the others. Luck never runs dry for long: there's at least one every 3 floors (`MinigameEvery`). When the room before it is cleared, everyone in the party plays their own go on their own station:
 an intro (what it is, how to play, 3-2-1), then the game, then how it went. **The arcade clock stops** while anyone
 is in one (and while anyone is picking a reward): they're outside the paid time. Winning earns a reward pick.
 

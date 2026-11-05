@@ -90,9 +90,12 @@ public sealed class DungeonMap
     /// <param name="depths">Every floor written out: made-up floors are laid out first, by <see cref="DungeonPlan.Build"/>.</param>
     /// <param name="minigameChance">How likely each floor reached is to have a mini game (see <see cref="MinigameOn"/>).</param>
     /// <param name="minigameSeed">Makes this match's rolls for them (the same for every party, so a race is fair).</param>
+    /// <param name="minigameEvery">At least one mini game every this many floors: after that many less one without, the next floor
+    /// that can hold one has one whatever its roll (0 = no such promise, the rolls alone).</param>
     public DungeonMap(IReadOnlyList<DepthDef> depths, IEnumerable<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
-        double minigameChance = 0, int minigameSeed = 0)
+        double minigameChance = 0, int minigameSeed = 0, int minigameEvery = 0)
     {
+        MinigameEvery = minigameEvery;
         _monsters = monsters.ToDictionary(m => m.Id);
         _floors = depths.SelectMany(d => d.Floors.Select(f => (d, f, f.RoomList()))).ToList();
         Depths = depths;
@@ -132,6 +135,9 @@ public sealed class DungeonMap
     /// <summary>How likely each floor reached is to have a mini game (config/dungeon.json's <c>MinigameChance</c>).</summary>
     public double MinigameChance { get; }
 
+    /// <summary>At least one mini game every this many floors (config/dungeon.json's <c>MinigameEvery</c>; 0 = the rolls alone).</summary>
+    public int MinigameEvery { get; }
+
     private readonly int _minigameSeed;
 
     /// <summary>
@@ -140,9 +146,25 @@ public sealed class DungeonMap
     /// for one, by <see cref="MinigameChance"/>, loops included: the dungeon repeats its floors' rooms on each loop,
     /// but not their mini games, so a long run keeps finding them the way it keeps finding monsters. It goes between
     /// two of the floor's rooms, never right before a boss's (whose entrance follows that room) nor after the last.
+    /// Luck can still run dry for a while, so there's a promise too: after <see cref="MinigameEvery"/> less one floors
+    /// without one, the next floor that can hold one has one, whatever its roll.
     /// Each floor's roll is fixed by the match's seed, so every party in a race meets the same ones.
     /// </summary>
     public (MinigameKind Kind, int AfterRoom)? MinigameOn(int floor)
+    {
+        // Floor by floor from the top, counting the floors in a row without one, so the promise knows when it's due.
+        (MinigameKind Kind, int AfterRoom)? minigame = null;
+        var without = 0;
+        for (var f = 1; f <= floor; f++)
+        {
+            minigame = RollMinigame(f, promised: MinigameEvery > 0 && without >= MinigameEvery - 1);
+            without = minigame == null ? without + 1 : 0;
+        }
+        return minigame;
+    }
+
+    /// <summary>One floor's mini game: as written, or its roll (promised: it has one even if the roll says not).</summary>
+    private (MinigameKind Kind, int AfterRoom)? RollMinigame(int floor, bool promised)
     {
         var (_, def, rooms) = _floors[(floor - 1) % _floors.Count];
         if (def.Minigame is { } written)
@@ -151,10 +173,10 @@ public sealed class DungeonMap
         var bossLast = rooms[^1].Any(id => _monsters[id].IsBoss);
         var lastAfter = rooms.Count - (bossLast ? 2 : 1); // the last room a mini game can follow
         if (MinigameChance <= 0 || lastAfter < 1)
-            return null;
+            return null; // mini games off, or no room for one here: a promise waits for the next floor
 
         var roll = new Random(unchecked(_minigameSeed * 7919 + floor)); // this floor's own roll, whoever gets there first
-        if (roll.NextDouble() >= MinigameChance)
+        if (roll.NextDouble() >= MinigameChance && !promised)
             return null;
         return (MinigameCatalog.Pick(roll), roll.Next(1, lastAfter + 1));
     }

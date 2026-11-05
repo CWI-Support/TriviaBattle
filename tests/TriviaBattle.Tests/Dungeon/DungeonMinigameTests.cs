@@ -211,10 +211,35 @@ public class DungeonMinigameTests
 
     // ---------------------------------------------------------------- Where floors get one
 
-    private static DungeonPlan Plan(double chance) => new(
+    private static DungeonPlan Plan(double chance, int every = 0) => new(
         [new DepthDef("d", "Depth", Enumerable.Range(0, 20).Select(_ => new FloorDef(RoomCount: [2, 3], RoomHp: 20, Pool: ["rat"], Boss: "boss")).ToList())],
         [new MonsterDef("rat", "Rat", "rat", 20, 5, 10), new MonsterDef("boss", "Boss", "goblin-boss", 100, 5, 10, IsBoss: true)],
-        minigameChance: chance);
+        minigameChance: chance, minigameEvery: every);
+
+    [Fact]
+    public void There_is_at_least_one_every_three_floors_however_the_rolls_go()
+    {
+        for (var seed = 1; seed <= 50; seed++)
+        {
+            var map = Plan(chance: 0.4, every: 3).Build(new Random(seed));
+            var floors = Enumerable.Range(1, 40).Select(floor => map.MinigameOn(floor) != null).ToList();
+
+            for (var floor = 0; floor + 3 <= floors.Count; floor++)
+                Assert.Contains(true, floors.GetRange(floor, 3)); // never three floors running without one
+            Assert.Contains(false, floors);                     // still not every floor
+        }
+    }
+
+    [Fact]
+    public void The_promise_only_fills_in_where_luck_ran_dry()
+    {
+        var rolled = Plan(chance: 0.4).Build(new Random(9));
+        var promised = Plan(chance: 0.4, every: 3).Build(new Random(9));
+
+        // Every floor the dice gave one still has the same one; the promise only adds to the floors that had none.
+        foreach (var floor in Enumerable.Range(1, 40).Where(f => rolled.MinigameOn(f) != null))
+            Assert.Equal(rolled.MinigameOn(floor), promised.MinigameOn(floor));
+    }
 
     [Fact]
     public void A_floor_has_at_most_one_and_never_right_before_its_boss()

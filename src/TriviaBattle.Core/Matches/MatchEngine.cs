@@ -202,7 +202,7 @@ public sealed class MatchEngine
                 if (kill != null)
                 {
                     AddTime(_dungeon.SecondsEarnedBy(partyId, kill));
-                    _dungeon.PoisonKilled(partyId, kill, now); // a kill beat for the party, as for any kill
+                    _dungeon.PartyKilled(partyId, kill, killerId: null, now); // a kill beat for the party, as for any kill
                     events.AddRange(StartMinigames(partyId, kill, now));
                 }
                 if (kill?.FloorCleared == true)
@@ -319,6 +319,8 @@ public sealed class MatchEngine
                 events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
             var partyId = _dungeon.FindAdventurer(stream.OwnerId)!.PartyId;
             AddTime(_dungeon.SecondsEarnedBy(partyId, dealt));
+            if (dealt.Killed)
+                _dungeon.PartyKilled(partyId, dealt, stream.OwnerId, now); // the teammates watch it: the same kill beat, together
             if (dealt.FloorCleared)
                 events.AddRange(OfferRewards(partyId, now));
             events.AddRange(StartMinigames(partyId, dealt, now));

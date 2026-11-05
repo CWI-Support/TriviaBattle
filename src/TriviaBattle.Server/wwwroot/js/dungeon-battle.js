@@ -3,7 +3,11 @@
 // DungeonSettings). It plays what just happened, from the snapshot's you.beat:
 //
 //   hit     your knight charges in and strikes (bigger for a crit, a combo or a party combo)
-//   kill    the strike, then the monster flashes and bursts apart: SLAIN!
+//   kill    the strike, then the monster flashes and bursts apart: SLAIN!, then what's next (upNext): NEXT UP and
+//           its bar, or a new room's ROOM 3 OF 4. A teammate's kill (beat.by) plays on your screen too, at the same
+//           moment as theirs: your knight stays put while theirs strikes.
+//   walk    a kill that emptied the room (walks(); the room beat, 3 s): the kill, then your knight runs on and the
+//           dungeon scrolls past until the next room's monster is in front of you
 //   floor   the kill, then the screen goes dark: down the stairs to the next floor
 //   boss    the kill emptied the room before the boss's: WARNING!, the boss slams down with its name card
 //   hurt    the monster lunges at you and claws you (a wrong answer, or too slow), then the right
@@ -35,13 +39,36 @@ const DungeonBattle = {
     },
 
     /**
-     * The hit on the monster this beat shows: the player's own last hit, or on a poison kill's beat (beat.byPoison,
-     * nobody answered) the party's last hit, the poison's. Null on a beat where the monster hit you.
+     * The hit on the monster this beat shows: the player's own last hit, or on a kill they watched (a teammate's,
+     * beat.by, or the party's poison, beat.byPoison) the killing hit, which the beat carries. Null on a beat where
+     * the monster hit you.
      */
     beatHit(you) {
         const beat = you.beat;
         if (!beat || beat.kind === 'hurt' || beat.kind === 'downed') return null;
-        return beat.byPoison ? you.delve.lastHit : you.delve.lastDealt;
+        return beat.hit || (beat.byPoison ? you.delve.lastHit : you.delve.lastDealt);
+    },
+
+    /**
+     * After a kill (not a floor cleared or the boss's entrance: they have their curtains), the monster that's up
+     * next, for the end of the beat: { monster (delve.monster, already the next one), newRoom (the kill emptied its
+     * room), room, rooms }. Null on other beats, and when a mini game comes next instead.
+     */
+    upNext(you) {
+        const hit = DungeonBattle.beatHit(you);
+        const delve = you.delve;
+        if (you.beat?.kind !== 'kill' || !hit?.killed || you.minigame) return null;
+        return { monster: delve.monster, newRoom: !!hit.roomCleared, room: delve.room, rooms: delve.roomsOnFloor };
+    },
+
+    /**
+     * The walk: a kill beat whose kill emptied the room, with the floor's next room ahead (not the boss's, which has
+     * its entrance, nor a mini game). The hero runs on and the dungeon scrolls past until the next room's monsters
+     * are in front (the server makes it the longer room beat, DungeonSettings.RoomBeatSeconds).
+     */
+    walks(you) {
+        const hit = DungeonBattle.beatHit(you);
+        return you.beat?.kind === 'kill' && !!hit?.roomCleared && !hit.minigameAhead && !you.minigame;
     },
 
     /** The whole fight for the beat. It fills the space between the top line and the player plate. */
@@ -51,13 +78,17 @@ const DungeonBattle = {
         const hurt = beat.kind === 'hurt' || beat.kind === 'downed';
         const hit = DungeonBattle.beatHit(you);
         const byPoison = !!beat.byPoison; // the Healer's poison killed it: no blow, it chokes and bursts
+        const byTeammate = !!beat.by;     // a teammate's blow killed it: your knight stays put and cheers
+        const next = DungeonBattle.upNext(you);
         const taken = hurt ? delve.lastTaken : null;
         const seed = `${match.matchId}:${you.stationId}:${beat.startedAtMs}`;
 
         const classes = [
             'dg-battle',
             `is-${beat.kind}`,
-            hurt ? 'is-hurting' : byPoison ? 'is-poison-kill' : 'is-striking', // the poison: the knight stays put
+            hurt ? 'is-hurting' : byPoison ? 'is-poison-kill' : byTeammate ? 'is-watching' : 'is-striking', // watching: the knight stays put
+            next ? 'has-next' : '',
+            DungeonBattle.walks(you) ? 'is-walking' : '',          // on to the next room: the dungeon scrolls past
             hit?.crit ? 'is-crit' : '',
             hit?.combo ? 'is-combo' : '',
             hit?.partyCombo ? 'is-party-combo' : '',
@@ -81,6 +112,8 @@ const DungeonBattle = {
 
         const feedback = byPoison
             ? { html: Theme.text('dungeon.slainByPoison', { monster: hit?.monsterName || '' }, seed), tone: 'is-great' }
+            : byTeammate
+            ? { html: Theme.text('dungeon.slainByTeammate', { name: beat.by, monster: hit?.monsterName || '' }, seed), tone: 'is-great' }
             : DungeonView.feedback(delve, you.lastAnswer, `${match.matchId}:${you.stationId}`);
 
         return `
@@ -90,6 +123,7 @@ const DungeonBattle = {
                     ${DungeonView.packSprites(pack)}
                     <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}<i class="dg-shadow"></i></div>
                     <div class="dg-actor is-foe ${foe.isBoss ? 'is-boss' : ''}">${PixelSprites.html(foe.sprite, 'dg-actor-sprite')}<i class="dg-shadow"></i></div>
+                    ${next?.newRoom && DungeonBattle.walks(you) ? `<div class="dg-actor is-foe is-arriving ${next.monster.isBoss ? 'is-boss' : ''}">${PixelSprites.html(next.monster.sprite, 'dg-actor-sprite')}<i class="dg-shadow"></i></div>` : ''}
                     ${hurt ? DungeonBattle.claws() : byPoison ? '' : '<div class="dg-fx-slash"></div>'}
                     ${hit?.staggered && !hit.killed ? '<div class="dg-fx-daze"><i></i><i></i><i></i></div>' : ''}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}
@@ -105,6 +139,7 @@ const DungeonBattle = {
                         ? DungeonBattle.bar(foe.name, foe.before, foe.after, foe.max, `for-foe ${foePoison ? 'is-poisoned' : ''}`, DungeonView.poisonBadge(foePoison))
                         : DungeonBattle.bar(you.name, Math.min(delve.maxHp, (taken?.hpLeft ?? delve.hp) + (taken?.damage || 0)), taken?.hpLeft ?? delve.hp, delve.maxHp, 'for-hero')}
                     ${DungeonView.packStrip(pack, 'is-battle')}
+                    ${next ? DungeonBattle.nextBar(next, seed) : ''}
                 </div>
                 <div class="dg-battle-line dg-feedback ${feedback.tone}">${feedback.html}</div>
                 <div class="dg-battle-flash"></div>
@@ -294,6 +329,23 @@ const DungeonBattle = {
                     <div class="dg-bar-fill dg-drain" style="--from: ${percent(before)}%; --to: ${percent(after)}%"></div>
                     <span class="dg-bar-text">${after} / ${max}</span>
                 </div>
+            </div>`;
+    },
+
+    /**
+     * The monster that's up next, announced at the end of a kill beat so the question doesn't just come back with a
+     * different monster in it: its bar, full, takes the slain one's place under NEXT UP (ROOM 3 OF 4 when the kill
+     * emptied the room; then it also drops into the fight where the dead one stood).
+     */
+    nextBar(next, seed) {
+        const m = next.monster;
+        const tag = next.newRoom
+            ? Theme.text('dungeon.nextRoom', { room: next.room, rooms: next.rooms }, seed)
+            : Theme.text('dungeon.nextUp', {}, seed);
+        return `
+            <div class="dg-next">
+                <div class="dg-next-tag">${tag}</div>
+                ${DungeonBattle.bar(m.name, m.hp, m.hp, m.maxHp, 'for-foe is-next')}
             </div>`;
     },
 

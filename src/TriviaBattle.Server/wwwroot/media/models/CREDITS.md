@@ -16,4 +16,5 @@ domain): free for commercial use, no credit required. Credit is still nice, so h
 
 The heroes have all their gear as separate parts (shields, weapons, hats, capes); `HEROES` in
 `js/battle3d/models.js` picks which show. `../heroes/*.png` are pictures of them, drawn by `/dev/heroes`. To swap in new art, put the .glb here and point its entry in `models.js` at it, with
-the names of its idle, attack, hurt and death clips.
+the names of its idle, attack, hurt and death clips (and its body's `width` if its idle pose holds its arms or a
+weapon out wide: see the notes at the top of `models.js`).

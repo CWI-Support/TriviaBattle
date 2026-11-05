@@ -240,9 +240,9 @@ public class HeroClassTests
 
         var beat = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Beat!;
         Assert.Equal(("kill", true), (beat.Kind, beat.ByPoison));
-        Assert.Equal(match.Now.AddSeconds(2), match.StreamOf("A1").CurrentShownAt); // the kill beat's length
+        Assert.Equal(match.Now.AddSeconds(3), match.StreamOf("A1").CurrentShownAt); // the room beat (it emptied the room: the walk on)
         Assert.Equal(number, match.StreamOf("A1").CurrentNumber);                   // the same question comes back
-        Assert.Equal(match.Now.AddSeconds(12), match.AdventurerOf("A1").AttackAt); // the new rat's hourglass starts after it
+        Assert.Equal(match.Now.AddSeconds(13), match.AdventurerOf("A1").AttackAt); // the new rat's hourglass starts after it
         Assert.Empty(match.Press("A1", 0, afterSeconds: 1));                        // buttons wait for the beat to end
     }
 

@@ -521,20 +521,22 @@ public sealed class DungeonRun
     }
 
     /// <summary>
-    /// The Healer's poison killed the monster in front of a party (<paramref name="kill"/>, from <see cref="TickPoison"/>).
-    /// It plays out like any kill: everyone in the party standing and not choosing a reward gets the kill beat (a
-    /// room or floor cleared: the longer one), and their question comes back after it, with a fresh hourglass for
-    /// the monster that's up now. Without this the next monster just swaps in under the question they're on.
+    /// The monster in front of a party died (<paramref name="kill"/>): by a teammate's answer (<paramref name="killerId"/>,
+    /// whose own kill beat is already playing) or by the Healer's poison (null, from <see cref="TickPoison"/>). Everyone
+    /// else in the party standing and not away watches it: they get the same kill beat from the same moment (a room
+    /// or floor cleared: the longer one), and their question comes back after it, with a fresh hourglass for the
+    /// monster that's up now. So every screen in the party moves on to the next monster together; without this the
+    /// next one just swaps in under the question they're on while the killer's screen is still playing the death.
     /// </summary>
-    public void PoisonKilled(string partyId, DealtHit kill, DateTimeOffset now)
+    public void PartyKilled(string partyId, DealtHit kill, string? killerId, DateTimeOffset now)
     {
         var shownAt = now + TimeSpan.FromSeconds(BeatSecondsAfter(kill));
-        foreach (var member in PartyOf(partyId).Where(a => !a.IsDowned && !a.IsAway))
+        foreach (var member in PartyOf(partyId).Where(a => a.OwnerId != killerId && !a.IsDowned && !a.IsAway))
         {
             var stream = _streams[member.OwnerId];
             if (stream.CurrentShownAt >= shownAt)
                 continue; // a longer beat of their own is playing (a floor cleared): it shows the kill too
-            member.SawPoisonKill(now);
+            member.Watched(kill, killerId, now);
             stream.Start(shownAt); // the question they were on comes back after the beat
             AfterTurn(stream, now);
         }
@@ -811,6 +813,7 @@ public sealed class DungeonRun
     public double BeatSecondsAfter(DealtHit? dealt) =>
         dealt == null ? _settings.HurtBeatSeconds
         : dealt.FloorCleared || dealt.BossAhead ? _settings.FloorBeatSeconds
+        : dealt.RoomCleared && dealt.MinigameAhead == null ? _settings.RoomBeatSeconds // the walk to the next room
         : dealt.Killed ? _settings.KillBeatSeconds
         : _settings.HitBeatSeconds;
 

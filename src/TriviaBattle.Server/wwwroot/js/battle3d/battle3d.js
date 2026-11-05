@@ -18,7 +18,8 @@ import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
-import { showBeat, showIdle, mix, easeInOut } from './beats.js';
+import { showBeat, showIdle, showWalkIn, walkAt, mix, easeInOut } from './beats.js';
+import { ROOM_LENGTH } from './models.js';
 import { heroPortrait } from './portrait.js';
 import { Others } from './others.js';
 import { Pack, PACK_MAX } from './pack.js';
@@ -38,6 +39,8 @@ const HERO_FACING = Math.atan2(FOE_HOME.x - HERO_HOME.x, FOE_HOME.z - HERO_HOME.
 const FOE_FACING = Math.atan2(HERO_HOME.x - FOE_HOME.x, HERO_HOME.z - FOE_HOME.z) + 0.35;
 
 const FOV = 32;
+const PORTRAIT_MAX_HEIGHT = 2.1; // a question's shot fits at most this much of the monster (the top of it): a boss looms
+const FIGHT_RIGHT_EDGE = 2.45;   // the right edge of the usual fight shot (span 5.2 round x -0.15)
 const KILLS = ['kill', 'floor', 'boss'];
 const STEP_MS = 500;        // a waiting monster stepping up to the front between beats (the poison killed the one there)
 const POISON_DEATH_MS = 900;
@@ -62,6 +65,7 @@ class Battle {
         this.deathsSeen = null; // the front monster's last deaths seen: { beat (a kill beat's start), poison (the poison kill's hit number) }
         this.foeStep = null;   // the monster in front stepping up from the pack between beats: { from: { x, z, scale }, at }
         this.poisonDeath = null; // the one the poison killed between beats, going up in smoke: { at, chest }
+        this.arrival = null;   // a kill beat that emptied the room: the next room's monster, dropping in before it ends: { beat, key, actor }
         this.lastFrame = performance.now();
         requestAnimationFrame(time => this.frame(time));
     }
@@ -101,6 +105,7 @@ class Battle {
             : DungeonBattle.beatHit(you)?.monsterSprite || delve.monster.sprite; // the one in this beat (a poison kill: the party's hit)
         if (died === 'poison' && this.foe) this.poisonDeath = { at: now, chest: this.foe.chest() };
         if (!died && (key === this.foeKey || key === this.foeLoadingKey)) return;
+        if (died === 'beat' && this.arrival?.key === key && this.arrival.actor) return this.welcome(key);
 
         const next = died ? this.pack.take(key, now) : null;
         if (next) return this.promote(next, key, now);
@@ -115,6 +120,47 @@ class Battle {
             this.foeKey = key;
             this.foeLoadingKey = null;
         });
+    }
+
+    /**
+     * A kill beat that emptied the room (the walk: DungeonBattle.walks): the next room's first monster, to come in
+     * with the corridor as the hero runs on, so the question comes back with the new fight already there.
+     * { beat (its start), key }, or null. delve.monster is already the next one.
+     */
+    arrivalOf(you, playing) {
+        if (!playing || !DungeonBattle.walks(you)) return null;
+        return { beat: you.beat.startedAtMs, key: you.delve.monster.sprite };
+    }
+
+    /** Loads the arriving monster as soon as the beat starts (it isn't in the scene until the next room comes into view). */
+    prepareArrival(wanted) {
+        if (!wanted || this.arrival?.beat === wanted.beat) return;
+        this.dropArrival();
+        const arrival = { ...wanted, actor: null };
+        this.arrival = arrival;
+        Actor.create(wanted.key, FOE_FACING).then(actor => {
+            if (this.arrival !== arrival) return actor.dispose(this.stage.scene); // that beat's gone
+            actor.zAt = zAt;
+            arrival.actor = actor;
+        });
+    }
+
+    dropArrival() {
+        this.arrival?.actor?.dispose(this.stage.scene);
+        this.arrival = null;
+    }
+
+    /** The beat that emptied the room is over: the monster that came in with the next room is the one in front now. */
+    welcome(key) {
+        const actor = this.arrival.actor;
+        this.arrival = null;
+        if (!actor.root.parent) this.place(actor, FOE_HOME);
+        this.foe?.dispose(this.stage.scene);
+        this.foe = actor;
+        this.foe.rivalTurn = this.foesMet++;
+        this.foeKey = key;
+        this.foeLoadingKey = null;
+        this.foeArrivedAt = null; // it has already landed
     }
 
     /**
@@ -159,7 +205,7 @@ class Battle {
      * is still waiting, unless the kill emptied the room (the snapshot is already in the next one: a new
      * floor, the boss's room (bossAhead), or simply a room we saw change).
      */
-    packView(you, playing) {
+    packView(you, playing, arriving = false) {
         const delve = you.delve;
         const foes = delve.foes?.length ? delve.foes : [delve.monster];
         const room = `${delve.floor}:${delve.room}`;
@@ -169,11 +215,14 @@ class Battle {
         if (!playing) this.roomSeen = room;
 
         if (!hit) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
+        // On the walk, once the next room is coming into view: its pack (this room's are all dead and gone by then).
+        if (arriving) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
         if (hit.splashes?.length) {
             const wanted = hit.splashes.slice(0, PACK_MAX).map(s => ({ key: s.monsterSprite, poison: 0, splash: s }));
             return { wanted, stepUp: hit.killed && !hit.floorCleared ? wanted.findIndex(w => !w.splash.killed) : -1 };
         }
         if (!hit.killed) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
+        // The kill emptied the room: nobody waits here (the next room's pack comes in on the walk, above).
         if (hit.floorCleared || hit.bossAhead || (this.roomSeen !== null && this.roomSeen !== room)) return { wanted: [], stepUp: -1 };
         const wanted = waiting(foes);
         return { wanted, stepUp: wanted.length ? 0 : -1 };
@@ -199,9 +248,16 @@ class Battle {
         if (you?.delve) {
             const beat = you.beat;
             const playing = !!beat && now >= beat.startedAtMs && now < beat.endsAtMs;
-            const { wanted, stepUp } = this.packView(you, playing);
+            // The walk to the next room (a kill that emptied this one): how far along it is, 0 to 1.
+            const arrival = this.arrivalOf(you, playing);
+            this.prepareArrival(arrival);
+            const walk = arrival ? walkAt(now - beat.startedAtMs) : 0;
+            const arriving = walk > 0 && !!this.arrival?.actor;   // the next room is coming into view
+            const { wanted, stepUp } = this.packView(you, playing, arriving);
             this.wantFoe(you, now, playing, this.frontDied(you, now, playing));  // before the pack lets go of the one stepping up
-            this.pack.sync(wanted, now);
+            if (this.arrival && !(playing && this.arrival.beat === beat.startedAtMs)) this.dropArrival(); // its beat ended without it
+            this.pack.sync(wanted, now, { dropIn: !arriving }); // the next room's pack walks in with it, it doesn't fall in
+            this.stage.scrollRoom(-ROOM_LENGTH * walk);
             if (this.hero && this.foe) {
                 const cast = {
                     hero: this.hero, foe: this.foe, fx: this.fx, stage: this.stage, homes: HOMES, seconds: now / 1000,
@@ -216,6 +272,14 @@ class Battle {
                         heroHealMs: youHealedAt === null ? null : now - youHealedAt,
                         charge: chargeOf(you.delve),
                     });
+                if (arriving) {
+                    // The next room's monsters stand in their spots, still as far off as the corridor has left to scroll.
+                    const ahead = ROOM_LENGTH * (1 - walk);
+                    if (!this.arrival.actor.root.parent) this.place(this.arrival.actor, FOE_HOME);
+                    showWalkIn(this.arrival.actor, cast);
+                    this.arrival.actor.root.position.x += ahead;
+                    for (const member of this.pack.standing(now)) member.actor.root.position.x += ahead;
+                }
                 this.stepUp(now);
                 this.showPoisonDeath(now);
             }
@@ -299,9 +363,13 @@ class Battle {
         if (this.stage.mode() === 'portrait' && this.foe) {
             const spec = this.foe.spec;
             const height = spec.height || 2;
-            // The monster big in the gap, seen from straight on and a little below its eyes.
-            const target = new THREE.Vector3(FOE_HOME.x, (spec.hover || 0) + height * 0.52, FOE_HOME.z);
-            const distance = Math.max((height * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect));
+            // The monster big in the gap, seen from straight on and a little below its eyes. A tall one (a boss) is
+            // framed from the knees up rather than all of it: fitting the whole of it backed the camera off so far
+            // the knight and the room's props came into the shot, and it looked smaller than the rest, not bigger.
+            const framed = Math.min(height, PORTRAIT_MAX_HEIGHT);
+            const top = (spec.hover || 0) + height;
+            const target = new THREE.Vector3(FOE_HOME.x, top - framed * 0.48, FOE_HOME.z);
+            const distance = Math.max((framed * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect));
             const shift = intoGap(distance);
             this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)).add(shift), target.clone().add(shift), FOV);
             return;
@@ -310,9 +378,11 @@ class Battle {
         // Both fighters across the box, seen a little from above, aimed a touch left of centre: the knight
         // is nearer the camera, so he looks further out than the monster. The HP bar and the Host's line go
         // under them.
-        const span = 5.2;
+        // A monster whose pose reaches out past the usual shot's right edge (the orc's arms and club) widens it to fit.
+        const reach = this.foe ? Math.max(0, FOE_HOME.x + this.foe.poseWidth / 2 + 0.3 - FIGHT_RIGHT_EDGE) : 0;
+        const span = 5.2 + reach;
         const distance = ((span / 2) / (tan * Math.min(aspect, 1.2))) * zoom;
-        const target = new THREE.Vector3(focus - 0.15, 0.75, 0);
+        const target = new THREE.Vector3(focus - 0.15 + reach / 2, 0.75, 0);
         const shift = intoGap(distance, 0.6); // a little low in the fight's space: the words go above them
         this.stage.frame(target.clone().add(new THREE.Vector3(0, distance * 0.36, distance)).add(shift), target.clone().add(shift), FOV);
     }
@@ -332,6 +402,8 @@ function beatInfo(beat, you, stepUp) {
         kind: beat.kind,
         hurt,
         byPoison: !!beat.byPoison,                            // the Healer's poison killed it: no blow
+        watching: !!beat.by,                                  // a teammate's blow killed it: your knight stays home
+        walks: DungeonBattle.walks(you),                      // the room's empty: on to the next one
         crit: !!hit?.crit,
         combo: !!hit?.combo,
         comboCount: hit?.combo ? (hit.comboCount || 3) : 0,  // a Pugilist's streak

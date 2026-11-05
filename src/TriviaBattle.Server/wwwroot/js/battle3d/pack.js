@@ -39,13 +39,14 @@ export class Pack {
     /**
      * Every frame: who should be waiting, in order (wanted = [{ key, poison, splash }], at most PACK_MAX).
      * A monster already standing here with the same key keeps its actor (gliding to its new spot if it
-     * moved up); new ones are loaded, and ones no longer wanted leave.
+     * moved up); new ones are loaded, and ones no longer wanted leave. dropIn false: new ones are just there
+     * (the next room's pack, walking in with the corridor: battle3d.js slides them in).
      */
-    sync(wanted, now) {
+    sync(wanted, now, { dropIn = true } = {}) {
         const unused = [...this.members];
         const next = wanted.slice(0, PACK_MAX).map((want, slot) => {
             const same = unused.find(m => m.key === want.key && m.slot === slot) ?? unused.find(m => m.key === want.key);
-            if (!same) return this.join(want, slot, now);
+            if (!same) return this.join(want, slot, now, dropIn);
             unused.splice(unused.indexOf(same), 1);
             if (same.slot !== slot) {
                 same.from = same.drawn ?? this.spot(same.slot);
@@ -60,9 +61,10 @@ export class Pack {
         this.synced = true;
     }
 
-    join(want, slot, now) {
+    /** dropIn: a monster joining once the room is up falls in from above (not the first ones, nor a room walked into). */
+    join(want, slot, now, dropIn = true) {
         const member = { key: want.key, want, slot, actor: null, joinedAt: now, arrivedAt: null, from: null, movedAt: null, drawn: null };
-        const dropIn = this.synced;
+        dropIn = dropIn && this.synced;
         Actor.create(want.key, this.facing).then(actor => {
             if (!this.members.includes(member)) return actor.dispose(this.scene); // it left while loading
             const at = this.base(member, this.clock());

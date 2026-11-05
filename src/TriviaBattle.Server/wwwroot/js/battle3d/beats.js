@@ -14,6 +14,12 @@
 //   splash  (Wizard) 70 a spell leaves the hero for each waiting monster, 190 it lands with the blow: they
 //           flinch; one it killed goes down at 720 and bursts at 1000, with the one in front
 //   kill in a pack   1250-1750 the next monster steps up to the front (it's there before the beat ends)
+//   walk    a kill emptying the room (beat.walks; the room beat is 3 s): the kill, then 1150-2550 the hero runs on
+//           to the next room: the corridor scrolls past by one stretch (ROOM_LENGTH) and the next room's monsters
+//           come in with it, standing where they'll fight (battle3d.js moves them; walkAt here says how far along),
+//           so the question comes back with the new fight already there
+//   watched kill  (a teammate's blow, beat.watching: js/battle3d/others.js draws their hero striking) the kill as
+//           usual, but your knight stays home and cheers from 1050
 //   poison  (Healer) 190 a green puff as the stack lands; the bubbles and the tint grow with the stacks
 //   poison kill  (the poison finished it between answers: no blow) it chokes; 720 down, 1000 bursts into green smoke
 //   heal    (Healer) 300 the heal sparkles on whoever it healed (you, or a teammate in your room)
@@ -44,6 +50,8 @@ const DOWNED_SLIDE = 0.9;  // how far in the knight lies when he's down (he fall
 const BOLT_LEAVES = 70;    // a Wizard's splash: the spells leave the hero (and land at HIT_IMPACT)
 const STEP_FROM = 1250;    // a kill in a pack: the next monster steps up to the front,
 const STEP_TO = 1750;      // and is there before the beat fades (kill beats are 2 s)
+export const WALK_FROM = 1150;   // a kill that emptied the room: the hero runs on to the next room,
+const WALK_TO = 2550;            // and is there before the beat fades (room beats are 3 s)
 export const HEAL_AT = 300;       // a Healer's heal sparkles on whoever it healed
 const PATRON_AT = 420;     // a Warlock's slow answer: the patron takes its price
 const COMBO_CROSS = 240;   // a Pugilist's combo of 3 or more: the second cut
@@ -102,6 +110,31 @@ export function showIdle(cast, { heroDown, foeArrivedMs, foeFlinch = 0, heroHeal
     if (charge) fx.showCharge(foe, seconds, charge.level, charge.full);
     showPack(cast, null, 0);
     return { zoom: 1, focus: 0 };
+}
+
+/**
+ * How far along the walk to the next room is at this moment of the beat: 0 until it starts, then eased up to 1
+ * (there). The corridor has scrolled ROOM_LENGTH times this, and the next room is that much nearer.
+ */
+export function walkAt(ms) {
+    return easeInOut(Math.min(1, Math.max(0, (ms - WALK_FROM) / (WALK_TO - WALK_FROM))));
+}
+
+/** The next room's first monster during the walk: standing in its spot, idling (battle3d.js slides it in with the room). */
+export function showWalkIn(actor, { homes, seconds }) {
+    actor.apply({ x: homes.foe, clip: actor.spec.idle, time: seconds + 0.37 });
+}
+
+/**
+ * A hero's pose on the walk (yours, or a teammate's in js/battle3d/others.js): blending into the run as it starts,
+ * running in place while the corridor scrolls, and back into the idle as they get there. Null when it isn't on.
+ */
+export function walkPose(spec, ms, idle) {
+    if (!spec.run || ms < WALK_FROM - 120 || ms > WALK_TO + 250) return null;
+    const run = { clip: spec.run, time: (ms - WALK_FROM) / 1000 };
+    if (ms < WALK_FROM + 80) return { ...run, from: idle, fade: (ms - (WALK_FROM - 120)) / 200 };
+    if (ms < WALK_TO) return run;
+    return { ...idle, from: run, fade: (ms - WALK_TO) / 250 };
 }
 
 /** A monster arriving: it falls from above and lands with a squash. ms: since it arrived (null: it was just there). */
@@ -231,7 +264,8 @@ function chestOf(actor, scale, x, z) {
  * moment and bursts into green smoke, on the same clock as a sword kill (so the HTML's SLAIN! still lands with it).
  */
 function poisonKills(beat, ms, { hero, foe, fx, stage, homes, seconds }) {
-    hero.apply({ x: homes.hero, clip: hero.spec.idle, time: seconds });
+    const heroIdle = { clip: hero.spec.idle, time: seconds };
+    hero.apply({ x: homes.hero, ...((beat.walks && walkPose(hero.spec, ms, heroIdle)) || heroIdle) });
 
     const foeIdle = { clip: foe.spec.idle, time: seconds + 0.37 };
     let foePose = foeIdle, tilt = 0.06 * Math.sin(ms / 45) * Math.max(0, 1 - ms / KILL_FALLS), scale = 1; // it chokes
@@ -285,6 +319,16 @@ function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison
     else if (a < 700) heroPose = swingAt(a);
     else if (!killed || ms < CHEER_FROM || !hero.spec.cheer) heroPose = { ...heroIdle, from: swingAt(700), fade: Math.min(1, (a - 700) / 200) };
     else heroPose = { clip: hero.spec.cheer, time: (ms - CHEER_FROM) / 1000, from: heroIdle, fade: Math.min(1, (ms - CHEER_FROM) / 150) };
+    if (beat.watching) {
+        // A teammate's blow (their hero strikes, js/battle3d/others.js): yours stays home, and cheers the kill.
+        x = homes.hero;
+        lift = 0;
+        heroPose = ms < CHEER_FROM || !hero.spec.cheer ? heroIdle
+            : { clip: hero.spec.cheer, time: (ms - CHEER_FROM) / 1000, from: heroIdle, fade: Math.min(1, (ms - CHEER_FROM) / 150) };
+    }
+    // The room's empty: on to the next one (the hop back has brought the hero home by then).
+    const walking = beat.walks ? walkPose(hero.spec, ms, heroIdle) : null;
+    if (walking) heroPose = walking;
     hero.apply({ x, lift, ...patronGlow(beat, ms), ...heroPose });
     if (beat.healedYou) fx.showHeal(hero.chest(), (ms - HEAL_AT) / 1000);
 

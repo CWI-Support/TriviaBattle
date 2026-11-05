@@ -313,8 +313,8 @@ public sealed class RoomSoundService(
         else
             room.PlayEffect(striker, hit.Crit || hit.Fireball || hit.Staggered ? sounds.Crit : sounds.Hit, BlowLands);
 
-        if (hit.Killed)
-            room.PlayEffect(hit.FloorCleared || hit.BossAhead ? party : striker, sounds.Kill, MonsterBursts);
+        if (hit.Killed) // every screen in the party plays the kill (DungeonRun.PartyKilled), so the whole party hears it
+            room.PlayEffect(party, sounds.Kill, MonsterBursts);
         if (hit.BossAhead) // the room it emptied leads to a boss: its entrance, for the whole party
             room.PlayEffect(party, sounds.Boss, CurtainFalls);
         else if (hit.FloorCleared)

@@ -170,13 +170,14 @@ public static class SnapshotBuilder
         var answeredAt = stream.LastAnswer?.PressedAt ?? DateTimeOffset.MinValue;
         var reward = adventurer.LastReward;
 
-        // The party's poison killed the monster since they last answered (and since any reward): its kill beat. The
-        // hit is the party's (the delve's last hit), not one of theirs.
-        if (adventurer.PoisonKillAt is { } poisonAt && poisonAt >= answeredAt && shownAt > poisonAt && !(reward?.At > poisonAt))
+        // A teammate's blow or the party's poison killed the monster since they last answered (and since any reward):
+        // its kill beat, the same one the killer's screen plays. The hit is the killer's, carried on the beat.
+        if (adventurer.WatchedKill is { } watched && watched.At >= answeredAt && shownAt > watched.At && !(reward?.At > watched.At))
         {
-            var kill = match.Dungeon!.DelveOf(adventurer).LastHit;
-            var killKind = kill is not { Poison: true } ? "kill" : kill.BossAhead ? "boss" : kill.FloorCleared ? "floor" : "kill";
-            return new BeatView(killKind, poisonAt.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds(), ByPoison: true);
+            var kill = watched.Hit;
+            var killKind = kill.BossAhead ? "boss" : kill.FloorCleared ? "floor" : "kill";
+            return new BeatView(killKind, watched.At.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds(),
+                ByPoison: watched.ByOwnerId == null, Hit: kill, By: watched.ByOwnerId is { } by ? NameOf(match, by) : null);
         }
 
         if (stream.LastAnswer is not { } answer || shownAt <= answer.PressedAt)

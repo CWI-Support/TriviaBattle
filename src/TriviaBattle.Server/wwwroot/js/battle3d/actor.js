@@ -33,7 +33,8 @@ export class Actor {
         this.materials = [];
         this.actions = new Map();
         this.mixer = null;
-        this.width = 1;
+        this.width = 1;      // its body: where fighters stop to strike it, and the question shot's framing
+        this.poseWidth = 1;  // all of it as it stands (arms and weapons held out too): the fight shot fits this in
         this.zAt = null;   // the fight is staged on a slant: given x, how far back it stands (set by battle3d.js)
     }
 
@@ -69,7 +70,10 @@ export class Actor {
         this.holder.add(pivot);
         this.pivot = pivot;
         this.model = model;
-        this.width = Math.max(size.x, size.z) * scale;
+        // How wide it is for the camera and for where fighters stop to strike: its own box, unless the entry gives its
+        // body's width (a model whose idle pose throws its arms out, like the orc, would otherwise push everyone away).
+        this.poseWidth = Math.max(size.x, size.z) * scale;
+        this.width = spec.width ?? this.poseWidth;
     }
 
     /** No model for this monster yet: its flat 2D picture, standing in the room like a cut-out. */
@@ -86,7 +90,7 @@ export class Actor {
         plane.position.y = height / 2;
         this.holder.add(plane);
         this.materials.push(material);
-        this.width = height * aspect;
+        this.width = this.poseWidth = height * aspect;
     }
 
     addShadow() {

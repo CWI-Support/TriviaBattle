@@ -206,12 +206,13 @@ public sealed class Adventurer
     }
 
     /// <summary>
-    /// When the party's poison last killed the monster in front while they were fighting: their question waited for
-    /// a kill beat from then (see DungeonRun.PoisonKilled). Null if it never has.
+    /// The last kill they watched rather than landed: a teammate's blow, or the party's poison. Their question waited
+    /// for its kill beat, so every screen in the party plays the kill at the same moment (see DungeonRun.PartyKilled).
+    /// Null if they haven't watched one.
     /// </summary>
-    public DateTimeOffset? PoisonKillAt { get; private set; }
+    public WatchedKill? WatchedKill { get; private set; }
 
-    public void SawPoisonKill(DateTimeOffset now) => PoisonKillAt = now;
+    public void Watched(DealtHit kill, string? byOwnerId, DateTimeOffset now) => WatchedKill = new WatchedKill(kill, byOwnerId, now);
 
     /// <summary>The boss their charge cycle is against (each adventurer has their own cycle, as each has their own questions).</summary>
     private Foe? _chargingBoss;

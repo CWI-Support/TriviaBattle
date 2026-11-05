@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Snapshots;
@@ -5,7 +6,7 @@ using TriviaBattle.Core.Snapshots;
 namespace TriviaBattle.Tests.Dungeon;
 
 // Battle beats: after each answer the next question waits while the screen shows the fight.
-// Defaults: a hit 1.5 s, the monster's attack 1.7 s, a kill 2 s, a floor cleared 3 s.
+// Defaults: a hit 1.5 s, the monster's attack 1.7 s, a kill 2 s, one that empties the room 3 s (the walk on), a floor cleared 3 s.
 // Uses TestMatch.Dungeon: floor 1 = two rats (40 HP), floor 2 = a boss (60 HP). Slow presses (4 s) do 20.
 public class DungeonBeatTests
 {
@@ -60,16 +61,33 @@ public class DungeonBeatTests
     {
         var match = Solo();
         match.Press("A1", 0, afterSeconds: 4); // 20 (4 s to answer)
-        match.Press("A1", 0, afterSeconds: 4); // a crit (2.5 s: the beat took 1.5): first rat dead
+        match.Press("A1", 0, afterSeconds: 4); // a crit (2.5 s: the beat took 1.5): first rat dead, its room empty
 
         Assert.Equal("kill", BeatOf(match)!.Kind);
-        Assert.Equal(match.Now.AddSeconds(2), match.StreamOf("A1").CurrentShownAt);
+        Assert.True(match.DelveOf("A1").LastHit!.RoomCleared);
+        Assert.Equal(match.Now.AddSeconds(3), match.StreamOf("A1").CurrentShownAt); // the walk to the next room
 
-        match.Press("A1", 0, afterSeconds: 4); // a crit (2 s: the kill beat took 2): 30 of the second rat's 40
+        match.Press("A1", 0, afterSeconds: 4); // a crit (1 s: the walk took 3): 30 of the second rat's 40
         match.Press("A1", 0, afterSeconds: 4); // a crit: second rat dead, floor 1 cleared, the boss steps up
 
         Assert.Equal("boss", BeatOf(match)!.Kind);
         Assert.Equal(match.Now.AddSeconds(3), match.StreamOf("A1").CurrentShownAt);
+    }
+
+    [Fact]
+    public void A_kill_with_more_monsters_waiting_in_the_room_is_a_plain_kill_beat()
+    {
+        var map = new DungeonMap(
+            [new DepthDef("d", "Depth", [new FloorDef(Rooms: [["rat", "rat"], ["rat"]])])],
+            [new MonsterDef("rat", "Rat", "rat", Hp: 20, Damage: 10, AttackSeconds: 10)]);
+        var match = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300 },
+            stations: ["A1"], battleBeats: true, dungeon: map);
+        match.StartPlaying();
+
+        match.Press("A1", 0, afterSeconds: 4); // the first rat of two
+
+        Assert.False(match.DelveOf("A1").LastHit!.RoomCleared);
+        Assert.Equal(match.Now.AddSeconds(2), match.StreamOf("A1").CurrentShownAt); // no walk: the next one steps up
     }
 
     [Fact]

@@ -233,6 +233,32 @@ public class DungeonCombatTests
     }
 
     [Fact]
+    public void A_teammate_s_kill_plays_on_every_screen_in_the_party_at_the_same_moment()
+    {
+        var settings = new MatchSettings { Format = GameFormat.Dungeon, MatchSeconds = 300, Dungeon = { PartyHpPerMember = 0 } };
+        var match = new TestMatch(GameModeKind.TeamCombinedScore, settings, battleBeats: true);
+        match.StartPlaying();
+        match.Press("A1", 0, afterSeconds: 4);  // Ann: rat down to 20, then her hit's beat
+        match.Wait(2);                          // her next question is up
+        var annsQuestion = match.StreamOf("A1").CurrentNumber;
+
+        match.Press("A3", 0, afterSeconds: 0.5); // Cat kills it
+        var killedAt = match.Now;
+
+        var annsBeat = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Beat!;
+        var catsBeat = SnapshotBuilder.Build(match.Engine, Viewer.Player("A3")).You!.Beat!;
+        Assert.Equal(("kill", "Cat", false), (annsBeat.Kind, annsBeat.By, annsBeat.ByPoison));
+        Assert.True(annsBeat.Hit!.Killed);
+        Assert.Equal((catsBeat.StartedAtMs, catsBeat.EndsAtMs), (annsBeat.StartedAtMs, annsBeat.EndsAtMs)); // in step
+        Assert.Equal(killedAt.ToUnixTimeMilliseconds(), annsBeat.StartedAtMs);
+        Assert.Null(catsBeat.By);                                                     // Cat's own kill, as ever
+        Assert.Equal(killedAt.AddSeconds(3), match.StreamOf("A1").CurrentShownAt);    // Ann's question waits for it (the walk on),
+        Assert.Equal(annsQuestion, match.StreamOf("A1").CurrentNumber);               // the same one,
+        Assert.Equal(killedAt.AddSeconds(13), match.AdventurerOf("A1").AttackAt);     // with a fresh hourglass for the next rat
+        Assert.Empty(match.Press("A1", 0, afterSeconds: 1));                          // her buttons wait for the beat
+    }
+
+    [Fact]
     public void In_a_party_you_stay_down_until_your_teammates_revive_you()
     {
         var match = Party(s => s.Dungeon.AdventurerHp = 10);

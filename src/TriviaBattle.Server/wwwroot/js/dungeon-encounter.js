@@ -57,10 +57,12 @@ const DungeonEncounter = {
             ? `<div class="dg-scroll-tag is-help">${Theme.text('dungeon.helpTeammate', { name: helping.name }, overlaySeed)}</div>`
             : match.category.includes(',') ? `<div class="dg-scroll-tag">${UI.escape(shown.category)}</div>` : '';
 
-        // Just after a battle beat the question comes in (and after a kill the next monster drops in),
-        // timed from the beat's end so a redraw doesn't play it again. No beat: it's simply there.
+        // Just after a battle beat the question comes in (and after a kill the next monster drops in, unless the
+        // walk to the next room already brought it), timed from the beat's end so a redraw doesn't play it again.
+        // No beat: it's simply there.
         const beat = you.beat;
-        const arrival = !beat ? '' : `is-after-beat ${['kill', 'floor', 'boss'].includes(beat.kind) ? 'is-new-foe' : ''}`;
+        const newFoe = beat && ['kill', 'floor', 'boss'].includes(beat.kind) && !DungeonBattle.walks(you);
+        const arrival = !beat ? '' : `is-after-beat ${newFoe ? 'is-new-foe' : ''}`;
         // A boss at full charge: the whole screen warns (the plate and the room pulse red, on the shared idle
         // beat so redraws don't jolt it). Downed, you can't answer, so the warning isn't yours to heed.
         const charge = DungeonEncounter.chargeOf(delve);

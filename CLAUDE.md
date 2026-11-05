@@ -24,7 +24,7 @@ when it clears (`DungeonRun.OpenRewards`) you pick one of `Choices` with the ans
 holds your question and hourglass; rewards stack and are read live where the numbers are used (`DamageShare`, `FastSecondsOf`...).
 Tests have rewards off unless they pass `rewards: true` (like battle beats).
 Mini games (`Core/Dungeon/Minigames`: a `Minigame` base for the shared timing, one class per game, `MinigameCatalog`):
-every floor reached may have one between two rooms, loops included (`MinigameChance` in `config/dungeon.json`, `DungeonMap.MinigameOn`);
+every floor reached may have one between two rooms, loops included (`MinigameChance` in `config/dungeon.json`, at least one every `MinigameEvery` floors, `DungeonMap.MinigameOn`);
 the kill that empties the room before it is `DealtHit.MinigameAhead` and the party plays (`DungeonRun.StartMinigames`). Rules
 stay on the server (the rune lock's needle angle comes from the press time; the chest shuffle's action button is its
 fifth chest, so mini games get the action button before power-ups do). While anyone `IsAway` (a mini game or a reward
@@ -51,6 +51,10 @@ to disk, the database or a log.
 After each answer a battle beat holds the next question back while the station plays the fight full screen
 (`js/dungeon-battle.js`, `css/dungeon-battle.css`, preview at `/dev/battle`). Beat animations are timed from the
 beat's server start (`--t0`) so redraws don't restart them; keep their offsets in step with the beat lengths.
+In a party every kill plays on every standing teammate's screen at the same moment (`DungeonRun.PartyKilled`: their question
+waits for it; `BeatView.By`/`Hit`), and a kill beat ends by showing what's next (NEXT UP). A kill that empties the room
+(`DealtHit.RoomCleared`) is the walk: a longer beat (`RoomBeatSeconds`) where the hero runs on and the 3D corridor
+(`ROOM_LENGTH` stretches, `Stage.scrollRoom`) scrolls the next room's monsters into place.
 Stations draw the fight in 3D (`js/battle3d/`, three.js; `?view=2d` or no WebGL 2 falls back to the CSS version; preview at
 `/dev/battle3d`): it shares the HTML words and bars, and `js/battle3d/beats.js` follows the same timing table.
 Combat numbers are `Game:Dungeon` (`DungeonSettings`);

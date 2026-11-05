@@ -15,7 +15,7 @@
 
 import { Actor } from './actor.js';
 import { HealSparkle } from './effects.js';
-import { mix, easeOut, easeInOut, pulse, kick, HEAL_AT } from './beats.js';
+import { mix, easeOut, easeInOut, pulse, kick, walkPose, HEAL_AT } from './beats.js';
 
 // Where teammates stand, in joining order: behind and beside your hero. x is along the floor; back is how
 // far behind the slanted line the fight is staged on (your hero and the monster stand on it); reach is how
@@ -39,6 +39,7 @@ export class Others {
         this.allies = new Map();  // stationId -> { slot, actor, sparkle, dealt, taken, struckAt, swings, healed, hurtAt, upAt, wasDown }
         this.cameo = null;        // { key, stationId, from, actor }
         this.matchId = null;
+        this.view = null;         // the last view update was given (pose reads your beat from it: the walk)
     }
 
     /**
@@ -48,6 +49,7 @@ export class Others {
      * on you (server ms, or null) }.
      */
     update(view, now, foe) {
+        this.view = view;
         const match = view?.match;
         const you = view?.you;
         if (match?.matchId !== this.matchId) {
@@ -192,6 +194,15 @@ export class Others {
                 ? { clip: reel, time: h / 1000, from: idle, fade: Math.min(1, h / 60) }
                 : { ...idle, from: { clip: reel, time: hurtMs / 1000 }, fade: (h - hurtMs) / 200 };
             actor.apply({ x: slot.x - 0.3 * kick(h, 60, 500), flash: pulse(h, 260), flashColor: 0xff2020, ...clip });
+            return 0;
+        }
+
+        // On the walk to the next room (your beat's: the whole party sees the same one), they run on with you.
+        const you = this.view?.you;
+        const walking = you && DungeonBattle.walks(you) && now >= you.beat.startedAtMs && now < you.beat.endsAtMs
+            ? walkPose(spec, now - you.beat.startedAtMs, idle) : null;
+        if (walking) {
+            actor.apply({ x: slot.x, ...walking });
             return 0;
         }
 

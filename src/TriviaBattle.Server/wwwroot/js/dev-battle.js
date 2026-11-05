@@ -32,6 +32,8 @@
 // charge lands its big blow on a miss), stagger (a right answer at full charge staggers it).
 // Floor rewards: reward (the cards to pick from after a boss), rewarded (the moment after picking one: Mastery).
 // poisonkill: the Healer's poison kills the monster between answers (its own kill beat, no blow).
+// kill ends on NEXT UP (the next monster's bar); roomclear: a kill that emptied the room (ROOM 2 OF 2: the walk,
+// the dungeon scrolling past to the next room's monster); teamkill: a teammate (Cat) lands the kill and your knight watches.
 // Mini games: runelock (the intro, then play: the needle spinning, 2 hits so far), runelock-won and runelock-lost (the result).
 // runeecho (the intro, the runes lighting up, then your turn), chestshuffle (the intro, the coin, the shuffle, the pick),
 // chestshuffle-lost (the wrong chest: the coin shown where it was).
@@ -39,11 +41,11 @@
 //   /dev/battle?kind=hit&charge=2&at=1600   any kind against the boss, and the question after it with the
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
-const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
+const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', 'teamkill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
     'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-lost', 'out'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
-const BEAT_MS = { out: 1700, kill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-lost': 3000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-lost': 3000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -150,9 +152,9 @@ function fakeState(kind, startedAt, question) {
     // Against the boss (a boss kind, or any kind with ?charge=): it's the one fought, and its charge shows.
     const vsBoss = BOSS_KINDS.includes(kind) || params.has('charge');
     const boss = { name: 'Goblin Quizmaster', sprite: 'goblin-boss', maxHp: 300, isBoss: true };
-    const killed = ['kill', 'loot', 'floor', 'boss', 'poisonkill'].includes(kind);
+    const killed = ['kill', 'roomclear', 'teamkill', 'loot', 'floor', 'boss', 'poisonkill'].includes(kind);
     const length = BEAT_MS[kind] || 1500;
-    const party = kind === 'party' || kind === 'revive' || kind === 'heal';
+    const party = kind === 'party' || kind === 'revive' || kind === 'heal' || kind === 'teamkill';
     const hero = heroFor(kind);
     const poisonStacks = kind === 'poison' ? 3 : 0;
 
@@ -182,7 +184,7 @@ function fakeState(kind, startedAt, question) {
 
     const hit = striking ? {
         number: 7, damage, crit: fast, combo: kind === 'combo', killed, floorCleared: kind === 'floor', bossAhead: kind === 'boss',
-        staggered: kind === 'stagger',
+        staggered: kind === 'stagger', roomCleared: kind === 'roomclear',
         monsterName: struck.name, monsterSprite: struck.sprite, isBoss: !!struck.isBoss, monsterHpLeft: hpLeft, monsterMaxHp: struck.maxHp,
         partyCombo: kind === 'party', revivedOwnerId: kind === 'revive' ? 'A3' : null,
         fireball: kind === 'fireball', found: kind === 'loot' ? 'Potion' : null,
@@ -248,6 +250,7 @@ function fakeState(kind, startedAt, question) {
         delve,
         helping: null,
         beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', fireball: 'hit', slow: 'hurt', blocked: 'hurt', loot: 'kill', poisonkill: 'kill',
+                        roomclear: 'kill', teamkill: 'kill',
                         splash: 'hit', heal: 'hit', poison: 'hit', patron: 'hit', reveal: 'hit', peek: 'hit', armour: 'hurt',
                         charged: 'hurt', stagger: 'hit', rewarded: 'reward' }[kind] || kind,
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
@@ -261,6 +264,12 @@ function fakeState(kind, startedAt, question) {
     }
     if (kind === 'rewarded') delve.rewards.at(-1).amount = MASTERY[hero];
     if (kind === 'poisonkill') you.beat.byPoison = true; // nobody answered: the party's poison did it (delve.lastHit)
+    if (kind === 'teamkill') Object.assign(you.beat, { by: 'Cat', hit }); // Cat's blow, carried on the beat
+    if (kind === 'roomclear') { // the kill emptied room 1: the one in front is room 2's first, nothing beaten there yet
+        delve.room = 2;
+        delve.path = delve.path.filter(s => !(s.floor === 1 && s.room === 2))
+            .concat({ floor: 1, room: 2, slot: 1, name: current.sprite, sprite: current.sprite, isBoss: false });
+    }
     if (kind === 'out') { // downed on the last life
         you.beat.kind = 'downed';
         taken.downed = true; taken.out = true; taken.hpLeft = 0;

@@ -9,7 +9,11 @@
 //           up with the beat's impact moment (and the server's sound)
 //   hurt    being hit (optional: without it the model is just knocked back)
 //   death   being killed (optional: without it the model just bursts)
+//   run     heroes: running on to the next room (the walk; without it they just stand)
 // height  how tall it stands in the room (the knight is about 2.3; a back wall is 4)
+// width   its body's width, in the room's units (optional: measured from the model otherwise). Give it when the idle
+//         pose is much wider than the body (arms or a weapon held out): the width frames the camera on a question
+//         and sets where fighters stop to strike, so a wide pose pulls the camera back and keeps the knight away.
 // turn    extra rotation (radians) if the model doesn't face +Z like glTF models should
 // hover   how high it floats (the bat)
 // mask    how big a rival's face is on it (a race or a battle), as a share of its height (0.5 if not given)
@@ -25,7 +29,7 @@
 // A new model: put its .glb in media/models/characters (credit it in CREDITS.md), give its key an entry here
 // (file, which clips are its attacks, which gear shows, which part is dyed the station's colour, where a
 // face goes), then save its pictures with /dev/heroes. A hero class needs its key in Core's Heroes.All too.
-const ADVENTURER = { height: 2.3, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer' };
+const ADVENTURER = { height: 2.3, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer', run: 'Running_A' };
 
 /**
  * Where a hero photo goes on an adventurer's head: its own face, inside the helmet, hat or hood (about 1.40
@@ -157,37 +161,54 @@ export const MODELS = {
     },
     'goblin-boss': {
         file: '/media/models/characters/orc.glb',
-        height: 3.2,
+        // A head taller than the knight. Its idle pose holds its arms and club wide (it measures as wide as it is
+        // tall), so its body width is given: measured, the camera backed off to fit the arms and the knight couldn't reach it.
+        height: 2.8, width: 1.6,
         idle: 'CharacterArmature|Idle', hurt: 'CharacterArmature|HitReact', death: 'CharacterArmature|Death',
         attack: { clip: 'CharacterArmature|Weapon', contact: 0.4 },
     },
 };
 
-/** The room the fight is in: pieces of the dungeon kit, placed as [file, x, y, z, turn]. */
-export const ROOM = (() => {
+/**
+ * The dungeon is a corridor of the same stretch over and over, ROOM_LENGTH long, so that when a kill empties a
+ * room the hero can walk on to the next (beats.js, the walk): the corridor scrolls past by exactly one stretch, the
+ * next room's monsters come in with it, and at the end it's put back where it started (the same picture, so it
+ * never shows). Three stretches, one each side of the fight, so the scroll never runs out of corridor.
+ */
+export const ROOM_LENGTH = 12;
+
+/** One stretch of corridor: pieces of the dungeon kit, placed as [file, x, y, z, turn] (x from about -4 to 8). */
+const STRETCH = (() => {
     const piece = name => `/media/models/room/${name}.glb`;
     const pieces = [];
-    // The floor: 4 x 4 tiles, from well left of the hero to well right of the monster.
-    for (const x of [-10, -6, -2, 2, 6, 10])
+    // The floor: 4 x 4 tiles, from the hero's side to the monster's.
+    for (const x of [-2, 2, 6])
         for (const z of [-2, 2, 6])
             pieces.push([piece('floor_tile_large'), x, 0, z, 0]);
-    // The back wall, two storeys high, with arches in the middle behind the fight.
-    for (const x of [-10, -6, 6, 10]) pieces.push([piece('wall'), x, 0, -4.5, 0]);
+    // The back wall, two storeys high: arches behind the fight, a plain stretch between one room and the next.
     for (const x of [-2, 2]) pieces.push([piece('wall_arched'), x, 0, -4.5, 0]);
-    for (const x of [-10, -6, -2, 2, 6, 10]) pieces.push([piece('wall'), x, 4, -4.5, 0]);
+    pieces.push([piece('wall'), 6, 0, -4.5, 0]);
+    for (const x of [-2, 2, 6]) pieces.push([piece('wall'), x, 4, -4.5, 0]);
     pieces.push(
         [piece('banner_patternA_red'), 0, 0.6, -4.9, 0],
         [piece('torch_mounted'), -4, 2.6, -4, 0],
         [piece('torch_mounted'), 4, 2.6, -4, 0],
-        [piece('pillar_decorated'), -6.5, 0, -2.8, 0],
-        [piece('pillar_decorated'), 6.5, 0, -2.8, 0],
-        [piece('barrel_large'), -5.2, 0, -2.4, 0.4],
-        [piece('crates_stacked'), 5.3, 0, -2.6, -0.3],
-        [piece('candle_triple'), -4.2, 0, -2.9, 0],
-        [piece('candle_triple'), 4.4, 0, -1.5, 0.8],
+        // A pillar where one room meets the next (so the fight has one each side, at -6 and 6), crates against its
+        // near side and a barrel against its far side (which the fight sees against the left pillar), as the room
+        // always had them; a candle by each.
+        [piece('pillar_decorated'), 6, 0, -2.8, 0],
+        [piece('crates_stacked'), 4.8, 0, -2.6, -0.3],
+        [piece('barrel_large'), 7.3, 0, -2.4, 0.4],
+        [piece('candle_triple'), 8.3, 0, -2.9, 0],     // by the barrel (the fight's left: -3.7)
+        [piece('candle_triple'), 3.9, 0, -1.5, 0.8],
     );
     return pieces;
 })();
 
-/** Where the torch flames are (for their lights): just in front of the two mounted torches. */
-export const TORCH_LIGHTS = [[-4, 3.4, -3.4], [4, 3.4, -3.4]];
+const STRETCHES = [-ROOM_LENGTH, 0, ROOM_LENGTH];
+
+/** The corridor the fight is in: every stretch's pieces, as [file, x, y, z, turn]. */
+export const ROOM = STRETCHES.flatMap(dx => STRETCH.map(([file, x, y, z, turn]) => [file, x + dx, y, z, turn]));
+
+/** Where the torch flames are (for their lights): just in front of each stretch's two mounted torches. */
+export const TORCH_LIGHTS = STRETCHES.flatMap(dx => [[-4 + dx, 3.4, -3.4], [4 + dx, 3.4, -3.4]]);

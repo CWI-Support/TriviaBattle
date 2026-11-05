@@ -48,6 +48,7 @@ public sealed class TestMatch
             Settings.Dungeon.HitBeatSeconds = 0;
             Settings.Dungeon.HurtBeatSeconds = 0;
             Settings.Dungeon.KillBeatSeconds = 0;
+            Settings.Dungeon.RoomBeatSeconds = 0;
             Settings.Dungeon.FloorBeatSeconds = 0;
         }
         if (!rewards)

@@ -57,6 +57,12 @@ public sealed class DungeonSettings
     public double HurtBeatSeconds { get; set; } = 1.7;
     public double KillBeatSeconds { get; set; } = 2;
 
+    /// <summary>
+    /// A kill that empties the room (with no boss or mini game in the next): the kill, then the hero walks on and the
+    /// dungeon scrolls past until the next room's monsters are in front of them.
+    /// </summary>
+    public double RoomBeatSeconds { get; set; } = 3;
+
     /// <summary>A floor cleared: the way down, or the next floor's boss stepping up.</summary>
     public double FloorBeatSeconds { get; set; } = 3;
 

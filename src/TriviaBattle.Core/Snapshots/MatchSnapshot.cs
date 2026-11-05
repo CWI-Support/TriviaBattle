@@ -176,9 +176,11 @@ public sealed record YouView(
 /// LastDealt (your hit) or LastTaken (the monster's).
 /// </summary>
 /// <param name="Kind">"hit", "kill", "floor" (a floor cleared: its boss died), "boss" (the room before a boss's cleared: the boss steps up), "hurt", "downed", or "reward" (a reward just picked: what it gives).</param>
-/// <param name="ByPoison">The party's poison killed the monster (a "kill", "floor" or "boss" beat nobody answered for): its hit is
-/// <see cref="DelveView.LastHit"/>, not <see cref="DelveView.LastDealt"/>.</param>
-public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs, bool ByPoison = false);
+/// <param name="ByPoison">The party's poison killed the monster (a "kill", "floor" or "boss" beat nobody answered for).</param>
+/// <param name="Hit">A kill they watched rather than landed (by poison, or <paramref name="By"/>): the killing hit. Null on
+/// their own beats, whose hit is <see cref="DelveView.LastDealt"/>.</param>
+/// <param name="By">A teammate's answer killed it: their name (every screen in the party plays the kill together).</param>
+public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs, bool ByPoison = false, DealtHit? Hit = null, string? By = null);
 
 /// <summary>
 /// The rewards a player is choosing between after a floor's boss (see <see cref="Reward"/>): answer button A picks

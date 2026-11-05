@@ -10,7 +10,12 @@
                   then the monster looms over you and backs off while you stagger (to ~1100);
                   620 the right answer flips over like a card and stays to the end
      downed       hurt, then 640 DOWN! and your knight falls
-     kill 2 s     hit, then 720 the monster flashes and bursts, 1000 SLAIN!
+     kill 2 s     hit, then 720 the monster flashes and bursts, 1000 SLAIN!, 1300 its bar goes and 1400 the next
+                  monster's slides in (NEXT UP, or ROOM 3 OF 4 when the room emptied)
+     walk 3 s     a kill that emptied the room (the room beat): the kill, then 1150-2550 your knight runs on while
+                  the dungeon scrolls past and the next room's monster comes in from the right
+     watched      a teammate's kill (beat.by, the same beat on every screen in the party): the kill, but their hero
+                  strikes and yours stays put, cheering at 1050
      floor 3 s    kill, then 1330 dark, 1650 FLOOR 3 (the dark stays up to the end)
      boss 3 s     kill, then 1280 red, 1400 WARNING!, 1900 the boss slams down, 2150 its name
    Hero classes, on any hit or hurt beat (the notes under the damage number, --at):
@@ -760,3 +765,58 @@
 /* No blow: the knight stays put, and the monster turns sickly green as it chokes, then goes down as in any kill. */
 .is-poison-kill .dg-actor.is-foe .dg-actor-sprite { filter: sepia(0.4) hue-rotate(50deg) saturate(1.6) drop-shadow(0 0 2vmin var(--dg-poison, #8bd63a)); }
 .is-poison-kill .dg-stamp.is-early { color: var(--dg-poison, #8bd63a); }
+
+/* ---------- A teammate's kill (beat.by: every screen in the party plays it together) ---------- */
+
+/* Their hero lands the blow (in 3D, js/battle3d/others.js); yours stays put and hops for joy as it goes down. */
+.is-watching .dg-actor.is-hero { animation: dg-hero-cheer 500ms steps(4) calc(var(--t0) + 1050ms) both; }
+@keyframes dg-hero-cheer { 50% { transform: translateY(-12%); } }
+
+/* ---------- What's up next, at the end of a kill beat (DungeonBattle.nextBar) ---------- */
+
+/* 1300 the slain one's bar goes, 1400 the next monster's slides in full under NEXT UP / ROOM 3 OF 4. */
+.has-next .dg-battle-bar.for-foe:not(.is-next) { animation: dg-next-out 220ms ease-in calc(var(--t0) + 1300ms) forwards; }
+@keyframes dg-next-out { to { opacity: 0; transform: translateX(-12%); } }
+.dg-next {
+    position: absolute;
+    top: 0;
+    left: 3vw;
+    right: 3vw;
+    animation: dg-next-in 380ms cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--t0) + 1400ms) both;
+}
+@keyframes dg-next-in { from { opacity: 0; transform: translateX(14%); } }
+.dg-next-tag {
+    position: absolute;
+    top: -2.4vmin;
+    left: 50%;
+    z-index: 1;
+    transform: translateX(-50%);
+    padding: 0.3vmin 1.6vmin;
+    font-family: var(--dg-font-pixel);
+    font-size: 2.4vmin;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #120c10;
+    background: var(--gold);
+}
+
+/* ---------- The walk: a kill that emptied the room (DungeonBattle.walks; the room beat, 3 s) ---------- */
+
+/* 1150-2550 the knight runs on (bobbing fast on the spot) while the dungeon scrolls past: the bricks, the floor
+   and the torches slide left, and the next room's monster comes in from the right with them, standing where it'll
+   fight. The 3D does the same with its corridor (js/battle3d/battle3d.js). The scroll moves the backgrounds by whole
+   brick and tile widths (14 and 9.6 vmin), so they end up just as they started. */
+.is-walking .dg-room { animation: dg-walk-bricks 1400ms ease-in-out calc(var(--t0) + 1150ms) both; }
+@keyframes dg-walk-bricks { to { background-position: 0 0, 0 0, -112vmin 0, 0 0; } }
+.is-walking .dg-room-floor { animation: dg-walk-floor 1400ms ease-in-out calc(var(--t0) + 1150ms) both; }
+@keyframes dg-walk-floor { to { background-position: 0 0, -96vmin 0, 0 0; } }
+/* The torches go past and the next room's come in behind them. */
+.is-walking .dg-torch { animation: dg-walk-torch 1400ms ease-in-out calc(var(--t0) + 1150ms) both; }
+@keyframes dg-walk-torch {
+    49.9% { transform: translateX(-70vmin); }
+    50% { transform: translateX(70vmin); }
+    100% { transform: none; }
+}
+.is-walking .dg-actor.is-hero .dg-actor-sprite { animation: dg-bob 0.24s steps(2) calc(var(--t0) + 1150ms) 6; }
+.dg-battle .dg-actor.is-foe.is-arriving { animation: dg-foe-walk-in 1400ms ease-in-out calc(var(--t0) + 1150ms) both; }
+@keyframes dg-foe-walk-in { from { transform: translateX(110vmin); } }
