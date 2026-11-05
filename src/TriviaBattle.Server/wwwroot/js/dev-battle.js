@@ -30,17 +30,23 @@
 // armour (a Tank takes a softened hit).
 // Bosses: boss (a kill that empties the room before the boss's: its entrance), charged (a boss at full
 // charge lands its big blow on a miss), stagger (a right answer at full charge staggers it).
+// Floor rewards: reward (the cards to pick from after a boss), rewarded (the moment after picking one: Mastery).
+// poisonkill: the Healer's poison kills the monster between answers (its own kill beat, no blow).
+// Mini games: runelock (the intro, then play: the needle spinning, 2 hits so far), runelock-won and runelock-lost (the result).
+// out: downed on the last life (OUT!; the plate's hearts all dark).
 //   /dev/battle?kind=hit&charge=2&at=1600   any kind against the boss, and the question after it with the
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger'];
-const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'out'];
+const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
-const BEAT_MS = { kill: 2000, loot: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
+// What a Mastery card says each class's power becomes, at the server's defaults (DungeonRun.RewardAmount).
+const MASTERY = { rogue: 3, tank: 15, healer: 25, wizard: 75, pugilist: 20, warlock: 70, ranger: 2.5 };
 
 const params = new URLSearchParams(location.search);
 const only = params.get('kind');
@@ -138,11 +144,11 @@ function showMoment(kind) {
 
 /** A match and "you" for one kind of beat, shaped like the server's snapshot. */
 function fakeState(kind, startedAt, question) {
-    const striking = !['hurt', 'slow', 'downed', 'blocked', 'armour', 'charged'].includes(kind);
+    const striking = !['hurt', 'slow', 'downed', 'out', 'blocked', 'armour', 'charged'].includes(kind);
     // Against the boss (a boss kind, or any kind with ?charge=): it's the one fought, and its charge shows.
     const vsBoss = BOSS_KINDS.includes(kind) || params.has('charge');
     const boss = { name: 'Goblin Quizmaster', sprite: 'goblin-boss', maxHp: 300, isBoss: true };
-    const killed = ['kill', 'loot', 'floor', 'boss'].includes(kind);
+    const killed = ['kill', 'loot', 'floor', 'boss', 'poisonkill'].includes(kind);
     const length = BEAT_MS[kind] || 1500;
     const party = kind === 'party' || kind === 'revive' || kind === 'heal';
     const hero = heroFor(kind);
@@ -181,7 +187,7 @@ function fakeState(kind, startedAt, question) {
         splashes: kind === 'splash' ? waiting.map(f => ({ monsterName: f.name, monsterSprite: f.sprite, damage: 15, hpLeft: f.hp, killed: false })) : null,
         comboCount: kind === 'combo' ? 4 : 0,
         healedOwnerId: kind === 'heal' ? 'A3' : null, healed: kind === 'heal' ? 15 : 0,
-        poisonStacks, poison: false,
+        poisonStacks, poison: kind === 'poisonkill',
         patronPrice: kind === 'patron' ? 8 : 0,
     } : null;
     if (hit) hit.totalDamage = damage + (hit.splashes?.reduce((sum, s) => sum + s.damage, 0) ?? 0);
@@ -219,6 +225,12 @@ function fakeState(kind, startedAt, question) {
             : [{ ownerId: 'A1', name: 'Ann', hp, maxHp: 100, downedUntilMs: null, reviveProgress: 0 }],
         foes: [current, ...waiting],
         heroClass: hero,
+        // Floor rewards: the top line's meter (7 of 8 right this floor, 80% needed), two held, and the floor curtain's line.
+        trial: { floor, right: 7, answered: 8 }, rewardAccuracy: 0.8, lastTrial: { floor: floor - 1, right: 9, answered: 10, earned: true },
+        rewards: [{ number: 1, reward: 'Might', amount: 20, floor: 1, atMs: 0, picked: true }, { number: 2, reward: 'Armor', amount: 15, floor: 2, atMs: 0, picked: true },
+                  ...(kind === 'rewarded' ? [{ number: 3, reward: 'Mastery', amount: 3, floor: 3, atMs: startedAt, picked: true }] : [])],
+        lastStands: 0,
+        lives: kind === 'out' ? 0 : 2, maxLives: 3, out: false, // two hearts left of three (the out kind: none)
     };
 
     const you = {
@@ -233,12 +245,39 @@ function fakeState(kind, startedAt, question) {
                       points: striking ? damage : 0, pressedByStationId: 'A1', pressedByName: 'Ann', timedOut: kind === 'slow' },
         delve,
         helping: null,
-        beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', fireball: 'hit', slow: 'hurt', blocked: 'hurt', loot: 'kill',
+        beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', fireball: 'hit', slow: 'hurt', blocked: 'hurt', loot: 'kill', poisonkill: 'kill',
                         splash: 'hit', heal: 'hit', poison: 'hit', patron: 'hit', reveal: 'hit', peek: 'hit', armour: 'hurt',
-                        charged: 'hurt', stagger: 'hit' }[kind] || kind,
+                        charged: 'hurt', stagger: 'hit', rewarded: 'reward' }[kind] || kind,
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
+    // Floor rewards: the cards up after the boss's death beat (it has ended), and no question meanwhile.
+    if (kind === 'reward') {
+        you.beat = { kind: 'floor', startedAtMs: startedAt - 3000, endsAtMs: startedAt };
+        you.question = null;
+        you.reward = { floor: 2, opensAtMs: startedAt, pickFromMs: startedAt + 1000, endsAtMs: startedAt + 12000, right: 9, answered: 10,
+                       choices: [{ reward: 'Vitality', amount: 25 }, { reward: 'Focus', amount: 1 }, { reward: 'Mastery', amount: MASTERY[hero] }] };
+    }
+    if (kind === 'rewarded') delve.rewards.at(-1).amount = MASTERY[hero];
+    if (kind === 'poisonkill') you.beat.byPoison = true; // nobody answered: the party's poison did it (delve.lastHit)
+    if (kind === 'out') { // downed on the last life
+        you.beat.kind = 'downed';
+        taken.downed = true; taken.out = true; taken.hpLeft = 0;
+    }
+    if (kind.startsWith('runelock')) {
+        // The kill beat that emptied the room has played; the intro starts now, play 3.5 s later.
+        you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt };
+        you.question = null;
+        const playsFromMs = startedAt + 3500;
+        const over = kind !== 'runelock';
+        you.minigame = { kind: 'RuneLock', introAtMs: over ? startedAt - 20000 : startedAt, playsFromMs: over ? startedAt - 16500 : playsFromMs,
+                         endsAtMs: over ? startedAt + 13500 : playsFromMs + 30000, finishedAtMs: over ? startedAt : null, won: kind === 'runelock-won',
+                         resultEndsAtMs: over ? startedAt + 2500 : null,
+                         runeLock: { hits: kind === 'runelock-won' ? 6 : 2, hitsNeeded: 6, lockedUntilMs: null, turnStartedAtMs: playsFromMs, turnAngle: 0,
+                                     degreesPerSecond: 200, markAngle: 150, markDegrees: 40, presses: 2, lastWasHit: true } };
+    }
+
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
+                    clockStoppedLeftMs: kind.startsWith('runelock') ? 74000 : null,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),

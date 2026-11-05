@@ -275,6 +275,7 @@ function continueOffer(match, you) {
         <div class="center-stack">
             <h1 class="big-title">${Theme.text('continue.title', {}, seed)}</h1>
             <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="4"></div>
+            ${you.delve?.out ? `<p class="subtitle continue-out">${Theme.text('continue.outOfLives', { lives: you.delve.maxLives })}</p>` : ''}
             <p class="subtitle">${Theme.text('continue.swipe', { seconds: match.continueSeconds }, seed)}</p>
             ${progress}
         </div>`;

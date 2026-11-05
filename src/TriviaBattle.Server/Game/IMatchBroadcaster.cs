@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 
@@ -39,6 +40,22 @@ public class LoggingMatchBroadcaster(ILogger<LoggingMatchBroadcaster> logger) : 
                     break;
                 case PowerUpFound f:
                     logger.LogInformation("Match {Id}: {Owner} found a {PowerUp}", match.MatchId, f.OwnerId, f.PowerUp);
+                    break;
+                case MinigameStarted m:
+                    logger.LogInformation("Match {Id}: {Owner} starts a mini game: {Kind}", match.MatchId, m.OwnerId, m.Kind);
+                    break;
+                case MinigamePlayed { Result: MinigamePress.Won } m:
+                    logger.LogInformation("Match {Id}: {Owner} won the mini game", match.MatchId, m.OwnerId);
+                    break;
+                case MinigameLost m:
+                    logger.LogInformation("Match {Id}: {Owner} ran out of time in the mini game", match.MatchId, m.OwnerId);
+                    break;
+                case RewardOffered r:
+                    logger.LogInformation("Match {Id}: {Owner} earned a reward on floor {Floor}: {Choices}", match.MatchId, r.OwnerId, r.Offer.Floor,
+                        string.Join(", ", r.Offer.Choices));
+                    break;
+                case RewardChosen r:
+                    logger.LogInformation("Match {Id}: {Owner} took {Reward}{How}", match.MatchId, r.OwnerId, r.Taken.Reward, r.Taken.Picked ? "" : " (time ran out)");
                     break;
                 case PhotoAsked p:
                     logger.LogInformation("Match {Id}: {Station} said yes to a hero photo", match.MatchId, p.StationId);

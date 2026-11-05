@@ -33,10 +33,14 @@ public sealed class TestMatch
     /// Dungeon format: each station's hero ("tank", "wizard"...). Everyone else plays <see cref="PlainHero"/>.
     /// </param>
     /// <param name="dungeon">Dungeon format: the floors and monsters (default <see cref="Dungeon"/>).</param>
+    /// <param name="rewards">
+    /// Dungeon format: keep floor rewards on. Off by default, so a test that clears a floor isn't stopped by a
+    /// reward to pick; DungeonRewardTests turn them on.
+    /// </param>
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
         IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false,
         IReadOnlyDictionary<string, bool>? lobbyPhotos = null, IReadOnlyDictionary<string, string>? heroes = null,
-        DungeonMap? dungeon = null)
+        DungeonMap? dungeon = null, bool rewards = false)
     {
         Settings = settings ?? new MatchSettings();
         if (!battleBeats)
@@ -46,6 +50,8 @@ public sealed class TestMatch
             Settings.Dungeon.KillBeatSeconds = 0;
             Settings.Dungeon.FloorBeatSeconds = 0;
         }
+        if (!rewards)
+            Settings.Dungeon.Rewards.Enabled = false;
         Now = Start;
 
         var teams = mode == GameModeKind.FreeForAll

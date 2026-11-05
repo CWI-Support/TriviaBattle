@@ -200,25 +200,25 @@ public class HeroClassTests
         Assert.Equal(1, match.AdventurerOf("A1").LastDealt!.PoisonStacks);
         Assert.Equal(970, match.DelveOf("A1").MonsterHp);
 
-        var events = match.Wait(1); // a tick: 2 per stack
-        Assert.Equal(2, Assert.Single(events.OfType<MonsterPoisoned>()).Damage);
-        Assert.Equal(968, match.DelveOf("A1").MonsterHp);
+        var events = match.Wait(2); // a tick (every 2 seconds): 1 per stack
+        Assert.Equal(1, Assert.Single(events.OfType<MonsterPoisoned>()).Damage);
+        Assert.Equal(969, match.DelveOf("A1").MonsterHp);
 
         match.Press("A1", 0, afterSeconds: 0.5); // a second stack (and 30 more)
         Assert.Equal(2, match.DelveOf("A1").Foes[0].PoisonStacks);
-        match.Wait(0.5);
-        Assert.Equal(968 - 30 - 4, match.DelveOf("A1").MonsterHp);
+        match.Wait(1.5);
+        Assert.Equal(969 - 30 - 2, match.DelveOf("A1").MonsterHp);
         Assert.Equal(2, SnapshotBuilder.Build(match.Engine, Viewer.Main).Players[0].Delve!.Monster.PoisonStacks);
     }
 
     [Fact]
     public void Poison_can_kill_and_scores_nothing()
     {
-        var match = Solo("healer");
-        match.Press("A1", 0, afterSeconds: 1); // 30 of the rat's 40, and a stack of poison: 2 a second
+        var match = Solo("healer", s => s.Dungeon.Classes.PoisonDamage = 10); // one tick finishes the rat
+        match.Press("A1", 0, afterSeconds: 1); // 30 of the rat's 40, and a stack of poison
         var score = match.ScoreOf("A1");
 
-        var events = match.Wait(5);
+        var events = match.Wait(2);
 
         var kill = Assert.Single(events.OfType<MonsterPoisoned>(), e => e.Kill != null).Kill!;
         Assert.True(kill.Poison);
@@ -227,6 +227,23 @@ public class HeroClassTests
         Assert.Equal((1, 2), (match.DelveOf("A1").Floor, match.DelveOf("A1").Encounter.Room)); // the next rat is up
         Assert.Equal(0, match.DelveOf("A1").Foes[0].PoisonStacks);                              // and it's not poisoned
         Assert.Equal(score, match.ScoreOf("A1"));
+    }
+
+    [Fact]
+    public void A_poison_kill_plays_a_kill_beat_then_the_question_comes_back_for_the_next_monster()
+    {
+        var match = Solo("healer", s => s.Dungeon.Classes.PoisonDamage = 10, battleBeats: true);
+        match.Press("A1", 0, afterSeconds: 1); // a stack of poison, then the hit's beat
+        var number = match.StreamOf("A1").CurrentNumber;
+
+        match.Wait(2); // the tick kills the rat (the question after the hit is up by then)
+
+        var beat = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Beat!;
+        Assert.Equal(("kill", true), (beat.Kind, beat.ByPoison));
+        Assert.Equal(match.Now.AddSeconds(2), match.StreamOf("A1").CurrentShownAt); // the kill beat's length
+        Assert.Equal(number, match.StreamOf("A1").CurrentNumber);                   // the same question comes back
+        Assert.Equal(match.Now.AddSeconds(12), match.AdventurerOf("A1").AttackAt); // the new rat's hourglass starts after it
+        Assert.Empty(match.Press("A1", 0, afterSeconds: 1));                        // buttons wait for the beat to end
     }
 
     // ---------------------------------------------------------------- Wizard

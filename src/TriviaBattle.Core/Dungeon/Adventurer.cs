@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon.Minigames;
 namespace TriviaBattle.Core.Dungeon;
 
 /// <summary>
@@ -10,14 +11,26 @@ namespace TriviaBattle.Core.Dungeon;
 /// </summary>
 public sealed class Adventurer
 {
-    public Adventurer(string ownerId, string partyId, int maxHp, HeroClass heroClass = HeroClass.Tank)
+    /// <param name="lives">How many times they can be downed and get up (the last downing puts them out); 0 = no limit.</param>
+    public Adventurer(string ownerId, string partyId, int maxHp, HeroClass heroClass = HeroClass.Tank, int lives = 0)
     {
+        MaxLives = lives;
+        Lives = lives;
         OwnerId = ownerId;
         PartyId = partyId;
         MaxHp = maxHp;
+        StartingMaxHp = maxHp;
         Hp = maxHp;
         Class = heroClass;
     }
+
+    /// <summary>Lives left, of <see cref="MaxLives"/> (0 there = no limit). Each downing costs one.</summary>
+    public int Lives { get; private set; }
+
+    public int MaxLives { get; }
+
+    /// <summary>Downed on their last life: they don't get up (until a continue brings them back with all their lives).</summary>
+    public bool IsOut => MaxLives > 0 && Lives <= 0;
 
     /// <summary>What they can do in a fight: the hero they picked (see <see cref="HeroClass"/>).</summary>
     public HeroClass Class { get; }
@@ -29,7 +42,10 @@ public sealed class Adventurer
     public string PartyId { get; }
 
     public int Hp { get; private set; }
-    public int MaxHp { get; }
+    public int MaxHp { get; private set; }
+
+    /// <summary>Their max HP when the match started (Vitality rewards add a share of this).</summary>
+    public int StartingMaxHp { get; }
 
     /// <summary>Correct answers in a row.</summary>
     public int Streak { get; private set; }
@@ -86,6 +102,117 @@ public sealed class Adventurer
     /// <summary>A Warlock: the question number their patron has shown the right answer to (0 = none).</summary>
     public int RevealedOnQuestion { get; private set; }
 
+    // Floor rewards (see Reward): how they're doing on this floor, what's on offer after its boss, what they've got.
+
+    private readonly List<RewardTaken> _rewards = [];
+
+    /// <summary>Their answers on the floor they're on so far (the floor's reward needs enough of them right).</summary>
+    public FloorTrial Trial { get; private set; } = new(1, 0, 0);
+
+    /// <summary>How they did on the last floor cleared, and whether it earned a reward (null before the first is cleared).</summary>
+    public FloorTrial? LastTrial { get; private set; }
+
+    /// <summary>Rewards they're choosing between now (their question waits meanwhile), or null.</summary>
+    public RewardOffer? Offer { get; private set; }
+
+    public bool IsChoosing => Offer != null;
+
+    /// <summary>The mini game they're playing (from its intro until the moment after it ends), or null.</summary>
+    public Minigame? Minigame { get; private set; }
+
+    /// <summary>Mini games they've won.</summary>
+    public int MinigamesWon { get; private set; }
+
+    /// <summary>
+    /// Away from the fight: choosing a reward or playing a mini game. Their question waits, the monster's hourglass
+    /// stops, and the arcade clock stops for everyone (DungeonRun.ClockStopped).
+    /// </summary>
+    public bool IsAway => IsChoosing || Minigame != null;
+
+    public void StartMinigame(Minigame minigame) => Minigame = minigame;
+
+    /// <summary>The mini game's over (its result has been shown): back to the fight.</summary>
+    public void EndMinigame()
+    {
+        if (Minigame?.Won == true)
+            MinigamesWon++;
+        Minigame = null;
+    }
+
+    /// <summary>Every reward they've picked, in order.</summary>
+    public IReadOnlyList<RewardTaken> Rewards => _rewards;
+
+    public RewardTaken? LastReward => _rewards.Count > 0 ? _rewards[^1] : null;
+
+    /// <summary>How many times they've picked this reward (they stack).</summary>
+    public int Has(Reward reward) => _rewards.Count(r => r.Reward == reward);
+
+    /// <summary>Last Stands still to come: the next hit that would down them leaves them on 1 HP instead.</summary>
+    public int LastStands { get; private set; }
+
+    /// <summary>A question answered on <paramref name="floor"/> (right, wrong or too slow). A new floor starts a fresh count.</summary>
+    public void CountAnswer(int floor, bool right)
+    {
+        var trial = Trial.Floor == floor ? Trial : new FloorTrial(floor, 0, 0);
+        Trial = trial with { Right = trial.Right + (right ? 1 : 0), Answered = trial.Answered + 1 };
+    }
+
+    /// <summary>
+    /// Their party cleared <paramref name="floor"/>: was enough of it right (at least <paramref name="accuracy"/> of
+    /// their answers on it)? The count starts again for the next floor.
+    /// </summary>
+    public FloorTrial EndFloor(int floor, double accuracy)
+    {
+        var trial = Trial.Floor == floor ? Trial : new FloorTrial(floor, 0, 0);
+        var earned = trial.Answered > 0 && trial.Right >= accuracy * trial.Answered - 1e-9;
+        LastTrial = trial with { Earned = earned };
+        Trial = new FloorTrial(floor + 1, 0, 0);
+        return LastTrial;
+    }
+
+    public void OfferRewards(RewardOffer offer) => Offer = offer;
+
+    /// <summary>
+    /// A reward is theirs (picked from an offer, or handed over by the dev tools). Most of the rules read it from
+    /// <see cref="Rewards"/> (see DungeonRun); a Last Stand is counted here.
+    /// </summary>
+    /// <param name="amount">What its card said it gives (kept for the screens).</param>
+    /// <param name="floor">The floor it was earned on.</param>
+    public RewardTaken TakeReward(Reward reward, double amount, int floor, DateTimeOffset now, bool picked)
+    {
+        var taken = new RewardTaken(_rewards.Count + 1, reward, amount, floor, now, picked);
+        _rewards.Add(taken);
+        if (reward == Dungeon.Reward.LastStand)
+            LastStands++;
+        return taken;
+    }
+
+    /// <summary>They've picked: the offer's gone.</summary>
+    public void CloseOffer() => Offer = null;
+
+    /// <summary>A Vitality reward: more max HP, and healed to full (unless they're down: they get up at full anyway).</summary>
+    public void RaiseMaxHp(int amount)
+    {
+        MaxHp += amount;
+        if (!IsDowned)
+            Hp = MaxHp;
+    }
+
+    /// <summary>A Continue: the time to pick starts again, so nobody comes back to a reward picked for them.</summary>
+    public void ExtendOffer(DateTimeOffset now, double pickSeconds)
+    {
+        if (Offer != null)
+            Offer = Offer with { OpensAt = now, EndsAt = now + TimeSpan.FromSeconds(pickSeconds) };
+    }
+
+    /// <summary>
+    /// When the party's poison last killed the monster in front while they were fighting: their question waited for
+    /// a kill beat from then (see DungeonRun.PoisonKilled). Null if it never has.
+    /// </summary>
+    public DateTimeOffset? PoisonKillAt { get; private set; }
+
+    public void SawPoisonKill(DateTimeOffset now) => PoisonKillAt = now;
+
     /// <summary>The boss their charge cycle is against (each adventurer has their own cycle, as each has their own questions).</summary>
     private Foe? _chargingBoss;
     private int _bossCharge;
@@ -135,7 +262,7 @@ public sealed class Adventurer
     /// <summary>Their downed time ends sooner (the whole party is down, so everyone gets up quickly).</summary>
     public void ShortenDowned(DateTimeOffset until)
     {
-        if (DownedUntil > until)
+        if (!IsOut && DownedUntil > until)
             DownedUntil = until;
     }
 
@@ -155,18 +282,29 @@ public sealed class Adventurer
         var damage = blocked ? 0 : (int)Math.Round(encounter.Damage * damageTaken);
         if (!blocked)
             Streak = 0;
+
+        // A Last Stand (a floor reward): the hit that would down them leaves them on 1 HP instead, once.
+        var lastStand = damage >= Hp && Hp > 1 && LastStands > 0;
+        if (lastStand)
+        {
+            LastStands--;
+            damage = Hp - 1;
+        }
         Hp = Math.Max(0, Hp - damage);
 
         var downed = Hp == 0;
         if (downed)
         {
-            DownedUntil = now + TimeSpan.FromSeconds(downedSeconds);
+            if (MaxLives > 0)
+                Lives--;
+            // Out of lives: down for good (DateTimeOffset.MaxValue), until a continue.
+            DownedUntil = IsOut ? DateTimeOffset.MaxValue : now + TimeSpan.FromSeconds(downedSeconds);
             ReviveProgress = 0;
             StopHourglass();
         }
 
         LastTaken = new TakenHit((LastTaken?.Number ?? 0) + 1, damage, reason, downed, encounter.Monster.Name, encounter.Monster.Sprite, Hp, blocked, patronPrice,
-            charged && !blocked);
+            charged && !blocked, lastStand, downed && IsOut);
         return LastTaken;
     }
 
@@ -243,8 +381,19 @@ public sealed class Adventurer
     /// <summary>Back on their feet after being downed (their time ran out, or teammates revived them), at full HP.</summary>
     public void GetUp()
     {
+        if (IsOut)
+            return; // only a continue brings them back (RestoreLives)
         DownedUntil = null;
         ReviveProgress = 0;
         Hp = MaxHp;
+    }
+
+    /// <summary>A continue (a new paid session): all their lives back, and if they were out, back on their feet at full HP.</summary>
+    public void RestoreLives()
+    {
+        var wasOut = IsOut;
+        Lives = MaxLives;
+        if (wasOut)
+            GetUp();
     }
 }

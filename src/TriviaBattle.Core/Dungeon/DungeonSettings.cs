@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Questions;
 
 namespace TriviaBattle.Core.Dungeon;
@@ -28,11 +29,24 @@ public sealed class DungeonSettings
     /// <summary>What each hero class can do (combos are the Pugilist's). Bound from "Game:Dungeon:Classes".</summary>
     public ClassSettings Classes { get; set; } = new();
 
+    /// <summary>The rewards picked after a floor's boss, for a floor answered well enough. Bound from "Game:Dungeon:Rewards".</summary>
+    public RewardSettings Rewards { get; set; } = new();
+
+    /// <summary>The mini games a floor may have between two rooms. Bound from "Game:Dungeon:Minigames".</summary>
+    public MinigameSettings Minigames { get; set; } = new();
+
     /// <summary>
     /// At 0 HP an adventurer is downed: their buttons are dead this long, then they get back up at
-    /// full HP. When the whole party is down the monster heals. Nobody is knocked out of a paid game.
+    /// full HP. When the whole party is down the monster heals. Each downing costs a life (<see cref="Lives"/>).
     /// </summary>
     public double DownedSeconds { get; set; } = 5;
+
+    /// <summary>
+    /// Each adventurer's lives: every time they're downed costs one, and downed on their last they're out (in a party they
+    /// sit out, shouting answers to their teammates). When everyone in the match is out, the game is over: "Continue?",
+    /// and a swipe (a new paid session) brings everyone back with all their lives. 0 = no limit (they always get up).
+    /// </summary>
+    public int Lives { get; set; } = 3;
 
     // Battle beats: after each answer the next question waits a moment while the screen shows the fight
     // (your hit, the monster's attack, a kill, the way down to the next floor). Buttons are dead and the
@@ -91,7 +105,7 @@ public sealed class DungeonSettings
     // runs out, a card swipe continues: a second paid session, ContinueSeconds long, picking up where they
     // left off. All of these can be changed on the Operator screen.
 
-    public double ClockStartSeconds { get; set; } = 140;
+    public double ClockStartSeconds { get; set; } = 130;
     public double SecondsPerKill { get; set; } = 5;
 
     /// <summary>A boss kill adds this instead of <see cref="SecondsPerKill"/>.</summary>
@@ -154,6 +168,8 @@ public sealed class DungeonSettings
     {
         var copy = (DungeonSettings)MemberwiseClone();
         copy.Classes = Classes.Copy(); // its own, so changing one match's numbers never changes another's
+        copy.Rewards = Rewards.Copy();
+        copy.Minigames = Minigames.Copy();
         return copy;
     }
 }

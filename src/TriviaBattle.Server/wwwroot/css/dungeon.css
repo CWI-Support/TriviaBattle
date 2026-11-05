@@ -34,9 +34,25 @@
 /* The dungeon view has its own top line and player plate, so the normal header steps aside. */
 .player-screen.is-dungeon { grid-template-rows: minmax(0, 1fr); }
 .player-screen.is-dungeon .player-header { display: none; }
-.player-screen.is-dungeon .player-body { padding: 1.4vh 3vw; }
+.player-screen.is-dungeon .player-body { padding: 0; }
 
-.dg-station { height: 100%; display: flex; flex-direction: column; gap: calc(1vh * var(--fit)); }
+/* The dungeon runs edge to edge (.dg-world); everything else on the station (your party, your plate, the
+   reward screen's parts) keeps a margin. */
+.dg-station { height: 100%; display: flex; flex-direction: column; gap: calc(1vh * var(--fit)); padding-bottom: 1.4vh; }
+.dg-station > :not(.dg-world) { margin-left: 3vw; margin-right: 3vw; }
+.dg-station > :first-child:not(.dg-world) { margin-top: 1.4vh; }
+
+/* The scene: the room (in 3D, or the CSS one) fills all of it, and the words float over it. */
+.dg-world { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+/* In the fight, where you are (floor, trail, time) floats across the top of the scene. */
+.dg-world > .dg-top {
+    position: absolute;
+    top: 1.4vh;
+    left: 3vw;
+    right: 3vw;
+    z-index: 6;
+    background: rgba(28, 25, 32, 0.72);
+}
 
 /* Where you are: floor, Depth, time left, and the trail of monsters to the boss. */
 .dg-top {
@@ -612,3 +628,14 @@
     84% { opacity: 1; transform: none; }
     100% { opacity: 0; transform: translateX(70vw) skewX(24deg); }
 }
+
+/* ---------- Lives: hearts on the player plate and beside each teammate (js/dungeon-view.js lives) ---------- */
+
+.dg-lives { display: inline-flex; gap: 0.6vmin; margin-left: 1.4vmin; vertical-align: middle; }
+.dg-life { width: 3.8vmin; height: auto; }
+.dg-life.is-lost { filter: grayscale(1) brightness(0.35); }
+.dg-member-line .dg-lives { margin-left: auto; }
+.dg-member-line .dg-life { width: 2.4vmin; }
+.dg-member-down.is-out { background: #5a0a0a; color: #fff; }
+.dg-overlay.is-out { border-color: var(--wrong); color: var(--wrong); }
+.continue-out { color: var(--wrong); }

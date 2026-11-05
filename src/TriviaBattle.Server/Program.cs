@@ -145,31 +145,33 @@ try
     fileTypes.Mappings[".mjs"] = "text/javascript";
     fileTypes.Mappings[".wasm"] = "application/wasm";
     fileTypes.Mappings[".task"] = "application/octet-stream";
-    app.UseStaticFiles(new StaticFileOptions
+    var staticFiles = new StaticFileOptions
     {
         ContentTypeProvider = fileTypes,
-        // Always check for a newer file, so screens pick up edits on refresh.
+        // Always check for a newer file, so screens pick up edits on refresh. The screen pages below get it too: a
+        // cached page with fresh scripts would miss any script tag added since (a "... is not defined" error).
         OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
-    });
+    };
+    app.UseStaticFiles(staticFiles);
     app.MapControllers();
     app.MapHub<GameHub>("/gamehub");
 
     // Screen URLs. A screen works out its role from its own URL (see wwwroot/js/screen-connection.js).
     // Optional ?room=A picks the room; the default is the first room in stations.json.
-    app.MapFallbackToFile("/display/main", "screens/main.html");
+    app.MapFallbackToFile("/display/main", "screens/main.html", staticFiles);
     // Station screens are portrait only (a standard monitor on its side, 9:16): each address shows a
     // frame of that shape (screens/portrait-frame.html) holding the real page at the same address + /screen.
-    app.MapFallbackToFile("/display/player/{number:int}", "screens/portrait-frame.html");
-    app.MapFallbackToFile("/display/player/{number:int}/screen", "screens/player.html");
-    app.MapFallbackToFile("/display/leaderboard", "screens/leaderboard.html");
-    app.MapFallbackToFile("/kiosk", "screens/kiosk.html");
-    app.MapFallbackToFile("/dev/buttons", "screens/dev-buttons.html");
-    app.MapFallbackToFile("/dev/battle", "screens/portrait-frame.html"); // the battle beats on a loop, with made-up data,
-    app.MapFallbackToFile("/dev/battle/screen", "screens/dev-battle.html"); // in the station's 9:16 frame
-    app.MapFallbackToFile("/dev/battle3d", "screens/portrait-frame.html"); // the same, drawn in 3D (js/battle3d)
-    app.MapFallbackToFile("/dev/battle3d/screen", "screens/dev-battle3d.html");
-    app.MapFallbackToFile("/dev/heroes", "screens/dev-heroes.html"); // draws the heroes' pictures for media/heroes
-    app.MapFallbackToFile("/admin", "screens/admin.html");
+    app.MapFallbackToFile("/display/player/{number:int}", "screens/portrait-frame.html", staticFiles);
+    app.MapFallbackToFile("/display/player/{number:int}/screen", "screens/player.html", staticFiles);
+    app.MapFallbackToFile("/display/leaderboard", "screens/leaderboard.html", staticFiles);
+    app.MapFallbackToFile("/kiosk", "screens/kiosk.html", staticFiles);
+    app.MapFallbackToFile("/dev/buttons", "screens/dev-buttons.html", staticFiles);
+    app.MapFallbackToFile("/dev/battle", "screens/portrait-frame.html", staticFiles); // the battle beats on a loop, with made-up data,
+    app.MapFallbackToFile("/dev/battle/screen", "screens/dev-battle.html", staticFiles); // in the station's 9:16 frame
+    app.MapFallbackToFile("/dev/battle3d", "screens/portrait-frame.html", staticFiles); // the same, drawn in 3D (js/battle3d)
+    app.MapFallbackToFile("/dev/battle3d/screen", "screens/dev-battle3d.html", staticFiles);
+    app.MapFallbackToFile("/dev/heroes", "screens/dev-heroes.html", staticFiles); // draws the heroes' pictures for media/heroes
+    app.MapFallbackToFile("/admin", "screens/admin.html", staticFiles);
     app.MapGet("/operator", () => Results.Redirect("/admin#operator")); // the venue staff's screen: sound, rules, theme
 
     var port = app.Configuration.GetValue("Port", 5000);

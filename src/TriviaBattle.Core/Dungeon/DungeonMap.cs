@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Questions;
 
 namespace TriviaBattle.Core.Dungeon;
@@ -36,6 +37,9 @@ public sealed record MonsterDef(string Id, string Name, string Sprite, int Hp, i
 /// How often each difficulty is asked on this floor, as weights: <c>{ "Easy": 80, "Medium": 20 }</c>. Not given: the
 /// match's chosen difficulty comes first, as in Classic.
 /// </param>
+/// <param name="Minigame">A mini game always on this floor, played after room <paramref name="MinigameAfterRoom"/> is cleared. Most
+/// floors don't say: every floor reached rolls for one instead (see <see cref="DungeonMap.MinigameOn"/>).</param>
+/// <param name="MinigameAfterRoom">The room (1-based) whose clearing leads to the mini game; 0 = none.</param>
 public sealed record FloorDef(
     IReadOnlyList<string>? Monsters = null,
     IReadOnlyList<IReadOnlyList<string>>? Rooms = null,
@@ -44,7 +48,9 @@ public sealed record FloorDef(
     IReadOnlyList<string>? Pool = null,
     int MaxPack = 3,
     string? Boss = null,
-    IReadOnlyDictionary<Difficulty, int>? Questions = null)
+    IReadOnlyDictionary<Difficulty, int>? Questions = null,
+    MinigameKind? Minigame = null,
+    int MinigameAfterRoom = 0)
 {
     /// <summary>Made up fresh for each match from a pool, rather than written out.</summary>
     public bool IsMadeUp => Pool != null;
@@ -82,13 +88,18 @@ public sealed class DungeonMap
     private readonly List<(DepthDef Depth, FloorDef Floor, IReadOnlyList<IReadOnlyList<string>> Rooms)> _floors;
 
     /// <param name="depths">Every floor written out: made-up floors are laid out first, by <see cref="DungeonPlan.Build"/>.</param>
-    public DungeonMap(IReadOnlyList<DepthDef> depths, IEnumerable<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0)
+    /// <param name="minigameChance">How likely each floor reached is to have a mini game (see <see cref="MinigameOn"/>).</param>
+    /// <param name="minigameSeed">Makes this match's rolls for them (the same for every party, so a race is fair).</param>
+    public DungeonMap(IReadOnlyList<DepthDef> depths, IEnumerable<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
+        double minigameChance = 0, int minigameSeed = 0)
     {
         _monsters = monsters.ToDictionary(m => m.Id);
         _floors = depths.SelectMany(d => d.Floors.Select(f => (d, f, f.RoomList()))).ToList();
         Depths = depths;
         LoopHpBonus = loopHpBonus;
         LoopDamageBonus = loopDamageBonus;
+        MinigameChance = minigameChance;
+        _minigameSeed = minigameSeed;
 
         var problems = Validate().ToList();
         if (problems.Count > 0)
@@ -110,6 +121,43 @@ public sealed class DungeonMap
 
     /// <summary>How often each difficulty is asked on a floor (1-based), as weights; null if the floor doesn't say.</summary>
     public IReadOnlyDictionary<Difficulty, int>? QuestionsOn(int floor) => _floors[(floor - 1) % _floors.Count].Floor.Questions;
+
+    /// <summary>
+    /// The mini game played once <paramref name="room"/> of <paramref name="floor"/> (both 1-based) is cleared, before
+    /// the next room; null if there's none there (at most one per floor).
+    /// </summary>
+    public MinigameKind? MinigameAfter(int floor, int room) =>
+        MinigameOn(floor) is { } minigame && minigame.AfterRoom == room ? minigame.Kind : null;
+
+    /// <summary>How likely each floor reached is to have a mini game (config/dungeon.json's <c>MinigameChance</c>).</summary>
+    public double MinigameChance { get; }
+
+    private readonly int _minigameSeed;
+
+    /// <summary>
+    /// A floor's mini game (1-based floor; at most one), and the room after which it's played; null if it has none.
+    /// A floor written with one (<see cref="FloorDef.Minigame"/>) always has it. Otherwise every floor reached rolls
+    /// for one, by <see cref="MinigameChance"/>, loops included: the dungeon repeats its floors' rooms on each loop,
+    /// but not their mini games, so a long run keeps finding them the way it keeps finding monsters. It goes between
+    /// two of the floor's rooms, never right before a boss's (whose entrance follows that room) nor after the last.
+    /// Each floor's roll is fixed by the match's seed, so every party in a race meets the same ones.
+    /// </summary>
+    public (MinigameKind Kind, int AfterRoom)? MinigameOn(int floor)
+    {
+        var (_, def, rooms) = _floors[(floor - 1) % _floors.Count];
+        if (def.Minigame is { } written)
+            return def.MinigameAfterRoom > 0 ? (written, def.MinigameAfterRoom) : null;
+
+        var bossLast = rooms[^1].Any(id => _monsters[id].IsBoss);
+        var lastAfter = rooms.Count - (bossLast ? 2 : 1); // the last room a mini game can follow
+        if (MinigameChance <= 0 || lastAfter < 1)
+            return null;
+
+        var roll = new Random(unchecked(_minigameSeed * 7919 + floor)); // this floor's own roll, whoever gets there first
+        if (roll.NextDouble() >= MinigameChance)
+            return null;
+        return (MinigameCatalog.Pick(roll), roll.Next(1, lastAfter + 1));
+    }
 
     /// <summary>The monsters in a given room of a given floor (both 1-based), the one in front first.</summary>
     public IReadOnlyList<Encounter> RoomAt(int floor, int room)

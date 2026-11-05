@@ -24,7 +24,7 @@
 .dg-foe-plate {
     position: relative;
     padding: 0.8vh 2.4vw 1.2vh;
-    background: linear-gradient(#2e2a35, #1c1920);
+    background: linear-gradient(rgba(46, 42, 53, 0.78), rgba(28, 25, 32, 0.78)); /* the room shows through a little */
     border: 0.7vmin solid var(--dg-frame-edge);
     box-shadow: inset 0 0 0 0.4vmin #000, 0 0.8vmin 0 rgba(0, 0, 0, 0.5);
 }
@@ -109,7 +109,7 @@
 
 /* The warning across the bottom of the room, in the Host's place (the Host's line can wait: what's at
    stake on this one answer matters more). A Warlock's patron's whisper keeps its place under it. */
-.dg-station.is-full-charge .dg-stage .dg-feedback:not(.is-patron) { display: none; }
+.dg-station.is-full-charge .dg-window .dg-feedback:not(.is-patron) { display: none; }
 .dg-charge-warning {
     position: absolute;
     left: 2vw;
@@ -129,7 +129,7 @@
     text-shadow: 0.4vmin 0.4vmin 0 #000;
     animation: dg-charge-warning 900ms ease-in-out var(--charge0) infinite;
 }
-.dg-stage .dg-feedback.is-patron ~ .dg-charge-warning { bottom: calc(1.6vh + 3.2vmin * var(--fit) * 1.4); }
+.dg-window .dg-feedback.is-patron ~ .dg-charge-warning { bottom: calc(1.6vh + 3.2vmin * var(--fit) * 1.4); }
 @keyframes dg-charge-warning { 50% { transform: scale(1.03); background: rgba(200, 16, 16, 0.95); } }
 
 /* ---------- The question, hanging from the nameplate on two chains ---------- */
@@ -161,22 +161,39 @@
 
 /* ---------- The monster in its room ---------- */
 
-.dg-stage {
-    position: relative;
-    flex: 1 1 auto;
-    min-height: 20vh;
-    overflow: hidden;
-    border: 0.5vmin solid #000;
-    box-shadow: inset 0 0 6vmin 1vmin rgba(0, 0, 0, 0.75);
+/* The room is the whole scene: it fills the screen above your plate (.dg-world, css/dungeon.css), and the
+   nameplate, scroll and answers float over it (.dg-hud). A shade at the top and bottom keeps the words on it
+   readable while the middle, where the monster stands, stays clear. */
+.dg-stage { position: absolute; inset: 0; overflow: hidden; }
+.dg-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+        linear-gradient(rgba(8, 5, 10, 0.35), transparent 20%, transparent 58%, rgba(8, 5, 10, 0.45) 85%),
+        radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(8, 5, 10, 0.3));
 }
-.dg-stage .dg-monster-wrap { position: absolute; left: 0; right: 0; bottom: 12%; height: 78%; }
-.dg-stage .dg-monster { height: 100%; }
-.dg-stage .dg-monster.is-boss { height: 100%; }
-.dg-stage .dg-float { font-size: 7vmin; }
-.dg-stage .dg-float.is-crit { font-size: 9vmin; }
+.dg-hud {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.9vh * var(--fit));
+    padding: 1.4vh 3vw 1vh;
+}
+/* The gap between the scroll and the answers: the monster stands here (the 3D camera frames it here too). */
+.dg-window { position: relative; flex: 1 1 auto; min-height: 18vh; }
+.dg-window .dg-monster-wrap { position: absolute; left: 0; right: 0; bottom: 14%; height: 80%; }
+.dg-window .dg-monster { height: 100%; }
+.dg-window .dg-monster.is-boss { height: 100%; }
+.dg-window .dg-float { font-size: 7vmin; }
+.dg-window .dg-float.is-crit { font-size: 9vmin; }
 /* The Host's line, one line on the floor of the room under the monster. Its "it was B" detail stays off:
    the battle beat just showed the right answer big (DungeonBattle.reveal). */
-.dg-stage .dg-feedback {
+.dg-window .dg-feedback {
     position: absolute;
     left: 2vw;
     right: 2vw;
@@ -189,7 +206,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.dg-stage .dg-feedback-detail { display: none; }
+.dg-window .dg-feedback-detail { display: none; }
 
 /* The other players' moments that matter to you (js/dungeon-feed.js): a caption across the top of the
    monster's room, one at a time, with their face over its left end. It slides in, stays, and goes (--t0). */
@@ -208,8 +225,8 @@
     10%, 88% { transform: none; opacity: 1; }
     100% { transform: translateY(-140%); opacity: 0; }
 }
-.dg-stage .dg-feedback.is-go { background: transparent; text-shadow: 0.4vmin 0.4vmin 0 #000; }
-.dg-stage .dg-overlay { z-index: 3; }
+.dg-window .dg-feedback.is-go { background: transparent; text-shadow: 0.4vmin 0.4vmin 0 #000; }
+.dg-window .dg-overlay { z-index: 3; }
 
 /* ---------- The hourglass beside the answers, and the answers ---------- */
 
@@ -263,7 +280,7 @@
     align-self: stretch;
     display: grid;
     place-items: center;
-    background: #15121a;
+    background: rgba(21, 18, 26, 0.82);
     border: 0.5vmin solid var(--answer-color);
     box-shadow: inset 0 0 0 0.4vmin #000, 0 0 1.4vmin color-mix(in srgb, var(--answer-color) 45%, transparent);
 }
@@ -281,7 +298,7 @@
     align-items: center;
     gap: 1.4vw;
     padding: calc(1.3vh * var(--fit)) 2.4vw;
-    background: linear-gradient(#211d27, #16131b);
+    background: linear-gradient(rgba(33, 29, 39, 0.86), rgba(22, 19, 27, 0.86));
     border: 0.5vmin solid var(--answer-color);
     box-shadow: inset 0 0 0 0.4vmin #000, 0 0 1.4vmin color-mix(in srgb, var(--answer-color) 30%, transparent);
     text-transform: uppercase;
@@ -301,7 +318,7 @@
     50% { box-shadow: inset 0 0 0 0.4vmin #000, 0 0 5vmin var(--dg-patron), 0 0 1vmin #fff; }
 }
 /* The patron's whisper takes the Host's line, sliding in once when the answer is shown (--t0). */
-.dg-station .dg-stage .dg-feedback.is-patron {
+.dg-station .dg-window .dg-feedback.is-patron {
     color: #e3c8ff;
     background: rgba(40, 14, 64, 0.9);
     border-left: 1vmin solid var(--dg-patron);
@@ -317,12 +334,9 @@
 /* ---------- The question coming in after a battle beat (timed from --q0, see css/dungeon.css) ---------- */
 
 .dg-station.is-encounter.is-after-beat .dg-foe-plate { animation: dg-q-rise 200ms ease-out var(--q0) both; }
-.dg-station.is-encounter.is-after-beat .dg-stage { animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both; }
-.dg-station.is-encounter.is-new-foe .dg-stage .dg-monster-wrap { animation: dg-drop 450ms cubic-bezier(0.3, 1.5, 0.6, 1) calc(var(--q0) + 60ms) both; }
-/* At full charge after a beat, the plate and the room do both: come in, then keep pulsing red. */
+.dg-station.is-encounter.is-after-beat .dg-window { animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both; }
+.dg-station.is-encounter.is-new-foe .dg-window .dg-monster-wrap { animation: dg-drop 450ms cubic-bezier(0.3, 1.5, 0.6, 1) calc(var(--q0) + 60ms) both; }
+/* At full charge after a beat, the plate does both: comes in, then keeps pulsing red (the room pulses anyway: it doesn't move). */
 .dg-station.is-encounter.is-after-beat.is-full-charge .dg-foe-plate {
     animation: dg-q-rise 200ms ease-out var(--q0) both, dg-charge-plate 900ms ease-in-out var(--charge0) infinite;
-}
-.dg-station.is-encounter.is-after-beat.is-full-charge .dg-stage {
-    animation: dg-q-rise 220ms ease-out calc(var(--q0) + 40ms) both, dg-charge-room 900ms ease-in-out var(--charge0) infinite;
 }

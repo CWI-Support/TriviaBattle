@@ -119,10 +119,30 @@ const UI = {
         setInterval(UI.updateCountdowns, 100);
     },
 
+    /**
+     * The attributes for a match's clock while Playing: a countdown to the end of the phase, or, while a Dungeon game's
+     * arcade clock is stopped (a mini game or a reward pick: match.clockStoppedLeftMs), the time it stopped at, standing
+     * still. hurryAt: turns red at that many seconds. Use it as <span ${UI.matchClock(match, 10)}></span>.
+     */
+    matchClock(match, hurryAt = null) {
+        const hurry = hurryAt !== null ? ` data-hurry-at="${hurryAt}"` : '';
+        return match.clockStoppedLeftMs != null
+            ? `data-stopped-left="${match.clockStoppedLeftMs}"${hurry}`
+            : `data-ends-at="${match.phaseEndsAtMs}"${hurry}`;
+    },
+
     /** Brings every countdown on the page up to date (see startCountdowns). */
     updateCountdowns() {
         if (!UI.getServerNow) return;
         const now = UI.getServerNow();
+
+        // A stopped clock: the time it stopped at, and a mark that it's stopped.
+        document.querySelectorAll('[data-stopped-left]').forEach(el => {
+            const secondsLeft = Math.max(0, Math.ceil(Number(el.dataset.stoppedLeft) / 1000));
+            el.textContent = secondsLeft;
+            el.classList.add('is-stopped');
+            if (el.dataset.hurryAt) el.classList.toggle('is-hurry', secondsLeft <= Number(el.dataset.hurryAt));
+        });
 
         document.querySelectorAll('[data-ends-at]:not(.timer-bar)').forEach(el => {
             const secondsLeft = Math.max(0, Math.ceil((Number(el.dataset.endsAt) - now) / 1000));

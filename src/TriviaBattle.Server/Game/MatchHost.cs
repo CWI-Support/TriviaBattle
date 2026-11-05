@@ -167,6 +167,21 @@ public sealed class MatchHost(
         }
     }
 
+    /// <summary>Dev tools: hands the player at a station a floor reward. False if they're not in a Dungeon game that's playing.</summary>
+    public bool GiveReward(string stationId, Reward reward)
+    {
+        lock (_lock)
+        {
+            var match = _matches.Values.FirstOrDefault(m => !m.IsFinished && m.HasStation(stationId));
+            var events = match?.GiveReward(stationId, reward, clock.GetUtcNow()) ?? [];
+            if (events.Count == 0)
+                return false;
+
+            Publish(match!, events);
+            return true;
+        }
+    }
+
     /// <summary>
     /// A station sent the hero photo its player asked for. If the match takes it, keep() stores the picture
     /// (<see cref="PhotoStore"/>) before the screens hear about it. False if it wasn't asked for.

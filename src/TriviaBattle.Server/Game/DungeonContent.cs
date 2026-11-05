@@ -27,7 +27,7 @@ public static class DungeonContent
 
         try
         {
-            return new DungeonPlan(file.Depths ?? [], file.Monsters ?? [], file.LoopHpBonus, file.LoopDamageBonus);
+            return new DungeonPlan(file.Depths ?? [], file.Monsters ?? [], file.LoopHpBonus, file.LoopDamageBonus, file.MinigameChance);
         }
         catch (ArgumentException ex)
         {
@@ -35,5 +35,5 @@ public static class DungeonContent
         }
     }
 
-    private sealed record DungeonFile(double LoopHpBonus, List<DepthDef>? Depths, List<MonsterDef>? Monsters, double LoopDamageBonus = 0);
+    private sealed record DungeonFile(double LoopHpBonus, List<DepthDef>? Depths, List<MonsterDef>? Monsters, double LoopDamageBonus = 0, double MinigameChance = 0);
 }

@@ -143,6 +143,20 @@ export class Stage {
         return box && box.height > 0 ? box.width / box.height : 9 / 16;
     }
 
+    /**
+     * The part of the data-stage box left clear for the subject (the page marks it data-focus: the gap between
+     * the words floating over the scene), as shares of the box's height: { top, bottom }. The whole box when
+     * nothing is marked.
+     */
+    focus() {
+        const box = document.querySelector('[data-stage]')?.getBoundingClientRect();
+        const clear = document.querySelector('[data-focus]')?.getBoundingClientRect();
+        if (!box || !clear || box.height <= 0) return { top: 0, bottom: 1 };
+        const share = y => Math.max(0, Math.min(1, (y - box.top) / box.height));
+        const focus = { top: share(clear.top), bottom: share(clear.bottom) };
+        return focus.bottom - focus.top > 0.05 ? focus : { top: 0, bottom: 1 };
+    }
+
     /** The data-stage box's kind: 'fight' (the full beat) or 'portrait' (the encounter's stage, a question up). */
     mode() {
         return document.querySelector('[data-stage]')?.dataset.stage || null;

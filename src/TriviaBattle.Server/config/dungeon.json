@@ -1,8 +1,9 @@
 {
-  "_about": "Dungeon Quiz Quest content: Depths (runs of floors, top to bottom) and the monsters. Edit freely; the server checks it at startup. A floor is made up fresh for each match: RoomCount [fewest, most] rooms, each filled at random from Pool to about RoomHp (1 to MaxPack monsters: the party fights the first, the others wait their turn, and a Wizard's fast answer hits them all), then the Boss's room. Questions = how often each difficulty is asked on that floor (weights). A floor can also be written out instead: \"Monsters\": [a, b] (a room each) or \"Rooms\": [[a, a], [b]]. Monster: Sprite = a built-in placeholder key (see wwwroot/js/pixel-sprites.js) or a picture path like /media/dungeon/goblin.png once the real art exists; Hp and Damage on the first pass (each loop back to the top adds LoopHpBonus to HP and LoopDamageBonus to damage; a party of several gets tougher monsters, Game:Dungeon:PartyHpPerMember); Damage = HP a hit takes off the adventurer; AttackSeconds = the monster's hourglass (the one in front's counts). Sized so an average solo player beats about two bosses in a 3-4 minute session (Game:Dungeon:ClockStartSeconds and the time per kill).",
+  "_about": "Dungeon Quiz Quest content: Depths (runs of floors, top to bottom) and the monsters. Edit freely; the server checks it at startup. A floor is made up fresh for each match: RoomCount [fewest, most] rooms, each filled at random from Pool to about RoomHp (1 to MaxPack monsters: the party fights the first, the others wait their turn, and a Wizard's fast answer hits them all), then the Boss's room. Questions = how often each difficulty is asked on that floor (weights). A floor can also be written out instead: \"Monsters\": [a, b] (a room each) or \"Rooms\": [[a, a], [b]]. Monster: Sprite = a built-in placeholder key (see wwwroot/js/pixel-sprites.js) or a picture path like /media/dungeon/goblin.png once the real art exists; Hp and Damage on the first pass (each loop back to the top adds LoopHpBonus to HP and LoopDamageBonus to damage; a party of several gets tougher monsters, Game:Dungeon:PartyHpPerMember); Damage = HP a hit takes off the adventurer; AttackSeconds = the monster's hourglass (the one in front's counts). MinigameChance = how likely each floor is to have a mini game between two of its rooms (at most one a floor, never right before the boss; each kind of mini game as likely as the others; Game:Dungeon:Minigames has their numbers). Sized so an average solo player beats about two bosses in a 3-4 minute session (Game:Dungeon:ClockStartSeconds and the time per kill).",
 
-  "LoopHpBonus": 0.5,
-  "LoopDamageBonus": 0.25,
+  "LoopHpBonus": 0.75,
+  "LoopDamageBonus": 1,
+  "MinigameChance": 0.4,
 
   "Depths": [
     {
@@ -24,11 +25,11 @@
       "Name": "The Catacombs of Middling Facts",
       "Floors": [
         {
-          "RoomCount": [ 2, 3 ], "RoomHp": 90, "Pool": [ "slime", "bats", "goblin-bandit", "skeleton-intern" ], "Boss": "goblin-warlord",
+          "RoomCount": [ 2, 3 ], "RoomHp": 110, "Pool": [ "slime", "bats", "goblin-bandit", "skeleton-intern" ], "Boss": "goblin-warlord",
           "Questions": { "Easy": 35, "Medium": 50, "Hard": 15 }
         },
         {
-          "RoomCount": [ 2, 3 ], "RoomHp": 110, "Pool": [ "goblin-bandit", "skeleton-intern" ], "Boss": "dean-of-darkness",
+          "RoomCount": [ 2, 3 ], "RoomHp": 140, "Pool": [ "goblin-bandit", "skeleton-intern" ], "Boss": "dean-of-darkness",
           "Questions": { "Easy": 20, "Medium": 50, "Hard": 30 }
         }
       ]
@@ -39,12 +40,12 @@
     { "Id": "rat", "Name": "Cellar Rat", "Sprite": "rat", "Hp": 25, "Damage": 6, "AttackSeconds": 12 },
     { "Id": "slime", "Name": "Damp Slime", "Sprite": "slime", "Hp": 35, "Damage": 8, "AttackSeconds": 12 },
     { "Id": "bats", "Name": "Bat Swarm", "Sprite": "bat", "Hp": 20, "Damage": 6, "AttackSeconds": 10 },
-    { "Id": "goblin-bandit", "Name": "Goblin Bandit", "Sprite": "goblin", "Hp": 55, "Damage": 12, "AttackSeconds": 11 },
-    { "Id": "skeleton-intern", "Name": "Skeleton Intern", "Sprite": "skeleton", "Hp": 70, "Damage": 14, "AttackSeconds": 11 },
+    { "Id": "goblin-bandit", "Name": "Goblin Bandit", "Sprite": "goblin", "Hp": 55, "Damage": 28, "AttackSeconds": 11 },
+    { "Id": "skeleton-intern", "Name": "Skeleton Intern", "Sprite": "skeleton", "Hp": 70, "Damage": 34, "AttackSeconds": 11 },
 
     { "Id": "goblin-quizmaster", "Name": "Goblin Quizmaster", "Sprite": "goblin-boss", "Hp": 70, "Damage": 15, "AttackSeconds": 10, "IsBoss": true },
-    { "Id": "bone-registrar", "Name": "Bone Registrar", "Sprite": "skeleton", "Hp": 80, "Damage": 18, "AttackSeconds": 10, "IsBoss": true },
-    { "Id": "goblin-warlord", "Name": "Goblin Warlord", "Sprite": "goblin-boss", "Hp": 160, "Damage": 22, "AttackSeconds": 10, "IsBoss": true },
-    { "Id": "dean-of-darkness", "Name": "Dean of Darkness", "Sprite": "skeleton", "Hp": 210, "Damage": 25, "AttackSeconds": 9, "IsBoss": true }
+    { "Id": "bone-registrar", "Name": "Bone Registrar", "Sprite": "skeleton", "Hp": 80, "Damage": 24, "AttackSeconds": 10, "IsBoss": true },
+    { "Id": "goblin-warlord", "Name": "Goblin Warlord", "Sprite": "goblin-boss", "Hp": 200, "Damage": 48, "AttackSeconds": 10, "IsBoss": true },
+    { "Id": "dean-of-darkness", "Name": "Dean of Darkness", "Sprite": "skeleton", "Hp": 270, "Damage": 60, "AttackSeconds": 9, "IsBoss": true }
   ]
 }

@@ -1,4 +1,5 @@
 using TriviaBattle.Core.Dungeon;
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Questions;
@@ -175,10 +176,12 @@ public sealed class MatchEngine
                 events.Add(new AdventurerGotUp(stream.OwnerId));
         }
 
+        HoldTheClock(now);
+
         if (_dungeon != null && Phase == MatchPhase.Playing && now < PhaseEndsAt)
         {
             // A battle beat ran out since the last tick: that owner's next question is up.
-            foreach (var stream in _streams.Values.Where(s => s.LastAnswer != null && s.CurrentShownAt > _lastTickAt && s.CurrentShownAt <= now))
+            foreach (var stream in _streams.Values.Where(s => s.CurrentShownAt > _lastTickAt && s.CurrentShownAt <= now))
                 events.Add(new QuestionShown(stream.OwnerId));
 
             // A Warlock's patron shows the answer as the hourglass runs low (before the monster can attack).
@@ -197,8 +200,32 @@ public sealed class MatchEngine
                 Version++;
                 events.Add(new MonsterPoisoned(partyId, damage, kill));
                 if (kill != null)
+                {
                     AddTime(_dungeon.SecondsEarnedBy(partyId, kill));
+                    _dungeon.PoisonKilled(partyId, kill, now); // a kill beat for the party, as for any kill
+                    events.AddRange(StartMinigames(partyId, kill, now));
+                }
+                if (kill?.FloorCleared == true)
+                    events.AddRange(OfferRewards(partyId, now));
             }
+
+            // Too long choosing a reward: one is picked for them.
+            foreach (var chooser in _dungeon.RewardsDue(now))
+                events.AddRange(ChooseReward(chooser.OwnerId, choice: null, now));
+
+            // Mini games: lost when their time runs out; over once their result has been shown.
+            _dungeon.MinigamesDue(now, out var lost, out var over);
+            foreach (var loser in lost)
+                events.Add(new MinigameLost(loser.OwnerId));
+            foreach (var done in over)
+            {
+                Version++;
+                events.Add(new MinigameOver(done.OwnerId));
+                if (done.Offer is { } offer)
+                    events.Add(new RewardOffered(done.OwnerId, offer)); // won: a reward to pick
+            }
+            if (lost.Count > 0)
+                Version++;
         }
 
         // Hero photos: each second of the station's countdown, and the moment it's taken (0), where the camera is on.
@@ -213,7 +240,9 @@ public sealed class MatchEngine
         }
         _lastTickAt = now;
 
-        if (now >= PhaseEndsAt)
+        // The clock running out ends Playing, and so does everyone being out of lives (DungeonSettings.Lives).
+        var everyoneOut = Phase == MatchPhase.Playing && _dungeon?.EveryoneOut == true;
+        if (now >= PhaseEndsAt || everyoneOut)
             events.AddRange(AdvanceToNextPhase(now));
 
         return events;
@@ -235,6 +264,10 @@ public sealed class MatchEngine
         var stream = StreamFor(player);
         if (press.IsAction)
             return UsePowerUp(stream.OwnerId, now);
+        if (_dungeon?.FindAdventurer(stream.OwnerId) is { Minigame: not null })
+            return PlayMinigame(stream.OwnerId, press); // between two rooms: the answer buttons play the mini game
+        if (_dungeon?.FindAdventurer(stream.OwnerId) is { IsChoosing: true })
+            return ChooseReward(stream.OwnerId, press.AnswerIndex, now); // after a boss: the answer buttons pick a reward
 
         var shownAt = stream.CurrentShownAt!.Value;
 
@@ -284,7 +317,11 @@ public sealed class MatchEngine
                 events.Add(new PowerUpFound(stream.OwnerId, found));
             if (dealt.RevivedOwnerId is { } revived)
                 events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
-            AddTime(_dungeon.SecondsEarnedBy(_dungeon.FindAdventurer(stream.OwnerId)!.PartyId, dealt));
+            var partyId = _dungeon.FindAdventurer(stream.OwnerId)!.PartyId;
+            AddTime(_dungeon.SecondsEarnedBy(partyId, dealt));
+            if (dealt.FloorCleared)
+                events.AddRange(OfferRewards(partyId, now));
+            events.AddRange(StartMinigames(partyId, dealt, now));
         }
         else
         {
@@ -293,6 +330,67 @@ public sealed class MatchEngine
 
         _dungeon.AfterTurn(stream, now);
         return events;
+    }
+
+    /// <summary>A kill emptied the room before the floor's mini game: everyone in the party starts their go at it.</summary>
+    private IEnumerable<MatchEvent> StartMinigames(string partyId, DealtHit kill, DateTimeOffset now) =>
+        _dungeon!.StartMinigames(partyId, kill, now).Select(a => new MinigameStarted(a.OwnerId, a.Minigame!.Kind)).ToList();
+
+    /// <summary>An answer button in a mini game, timed by when it was pressed (the needle's where it was then).</summary>
+    private IReadOnlyList<MatchEvent> PlayMinigame(string ownerId, ButtonPress press)
+    {
+        var result = _dungeon!.PlayMinigame(ownerId, press.AnswerIndex, press.PressedAt);
+        if (result == MinigamePress.Ignored)
+            return NothingHappened;
+        Version++;
+        return [new MinigamePlayed(ownerId, result)];
+    }
+
+    /// <summary>
+    /// Arcade clock time spent with the clock stopped so far (mini games, reward picks), so screens can tell time
+    /// earned from the clock being held: see <see cref="HoldTheClock"/>.
+    /// </summary>
+    public TimeSpan ClockHeldFor { get; private set; }
+
+    /// <summary>While the clock is stopped: the time it shows (what was left when it stopped). Null while it runs.</summary>
+    public TimeSpan? ClockStoppedAt { get; private set; }
+
+    /// <summary>
+    /// While anyone is away from the fight (a mini game, a reward to pick: <see cref="DungeonRun.ClockStopped"/>) the arcade
+    /// clock stands still: every tick pushes the end of Playing back by the time since the last one. Everything that
+    /// checks the clock keeps working as normal, and screens show the time it stopped at.
+    /// </summary>
+    private void HoldTheClock(DateTimeOffset now)
+    {
+        var stopped = Phase == MatchPhase.Playing && _dungeon?.ClockStopped == true;
+        if (stopped)
+        {
+            var held = now - _lastTickAt;
+            PhaseEndsAt += held;
+            ClockHeldFor += held;
+        }
+        if (stopped == (ClockStoppedAt != null))
+            return;
+        ClockStoppedAt = stopped ? PhaseEndsAt - now : null;
+        Version++;
+    }
+
+    /// <summary>A party cleared a floor: whoever in it answered enough of the floor right is offered rewards.</summary>
+    private IEnumerable<MatchEvent> OfferRewards(string partyId, DateTimeOffset now) =>
+        _dungeon!.OpenRewards(partyId, now).Select(a => new RewardOffered(a.OwnerId, a.Offer!)).ToList();
+
+    /// <summary>
+    /// An answer button picks a reward (<paramref name="choice"/>, 0-based), or time ran out (null: one is picked for
+    /// them). A Time reward, and the time spent choosing, go on the clock.
+    /// </summary>
+    private IReadOnlyList<MatchEvent> ChooseReward(string ownerId, int? choice, DateTimeOffset now)
+    {
+        if (_dungeon!.ChooseReward(ownerId, choice, now) is not { } pick)
+            return NothingHappened;
+
+        AddTime(pick.ClockSeconds);
+        Version++;
+        return [new RewardChosen(ownerId, pick.Taken)];
     }
 
     /// <summary>The action button: uses the power-up the owner holds, if any (a Time Crystal adds to the clock).</summary>
@@ -325,6 +423,23 @@ public sealed class MatchEngine
         _dungeon.GivePowerUp(ownerId, powerUp);
         Version++;
         return [new PowerUpFound(ownerId, powerUp)];
+    }
+
+    /// <summary>
+    /// Dev tools: hands the player at a station a floor reward, as if they'd picked it (a Time reward adds to the
+    /// clock). Does nothing outside Playing, outside Dungeon format, or for a station not in this match.
+    /// </summary>
+    public IReadOnlyList<MatchEvent> GiveReward(string stationId, Reward reward, DateTimeOffset now)
+    {
+        var player = Roster.FindPlayer(stationId);
+        if (_dungeon == null || Phase != MatchPhase.Playing || player == null)
+            return NothingHappened;
+
+        var ownerId = Mode.GetAnswerOwnerId(player);
+        var (taken, seconds) = _dungeon.GiveReward(ownerId, reward, now);
+        AddTime(seconds);
+        Version++;
+        return [new RewardChosen(ownerId, taken)];
     }
 
     /// <summary>With hero photos on by default, a moment to see yourself on camera before the countdown starts.</summary>
@@ -419,6 +534,7 @@ public sealed class MatchEngine
 
         ContinuesUsed++;
         EnterPhase(MatchPhase.Playing, now, Settings.Dungeon.ContinueSeconds);
+        _dungeon!.RestoreLives(); // a new paid session: everyone's lives back
         foreach (var stream in _streams.Values)
         {
             stream.Start(now); // the question they were on shows again, with a fresh hourglass

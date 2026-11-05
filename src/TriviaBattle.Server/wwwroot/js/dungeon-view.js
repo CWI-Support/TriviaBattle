@@ -98,9 +98,11 @@ const DungeonView = {
      * or 0. Only call it while Playing, so the jump from the intro's end to the clock's isn't counted.
      */
     timeAdded(key, match) {
+        // The clock being held still (a mini game, a reward pick) pushes the end back too: that isn't time earned.
+        const earnedEnd = match.phaseEndsAtMs - (match.clockHeldMs || 0);
         const before = DungeonView.seen[key];
-        DungeonView.seen[key] = match.phaseEndsAtMs;
-        return before && match.phaseEndsAtMs > before ? Math.round((match.phaseEndsAtMs - before) / 1000) : 0;
+        DungeonView.seen[key] = earnedEnd;
+        return before && earnedEnd > before + 500 ? Math.round((earnedEnd - before) / 1000) : 0;
     },
 
     /** "+10s" popping up beside a clock, or nothing. */
@@ -328,6 +330,7 @@ const DungeonView = {
         const taken = delve.lastTaken;
         const values = { monster: taken?.monsterName || delve.monster.name, damage: taken?.damage || 0 };
         const headline = taken?.blocked ? Theme.text('dungeon.blocked', values, s)
+            : taken?.lastStand ? Theme.text('dungeon.lastStand', values, s)   // a Last Stand reward kept them up
             : taken?.charged ? Theme.text('dungeon.chargedHit', values, s)   // a boss's full-charge blow
             : lastAnswer.timedOut ? Theme.text('dungeon.tooSlow', values, s)
             : Theme.text('dungeon.wrong', values, s);
@@ -340,14 +343,16 @@ const DungeonView = {
      * for their teammates to revive them. healed (see healFlash): their HP bar flashes for a Healer's heal.
      */
     member(m, reviveNeeded, match, healed = null) {
-        const down = !!m.downedUntilMs;
+        const down = !!m.downedUntilMs || m.out;
         const flash = healed?.ownerId === m.ownerId;
         return `
             <div class="dg-member ${down ? 'is-down' : ''}">
                 <div class="dg-member-line">
                     ${HeroPhoto.portrait(match, m.ownerId, 'dg-member-face', '')}
                     <span class="dg-member-name">${UI.escape(m.name)}</span>
-                    ${down ? `<span class="dg-member-down">${Theme.text('dungeon.memberDown', { progress: m.reviveProgress, needed: reviveNeeded })}</span>` : ''}
+                    ${m.out ? `<span class="dg-member-down is-out">${Theme.text('dungeon.memberOut')}</span>`
+                        : down ? `<span class="dg-member-down">${Theme.text('dungeon.memberDown', { progress: m.reviveProgress, needed: reviveNeeded })}</span>` : ''}
+                    ${DungeonView.lives(m.lives)}
                 </div>
                 ${DungeonView.hp(m.hp, m.maxHp, `is-hero ${flash ? 'is-healed' : ''}`, flash ? `--t0: ${healed.t0}ms` : '')}
             </div>`;
@@ -397,14 +402,15 @@ const DungeonView = {
                 <div class="dg-top-line">
                     <span class="dg-floor-badge">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</span>
                     <span class="dg-depth-name">${UI.escape(delve.depthName)}</span>
-                    <span class="dg-clock"><small>${Theme.text('dungeon.time')}</small><span data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></span>${DungeonView.activeEffects(clockKey)}</span>
+                    ${DungeonRewards.meter(delve)}
+                    <span class="dg-clock"><small>${Theme.text('dungeon.time')}</small><span ${UI.matchClock(match, 10)}></span>${DungeonView.activeEffects(clockKey)}</span>
                 </div>
                 ${DungeonView.trail(delve)}
             </div>`;
 
         // A Healer's heal flashes the healed one's HP bar: with the blow in your own beat, or when a
         // teammate's heal reaches you (no beat of yours plays then).
-        const beatHit = DungeonBattle.isPlaying(you, serverNow) && !['hurt', 'downed'].includes(you.beat.kind) ? delve.lastDealt : null;
+        const beatHit = DungeonBattle.isPlaying(you, serverNow) ? DungeonBattle.beatHit(you) : null;
         const healed = beatHit?.healedOwnerId
             ? { ownerId: beatHit.healedOwnerId, t0: Math.round(you.beat.startedAtMs - serverNow) }
             : DungeonView.healFlash(`heal:${you.stationId}`, news);
@@ -414,8 +420,9 @@ const DungeonView = {
             <div class="dg-plate">
                 ${HeroPhoto.portrait(match, you.stationId, 'dg-portrait', stationColor)}
                 <div class="dg-plate-info">
-                    <div class="dg-plate-name"><span class="dg-plate-name-text">${UI.escape(you.name)}</span>${DungeonView.classBadge(delve.heroClass)}</div>
+                    <div class="dg-plate-name"><span class="dg-plate-name-text">${UI.escape(you.name)}</span>${DungeonView.classBadge(delve.heroClass)}${DungeonView.lives(delve.lives, delve.maxLives)}</div>
                     ${DungeonView.hp(delve.hp, delve.maxHp, `is-hero ${selfHealed ? 'is-healed' : ''}`, selfHealed ? `--t0: ${healed.t0}ms` : '')}
+                    ${DungeonRewards.badges(delve)}
                 </div>
                 ${DungeonView.stats(you.score, delve.kills)}
                 ${DungeonPowerUps.slot(delve)}
@@ -425,18 +432,40 @@ const DungeonView = {
         const powerUpKey = `pu:${you.stationId}`;
         DungeonPowerUps.noticeUse(powerUpKey, delve, ownerId => delve.party.find(p => p.ownerId === ownerId)?.name || you.name);
 
-        // Between questions: the fight takes the whole screen (what just happened plays out).
+        // Between two rooms: the floor's mini game (js/dungeon-minigames.js).
+        if (DungeonMinigames.showing(you, serverNow))
+            return DungeonMinigames.station(match, you, serverNow, plate);
+
+        // After a floor's boss: the rewards to pick from, or the one just picked (js/dungeon-rewards.js).
+        if (DungeonRewards.showing(you, serverNow))
+            return DungeonRewards.station(match, you, serverNow, top, plate);
+
+        // Between questions: the fight takes the whole screen above your plate (what just happened plays out),
+        // with where you are (floor, trail, time) floating across its top.
         if (DungeonBattle.isPlaying(you, serverNow)) {
             return `
                 <div class="dg-station is-battle">
-                    ${top}
-                    ${DungeonBattle.scene(match, you, stationColor, serverNow)}
+                    <div class="dg-world">
+                        ${DungeonBattle.scene(match, you, stationColor, serverNow)}
+                        ${top}
+                    </div>
                     ${DungeonView.teammates(delve, you.stationId, match, healed)}
                     ${plate}
                 </div>`;
         }
 
         return DungeonEncounter.view(match, you, serverNow, { news, plate, clockKey, powerUpKey, healed });
+    },
+
+    /**
+     * Lives as hearts: one lit for each left, and (given max) a dark one for each lost. Nothing with no limit on lives
+     * (the server sends 0 then).
+     */
+    lives(left, max = left) {
+        if (!max) return '';
+        const hearts = Array.from({ length: max }, (_, i) =>
+            PixelSprites.html('icon-heart', `dg-life ${i < left ? '' : 'is-lost'}`)).join('');
+        return `<span class="dg-lives">${hearts}</span>`;
     },
 
     /** The player's hero class on their plate ("WIZARD"), in that class's colour. */
@@ -468,6 +497,7 @@ const DungeonView = {
                     ${DungeonView.packSprites(waiting)}
                     ${DungeonView.monster(delve, news, `fx:lane:${key}`)}
                     ${downed ? `<div class="dg-overlay is-downed small">${Theme.text('dungeon.downedShort')}</div>` : ''}
+                    ${delve.minigame ? `<div class="dg-overlay is-minigame small">${Theme.text('dungeon.laneMinigame', { game: Theme.raw(DungeonMinigames.name(delve.minigame)) })}</div>` : ''}
                     ${DungeonView.packStrip(waiting, 'is-lane')}
                 </div>
                 ${DungeonView.enemy(delve)}
@@ -477,6 +507,7 @@ const DungeonView = {
                         : `${HeroPhoto.portrait(match, delve.party[0]?.ownerId ?? key, 'dg-portrait small', color)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
                 </div>
                 ${DungeonView.stats(score, delve.kills)}
+                ${DungeonRewards.badges(delve, 'is-lane')}
             </div>`;
     },
 
@@ -489,7 +520,9 @@ const DungeonView = {
      */
     noteMoments({ key, name, color, delve, match }) {
         const hit = DungeonView.news(`moment:${key}`, delve).dealt;
-        if (!hit) return;
+        const picked = DungeonRewards.newPick(key, delve); // a floor reward picked
+        const lockWon = DungeonMinigames.newWin(key, delve); // a mini game won
+        if (!hit && !picked && !lockWon) return;
 
         const lanePlayers = match.players.filter(p => p.stationId === key || p.teamId === key);
         const faces = `<div class="dg-moment-faces">${lanePlayers.map(p => HeroPhoto.portrait(match, p.stationId, 'dg-moment-face', color)).join('')}</div>`;
@@ -500,6 +533,14 @@ const DungeonView = {
                 <div class="dg-moment-text">${text}</div>
             </div>`, 2600);
         const who = Theme.raw(name);
+
+        if (lockWon)
+            banner('reward', Theme.text('dungeon.momentMinigameWon', { name: who }), 'icon-chest');
+        if (picked) {
+            banner('reward', Theme.text('dungeon.momentReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }), `icon-rw-${picked.reward}`);
+            DungeonHost.say(Theme.text('dungeon.hostReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }, `${key}:reward:${picked.number}`));
+        }
+        if (!hit) return;
 
         const seed = `${key}:${hit.number}`;
         const host = (lineKey, values) => DungeonHost.say(Theme.text(lineKey, values, seed));

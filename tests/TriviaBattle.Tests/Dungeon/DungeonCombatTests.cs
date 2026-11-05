@@ -214,8 +214,8 @@ public class DungeonCombatTests
         Assert.Equal(["Rat", "Rat", "Boss"], delve.Path.Select(s => s.Name));
         Assert.Equal(["Rat"], delve.Foes.Select(f => f.Name)); // the room: just the one rat
         Assert.Equal(TestMatch.PlainHero, delve.HeroClass);
-        var (noPath, noParty, noFoes) = (Array.Empty<PathStepView>(), Array.Empty<PartyMemberView>(), Array.Empty<MonsterView>());
-        Assert.Equal(delve with { Path = noPath, Party = noParty, Foes = noFoes }, snapshot.Players[0].Delve! with { Path = noPath, Party = noParty, Foes = noFoes });
+        var (noPath, noParty, noFoes, noRewards) = (Array.Empty<PathStepView>(), Array.Empty<PartyMemberView>(), Array.Empty<MonsterView>(), Array.Empty<RewardTakenView>());
+        Assert.Equal(delve with { Path = noPath, Party = noParty, Foes = noFoes, Rewards = noRewards }, snapshot.Players[0].Delve! with { Path = noPath, Party = noParty, Foes = noFoes, Rewards = noRewards });
     }
 
     // ---------------------------------------------------------------- Parties: revives and party combos

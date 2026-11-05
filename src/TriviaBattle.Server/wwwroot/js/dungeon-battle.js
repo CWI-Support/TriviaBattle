@@ -34,19 +34,30 @@ const DungeonBattle = {
         return !!you?.beat && serverNow < you.beat.endsAtMs;
     },
 
+    /**
+     * The hit on the monster this beat shows: the player's own last hit, or on a poison kill's beat (beat.byPoison,
+     * nobody answered) the party's last hit, the poison's. Null on a beat where the monster hit you.
+     */
+    beatHit(you) {
+        const beat = you.beat;
+        if (!beat || beat.kind === 'hurt' || beat.kind === 'downed') return null;
+        return beat.byPoison ? you.delve.lastHit : you.delve.lastDealt;
+    },
+
     /** The whole fight for the beat. It fills the space between the top line and the player plate. */
     scene(match, you, stationColor, serverNow) {
         const beat = you.beat;
         const delve = you.delve;
         const hurt = beat.kind === 'hurt' || beat.kind === 'downed';
-        const hit = hurt ? null : delve.lastDealt;
+        const hit = DungeonBattle.beatHit(you);
+        const byPoison = !!beat.byPoison; // the Healer's poison killed it: no blow, it chokes and bursts
         const taken = hurt ? delve.lastTaken : null;
         const seed = `${match.matchId}:${you.stationId}:${beat.startedAtMs}`;
 
         const classes = [
             'dg-battle',
             `is-${beat.kind}`,
-            hurt ? 'is-hurting' : 'is-striking',
+            hurt ? 'is-hurting' : byPoison ? 'is-poison-kill' : 'is-striking', // the poison: the knight stays put
             hit?.crit ? 'is-crit' : '',
             hit?.combo ? 'is-combo' : '',
             hit?.partyCombo ? 'is-party-combo' : '',
@@ -61,26 +72,29 @@ const DungeonBattle = {
         // The monster in the fight: the one you hit (it may already be dead), or the one hitting you.
         const foe = hit
             ? { sprite: hit.monsterSprite, name: hit.monsterName, isBoss: hit.isBoss, max: hit.monsterMaxHp, after: hit.monsterHpLeft,
-                before: Math.min(hit.monsterMaxHp, hit.monsterHpLeft + hit.damage) }
+                // The poison's last bite isn't on the hit (it did no damage of its own): the bar drains its last tenth.
+                before: byPoison ? Math.ceil(hit.monsterMaxHp * 0.1) : Math.min(hit.monsterMaxHp, hit.monsterHpLeft + hit.damage) }
             : { sprite: taken?.monsterSprite || delve.monster.sprite, name: taken?.monsterName || delve.monster.name, isBoss: delve.monster.isBoss };
         // Still alive, it's the one in front: its poison (this hit's, if a Healer just poisoned it) shows on its bar.
         const foePoison = hit && !hit.killed ? delve.monster.poisonStacks || hit.poisonStacks || 0 : 0;
         const pack = DungeonBattle.pack(delve, hit);
 
-        const feedback = DungeonView.feedback(delve, you.lastAnswer, `${match.matchId}:${you.stationId}`);
+        const feedback = byPoison
+            ? { html: Theme.text('dungeon.slainByPoison', { monster: hit?.monsterName || '' }, seed), tone: 'is-great' }
+            : DungeonView.feedback(delve, you.lastAnswer, `${match.matchId}:${you.stationId}`);
 
         return `
             <div class="${classes}" data-stage="fight" style="--t0: ${Math.round(beat.startedAtMs - serverNow)}ms; --t1: ${Math.round(beat.endsAtMs - serverNow)}ms">
                 ${DungeonBattle.room()}
-                <div class="dg-arena">
+                <div class="dg-arena" data-focus>
                     ${DungeonView.packSprites(pack)}
                     <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}<i class="dg-shadow"></i></div>
                     <div class="dg-actor is-foe ${foe.isBoss ? 'is-boss' : ''}">${PixelSprites.html(foe.sprite, 'dg-actor-sprite')}<i class="dg-shadow"></i></div>
-                    ${hurt ? DungeonBattle.claws() : '<div class="dg-fx-slash"></div>'}
+                    ${hurt ? DungeonBattle.claws() : byPoison ? '' : '<div class="dg-fx-slash"></div>'}
                     ${hit?.staggered && !hit.killed ? '<div class="dg-fx-daze"><i></i><i></i><i></i></div>' : ''}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}
                     ${beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.sparks(22, 'is-death') : ''}
-                    ${taken?.blocked ? '' : `<div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || taken?.charged ? '!' : ''}</div>`}
+                    ${taken?.blocked || byPoison ? '' : `<div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || taken?.charged ? '!' : ''}</div>`}
                     ${DungeonBattle.stamps(beat, hit, taken, delve, seed)}
                     ${DungeonBattle.notes(hit, taken, delve, you, seed)}
                     ${hurt ? DungeonBattle.reveal(you.lastAnswer, seed) : ''}
@@ -215,7 +229,7 @@ const DungeonBattle = {
      * Late: SLAIN! or DOWN!.
      */
     stamps(beat, hit, taken, delve, seed) {
-        let early = '';
+        let early = beat.byPoison ? Theme.text('dungeon.stampPoison', {}, seed) : ''; // the Healer's poison finished it
         if (hit?.revivedOwnerId) {
             const name = delve.party.find(m => m.ownerId === hit.revivedOwnerId)?.name || '';
             early = Theme.text('dungeon.stampRevived', { name }, seed);
@@ -229,7 +243,8 @@ const DungeonBattle = {
         else if (hit?.crit) early = Theme.text('dungeon.stampCrit', {}, seed);
         else if (taken) early = Theme.text(taken.reason === 'TooSlow' ? 'dungeon.stampSlow' : 'dungeon.stampWrong', {}, seed);
 
-        const late = beat.kind === 'downed' ? Theme.text('dungeon.stampDowned', {}, seed)
+        const late = taken?.out ? Theme.text('dungeon.stampOut', {}, seed) // downed on their last life
+            : beat.kind === 'downed' ? Theme.text('dungeon.stampDowned', {}, seed)
             : beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss' ? Theme.text('dungeon.stampSlain', {}, seed)
             : '';
 
@@ -296,7 +311,8 @@ const DungeonBattle = {
                <div class="dg-curtain-sub">${Theme.text('dungeon.bossApproaches', {}, seed)}</div>`
             : `<div class="dg-curtain-stairs">${DungeonView.icon('stairs')}${DungeonView.icon('stairs')}${DungeonView.icon('stairs')}</div>
                <div class="dg-curtain-title">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</div>
-               <div class="dg-curtain-sub">${UI.escape(delve.depthName)}</div>`;
+               <div class="dg-curtain-sub">${UI.escape(delve.depthName)}</div>
+               ${DungeonRewards.curtainLine(delve)}`;
         return `<div class="dg-curtain">${body}</div>`;
     },
 };

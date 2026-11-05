@@ -130,7 +130,7 @@ function panelBody(match) {
                 <div class="panel-clock" data-ends-at="${match.phaseEndsAtMs}"></div>`;
         case 'Playing':
             return `${head}
-                <div class="panel-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+                <div class="panel-clock" ${UI.matchClock(match, 10)}></div>
                 <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
                 <div class="race-board">${match.standings.map(s => raceRow(match, s)).join('')}</div>`;
         case 'Continue':
@@ -203,7 +203,7 @@ function renderPlaying(match) {
                 <span>${modeName(match)} &middot; ${UI.escape(match.category)}</span>
                 <span>${Theme.text('playing.title', {}, momentSeed(match))}</span>
             </div>
-            <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+            <div class="match-clock" ${UI.matchClock(match, 10)}></div>
             <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>
             <div class="race-board">${match.standings.map(s => raceRow(match, s)).join('')}</div>
         </div>`;
@@ -236,7 +236,7 @@ function renderDungeonPlaying(match) {
                 <span>${Theme.text('dungeon.mainTitle', {}, momentSeed(match))}</span>
             </div>
             <div class="dg-main-clock">
-                <div class="match-clock" data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></div>
+                <div class="match-clock" ${UI.matchClock(match, 10)}></div>
                 ${DungeonView.activeEffects(clockKey)}
             </div>
             <div class="timer-bar" data-starts-at="${match.phaseStartedAtMs}" data-ends-at="${match.phaseEndsAtMs}"><div class="timer-bar-fill"></div></div>

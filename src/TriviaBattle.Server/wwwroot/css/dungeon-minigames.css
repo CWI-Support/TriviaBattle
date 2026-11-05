@@ -1,0 +1,223 @@
+/* Mini games on the station screen (js/dungeon-minigames.js): the room behind, the game over it, the intro veil, the
+   result, and the rune lock. Portrait only. Timed from the server's clock: --t0 (the intro starts), --play (play
+   starts), --turn0 (the needle's turn started), --unlock (a miss's lockout ends), --flash0 (a press's flash). */
+
+.dg-station.is-minigame {
+    --dg-mg-gold: #ffd23f;
+    --dg-mg-rune: #7fd4ff;
+}
+
+/* The room, dimmed: the game takes the scene. (Not the 3D: it draws nothing without a data-stage on the page.) */
+.dg-minigame-room { position: absolute; inset: 0; filter: brightness(0.45) saturate(0.7); }
+.dg-minigame-room .dg-room { position: absolute; inset: 0; }
+
+.dg-minigame {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2vh;
+    padding: 1.4vh 3vw 1.6vh;
+}
+
+/* The game's name, and the arcade clock: stopped while you play. */
+.dg-minigame-top {
+    align-self: stretch;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1vh 2.4vw;
+    background: rgba(28, 25, 32, 0.8);
+    border: 0.6vmin solid var(--dg-frame-edge);
+    font-family: var(--dg-font-pixel);
+}
+.dg-minigame-name { font-size: 4.2vmin; color: var(--dg-mg-gold); text-transform: uppercase; }
+.dg-minigame-clock { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5vh; font-size: 2vmin; line-height: 1.2; color: var(--text-dim); text-align: right; text-transform: uppercase; }
+.dg-minigame-clock b { font-size: 3.2vmin; line-height: 1; color: var(--text); font-weight: normal; }
+.dg-minigame-clock .is-stopped { color: #9fe0ff; }
+
+/* The time limit along the bottom. */
+.dg-minigame-limit { align-self: stretch; display: flex; flex-direction: column; gap: 0.8vh; font-family: var(--dg-font-pixel); font-size: 2.8vmin; color: var(--text-dim); }
+.dg-minigame-limit b { color: var(--text); font-weight: normal; }
+.dg-minigame-limit b.is-hurry { color: var(--wrong); }
+.dg-minigame-limit .timer-bar-fill { background: var(--dg-mg-gold); }
+
+/* ---------- The intro: a veil over the game that lifts by itself when play starts ---------- */
+
+.dg-minigame-intro {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4vh;
+    padding: 0 6vw;
+    text-align: center;
+    background: radial-gradient(ellipse at 50% 45%, rgba(40, 24, 8, 0.95), rgba(8, 5, 10, 0.97));
+    animation: dg-mg-veil-in 300ms ease-out var(--t0) both, dg-mg-veil-out 350ms ease-in var(--play) forwards;
+}
+@keyframes dg-mg-veil-in { from { opacity: 0; } }
+@keyframes dg-mg-veil-out { to { opacity: 0; visibility: hidden; } }
+.dg-minigame-intro-stamp {
+    font-family: var(--dg-font-pixel);
+    font-size: 8.5vmin;
+    white-space: nowrap;
+    color: var(--dg-mg-gold);
+    text-shadow: 0 1vmin 0 #000, 0 0 4vmin rgba(255, 210, 63, 0.6);
+    animation: dg-mg-stamp 600ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--t0) both;
+}
+@keyframes dg-mg-stamp { from { opacity: 0; transform: scale(2.6) rotate(-10deg); } }
+.dg-minigame-intro-name { font-family: var(--dg-font-pixel); font-size: 6vmin; color: #fff; text-transform: uppercase; animation: dg-mg-rise 400ms ease-out calc(var(--t0) + 500ms) both; }
+.dg-minigame-intro-how { font-size: 4vmin; color: var(--text); animation: dg-mg-rise 400ms ease-out calc(var(--t0) + 800ms) both; }
+.dg-minigame-intro-prize { font-size: 3vmin; color: var(--dg-mg-gold); animation: dg-mg-rise 400ms ease-out calc(var(--t0) + 1100ms) both; }
+@keyframes dg-mg-rise { from { opacity: 0; transform: translateY(2vh); } }
+.dg-minigame-intro .intro-count { position: relative; height: 16vmin; }
+
+/* ---------- The result: won, or out of time ---------- */
+
+.dg-minigame-result {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2vh;
+    text-align: center;
+    background: rgba(8, 5, 10, 0.72);
+    animation: dg-mg-veil-in 250ms ease-out var(--r0) both;
+}
+.dg-minigame-result-title { font-family: var(--dg-font-pixel); font-size: 11vmin; text-shadow: 0 1vmin 0 #000; animation: dg-mg-stamp 600ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--r0) both; }
+.dg-minigame-result.is-won .dg-minigame-result-title { color: var(--dg-mg-gold); }
+.dg-minigame-result.is-lost .dg-minigame-result-title { color: var(--wrong); }
+.dg-minigame-result-sub { font-size: 4vmin; color: var(--text); animation: dg-mg-rise 400ms ease-out calc(var(--r0) + 300ms) both; }
+
+/* ---------- The rune lock ---------- */
+
+.dg-rl { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; }
+.dg-rl-dial {
+    --size: min(78vw, 46vh);
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: radial-gradient(circle, #2a2530 0 52%, #15121a 53% 68%, #3b3542 69% 72%, #15121a 73%);
+    border: 1.2vmin solid var(--dg-frame-edge);
+    box-shadow: 0 0 0 0.6vmin #000, 0 2vmin 4vmin rgba(0, 0, 0, 0.7), inset 0 0 4vmin rgba(0, 0, 0, 0.8);
+}
+/* The glowing mark: a slice of the outer ring, centred on --mark, --width wide. */
+.dg-rl-mark {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from calc(var(--mark) - var(--width) / 2), var(--dg-mg-gold) 0 var(--width), transparent var(--width));
+    -webkit-mask: radial-gradient(circle, transparent 0 53%, #000 54% 72%, transparent 73%);
+    mask: radial-gradient(circle, transparent 0 53%, #000 54% 72%, transparent 73%);
+    filter: drop-shadow(0 0 2vmin var(--dg-mg-gold));
+    animation: dg-rl-glow 900ms ease-in-out infinite;
+}
+@keyframes dg-rl-glow { 50% { opacity: 0.7; } }
+/* The runes round the rim. */
+.dg-rl-rune {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7vmin;
+    height: 7vmin;
+    margin: -3.5vmin;
+    background: var(--dg-mg-rune);
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+    opacity: 0.55;
+    transform: rotate(var(--at)) translateY(calc(var(--size) * -0.31)) rotate(calc(-1 * var(--at)));
+    image-rendering: pixelated;
+}
+/* The needle: turns from --a0 at --turn0, a full turn every --period (backwards: the other way). */
+.dg-rl-needle {
+    position: absolute;
+    inset: 0;
+    transform: rotate(var(--a0));
+    animation: dg-rl-spin var(--period) linear var(--turn0) infinite both;
+}
+.dg-rl-needle.is-back { animation-direction: reverse; }
+.dg-rl-needle.is-still { animation-play-state: paused; }
+.dg-rl-needle i {
+    position: absolute;
+    left: 50%;
+    top: 2%;
+    width: 2.2vmin;
+    height: 48%;
+    margin-left: -1.1vmin;
+    background: linear-gradient(#fff, #ffe9a8 40%, #b8862b);
+    clip-path: polygon(50% 0, 100% 14%, 70% 100%, 30% 100%, 0 14%);
+    filter: drop-shadow(0 0 1.2vmin #fff);
+}
+@keyframes dg-rl-spin { from { transform: rotate(var(--a0)); } to { transform: rotate(calc(var(--a0) + 360deg)); } }
+.dg-rl-hub {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16vmin;
+    height: 16vmin;
+    margin: -8vmin;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle, #4a4252, #1c1920);
+    border: 0.8vmin solid var(--dg-frame-edge);
+}
+.dg-rl-hub-icon { width: 9vmin; height: auto; }
+
+/* A press: the dial flashes gold (a hit) or red (a miss), and the word pops over it. */
+.dg-rl.is-hit .dg-rl-dial { animation: dg-rl-flash-hit 450ms ease-out var(--flash0) both; }
+.dg-rl.is-miss .dg-rl-dial { animation: dg-rl-flash-miss 450ms ease-out var(--flash0) both; }
+@keyframes dg-rl-flash-hit { from { box-shadow: 0 0 0 0.6vmin #000, 0 0 8vmin var(--dg-mg-gold); transform: scale(1.04); } }
+@keyframes dg-rl-flash-miss { from { box-shadow: 0 0 0 0.6vmin #000, 0 0 8vmin var(--wrong); transform: translateX(2vmin); } 30% { transform: translateX(-2vmin); } }
+.dg-rl-pop {
+    position: absolute;
+    left: 50%;
+    top: -2vh;
+    z-index: 3;
+    font-family: var(--dg-font-pixel);
+    font-size: 7vmin;
+    text-shadow: 0 0.6vmin 0 #000;
+    white-space: nowrap;
+    animation: dg-rl-pop 700ms ease-out var(--t0) both;
+}
+.dg-rl-pop.is-hit { color: var(--dg-mg-gold); }
+.dg-rl-pop.is-miss { color: var(--wrong); }
+@keyframes dg-rl-pop { from { opacity: 0; transform: translate(-50%, 2vh) scale(0.6); } 25% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } to { opacity: 0; transform: translate(-50%, -4vh); } }
+
+/* After a miss: LOCKED over the dial until the buttons work again (it goes by itself, at --unlock). */
+.dg-rl-locked {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(90, 0, 0, 0.55);
+    font-family: var(--dg-font-pixel);
+    font-size: 8vmin;
+    color: #fff;
+    text-shadow: 0 0.6vmin 0 #000;
+    animation: dg-mg-veil-out 150ms linear var(--unlock) forwards;
+}
+
+/* The hits so far. */
+.dg-rl-pips { display: flex; gap: 2vmin; }
+.dg-rl-pip { width: 5vmin; height: 5vmin; transform: rotate(45deg); background: #1c1920; border: 0.6vmin solid var(--dg-frame-edge); }
+.dg-rl-pip.is-lit { background: var(--dg-mg-gold); border-color: #fff3b0; box-shadow: 0 0 2vmin var(--dg-mg-gold); }
+.dg-rl-press { font-family: var(--dg-font-pixel); font-size: 2.8vmin; text-align: center; line-height: 1.3; color: var(--text); text-transform: uppercase; }
+
+/* Won: the dial lights up; out of time: it greys out. */
+.dg-rl.is-open .dg-rl-dial { box-shadow: 0 0 0 0.6vmin #000, 0 0 10vmin var(--dg-mg-gold); }
+.dg-rl.is-stuck .dg-rl-dial { filter: grayscale(0.8) brightness(0.7); }
+
+/* The main screen's lane while its player is in a mini game. */
+.dg-overlay.is-minigame { border-color: #ffd23f; color: #ffd23f; }

@@ -5,14 +5,17 @@
 //     a boss, its charge meter (a pip per step of its charge cycle). At full charge the plate and the room
 //     pulse red and a warning takes the Host's place: get this one right (it staggers) or take its big blow
 //   - the question on a parchment scroll hanging under it
-//   - the monster, big, in the middle of its room (in 3D when the station draws it: data-stage="portrait"),
-//     a pack's others small behind it (.dg-pack, which the 3D hides and draws itself), with the Host's line,
+//   - the monster, big, in the middle of its room (in 3D when the station draws it), a pack's others small
+//     behind it (.dg-pack, which the 3D hides and draws itself), with the Host's line,
 //     being stunned or downed, and power-up pops over it; across its top, the other players' moments that
 //     matter to you, with their faces (js/dungeon-feed.js)
 //   - the hourglass down the left of the answers; each answer a rune box (the button's symbol, in its
 //     colour) and a framed answer. A Warlock's patron showing the answer makes it glow purple, and the
 //     Host's line becomes the patron's whisper
 //   - your party, then you
+// The room fills the whole screen above your plate (.dg-stage, data-stage="portrait": where the 3D draws), and
+// everything else floats over it (.dg-hud). The gap left between the scroll and the answers (.dg-window, data-focus)
+// is where the monster stands: the 2D one is drawn in it, and the 3D camera frames the monster there.
 // Between questions the battle beat takes the screen instead (js/dungeon-battle.js).
 // Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js, dungeon-battle.js, dungeon-powerups.js and dungeon-feed.js.
 // Styles: css/dungeon-encounter.css.
@@ -24,7 +27,8 @@ const DungeonEncounter = {
      */
     view(match, you, serverNow, { news, plate, clockKey, powerUpKey, healed }) {
         const delve = you.delve;
-        const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
+        // Out of lives counts as downed for good (in a party they still see a teammate's question, to shout the answer).
+        const downed = delve.out || (delve.downedUntilMs && delve.downedUntilMs > serverNow);
         const stunned = !downed && you.lockedOutUntilMs && you.lockedOutUntilMs > serverNow;
         const seed = `${match.matchId}:${you.stationId}`;
 
@@ -36,6 +40,8 @@ const DungeonEncounter = {
         const overlaySeed = `${seed}:${delve.lastTaken?.number}`;
         const overlay = !downed
             ? stunned ? `<div class="dg-overlay is-stunned">${Theme.text('dungeon.stunned', {}, overlaySeed)}</div>` : ''
+            : delve.out
+                ? `<div class="dg-overlay is-downed is-out">${delve.party.length > 1 ? Theme.text('dungeon.outParty', {}, overlaySeed) : Theme.text('dungeon.outSolo', {}, overlaySeed)}</div>`
             : delve.party.length > 1
                 ? `<div class="dg-overlay is-downed is-party">${Theme.text('dungeon.downedParty', { left: delve.reviveNeeded - delve.reviveProgress }, overlaySeed)}</div>`
                 : `<div class="dg-overlay is-downed">${Theme.text('dungeon.downed', { seconds: Theme.raw(`<span data-ends-at="${delve.downedUntilMs}"></span>`) }, overlaySeed)}</div>`;
@@ -64,22 +70,26 @@ const DungeonEncounter = {
 
         return `
             <div class="dg-station is-question is-encounter ${arrival} ${news.taken ? 'is-hurt' : ''} ${fullCharge ? 'is-full-charge' : ''}" ${styles ? `style="${styles}"` : ''}>
-                ${DungeonEncounter.foePlate(match, delve, clockKey)}
-                <div class="dg-scroll ${helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
-                <div class="dg-stage" data-stage="portrait">
-                    ${DungeonBattle.room()}
-                    ${DungeonView.packSprites(delve.foes?.slice(1) || [])}
-                    ${DungeonView.monster(delve, news, `fx:station:${you.stationId}`)}
-                    <div class="dg-feedback ${feedback.tone}" ${feedback.style ? `style="${feedback.style}"` : ''}>${feedback.html}</div>
-                    ${fullCharge ? `<div class="dg-charge-warning">${Theme.text('dungeon.chargeWarning', {}, `${seed}:${shown.number}`)}</div>` : ''}
-                    ${DungeonFeed.caption()}
-                    ${overlay}
-                    ${DungeonView.activeEffects(powerUpKey)}
-                </div>
-                <div class="dg-answer-area">
-                    ${DungeonEncounter.hourglass(delve, serverNow)}
-                    <div class="dg-answers ${helping ? 'is-helping' : ''}">
-                        ${shown.answers.map((text, i) => DungeonEncounter.answer(text, i, dimmed, shown.hidden?.includes(i), revealed === i)).join('')}
+                <div class="dg-world">
+                    <div class="dg-stage" data-stage="portrait">${DungeonBattle.room()}</div>
+                    <div class="dg-hud">
+                        ${DungeonEncounter.foePlate(match, delve, clockKey)}
+                        <div class="dg-scroll ${helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
+                        <div class="dg-window" data-focus>
+                            ${DungeonView.packSprites(delve.foes?.slice(1) || [])}
+                            ${DungeonView.monster(delve, news, `fx:station:${you.stationId}`)}
+                            <div class="dg-feedback ${feedback.tone}" ${feedback.style ? `style="${feedback.style}"` : ''}>${feedback.html}</div>
+                            ${fullCharge ? `<div class="dg-charge-warning">${Theme.text('dungeon.chargeWarning', {}, `${seed}:${shown.number}`)}</div>` : ''}
+                            ${DungeonFeed.caption()}
+                            ${overlay}
+                            ${DungeonView.activeEffects(powerUpKey)}
+                        </div>
+                        <div class="dg-answer-area">
+                            ${DungeonEncounter.hourglass(delve, serverNow)}
+                            <div class="dg-answers ${helping ? 'is-helping' : ''}">
+                                ${shown.answers.map((text, i) => DungeonEncounter.answer(text, i, dimmed, shown.hidden?.includes(i), revealed === i)).join('')}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 ${DungeonView.teammates(delve, you.stationId, match, healed)}
@@ -99,7 +109,7 @@ const DungeonEncounter = {
             <div class="dg-foe-plate ${m.isBoss ? 'is-boss' : ''} ${m.poisonStacks ? 'is-poisoned' : ''}">
                 <div class="dg-foe-corners">
                     <span class="dg-floor-badge">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</span>
-                    <span class="dg-clock"><small>${Theme.text('dungeon.time')}</small><span data-ends-at="${match.phaseEndsAtMs}" data-hurry-at="10"></span>${DungeonView.activeEffects(clockKey)}</span>
+                    <span class="dg-clock"><small>${Theme.text('dungeon.time')}</small><span ${UI.matchClock(match, 10)}></span>${DungeonView.activeEffects(clockKey)}</span>
                 </div>
                 <div class="dg-foe-name-line">
                     <div class="dg-foe-name">${UI.escape(m.name)}</div>

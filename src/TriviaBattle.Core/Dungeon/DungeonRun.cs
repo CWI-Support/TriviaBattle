@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Questions;
@@ -40,6 +41,8 @@ namespace TriviaBattle.Core.Dungeon;
 ///     party (which faces tougher monsters, <see cref="DungeonSettings.PartyHpPerMember"/>) earns about what a solo
 ///     player does, and so several parties sharing the clock in a race earn it together.</item>
 ///   <item>Each floor asks its own mix of easy, medium and hard questions (<see cref="NextDifficulty"/>).</item>
+///   <item>Floor rewards: answer enough of a floor right and, once its boss dies, pick a reward that lasts the rest of
+///     the match (<see cref="OpenRewards"/>, <see cref="ChooseReward"/>). Rewards raise the numbers below where they're used.</item>
 ///   <item>Power-ups: a kill may drop one (a boss always does) and a streak earns one; each adventurer
 ///     holds one at a time and uses it with the action button (<see cref="UsePowerUp"/>).</item>
 /// </list>
@@ -75,7 +78,7 @@ public sealed class DungeonRun
                 continue;
             var heroClass = Arcade.Heroes.ClassOf(player.Hero);
             var maxHp = (int)Math.Round(settings.AdventurerHp * settings.Classes.StatsFor(heroClass).Hp);
-            _adventurers[ownerId] = new Adventurer(ownerId, partyId, Math.Max(1, maxHp), heroClass);
+            _adventurers[ownerId] = new Adventurer(ownerId, partyId, Math.Max(1, maxHp), heroClass, settings.Lives);
         }
 
         // A party's monsters are tougher, by how many adventurers it has (answer owners: a 2v2 Group team is one).
@@ -142,6 +145,23 @@ public sealed class DungeonRun
     /// <summary>The hero class an answer owner fights as (null if they aren't in this match).</summary>
     public HeroClass? ClassOf(string ownerId) => _adventurers.GetValueOrDefault(ownerId)?.Class;
 
+    /// <summary>Everyone in the match is out of lives (<see cref="DungeonSettings.Lives"/>): the game is over, whatever the clock says.</summary>
+    public bool EveryoneOut => _settings.Lives > 0 && _adventurers.Values.All(a => a.IsOut);
+
+    /// <summary>
+    /// A continue (a new paid session): everyone has all their lives back, and the ones who were out are back on their
+    /// feet at full HP, buttons working (the out ones' buttons were dead for good).
+    /// </summary>
+    public void RestoreLives()
+    {
+        foreach (var adventurer in _adventurers.Values)
+        {
+            if (adventurer.IsOut)
+                _streams[adventurer.OwnerId].EndLockout();
+            adventurer.RestoreLives();
+        }
+    }
+
     /// <summary>The clock has stopped: no more attacks.</summary>
     public void Stop()
     {
@@ -163,14 +183,15 @@ public sealed class DungeonRun
         var fast = IsFast(adventurer, responseTime);
         var combo = adventurer.Class == HeroClass.Pugilist && streak >= 2;
         var partyCombo = IsPartyCombo(adventurer, delve, now);
+        adventurer.CountAnswer(delve.Floor, right: true);
 
         var fireball = adventurer.ThrowFireball();
 
-        var damage = _settings.DamageFor(difficulty) * classes.StatsFor(adventurer.Class).DamageDealt;
+        var damage = _settings.DamageFor(difficulty) * DamageShare(adventurer);
         if (fast)
-            damage *= adventurer.Class == HeroClass.Rogue ? classes.RogueCritMultiplier : _settings.CritMultiplier;
+            damage *= adventurer.Class == HeroClass.Rogue ? RogueCritOf(adventurer) : _settings.CritMultiplier;
         if (combo)
-            damage *= 1 + Math.Min(classes.PugilistComboStep * (streak - 1), classes.PugilistComboMax);
+            damage *= 1 + Math.Min(ComboStepOf(adventurer) * (streak - 1), ComboMaxOf(adventurer));
         if (partyCombo)
             damage *= 1 + _settings.PartyComboBonus;
         if (fireball)
@@ -183,11 +204,11 @@ public sealed class DungeonRun
             damage *= 1 + _settings.StaggerBonus;
 
         var hitDamage = (int)Math.Round(damage);
-        var splash = adventurer.Class == HeroClass.Wizard && fast ? (int)Math.Round(hitDamage * classes.WizardSplash) : 0;
+        var splash = adventurer.Class == HeroClass.Wizard && fast ? (int)Math.Round(hitDamage * SplashOf(adventurer)) : 0;
 
         // The Healer's fast answer heals whoever standing is lowest on HP (before the hit, so it's the party as it was).
         var healed = adventurer.Class == HeroClass.Healer && fast ? MostHurt(adventurer) : null;
-        var healedHp = healed?.Heal(classes.HealerHeal) ?? 0;
+        var healedHp = healed?.Heal(HealOf(adventurer)) ?? 0;
         var patronPrice = adventurer.Class == HeroClass.Warlock && responseTime.TotalSeconds > classes.WarlockSlowSeconds
             ? adventurer.PayPatron(classes.WarlockSlowDamage)
             : 0;
@@ -237,11 +258,245 @@ public sealed class DungeonRun
     }
 
     /// <summary>
-    /// A fast answer: within <see cref="DungeonSettings.CritWithinSeconds"/> of the question showing, a set
-    /// time (the Tank's is longer: <see cref="ClassSettings.TankFastSeconds"/>).
+    /// A fast answer: within <see cref="FastSecondsOf"/> of the question showing.
     /// </summary>
-    private bool IsFast(Adventurer adventurer, TimeSpan responseTime) =>
-        responseTime.TotalSeconds <= (adventurer.Class == HeroClass.Tank ? _settings.Classes.TankFastSeconds : _settings.CritWithinSeconds);
+    private bool IsFast(Adventurer adventurer, TimeSpan responseTime) => responseTime.TotalSeconds <= FastSecondsOf(adventurer);
+
+    // ------------------------------------------------------------------
+    // An adventurer's numbers now: their class's, raised by the rewards they've picked (see Reward).
+    // ------------------------------------------------------------------
+
+    private RewardSettings Rewards => _settings.Rewards;
+
+    /// <summary>
+    /// How long they have to be fast: a set time, <see cref="DungeonSettings.CritWithinSeconds"/> (the Tank's is
+    /// longer: <see cref="ClassSettings.TankFastSeconds"/>), plus any Focus rewards.
+    /// </summary>
+    public double FastSecondsOf(Adventurer adventurer) =>
+        (adventurer.Class == HeroClass.Tank ? _settings.Classes.TankFastSeconds : _settings.CritWithinSeconds)
+        + Rewards.FastSeconds * adventurer.Has(Reward.Focus);
+
+    /// <summary>The share of the normal damage their right answers do: their class's, with any Might rewards.</summary>
+    private double DamageShare(Adventurer adventurer) =>
+        _settings.Classes.StatsFor(adventurer.Class).DamageDealt * (1 + Rewards.DamageBonus * adventurer.Has(Reward.Might));
+
+    /// <summary>
+    /// The share of a monster's damage they take: their class's, less for each Armor reward (and for a Tank's Mastery).
+    /// </summary>
+    private double DamageTakenShare(Adventurer adventurer)
+    {
+        var share = _settings.Classes.StatsFor(adventurer.Class).DamageTaken * Math.Pow(1 - Rewards.ArmorBonus, adventurer.Has(Reward.Armor));
+        if (adventurer.Class == HeroClass.Tank)
+            share *= Math.Pow(1 - Rewards.TankArmor, adventurer.Has(Reward.Mastery));
+        return share;
+    }
+
+    private double RogueCritOf(Adventurer a) => _settings.Classes.RogueCritMultiplier + Rewards.RogueCrit * a.Has(Reward.Mastery);
+    private int HealOf(Adventurer a) => _settings.Classes.HealerHeal + Rewards.HealerHeal * a.Has(Reward.Mastery);
+    private double SplashOf(Adventurer a) => Math.Min(1, _settings.Classes.WizardSplash + Rewards.WizardSplash * a.Has(Reward.Mastery));
+    private double ComboStepOf(Adventurer a) => _settings.Classes.PugilistComboStep + Rewards.PugilistComboStep * a.Has(Reward.Mastery);
+    private double ComboMaxOf(Adventurer a) => _settings.Classes.PugilistComboMax + 10 * Rewards.PugilistComboStep * a.Has(Reward.Mastery);
+    private double RevealChanceOf(Adventurer a) => Math.Min(1, _settings.Classes.WarlockRevealChance + Rewards.WarlockReveal * a.Has(Reward.Mastery));
+    private double PeekOf(Adventurer a) => _settings.Classes.RangerPeekSeconds + Rewards.RangerPeek * a.Has(Reward.Mastery);
+
+    /// <summary>
+    /// What a reward would give this adventurer, the number its card shows: Vitality the HP, Might and Armor the
+    /// percent, Time and Focus the seconds, Last Stand 1, and Mastery their class's power as it would be after it
+    /// (a Rogue's crit multiplier, a Tank's percent less damage, a Healer's heal, a Wizard's splash percent, a
+    /// Pugilist's percent per answer in a row, a Warlock's reveal percent, a Ranger's seconds early).
+    /// </summary>
+    public double RewardAmount(Adventurer adventurer, Reward reward)
+    {
+        var mastery = adventurer.Has(Reward.Mastery) + 1;
+        var classes = _settings.Classes;
+        return reward switch
+        {
+            Reward.Vitality => VitalityHp(adventurer),
+            Reward.Might => Math.Round(Rewards.DamageBonus * 100),
+            Reward.Armor => Math.Round(Rewards.ArmorBonus * 100),
+            Reward.Time => Math.Round(RewardTimeSeconds(adventurer)),
+            Reward.Focus => Rewards.FastSeconds,
+            Reward.LastStand => 1,
+            Reward.Mastery => adventurer.Class switch
+            {
+                HeroClass.Rogue => classes.RogueCritMultiplier + Rewards.RogueCrit * mastery,
+                HeroClass.Tank => Math.Round(Rewards.TankArmor * 100),
+                HeroClass.Healer => classes.HealerHeal + Rewards.HealerHeal * mastery,
+                HeroClass.Wizard => Math.Round(Math.Min(1, classes.WizardSplash + Rewards.WizardSplash * mastery) * 100),
+                HeroClass.Pugilist => Math.Round((classes.PugilistComboStep + Rewards.PugilistComboStep * mastery) * 100),
+                HeroClass.Warlock => Math.Round(Math.Min(1, classes.WarlockRevealChance + Rewards.WarlockReveal * mastery) * 100),
+                HeroClass.Ranger => classes.RangerPeekSeconds + Rewards.RangerPeek * mastery,
+                _ => 0,
+            },
+            _ => 0,
+        };
+    }
+
+    private int VitalityHp(Adventurer adventurer) => (int)Math.Round(adventurer.StartingMaxHp * Rewards.HpBonus);
+
+    /// <summary>A Time reward's seconds, shared out like a kill's (<see cref="SecondsEarnedBy"/>): a party's are scaled to its size.</summary>
+    private double RewardTimeSeconds(Adventurer adventurer)
+    {
+        var members = PartyOf(adventurer.PartyId).Count;
+        return Rewards.TimeSeconds * HpScaleFor(members) / members / _delves.Count;
+    }
+
+    // ------------------------------------------------------------------
+    // Floor rewards: earned on a floor, offered after its boss, picked with the answer buttons.
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// A party has just cleared a floor (its boss died): everyone in it who answered enough of that floor right
+    /// (<see cref="RewardSettings.Accuracy"/>) is offered rewards. Their question waits, and the monster's hourglass
+    /// with it, until they pick. The cards come up when the boss's death beat ends. Returns who was offered some.
+    /// </summary>
+    public IReadOnlyList<Adventurer> OpenRewards(string partyId, DateTimeOffset now)
+    {
+        var cleared = _delves[partyId].Floor - 1;
+        var opensAt = now + TimeSpan.FromSeconds(_settings.FloorBeatSeconds);
+        var offered = new List<Adventurer>();
+        foreach (var member in PartyOf(partyId))
+        {
+            var trial = member.EndFloor(cleared, Rewards.Accuracy);
+            if (!Rewards.Enabled || !trial.Earned || member.IsAway || member.IsOut)
+                continue;
+
+            OfferRewardsTo(member, cleared, opensAt);
+            offered.Add(member);
+        }
+        return offered;
+    }
+
+    /// <summary>Puts <see cref="RewardSettings.Choices"/> random rewards in front of an adventurer, the cards up from <paramref name="opensAt"/>.</summary>
+    /// <param name="forMinigame">A mini game's prize (rather than the floor's, after its boss).</param>
+    private void OfferRewardsTo(Adventurer member, int floor, DateTimeOffset opensAt, bool forMinigame = false)
+    {
+        var choices = Enum.GetValues<Reward>().OrderBy(_ => _random.Next()).Take(Math.Clamp(Rewards.Choices, 1, 4)).ToList();
+        member.OfferRewards(new RewardOffer(floor, choices, opensAt, opensAt + TimeSpan.FromSeconds(Rewards.PickSeconds), forMinigame));
+        member.StopHourglass();
+    }
+
+    /// <summary>
+    /// An adventurer picks one of the rewards on offer with an answer button (<paramref name="choice"/>, 0-based), or
+    /// time ran out and one is picked for them (null). Then their question comes back after a short beat showing it.
+    /// Returns null if nothing was picked (no offer, a button with no card, or pressed before the cards could be read),
+    /// otherwise the reward and the seconds to add to the clock (a Time reward's). The clock was stopped while they chose
+    /// (<see cref="ClockStopped"/>), so choosing doesn't cost paid time.
+    /// </summary>
+    public (RewardTaken Taken, double ClockSeconds)? ChooseReward(string ownerId, int? choice, DateTimeOffset now)
+    {
+        var adventurer = _adventurers[ownerId];
+        if (adventurer.Offer is not { } offer)
+            return null;
+        if (choice is { } index && (index < 0 || index >= offer.Choices.Count || now < offer.OpensAt + TimeSpan.FromSeconds(Rewards.PickDelaySeconds)))
+            return null;
+
+        var reward = offer.Choices[choice ?? _random.Next(offer.Choices.Count)];
+        var (taken, seconds) = Grant(adventurer, reward, offer.Floor, now, picked: choice != null);
+        adventurer.CloseOffer();
+
+        var stream = _streams[ownerId];
+        stream.Start(now + TimeSpan.FromSeconds(Rewards.BeatSeconds)); // the question they were on comes back, fresh
+        AfterTurn(stream, now);
+        return (taken, seconds);
+    }
+
+    /// <summary>
+    /// Hands an adventurer a reward without an offer (the dev tools, for testing). Returns it, and the seconds for
+    /// the clock (a Time reward's).
+    /// </summary>
+    public (RewardTaken Taken, double ClockSeconds) GiveReward(string ownerId, Reward reward, DateTimeOffset now)
+    {
+        var adventurer = _adventurers[ownerId];
+        return Grant(adventurer, reward, DelveOf(adventurer).Floor, now, picked: true);
+    }
+
+    /// <summary>
+    /// A reward goes on an adventurer's list (most read it from there: see <see cref="DamageShare"/> and the others);
+    /// Vitality raises their max HP now. Returns it, and the seconds for the clock (a Time reward's).
+    /// </summary>
+    private (RewardTaken Taken, double ClockSeconds) Grant(Adventurer adventurer, Reward reward, int floor, DateTimeOffset now, bool picked)
+    {
+        var taken = adventurer.TakeReward(reward, RewardAmount(adventurer, reward), floor, now, picked);
+        if (reward == Reward.Vitality)
+            adventurer.RaiseMaxHp(VitalityHp(adventurer));
+        return (taken, reward == Reward.Time ? RewardTimeSeconds(adventurer) : 0);
+    }
+
+    // ------------------------------------------------------------------
+    // Mini games: a floor may have one between two of its rooms (DealtHit.MinigameAhead). Everyone in the party plays
+    // their own go at it on their own station; each goes back to the fight when theirs is over (a win first earns a
+    // reward pick). The arcade clock stops meanwhile.
+    // ------------------------------------------------------------------
+
+    private MinigameSettings MinigameRules => _settings.Minigames;
+
+    /// <summary>
+    /// The arcade clock stops while anyone in the match is away from the fight (choosing a reward or playing a mini
+    /// game): neither is meant to cost paid time. The match engine holds the clock still meanwhile.
+    /// </summary>
+    public bool ClockStopped => _adventurers.Values.Any(a => a.IsAway);
+
+    /// <summary>
+    /// A party has cleared the room before the floor's mini game (<paramref name="kill"/>'s <c>MinigameAhead</c>): everyone in
+    /// it not already away starts their go, its intro once the kill beat that emptied the room has played. Their
+    /// question and hourglass wait. Returns who's playing.
+    /// </summary>
+    public IReadOnlyList<Adventurer> StartMinigames(string partyId, DealtHit kill, DateTimeOffset now)
+    {
+        if (!MinigameRules.Enabled || kill.MinigameAhead is not { } kind)
+            return [];
+
+        var introAt = now + TimeSpan.FromSeconds(BeatSecondsAfter(kill));
+        var players = PartyOf(partyId).Where(a => !a.IsAway && !a.IsOut).ToList();
+        foreach (var player in players)
+        {
+            player.StartMinigame(MinigameCatalog.Create(kind, introAt, MinigameRules, _random));
+            player.StopHourglass();
+        }
+        return players;
+    }
+
+    /// <summary>An answer button in a mini game (pressed at <paramref name="at"/>). What it did; nothing outside one.</summary>
+    public MinigamePress PlayMinigame(string ownerId, int answerIndex, DateTimeOffset at) =>
+        _adventurers[ownerId].Minigame?.Press(answerIndex, at) ?? MinigamePress.Ignored;
+
+    /// <summary>
+    /// Mini games moving on: the ones whose time limit just ran out are lost (<paramref name="lost"/>), and the ones whose
+    /// result has been shown are over (<paramref name="over"/>): a winner is offered rewards (when that's on), everyone
+    /// else gets their question back with a fresh hourglass.
+    /// </summary>
+    public void MinigamesDue(DateTimeOffset now, out IReadOnlyList<Adventurer> lost, out IReadOnlyList<Adventurer> over)
+    {
+        var timedOut = new List<Adventurer>();
+        var finished = new List<Adventurer>();
+        foreach (var adventurer in _adventurers.Values.Where(a => a.Minigame != null))
+        {
+            var game = adventurer.Minigame!;
+            if (game.TimeUp(now))
+                timedOut.Add(adventurer);
+            if (game.ResultEndsAt is not { } resultEnds || resultEnds > now)
+                continue;
+
+            var won = game.Won;
+            adventurer.EndMinigame();
+            finished.Add(adventurer);
+            if (won && MinigameRules.WinEarnsReward && Rewards.Enabled)
+            {
+                OfferRewardsTo(adventurer, DelveOf(adventurer).Floor, now, forMinigame: true);
+                continue;
+            }
+            var stream = _streams[adventurer.OwnerId];
+            stream.Start(now); // the question they were on comes back, fresh
+            AfterTurn(stream, now);
+        }
+        lost = timedOut;
+        over = finished;
+    }
+
+    /// <summary>The adventurers whose time to pick a reward has run out: one is picked for them.</summary>
+    public IReadOnlyList<Adventurer> RewardsDue(DateTimeOffset now) =>
+        _adventurers.Values.Where(a => a.Offer?.EndsAt <= now).ToList();
 
     /// <summary>Whoever standing in the healer's party (them included) is lowest on HP, for their share of their max. Null if nobody's hurt.</summary>
     private Adventurer? MostHurt(Adventurer healer) =>
@@ -266,6 +521,26 @@ public sealed class DungeonRun
     }
 
     /// <summary>
+    /// The Healer's poison killed the monster in front of a party (<paramref name="kill"/>, from <see cref="TickPoison"/>).
+    /// It plays out like any kill: everyone in the party standing and not choosing a reward gets the kill beat (a
+    /// room or floor cleared: the longer one), and their question comes back after it, with a fresh hourglass for
+    /// the monster that's up now. Without this the next monster just swaps in under the question they're on.
+    /// </summary>
+    public void PoisonKilled(string partyId, DealtHit kill, DateTimeOffset now)
+    {
+        var shownAt = now + TimeSpan.FromSeconds(BeatSecondsAfter(kill));
+        foreach (var member in PartyOf(partyId).Where(a => !a.IsDowned && !a.IsAway))
+        {
+            var stream = _streams[member.OwnerId];
+            if (stream.CurrentShownAt >= shownAt)
+                continue; // a longer beat of their own is playing (a floor cleared): it shows the kill too
+            member.SawPoisonKill(now);
+            stream.Start(shownAt); // the question they were on comes back after the beat
+            AfterTurn(stream, now);
+        }
+    }
+
+    /// <summary>
     /// The Warlocks whose patron shows them the right answer now (their hourglass got low enough). Their
     /// snapshot then carries it (<see cref="Adventurer.RevealedOnQuestion"/>).
     /// </summary>
@@ -282,7 +557,7 @@ public sealed class DungeonRun
     /// Only what the screen shows changes: buttons, the hourglass and the fast window all start when the beat ends.
     /// </summary>
     public double PeekSecondsFor(string ownerId) =>
-        _adventurers.GetValueOrDefault(ownerId)?.Class == HeroClass.Ranger ? _settings.Classes.RangerPeekSeconds : 0;
+        _adventurers.GetValueOrDefault(ownerId) is { Class: HeroClass.Ranger } ranger ? PeekOf(ranger) : 0;
 
     /// <summary>
     /// A kill may drop a power-up (a boss always does), and every <see cref="DungeonSettings.PowerUpStreak"/>
@@ -350,7 +625,7 @@ public sealed class DungeonRun
     private (Adventurer Target, int Healed, bool Revived) DrinkPotion(Adventurer user, DateTimeOffset now)
     {
         var party = PartyOf(user.PartyId);
-        var downed = party.Where(a => a.IsDowned).OrderBy(a => a.DownedUntil).FirstOrDefault();
+        var downed = party.Where(a => a.IsDowned && !a.IsOut).OrderBy(a => a.DownedUntil).FirstOrDefault(); // the out stay out
         if (downed != null)
         {
             var healed = downed.MaxHp - downed.Hp;
@@ -401,7 +676,7 @@ public sealed class DungeonRun
     private Adventurer? HelpRevive(Adventurer helper, DateTimeOffset now)
     {
         var downed = PartyOf(helper.PartyId)
-            .Where(a => a != helper && a.IsDowned)
+            .Where(a => a != helper && a.IsDowned && !a.IsOut) // out of lives: no reviving them
             .OrderBy(a => a.DownedUntil)
             .FirstOrDefault();
         if (downed == null || downed.AddReviveProgress() < _settings.ReviveAnswers)
@@ -457,7 +732,8 @@ public sealed class DungeonRun
             ? adventurer.PayPatron(classes.WarlockSlowDamage)
             : 0;
         // A boss hits as hard as its charge cycle says: weak at first, its big blow at full charge.
-        var damageTaken = classes.StatsFor(adventurer.Class).DamageTaken;
+        adventurer.CountAnswer(delve.Floor, right: false);
+        var damageTaken = DamageTakenShare(adventurer);
         var boss = BossFacing(delve);
         var step = boss != null ? adventurer.ChargeAgainst(boss) : 0;
         if (boss != null)
@@ -473,7 +749,7 @@ public sealed class DungeonRun
         {
             delve.HealRoom();
             var upAt = now + TimeSpan.FromSeconds(_settings.DownedSeconds);
-            foreach (var member in party)
+            foreach (var member in party.Where(a => !a.IsOut)) // the ones out of lives stay down
             {
                 member.ShortenDowned(upAt);
                 _streams[member.OwnerId].LockOut(member.DownedUntil!.Value);
@@ -508,6 +784,7 @@ public sealed class DungeonRun
         var adventurer = _adventurers[stream.OwnerId];
         if (adventurer.DownedUntil <= now)
             adventurer.GetUp();
+        adventurer.ExtendOffer(now, Rewards.PickSeconds);
 
         AfterTurn(stream, now);
     }
@@ -547,6 +824,11 @@ public sealed class DungeonRun
     /// </summary>
     private void StartHourglass(Adventurer adventurer, DateTimeOffset now)
     {
+        if (adventurer.IsAway)
+        {
+            adventurer.StopHourglass(); // it waits while they pick a reward or play a mini game
+            return;
+        }
         var shownAt = _streams[adventurer.OwnerId].CurrentShownAt ?? now;
         var from = shownAt > now ? shownAt : now;
         if (adventurer.FrozenUntil > from)
@@ -568,7 +850,7 @@ public sealed class DungeonRun
         var classes = _settings.Classes;
         var question = _streams[adventurer.OwnerId].CurrentNumber;
         if (adventurer.RevealDecidedFor != question)
-            adventurer.DecideReveal(question, _random.NextDouble() < classes.WarlockRevealChance);
+            adventurer.DecideReveal(question, _random.NextDouble() < RevealChanceOf(adventurer));
 
         if (!adventurer.RevealComing || adventurer.RevealedOnQuestion == question)
         {

@@ -15,6 +15,7 @@
 //           flinch; one it killed goes down at 720 and bursts at 1000, with the one in front
 //   kill in a pack   1250-1750 the next monster steps up to the front (it's there before the beat ends)
 //   poison  (Healer) 190 a green puff as the stack lands; the bubbles and the tint grow with the stacks
+//   poison kill  (the poison finished it between answers: no blow) it chokes; 720 down, 1000 bursts into green smoke
 //   heal    (Healer) 300 the heal sparkles on whoever it healed (you, or a teammate in your room)
 //   patron  (Warlock) 420 the patron's price: purple drained out of the hero (on a hit or a hurt)
 //   tank    a hurt takes the blow on the shield (its block clip) instead of reeling
@@ -65,7 +66,7 @@ const STUMBLE_BACK = 0.8;         // how far a staggered boss stumbles back (wor
  */
 export function showBeat(beat, ms, cast) {
     cast.fx.hideAll();
-    const lean = beat.hurt ? monsterStrikes(beat, ms, cast) : heroStrikes(beat, ms, cast);
+    const lean = beat.hurt ? monsterStrikes(beat, ms, cast) : beat.byPoison ? poisonKills(beat, ms, cast) : heroStrikes(beat, ms, cast);
     showPack(cast, beat, ms);
     showPatron(beat, ms, cast);
     return lean;
@@ -222,6 +223,34 @@ function hitStop(beat) {
 function chestOf(actor, scale, x, z) {
     const height = (actor.spec.height || 2) * scale;
     return actor.chest().set(x, (actor.spec.hover || 0) + height * 0.55, z + 0.3);
+}
+
+/**
+ * The Healer's poison kills the monster between answers (beat.byPoison): no blow. The knight stands and
+ * watches; the monster, glowing green and wreathed in the poison's bubbles, shudders, goes down at the kill's
+ * moment and bursts into green smoke, on the same clock as a sword kill (so the HTML's SLAIN! still lands with it).
+ */
+function poisonKills(beat, ms, { hero, foe, fx, stage, homes, seconds }) {
+    hero.apply({ x: homes.hero, clip: hero.spec.idle, time: seconds });
+
+    const foeIdle = { clip: foe.spec.idle, time: seconds + 0.37 };
+    let foePose = foeIdle, tilt = 0.06 * Math.sin(ms / 45) * Math.max(0, 1 - ms / KILL_FALLS), scale = 1; // it chokes
+    if (ms >= KILL_FALLS) {
+        const d = ms - KILL_FALLS;
+        if (foe.has(foe.spec.death)) foePose = { clip: foe.spec.death, time: d / 1000, from: foeIdle, fade: Math.min(1, d / 100) };
+        else tilt = -0.6 * Math.min(1, d / 220);
+        if (ms >= KILL_BURSTS) {
+            const b = ms - KILL_BURSTS;
+            scale = b < 60 ? 1 + 0.3 * (b / 60) : Math.max(0, 1.3 * (1 - (b - 60) / 100));  // swells, then pops
+        }
+    }
+    foe.apply({ x: homes.foe, tilt, scale, visible: scale > 0.01, flash: 0.5 + 0.5 * Math.sin(ms / 90), flashColor: POISON_GREEN, ...foePose });
+
+    const chest = foe.chest();
+    fx.showPoison(0, foe, seconds, 5);  // the bubbles, at their thickest
+    fx.showPoisonDeath(chest, (ms - KILL_BURSTS) / 1000, beat.seed);
+    shake(stage, ms, jolt(ms - KILL_BURSTS, 0.12));
+    return { zoom: 1 - 0.06 * easeInOut(Math.min(1, Math.max(0, ms - KILL_FALLS) / 400)), focus: 0 };
 }
 
 function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison }) {

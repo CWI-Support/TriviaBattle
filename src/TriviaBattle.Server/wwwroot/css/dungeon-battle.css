@@ -54,6 +54,15 @@
 /* In: the fight opens out from the middle, fully drawn (a fade would show the empty backdrop through it).
    Both ends are insets: a shape can't blend into "none", it would just snap open halfway. */
 @keyframes dg-battle-in { from { clip-path: inset(50% 0); } to { clip-path: inset(0); } }
+/* On the station the fight is the whole scene (css/dungeon.css .dg-world), edge to edge, with the top line
+   floating over it: the fight itself starts below that (--hud-top), and the 3D draws the whole of it. */
+.dg-world > .dg-battle {
+    position: absolute;
+    inset: 0;
+    padding-top: var(--hud-top, 13vh);
+    border: none;
+    box-shadow: none;
+}
 @keyframes dg-battle-out { to { opacity: 0; transform: scale(0.97); } }
 
 /* ---------- The room: stone wall, torches, floor, vignette ---------- */
@@ -745,3 +754,9 @@
 .dg-peek .dg-rune { width: 5.4vmin; height: 5.4vmin; font-size: 2.6vmin; }
 .dg-peek .dg-answer-text { min-width: 0; text-transform: uppercase; }
 .dg-peek .dg-answer.is-locked { border-style: dashed; opacity: 0.7; filter: saturate(0.5); }
+
+/* ---------- A poison kill (the Healer's poison finished it between answers: beat.byPoison) ---------- */
+
+/* No blow: the knight stays put, and the monster turns sickly green as it chokes, then goes down as in any kill. */
+.is-poison-kill .dg-actor.is-foe .dg-actor-sprite { filter: sepia(0.4) hue-rotate(50deg) saturate(1.6) drop-shadow(0 0 2vmin var(--dg-poison, #8bd63a)); }
+.is-poison-kill .dg-stamp.is-early { color: var(--dg-poison, #8bd63a); }

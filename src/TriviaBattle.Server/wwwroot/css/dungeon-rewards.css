@@ -1,0 +1,102 @@
+/* Floor rewards (js/dungeon-rewards.js): the meter in the station's top line, the cards to pick from after a
+   floor's boss, the moment after a pick, the badges for rewards held, the floor curtain's line and the main
+   screen's banner. Portrait only, like every station style. Timed effects use --t0 like the rest of the
+   dungeon (see css/dungeon-battle.css). */
+
+.dg-station {
+    --dg-reward: #ffd23f;        /* the chest's gold: rewards, the meter on course */
+    --dg-reward-under: #ff6b5e;  /* the meter under the share needed */
+}
+
+/* ---------- The meter: this floor's right answers, against the share needed ---------- */
+
+.dg-trial { display: inline-flex; align-items: center; gap: 0.8vmin; font-family: var(--dg-font-pixel); font-size: 2.6vmin; white-space: nowrap; }
+.dg-trial-icon { width: 3.4vmin; height: auto; }
+.dg-trial-count { color: var(--dg-reward); }
+.dg-trial.is-under .dg-trial-count { color: var(--dg-reward-under); }
+.dg-trial-bar { position: relative; width: 9vmin; height: 1.4vmin; background: rgba(0, 0, 0, 0.6); border: 0.3vmin solid var(--dg-frame-edge); }
+.dg-trial-bar i { position: absolute; inset: 0 auto 0 0; width: var(--share); background: var(--dg-reward); transition: width 300ms ease-out; }
+.dg-trial.is-under .dg-trial-bar i { background: var(--dg-reward-under); }
+/* The mark where the reward starts. */
+.dg-trial-bar::after { content: ''; position: absolute; top: -0.6vmin; bottom: -0.6vmin; left: var(--needed); width: 0.4vmin; background: #fff; }
+
+/* ---------- Rewards held: badges on the player plate and the main screen's lanes ---------- */
+
+.dg-boons { display: flex; flex-wrap: wrap; gap: 0.6vmin; margin-top: 0.5vh; }
+.dg-boon { display: inline-flex; align-items: center; gap: 0.3vmin; padding: 0.2vmin 0.5vmin; background: rgba(0, 0, 0, 0.5); border: 0.25vmin solid var(--dg-reward); }
+.dg-boon-icon { width: 2.6vmin; height: auto; }
+.dg-boon b { font-family: var(--dg-font-pixel); font-size: 1.6vmin; color: var(--dg-reward); }
+.dg-boons.is-lane { justify-content: center; }
+
+/* ---------- The pick: one card per answer button ---------- */
+
+.dg-station.is-reward { background: radial-gradient(ellipse at 50% 30%, rgba(255, 210, 63, 0.16), transparent 65%); }
+.dg-reward { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 2vh; padding: 0 3vw; }
+
+.dg-reward-head { text-align: center; animation: dg-reward-drop 500ms ease-out both; }
+.dg-reward-chest { width: 14vmin; height: auto; filter: drop-shadow(0 0 2vmin rgba(255, 210, 63, 0.7)); animation: dg-reward-glow 1.4s ease-in-out infinite; }
+.dg-reward-title { font-family: var(--dg-font-pixel); font-size: 7vmin; color: var(--dg-reward); text-shadow: 0 0.6vmin 0 #000; }
+.dg-reward-sub { font-size: 3vmin; color: var(--text); }
+
+.dg-reward-cards { display: flex; flex-direction: column; gap: 1.6vh; }
+.dg-reward-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 3vw;
+    padding: 2.2vh 3vw;
+    background: var(--dg-frame);
+    border: 0.7vmin solid var(--answer-color);
+    box-shadow: 0 0 3vmin color-mix(in srgb, var(--answer-color) 40%, transparent);
+    animation: dg-reward-deal 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both; /* the delay (UI.animateAt) deals them in turn */
+}
+.dg-reward-card[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-reward-card[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-reward-card[data-letter="C"] { --answer-color: var(--answer-c); }
+.dg-reward-card[data-letter="D"] { --answer-color: var(--answer-d); }
+/* Until presses count (a moment after they're up), a veil over each card lifts. */
+.dg-reward-card::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); animation: dg-reward-unveil 200ms linear var(--pick) both; pointer-events: none; }
+
+.dg-reward-letter {
+    width: 9vmin;
+    height: 9vmin;
+    display: grid;
+    place-items: center;
+    font-family: var(--dg-font-pixel);
+    font-size: 6vmin;
+    color: #000;
+    background: var(--answer-color);
+}
+.dg-reward-icon { width: 11vmin; height: auto; }
+.dg-reward-text { display: flex; flex-direction: column; gap: 0.6vh; min-width: 0; }
+.dg-reward-name { font-family: var(--dg-font-pixel); font-size: 4.6vmin; color: var(--dg-reward); text-transform: uppercase; }
+.dg-reward-detail { font-size: 3.2vmin; color: var(--text); }
+
+.dg-reward-foot { display: flex; justify-content: space-between; align-items: baseline; font-size: 2.8vmin; color: var(--text-dim); }
+.dg-reward-seconds { font-family: var(--dg-font-pixel); font-size: 4vmin; color: var(--text); }
+.dg-reward-timer .timer-bar-fill { background: var(--dg-reward); }
+
+/* ---------- Just picked: the reward big, then the question comes back ---------- */
+
+.dg-reward-got { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; text-align: center; }
+.dg-reward-got-icon { width: 30vmin; height: auto; filter: drop-shadow(0 0 4vmin rgba(255, 210, 63, 0.8)); animation: dg-reward-claim 700ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--t0) both; }
+.dg-reward-got-name { font-family: var(--dg-font-pixel); font-size: 9vmin; color: var(--dg-reward); text-shadow: 0 0.8vmin 0 #000; text-transform: uppercase; animation: dg-reward-drop 400ms ease-out calc(var(--t0) + 200ms) both; }
+.dg-reward-got-detail { font-size: 4vmin; color: var(--text); animation: dg-reward-drop 400ms ease-out calc(var(--t0) + 350ms) both; }
+.dg-reward-got-auto { font-size: 2.6vmin; color: var(--text-dim); }
+
+/* ---------- The floor curtain's line, and the main screen's banner ---------- */
+
+.dg-curtain-reward { margin-top: 2vh; text-align: center; white-space: nowrap; font-family: var(--dg-font-pixel); font-size: 3vmin; animation: dg-line-in 500ms ease-out calc(var(--t0) + 2150ms) both; }
+.dg-curtain-reward.is-earned { color: var(--dg-reward, #ffd23f); }
+.dg-curtain-reward.is-missed { color: var(--text-dim); }
+.dg-curtain-chest { display: inline-block; width: 5vmin; height: auto; vertical-align: middle; margin-right: 1.5vmin; }
+
+.dg-moment.is-reward .dg-moment-text { color: #ffd23f; }
+.dg-moment.is-reward .dg-moment-sprite { animation: none; filter: drop-shadow(0 0 2vmin rgba(255, 210, 63, 0.8)); }
+
+@keyframes dg-reward-deal { from { opacity: 0; transform: translateX(-30%) rotate(-4deg); } to { opacity: 1; transform: none; } }
+@keyframes dg-reward-unveil { to { opacity: 0; } }
+@keyframes dg-reward-drop { from { opacity: 0; transform: translateY(-3vh); } to { opacity: 1; transform: none; } }
+@keyframes dg-reward-glow { 50% { filter: drop-shadow(0 0 0.6vmin rgba(255, 210, 63, 0.3)); } }
+@keyframes dg-reward-claim { from { opacity: 0; transform: scale(0.2) rotate(-20deg); } to { opacity: 1; transform: none; } }

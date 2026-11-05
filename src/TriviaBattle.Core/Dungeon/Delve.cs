@@ -1,3 +1,4 @@
+using TriviaBattle.Core.Dungeon.Minigames;
 namespace TriviaBattle.Core.Dungeon;
 
 /// <summary>Why an adventurer took a hit.</summary>
@@ -29,6 +30,7 @@ public enum HitReason
 /// <param name="PatronPrice">A Warlock's slow answer: the HP their patron took for it.</param>
 /// <param name="BossAhead">This kill emptied the room and the next is a boss's: the boss steps up (the screens play its entrance).</param>
 /// <param name="Staggered">A right answer when the boss was at full charge: its blow is broken, its charge starts over, and the hit does extra damage.</param>
+/// <param name="MinigameAhead">This kill emptied a room that leads to the floor's mini game: it's played before the next room.</param>
 public sealed record DealtHit(
     int Number,
     int Damage,
@@ -53,7 +55,8 @@ public sealed record DealtHit(
     bool Poison = false,
     int PatronPrice = 0,
     bool BossAhead = false,
-    bool Staggered = false)
+    bool Staggered = false,
+    MinigameKind? MinigameAhead = null)
 {
     /// <summary>All the damage the hit did: the monster in front, plus any splash on the others.</summary>
     public int TotalDamage => Damage + (Splashes?.Sum(s => s.Damage) ?? 0);
@@ -68,8 +71,10 @@ public sealed record SplashHit(string MonsterName, string MonsterSprite, int Dam
 /// <param name="Blocked">A Shield took it: no damage.</param>
 /// <param name="PatronPrice">A Warlock's slow (wrong) answer: the HP their patron took on top.</param>
 /// <param name="Charged">A boss at full charge landed its big blow (a miss, or too slow, when it was strongest).</param>
+/// <param name="LastStand">It would have downed them, but a Last Stand reward left them on 1 HP.</param>
+/// <param name="Out">It downed them on their last life: they're out (until a continue).</param>
 public sealed record TakenHit(int Number, int Damage, HitReason Reason, bool Downed, string MonsterName, string MonsterSprite, int HpLeft,
-    bool Blocked = false, int PatronPrice = 0, bool Charged = false);
+    bool Blocked = false, int PatronPrice = 0, bool Charged = false, bool LastStand = false, bool Out = false);
 
 /// <summary>
 /// One monster in the room a party is in: its hit points and any poison on it. The room's monsters
@@ -187,10 +192,11 @@ public sealed class Delve
 
         front.TakeDamage(damage);
         DamageDealt += damage;
-        var (killed, floorCleared, bossAhead) = ClearTheDead();
+        var (killed, floorCleared, bossAhead, minigame) = ClearTheDead();
 
         LastHit = new DealtHit((LastHit?.Number ?? 0) + 1, damage, crit, combo, killed, floorCleared, front.Monster.Name, front.Monster.Sprite,
-            front.Monster.IsBoss, front.Hp, front.MaxHp, partyCombo, revivedOwnerId, Splashes: splashes.Count > 0 ? splashes : null, BossAhead: bossAhead);
+            front.Monster.IsBoss, front.Hp, front.MaxHp, partyCombo, revivedOwnerId, Splashes: splashes.Count > 0 ? splashes : null, BossAhead: bossAhead,
+            MinigameAhead: minigame);
         return LastHit;
     }
 
@@ -236,11 +242,11 @@ public sealed class Delve
         if (!_foes.Any(f => f.IsDead))
             return (total, null);
 
-        var (killed, floorCleared, bossAhead) = ClearTheDead();
+        var (killed, floorCleared, bossAhead, minigame) = ClearTheDead();
         if (!killed)
             return (total, null);
         LastHit = new DealtHit((LastHit?.Number ?? 0) + 1, 0, false, false, true, floorCleared, front.Monster.Name, front.Monster.Sprite,
-            front.Monster.IsBoss, 0, front.MaxHp, false, null, Poison: true, BossAhead: bossAhead);
+            front.Monster.IsBoss, 0, front.MaxHp, false, null, Poison: true, BossAhead: bossAhead, MinigameAhead: minigame);
         return (total, LastHit);
     }
 
@@ -257,22 +263,24 @@ public sealed class Delve
     /// <summary>
     /// Clears the dead away, counting the kills. When nobody's left in the room, the party moves on to the
     /// next room, or the next floor after the last one. Returns whether the one in front died, whether the floor was
-    /// cleared, and whether the room they've just walked into is a boss's (its entrance plays).
+    /// cleared, whether the room they've just walked into is a boss's (its entrance plays), and the floor's mini game if
+    /// the room they've just cleared leads to it.
     /// </summary>
-    private (bool FrontDied, bool FloorCleared, bool BossAhead) ClearTheDead()
+    private (bool FrontDied, bool FloorCleared, bool BossAhead, MinigameKind? Minigame) ClearTheDead()
     {
         var room = Encounter;
         var frontDied = _foes[0].IsDead;
         Kills += _foes.RemoveAll(f => f.IsDead);
         if (_foes.Count > 0)
-            return (frontDied, false, false);
+            return (frontDied, false, false, null);
 
         var floorCleared = room.Room == room.RoomsOnFloor;
+        var minigame = floorCleared ? null : _map.MinigameAfter(room.Floor, room.Room);
         if (floorCleared)
             EnterRoom(room.Floor + 1, 1);
         else
             EnterRoom(room.Floor, room.Room + 1);
-        return (frontDied, floorCleared, _foes[0].Monster.IsBoss);
+        return (frontDied, floorCleared, _foes[0].Monster.IsBoss, minigame);
     }
 
     private void EnterRoom(int floor, int room)

@@ -46,6 +46,16 @@ public class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, Ma
         return host.GivePowerUp(stationId, powerUp) ? NoContent() : Conflict(new { problems = new[] { "Nobody is playing a dungeon game at that station." } });
     }
 
+    /// <summary>Hands the player at a station a floor reward (Vitality, Might, Armor, Time, Focus, Mastery, LastStand), to test it.</summary>
+    [HttpPost("reward/{stationId}/{reward}")]
+    public IActionResult GiveReward(string stationId, Reward reward)
+    {
+        if (!devTools.Enabled)
+            return NotFound();
+
+        return host.GiveReward(stationId, reward) ? NoContent() : Conflict(new { problems = new[] { "Nobody is playing a dungeon game at that station." } });
+    }
+
     /// <summary>The keyboard map plus what each button is, for the /dev/buttons page.</summary>
     [HttpGet("keyboard")]
     public IActionResult GetKeyboardMap()

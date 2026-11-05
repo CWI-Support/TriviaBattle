@@ -1,4 +1,5 @@
 using TriviaBattle.Core.Dungeon;
+using TriviaBattle.Core.Dungeon.Minigames;
 
 namespace TriviaBattle.Core.Matches;
 
@@ -48,6 +49,24 @@ public sealed record MonsterPoisoned(string PartyId, int Damage, DealtHit? Kill)
 
 /// <summary>Dungeon format: a Warlock's patron is showing them the right answer (raised by Tick; only their own screen sees it).</summary>
 public sealed record PatronRevealed(string OwnerId) : MatchEvent;
+
+/// <summary>Dungeon format: a floor's boss died and this adventurer answered enough of the floor right: they're choosing a reward (see <see cref="Reward"/>).</summary>
+public sealed record RewardOffered(string OwnerId, RewardOffer Offer) : MatchEvent;
+
+/// <summary>Dungeon format: a kill emptied the room before the floor's mini game, and this adventurer's go at it begins (its intro first).</summary>
+public sealed record MinigameStarted(string OwnerId, MinigameKind Kind) : MatchEvent;
+
+/// <summary>Dungeon format: a press in a mini game counted (a hit, a miss, or the hit that won it).</summary>
+public sealed record MinigamePlayed(string OwnerId, MinigamePress Result) : MatchEvent;
+
+/// <summary>Dungeon format: a mini game's time limit ran out before it was won (raised by Tick).</summary>
+public sealed record MinigameLost(string OwnerId) : MatchEvent;
+
+/// <summary>Dungeon format: a mini game's result has been shown: back to the fight, or (won) to a reward pick (raised by Tick).</summary>
+public sealed record MinigameOver(string OwnerId) : MatchEvent;
+
+/// <summary>Dungeon format: an adventurer picked a reward (or time ran out and one was picked for them).</summary>
+public sealed record RewardChosen(string OwnerId, RewardTaken Taken) : MatchEvent;
 
 /// <summary>Dungeon format: in the intro, a player said yes to a hero photo (when photos are asked for first).</summary>
 public sealed record PhotoAsked(string StationId) : MatchEvent;

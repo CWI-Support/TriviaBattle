@@ -46,7 +46,9 @@ public static class SnapshotBuilder
             teams,
             match.GetStandings(),
             viewer.Role == ViewerRole.Player ? BuildYou(match, viewer.StationId!) : null,
-            viewer.Role == ViewerRole.Admin ? match.Streams.Select(BuildStream).ToList() : null);
+            viewer.Role == ViewerRole.Admin ? match.Streams.Select(BuildStream).ToList() : null,
+            match.ClockStoppedAt is { } left ? (long)left.TotalMilliseconds : null,
+            (long)match.ClockHeldFor.TotalMilliseconds);
     }
 
     private static PlayerView BuildPlayer(MatchEngine match, Player player)
@@ -91,7 +93,9 @@ public static class SnapshotBuilder
 
         var team = match.Roster.TeamOf(player);
         var stream = match.StreamFor(player);
-        var question = match.Phase == MatchPhase.Playing ? stream.CurrentQuestion : null;
+        var adventurer = match.Dungeon?.FindAdventurer(stream.OwnerId);
+        // Away from the fight (choosing a reward, playing a mini game): the answer buttons do that, so no question is up.
+        var question = match.Phase == MatchPhase.Playing && adventurer is not { IsAway: true } ? stream.CurrentQuestion : null;
 
         return new YouView(
             player.StationId,
@@ -107,7 +111,40 @@ public static class SnapshotBuilder
             ToHelping(match, stream),
             ToBeat(match, stream),
             player.PhotoAt == null && !player.PhotoDeclined && !player.PhotoFromLobby ? ToUnixMs(match.PhotoOfferEndsAt) : null,
-            ToUnixMs(player.PhotoAt));
+            ToUnixMs(player.PhotoAt),
+            ToRewardOffer(match, adventurer),
+            match.Phase == MatchPhase.Playing ? ToMinigame(adventurer?.Minigame) : null);
+    }
+
+    /// <summary>Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one.</summary>
+    private static MinigameView? ToMinigame(Dungeon.Minigames.Minigame? game)
+    {
+        if (game == null)
+            return null;
+        var runeLock = game is Dungeon.Minigames.RuneLock s
+            ? new RuneLockView(s.Hits, s.HitsNeeded, ToUnixMs(s.LockedUntil), s.TurnStartedAt.ToUnixTimeMilliseconds(), s.TurnAngle, s.DegreesPerSecond,
+                s.MarkAngle, s.MarkDegrees, s.Presses, s.LastWasHit)
+            : null;
+        return new MinigameView(game.Kind.ToString(), game.IntroAt.ToUnixTimeMilliseconds(), game.PlaysFrom.ToUnixTimeMilliseconds(),
+            game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock);
+    }
+
+    /// <summary>Dungeon format: the rewards they're choosing between after a floor's boss, each with the number its card shows. Null when they aren't.</summary>
+    private static RewardOfferView? ToRewardOffer(MatchEngine match, Dungeon.Adventurer? adventurer)
+    {
+        if (adventurer?.Offer is not { } offer || match.Phase != MatchPhase.Playing)
+            return null;
+
+        var trial = adventurer.LastTrial;
+        return new RewardOfferView(
+            offer.Floor,
+            offer.Choices.Select(r => new RewardChoiceView(r, match.Dungeon!.RewardAmount(adventurer, r))).ToList(),
+            offer.OpensAt.ToUnixTimeMilliseconds(),
+            (offer.OpensAt + TimeSpan.FromSeconds(match.Settings.Dungeon.Rewards.PickDelaySeconds)).ToUnixTimeMilliseconds(),
+            offer.EndsAt.ToUnixTimeMilliseconds(),
+            trial?.Right ?? 0,
+            trial?.Answered ?? 0,
+            offer.ForMinigame);
     }
 
     /// <summary>
@@ -117,8 +154,26 @@ public static class SnapshotBuilder
     private static BeatView? ToBeat(MatchEngine match, QuestionStream stream)
     {
         var adventurer = match.Dungeon?.FindAdventurer(stream.OwnerId);
-        if (adventurer == null || stream.LastAnswer is not { } answer || stream.CurrentShownAt is not { } shownAt || shownAt <= answer.PressedAt)
+        if (adventurer == null || stream.CurrentShownAt is not { } shownAt)
             return null;
+        var answeredAt = stream.LastAnswer?.PressedAt ?? DateTimeOffset.MinValue;
+        var reward = adventurer.LastReward;
+
+        // The party's poison killed the monster since they last answered (and since any reward): its kill beat. The
+        // hit is the party's (the delve's last hit), not one of theirs.
+        if (adventurer.PoisonKillAt is { } poisonAt && poisonAt >= answeredAt && shownAt > poisonAt && !(reward?.At > poisonAt))
+        {
+            var kill = match.Dungeon!.DelveOf(adventurer).LastHit;
+            var killKind = kill is not { Poison: true } ? "kill" : kill.BossAhead ? "boss" : kill.FloorCleared ? "floor" : "kill";
+            return new BeatView(killKind, poisonAt.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds(), ByPoison: true);
+        }
+
+        if (stream.LastAnswer is not { } answer || shownAt <= answer.PressedAt)
+            return null;
+
+        // A reward just picked: a short beat showing what it gives, then their question comes back.
+        if (reward != null && reward.At >= answer.PressedAt && shownAt > reward.At)
+            return new BeatView("reward", reward.At.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds());
 
         var kind = !answer.IsCorrect ? (adventurer.LastTaken?.Downed == true ? "downed" : "hurt")
             : adventurer.LastDealt is not { } hit ? "hit"
@@ -234,7 +289,7 @@ public static class SnapshotBuilder
             adventurer.ReviveProgress,
             match.Dungeon.ReviveAnswers,
             match.Dungeon.PartyOf(adventurer.PartyId)
-                .Select(a => new PartyMemberView(a.OwnerId, NameOf(match, a.OwnerId), a.Hp, a.MaxHp, ToUnixMs(a.DownedUntil), a.ReviveProgress))
+                .Select(a => new PartyMemberView(a.OwnerId, NameOf(match, a.OwnerId), a.Hp, a.MaxHp, ToUnixMs(a.DownedUntil), a.ReviveProgress, a.Lives, a.IsOut))
                 .ToList(),
             adventurer.Held,
             adventurer.FireballReady,
@@ -244,7 +299,17 @@ public static class SnapshotBuilder
             delve.Foes.Select(ToMonster).ToList(),
             adventurer.Class.ToString().ToLowerInvariant(),
             charge.Step,
-            charge.Steps);
+            charge.Steps,
+            adventurer.Trial,
+            adventurer.LastTrial,
+            match.Settings.Dungeon.Rewards.Enabled ? match.Settings.Dungeon.Rewards.Accuracy : 0,
+            adventurer.Rewards.Select(r => new RewardTakenView(r.Number, r.Reward, r.Amount, r.Floor, r.At.ToUnixTimeMilliseconds(), r.Picked)).ToList(),
+            adventurer.LastStands,
+            adventurer.Minigame?.Kind.ToString(),
+            adventurer.MinigamesWon,
+            adventurer.Lives,
+            adventurer.MaxLives,
+            adventurer.IsOut);
     }
 
     private static MonsterView ToMonster(Dungeon.Foe foe) =>

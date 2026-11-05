@@ -14,9 +14,20 @@ changeable on the Operator screen). In Dungeon format `MatchEngine` hands every 
 which holds all combat rules: each party (a team, or a solo player) shares one `Delve` (floor, monster), and each answer
 owner is an `Adventurer` (own HP, streak, hourglass, the one power-up they hold, their `HeroClass`). New dungeon rules go in `DungeonRun`, not `MatchEngine`.
 Every class has basic stats (`ClassStats`: `Hp`, `DamageDealt`, `DamageTaken`, shares where 1 = normal; `ClassSettings.StatsFor`).
+Lives (`DungeonSettings.Lives`, 3): each downing costs one; on the last an adventurer `IsOut` (down for good), and when everyone
+is out the game goes to "Continue?" (a continue restores them: `DungeonRun.RestoreLives`).
 Bosses end each floor: the kill before one is `DealtHit.BossAhead` (beat `boss`, its entrance; `FloorCleared` is the boss's own
 death). A boss charges up per adventurer (`BossChargeSteps`, `DungeonSettings.BossHitAt`): at full charge a miss is `TakenHit.Charged`
 (a big blow), a right answer `DealtHit.Staggered`; snapshots carry `DelveView.BossCharge`/`BossChargeSteps`.
+Floor rewards (`Reward`, `RewardSettings`, `Game:Dungeon:Rewards`): answer `Accuracy` (80%) of a floor right (`Adventurer.Trial`) and
+when it clears (`DungeonRun.OpenRewards`) you pick one of `Choices` with the answer buttons (`ChooseReward`) while `IsChoosing`
+holds your question and hourglass; rewards stack and are read live where the numbers are used (`DamageShare`, `FastSecondsOf`...).
+Tests have rewards off unless they pass `rewards: true` (like battle beats).
+Mini games (`Core/Dungeon/Minigames`: a `Minigame` base for the shared timing, one class per game, `MinigameCatalog`):
+every floor reached may have one between two rooms, loops included (`MinigameChance` in `config/dungeon.json`, `DungeonMap.MinigameOn`);
+the kill that empties the room before it is `DealtHit.MinigameAhead` and the party plays (`DungeonRun.StartMinigames`). Rules
+stay on the server (the rune lock's needle angle comes from the press time). While anyone `IsAway` (a mini game or a reward
+pick) the arcade clock stops (`MatchEngine.HoldTheClock`); screens show it with `UI.matchClock`.
 A room can hold a pack of monsters (`Delve.Foes`, `FloorDef.Rooms`): the one in front is fought and attacks. Every hero is a
 class (`HeroClass`, key = class name in lower case, numbers in `ClassSettings` / `Game:Dungeon:Classes`); "fast" is a set
 `CritWithinSeconds` (3 s), longer for the Tank. Only the Pugilist combos. Tests play `TestMatch.PlainHero` (the Ranger, whose

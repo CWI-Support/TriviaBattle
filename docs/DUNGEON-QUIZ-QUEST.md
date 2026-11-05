@@ -17,7 +17,12 @@ player shouts answers from a teammate's question meanwhile), land party combos, 
 party on the main screen. Between questions a battle beat plays the fight full screen (your knight's
 strike, crits and combos, kills bursting apart, the way down to the next floor, the boss reveal, the
 monster clawing you), banners sweep the main screen for the big moments, and placeholder 8-bit sounds
-play on each station's speaker. Not yet: the station card readers, the fifth button, power-ups, cards as adventurers, heroes, doors, voice, real art.
+play on each station's speaker. Floor rewards (Nov 2026, the "power acquisition" loop): answer 80% of a floor
+right and after its boss you pick one of three rewards with the answer buttons (more HP, damage, armour, time,
+a longer fast window, your class's power, a Last Stand), which stack for the rest of the run; deeper floors
+and loops outscale a player who doesn't earn them. Mini games (Nov 2026): a floor may have one between two rooms; the
+first is the Rune Lock (stop a spinning needle on the mark 6 times in a row). The clock stops while you play, and a win
+earns a reward. Not yet: the station card readers, the fifth button, power-ups, cards as adventurers, heroes, doors, voice, real art.
 
 **Experience design** (the why: the "a-ha" moment, power acquisition, the Host as the story, the
 objectives and how they're measured): `docs/DUNGEON-QUIZ-QUEST-experience-design.pdf`. Following it so

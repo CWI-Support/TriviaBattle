@@ -116,14 +116,16 @@ The rules:
   (`DealtHit.TotalDamage` plus any HP healed), so scores, results and leaderboards work unchanged.
 - **Class stats** (`ClassStats`, one per class in `ClassSettings`, `StatsFor`): `Hp` (of `AdventurerHp`), `DamageDealt` (of a right
   answer's damage, before crits and combos; a Wizard's splash follows it) and `DamageTaken` (of a monster's hit), all shares
-  where 1 is normal. Every class is tuned the same way; upgrades between floors are meant to raise these. Monsters
+  where 1 is normal. Every class is tuned the same way; floor rewards (below) raise them. Monsters
   hit harder on each loop through the dungeon (`LoopDamageBonus`, beside `LoopHpBonus`): an `Encounter` carries its
   `MaxHp` and `Damage` for its floor.
 - **Hero classes** (`HeroClass`, numbers in `ClassSettings`, all in `DungeonRun`): the Rogue's crits use
   `RogueCritMultiplier`; the Tank's fast window is `TankFastSeconds` and it takes `Tank.DamageTaken` of a hit; the
   Healer's fast answer heals the standing party member lowest on HP (`DealtHit.HealedOwnerId`), or with nobody hurt
   adds a poison stack to the monster in front (`Delve.Poison`; `DungeonRun.TickPoison` does its damage every
-  tick, raising `MonsterPoisoned`, and a poison kill is a kill but scores nothing); the Wizard's fast answer splashes
+  tick, raising `MonsterPoisoned`, and a poison kill is a kill but scores nothing: `DungeonRun.PoisonKilled` gives the party its kill
+  beat (`Adventurer.PoisonKillAt`; the snapshot's `BeatView.ByPoison`, whose hit is `DelveView.LastHit`), and their question comes
+  back after it); the Wizard's fast answer splashes
   every other monster in the room (`DealtHit.Splashes`); the Pugilist is the only class with a combo
   (`DealtHit.Combo`, `ComboCount`); the Warlock's patron decides once per question (`PlanReveal`, when the hourglass
   turns over) whether to show the answer when the hourglass is down to `WarlockRevealSecondsLeft`
@@ -138,7 +140,13 @@ The rules:
   that's `DownedSeconds`. In a party of two or more they wait for their teammates: `ReviveAnswers` right
   answers from them (counted on whoever has been down longest) revive them at once, with
   `PartyDownedSeconds` as the safety net. When the whole party is down, the monster heals to full and
-  everyone gets up after `DownedSeconds`. Nobody is knocked out of a paid game.
+  everyone gets up after `DownedSeconds`.
+- **Lives** (`DungeonSettings.Lives`, 3; 0 = no limit): each downing costs one (`Adventurer.Lives`). Downed on the last,
+  `Adventurer.IsOut`: `DownedUntil` is `DateTimeOffset.MaxValue` (their buttons dead for good), `GetUp` does nothing, and
+  revives, Potions, the whole-party-down get-up, mini games and rewards all pass them by; `TakenHit.Out` marks that hit.
+  In a party they still see a teammate's question (`YouView.Helping`). When `DungeonRun.EveryoneOut`, `MatchEngine.Tick`
+  ends Playing whatever the clock says ("Continue?"), and `Continue` calls `DungeonRun.RestoreLives` (lives back, the out
+  back up, their lockout ended). Snapshots: `DelveView.Lives`/`MaxLives`/`Out`, `PartyMemberView.Lives`/`Out`.
 - **Party combo:** when every other standing member of the party has answered right within
   `PartyComboSeconds`, the hit that completes it does `PartyComboBonus` more damage
   (`DealtHit.PartyCombo`). Then everyone needs a fresh right answer for the next one.
@@ -177,6 +185,36 @@ The rules:
   `BossChargedHit` of its damage (`TakenHit.Charged`) while a right answer staggers it for `StaggerBonus` more
   (`DealtHit.Staggered`). Any answer then starts the cycle over. The snapshot carries the step for the question now
   (`DelveView.BossCharge`, of `BossChargeSteps`; 0 steps = not fighting a boss) so the screens can warn of the blow.
+- **Floor rewards** (`Reward`, numbers in `RewardSettings`, `"Game:Dungeon:Rewards"`). Every answer counts towards the
+  adventurer's `FloorTrial` for the floor they're on (`Adventurer.CountAnswer`, from `Strike` and `TakeHit`: timeouts
+  count as misses). When a floor clears (`DealtHit.FloorCleared`, from an answer or the Healer's poison),
+  `MatchEngine` calls `DungeonRun.OpenRewards`: each party member at or over `Accuracy` gets a `RewardOffer` of
+  `Choices` random rewards (`RewardOffered`), opening when the boss's death beat ends. While `Adventurer.IsChoosing`
+  their hourglass is stopped (`StartHourglass` won't run it), the snapshot has no question but `YouView.Reward`, and
+  `HandlePress` sends answer buttons to `ChooseReward` (after `PickDelaySeconds`); at `EndsAt` the tick picks one at
+  random. A pick (`RewardChosen`) goes on `Adventurer.Rewards`, and the question comes back after a `reward` beat
+  (`RewardSettings.BeatSeconds`). The arcade clock stands still meanwhile (see Mini games: `IsAway`, `HoldTheClock`).
+  Rewards are read live where the numbers are used (`DamageShare`, `DamageTakenShare`, `FastSecondsOf`, and each class
+  power's `...Of`); only Vitality (max HP) and Last Stand (a count, used in `Adventurer.TakeHit`) change state.
+  `RewardAmount` is the number each card shows. Screens: `js/dungeon-rewards.js`, `css/dungeon-rewards.css`.
+- **Mini games** (`Core/Dungeon/Minigames`, numbers in `MinigameSettings`, `"Game:Dungeon:Minigames"`). `DungeonMap.MinigameOn`
+  rolls every floor reached for one by `MinigameChance` (config/dungeon.json), loops included (a loop repeats a floor's
+  rooms, not its mini game): its own `Random` from the match's seed and the floor number, so every party meets the same
+  ones. The kind comes from `MinigameCatalog.Pick` (every kind as likely) and it follows a random room, never the one
+  before the boss's. A floor written with `FloorDef.Minigame`/`MinigameAfterRoom` always has that one (tests use it). When that room empties,
+  `Delve.ClearTheDead` marks the kill `DealtHit.MinigameAhead`, and `MatchEngine` calls `DungeonRun.StartMinigames`: each
+  party member not already away gets their own `Minigame` (`MinigameStarted`), its intro once the kill beat ends. A
+  `Minigame` keeps the timing every game shares (`IntroAt`, `PlaysFrom`, `EndsAt`, `FinishedAt`, `ResultEndsAt`); each
+  game is a subclass with its own rules for a press (`RuneLock`: the needle's angle comes from the press time and the
+  turn it's on, so hits are decided on the server and the screen only animates the same numbers). `HandlePress` sends
+  answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
+  and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
+  others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone,
+  `DungeonRun.ClockStopped` is true and `MatchEngine.HoldTheClock` pushes `PhaseEndsAt` back every tick, so everything
+  that checks the clock works as normal; `ClockHeldFor` adds it up. Snapshots: `YouView.Minigame` (`MinigameView` with
+  each game's part, `RuneLockView`), `DelveView.Minigame`/`MinigamesWon` for the main screen, and
+  `MatchSnapshot.ClockStoppedLeftMs`/`ClockHeldMs` (`UI.matchClock` shows a stopped clock; the "+10s" pop leaves the held
+  time out). Screens: `js/dungeon-minigames.js`, `css/dungeon-minigames.css`; sounds in `RoomSoundService`.
 - **Each floor's questions.** A floor's `Questions` weights (`{ "Easy": 80, "Medium": 20 }`) pick each next
   question's difficulty (`DungeonRun.NextDifficulty`, by the adventurer's floor); `QuestionStream.Record` takes it
   and gives the first question of that difficulty not yet asked (any, if none is left), and `QuestionStream.Prefer`
@@ -472,7 +510,11 @@ The fight in 3D (the default; `?view=2d` on a station, or a PC without WebGL 2, 
 3D models that read like 2D paintings (Hearthstone-like). `js/battle3d/` draws the room, the fighters and
 the effects with three.js (vendored in `lib/three`, found through an import map) on a canvas behind the
 station's HTML. The HTML marks where it goes with `data-stage`: `fight` on the beat's `.dg-battle`,
-`portrait` on the encounter's `.dg-stage` while a question is up (the monster turns to face you).
+`portrait` on the encounter's `.dg-stage` while a question is up (the monster turns to face you). Both fill
+the station's `.dg-world`, everything above the player plate, edge to edge, and the station's words float over
+the scene (the encounter's `.dg-hud`; the beat's top line). The element marked `data-focus` is the gap they leave
+(`.dg-window` between the question scroll and the answers; the beat's `.dg-arena`): `Stage.focus()` measures it and
+`aim()` shifts the camera so the monster, or the fight, lands there.
 The words, damage number, flash, HP bar, the Host's line and the floor curtain stay HTML, so both versions
 share them; `css/battle3d.css` hides what the 3D replaces. One file per job: `models.js` (which model and
 clips each Sprite key uses; a key with no model stands in the room as its flat picture), `stage.js`
@@ -486,7 +528,8 @@ works the pack back to how it stood when the blow landed. The hero classes show 
 splash sends bolts to every waiting monster (landing at the 190 ms impact), poisoned monsters glow green with
 bubbles by their stacks, a heal sparkles on whoever it healed (you, or a teammate in `others.js`), the
 Warlock's price drains purple from the hero, a Tank blocks (`Block_Hit`) instead of reeling, and the
-Pugilist's swing grows with `comboCount`. Moments outside a beat (a poison kill, a teammate's heal) are
+Pugilist's swing grows with `comboCount`; a poison kill's beat (`byPoison`) has no blow: the monster chokes green and bursts
+(`poisonKills`). Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
 timed from when the screen saw them, as `others.js` does. The models are CC0 placeholders
 (`media/models/CREDITS.md`) until the real art exists.
 

@@ -61,11 +61,13 @@ public sealed class ClassSettings
 
     // Healer: a fast answer heals whoever standing in the party is lowest on HP (themselves included).
     // With nobody standing hurt, it poisons the monster in front instead: one more stack each time. Every
-    // stack does PoisonDamage every PoisonTickSeconds until that monster dies. Poison can kill.
+    // stack does PoisonDamage every PoisonTickSeconds until that monster dies (1 every 2 seconds: half a point of
+    // damage a second per stack; it adds up over a long fight). Poison can kill: everyone in the party then gets a
+    // kill beat, as for any kill.
 
     public int HealerHeal { get; set; } = 15;
-    public int PoisonDamage { get; set; } = 2;
-    public double PoisonTickSeconds { get; set; } = 1;
+    public int PoisonDamage { get; set; } = 1;
+    public double PoisonTickSeconds { get; set; } = 2;
 
     // Wizard: a fast answer hits every monster in the room. The one in front takes the full hit, every
     // other one this share of it.

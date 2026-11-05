@@ -98,7 +98,7 @@ class Battle {
         const hurt = beat?.kind === 'hurt' || beat?.kind === 'downed';
         const key = !playing ? delve.monster.sprite
             : hurt ? delve.lastTaken?.monsterSprite || delve.monster.sprite
-            : delve.lastDealt?.monsterSprite || delve.monster.sprite;
+            : DungeonBattle.beatHit(you)?.monsterSprite || delve.monster.sprite; // the one in this beat (a poison kill: the party's hit)
         if (died === 'poison' && this.foe) this.poisonDeath = { at: now, chest: this.foe.chest() };
         if (!died && (key === this.foeKey || key === this.foeLoadingKey)) return;
 
@@ -165,7 +165,7 @@ class Battle {
         const room = `${delve.floor}:${delve.room}`;
         const waiting = list => list.slice(0, PACK_MAX).map(f => ({ key: f.sprite, poison: f.poisonStacks || 0, splash: null }));
         const hurt = you.beat?.kind === 'hurt' || you.beat?.kind === 'downed';
-        const hit = playing && !hurt ? delve.lastDealt : null;
+        const hit = playing && !hurt ? DungeonBattle.beatHit(you) : null;
         if (!playing) this.roomSeen = room;
 
         if (!hit) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
@@ -183,7 +183,7 @@ class Battle {
     foePoison(you, playing) {
         const delve = you.delve;
         const hurt = you.beat?.kind === 'hurt' || you.beat?.kind === 'downed';
-        if (playing && !hurt && delve.lastDealt?.killed) return 0;
+        if (playing && !hurt && DungeonBattle.beatHit(you)?.killed) return 0;
         return delve.monster.poisonStacks || 0;
     }
 
@@ -281,28 +281,40 @@ class Battle {
         this.pack.face(this.foeYaw);  // the waiting ones turn with it
     }
 
-    /** Points the camera: the whole fight, or (while a question is up) the monster in its room. */
+    /**
+     * Points the camera: the whole fight, or (while a question is up) the monster in its room. The scene fills
+     * the screen with words floating over it, so the subject goes in the gap they leave (Stage.focus): the
+     * camera is raised or lowered by however far that gap's middle is from the box's.
+     */
     aim({ zoom, focus }) {
         const aspect = this.stage.aspect();
         const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+        const clear = this.stage.focus();
+        const clearShare = clear.bottom - clear.top;
+        // Moves the shot so a point aimed at lands in the gap, a share 'at' of the way down it (0.5: its middle): at
+        // this distance the box shows 2 x distance x tan of height, and that spot is (spot - 0.5) of it below the box's middle.
+        const intoGap = (distance, at = 0.5) =>
+            new THREE.Vector3(0, (clear.top + (clear.bottom - clear.top) * at - 0.5) * 2 * distance * tan, 0);
 
         if (this.stage.mode() === 'portrait' && this.foe) {
             const spec = this.foe.spec;
             const height = spec.height || 2;
-            // The monster big in the middle of its room, seen from straight on and a little below its eyes.
+            // The monster big in the gap, seen from straight on and a little below its eyes.
             const target = new THREE.Vector3(FOE_HOME.x, (spec.hover || 0) + height * 0.52, FOE_HOME.z);
-            const distance = Math.max((height * 0.62) / tan, (this.foe.width * 0.95) / (tan * aspect));
-            this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)), target, FOV);
+            const distance = Math.max((height * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect));
+            const shift = intoGap(distance);
+            this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)).add(shift), target.clone().add(shift), FOV);
             return;
         }
 
         // Both fighters across the box, seen a little from above, aimed a touch left of centre: the knight
         // is nearer the camera, so he looks further out than the monster. The HP bar and the Host's line go
         // under them.
-        const span = 5.8;
+        const span = 5.2;
         const distance = ((span / 2) / (tan * Math.min(aspect, 1.2))) * zoom;
         const target = new THREE.Vector3(focus - 0.15, 0.75, 0);
-        this.stage.frame(target.clone().add(new THREE.Vector3(0, distance * 0.36, distance)), target, FOV);
+        const shift = intoGap(distance, 0.6); // a little low in the fight's space: the words go above them
+        this.stage.frame(target.clone().add(new THREE.Vector3(0, distance * 0.36, distance)).add(shift), target.clone().add(shift), FOV);
     }
 }
 
@@ -313,12 +325,13 @@ class Battle {
 function beatInfo(beat, you, stepUp) {
     const delve = you.delve;
     const hurt = beat.kind === 'hurt' || beat.kind === 'downed';
-    const hit = hurt ? null : delve.lastDealt;
+    const hit = DungeonBattle.beatHit(you); // a poison kill's beat: the party's hit, the poison's
     const taken = hurt ? delve.lastTaken : null;
     const isYou = ownerId => !!ownerId && (ownerId === you.stationId || ownerId === you.teamId); // 2v2 Group: the team answers as one
     return {
         kind: beat.kind,
         hurt,
+        byPoison: !!beat.byPoison,                            // the Healer's poison killed it: no blow
         crit: !!hit?.crit,
         combo: !!hit?.combo,
         comboCount: hit?.combo ? (hit.comboCount || 3) : 0,  // a Pugilist's streak

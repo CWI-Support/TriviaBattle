@@ -164,7 +164,7 @@ frailer, harder-hitting Wizard. All are 1 except the Tank, which takes 0.6. Chan
 |---|---|---|
 | **Rogue** | Fast answers do much more damage. | crit x2.5 instead of x1.5 |
 | **Tank** | Has longer to answer fast, and takes less damage from monsters. | fast within 5 s; takes 60% |
-| **Healer** | A fast answer heals whoever in the party is lowest on HP (themselves included). With nobody hurt, it poisons the monster instead: one stack more each time, every stack hurting it every second until it dies. Healing scores like damage; poison scores nothing. | heals 15; 2 per stack per second |
+| **Healer** | A fast answer heals whoever in the party is lowest on HP (themselves included). With nobody hurt, it poisons the monster instead: one stack more each time, every stack hurting it every 2 seconds until it dies. A poison kill plays its own kill beat for the party. Healing scores like damage; poison scores nothing. | heals 15; 1 per stack every 2 s |
 | **Wizard** | A fast answer hits every monster in the room: the one in front fully, the others half as hard. | splash 50% |
 | **Warlock** | Half the time, as the hourglass gets down to its last 4 seconds, their patron shows them the right answer (only on their screen). Any answer after 6 seconds costs them 8 HP (it never downs them). | 50%, at 4 s left; after 6 s, 8 HP |
 | **Pugilist** | The only class with a combo: every right answer in a row does 15% more, up to +150%. A wrong answer or a hit ends it. | +15% a step, max +150% |
@@ -173,12 +173,55 @@ frailer, harder-hitting Wizard. All are 1 except the Tank, which takes 0.6. Chan
 Rooms can hold several monsters at once (`config/dungeon.json`: `"Rooms": [["rat", "slime"]]`). The party
 fights the one in front; the others wait their turn, and only the one in front attacks.
 
+**Lives:** each player has 3 (`"Game:Dungeon:Lives"`, 0 = no limit), shown as hearts on their plate. Every time they're
+downed costs one, revived or not; downed on their last they're **out**. Alone, that ends the game: "Continue?" at once.
+In a party they sit out (no reviving them), still seeing a teammate's question to shout the answer, and the game ends
+when the whole party is out. A swipe on "Continue?" brings everyone back with all their lives.
+
 **Bosses** end each floor. Clearing the room before one plays its entrance on the station (and its sound, and a
 banner on the main screen). A boss powers up: each player's questions against it go round a cycle where it hits
 for 50% of its damage, then 100%, then at **full charge** 250%. At full charge a wrong answer (or running out of
 time) takes that big blow, and a right answer **staggers** it instead (50% more damage). Either way it starts over.
 The station shows the charge, and warns at full power. Set in `"Game:Dungeon"`: `BossChargeSteps` (3; 0 = no
 cycle), `BossWeakHit` (0.5), `BossChargedHit` (2.5), `StaggerBonus` (0.5).
+
+**Floor rewards** are for playing well. Answer at least **80%** of a floor's questions right (wrong answers and
+running out of time count against you; the station's top line shows a chest and your count so far) and, when
+the floor's boss dies, choose one of **three rewards** with the answer buttons (A, B, C). You have 12 seconds,
+then one is picked for you; the monster waits meanwhile, and the arcade clock stops until everyone has picked.
+Rewards last the rest of the game and stack. In a party, everyone who earned one picks their own.
+
+| Reward | What it does (each pick) |
+| --- | --- |
+| **Vitality** | +25% of your starting max HP, and a full heal |
+| **Might** | +20% damage |
+| **Armor** | 15% less damage taken |
+| **Borrowed Time** | +20 seconds on the clock (a party's is shared out like a kill's) |
+| **Focus** | +1 second to count as fast: more crits, and more of your class's power |
+| **Mastery** | Your class's power gets stronger: Rogue crits +0.5x, Tank 15% less damage, Healer +10 HP heals, Wizard +25% splash, Pugilist +5% combo per hit, Warlock +20% reveal chance, Ranger 1 s earlier |
+| **Last Stand** | The next blow that would down you leaves you on 1 HP |
+
+Set in `"Game:Dungeon:Rewards"` (`RewardSettings`): `Accuracy`, `Choices`, `PickSeconds` and each reward's
+number. `DungeonPacingTests` checks an average player earns about one reward a session and a good one nearly
+every boss's, and that the deeper floors (Depth 2 hits two to three times as hard as Depth 1, and each loop back to
+the top adds 75% HP and 100% damage) stop even a good player who doesn't earn them. Dev tools: `POST /api/dev/reward/{stationId}/{Reward}` hands one over; `/dev/battle?kind=reward`
+and `?kind=rewarded` preview the screens.
+
+**Mini games** break up a floor. Every floor you reach has a chance (`MinigameChance` in `config/dungeon.json`, 40%) of
+one between two of its rooms, loops back to the top included (they repeat a floor's rooms, not its mini game): at most
+one a floor, never right before the boss, and each kind of mini game as likely as the others. When the room before it is cleared, everyone in the party plays their own go on their own station:
+an intro (what it is, how to play, 3-2-1), then the game, then how it went. **The arcade clock stops** while anyone
+is in one (and while anyone is picking a reward): they're outside the paid time. Winning earns a reward pick.
+
+| Mini game | How it plays |
+| --- | --- |
+| **Rune Lock** | A needle spins round a dial. Press any answer button while it's on the glowing mark: 6 hits in a row open the lock. Each hit moves the mark, makes it 12% narrower and sends the needle back the other way 10% faster. A miss starts the count again (the mark back to full width, the needle back to its first speed) and locks the buttons for 2 seconds. 30 seconds to do it. |
+
+Set in `"Game:Dungeon:Minigames"` (`MinigameSettings`): `IntroSeconds`, `ResultSeconds`, `WinEarnsReward`, and each
+game's numbers (`RuneLock`: `Hits`, `Seconds`, `LockoutSeconds`, `MarkDegrees`, `DegreesPerSecond`, `SpeedUpPerHit`).
+To add one: a class in `Core/Dungeon/Minigames` (from `Minigame`), a `MinigameKind`, a case in `MinigameCatalog.Create`,
+its part of the snapshot (`MinigameView`) and its drawing in `js/dungeon-minigames.js`. Preview: `/dev/battle?kind=runelock`
+(also `runelock-won`, `runelock-lost`).
 
 A kiosk game has no hero choice: everyone plays the Tank. In 2v2 Group, where teammates share one question,
 the team fights as the first teammate's hero.

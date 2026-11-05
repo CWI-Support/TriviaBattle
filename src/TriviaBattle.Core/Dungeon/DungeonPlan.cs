@@ -11,8 +11,11 @@ public sealed class DungeonPlan
     private readonly IReadOnlyDictionary<string, MonsterDef> _monsters;
 
     /// <exception cref="ArgumentException">The dungeon isn't valid (every problem is spelled out).</exception>
-    public DungeonPlan(IReadOnlyList<DepthDef> depths, IReadOnlyList<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0)
+    /// <param name="minigameChance">How likely each floor reached is to have a mini game between two of its rooms (0 = never, 1 = always).</param>
+    public DungeonPlan(IReadOnlyList<DepthDef> depths, IReadOnlyList<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
+        double minigameChance = 0)
     {
+        MinigameChance = minigameChance;
         Depths = depths;
         Monsters = monsters;
         LoopHpBonus = loopHpBonus;
@@ -30,13 +33,17 @@ public sealed class DungeonPlan
     public double LoopHpBonus { get; }
     public double LoopDamageBonus { get; }
 
+    /// <summary>How likely each floor reached is to have a mini game (config/dungeon.json's <c>MinigameChance</c>; see DungeonMap.MinigameOn).</summary>
+    public double MinigameChance { get; }
+
     /// <summary>One match's dungeon: every made-up floor laid out with <paramref name="random"/>.</summary>
     public DungeonMap Build(Random random)
     {
         var depths = Depths
             .Select(depth => depth with { Floors = depth.Floors.Select(floor => floor.IsMadeUp ? LayOut(floor, random) : floor).ToList() })
             .ToList();
-        return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus);
+        // Mini games are rolled floor by floor as they're reached (DungeonMap.MinigameOn), loops included.
+        return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus, MinigameChance, random.Next());
     }
 
     /// <summary>A made-up floor, written out: <see cref="FloorDef.RoomCount"/> rooms filled from the pool, then the boss's.</summary>

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TriviaBattle.Core.Dungeon;
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Stations;
 using TriviaBattle.Server.Data;
@@ -231,6 +232,43 @@ public sealed class RoomSoundService(
 
             case PowerUpUsed { OwnerId: var ownerId, Use: var use }:
                 room.PlayEffect([.. StationsOf(match, ownerId), .. StationsOf(match, use.TargetOwnerId)], _settings.Dungeon.PowerUp);
+                break;
+
+            case MonsterPoisoned { PartyId: var partyId, Kill: { } kill }:
+                // The Healer's poison killed it: the party's kill beat plays, so its burst (and the way on) is heard with it.
+                var poisoned = PartyStationsOf(match, match.Dungeon?.PartyOf(partyId).FirstOrDefault()?.OwnerId ?? partyId);
+                room.PlayEffect(poisoned, _settings.Dungeon.Kill, MonsterBursts);
+                if (kill.BossAhead)
+                    room.PlayEffect(poisoned, _settings.Dungeon.Boss, CurtainFalls);
+                else if (kill.FloorCleared)
+                    room.PlayEffect(poisoned, _settings.Dungeon.Floor, CurtainFalls);
+                break;
+
+            // Mini games: a fanfare as the intro comes up (after the kill beat), then each press heard on the station.
+            case MinigameStarted { OwnerId: var ownerId }:
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Floor, match.Settings.Dungeon.KillBeatSeconds);
+                break;
+
+            case MinigamePlayed { OwnerId: var ownerId, Result: var result }:
+                room.PlayEffect(StationsOf(match, ownerId), result switch
+                {
+                    MinigamePress.Won => _settings.Dungeon.PartyCombo,
+                    MinigamePress.Hit => _settings.Dungeon.Hit,
+                    _ => _settings.Dungeon.Block,
+                });
+                break;
+
+            case MinigameLost { OwnerId: var ownerId }:
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Hurt);
+                break;
+
+            case RewardOffered { OwnerId: var ownerId }:
+                // The loot chime as the reward cards come up (after the boss's death beat).
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot, match.Settings.Dungeon.FloorBeatSeconds);
+                break;
+
+            case RewardChosen { OwnerId: var ownerId }:
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.PowerUp);
                 break;
 
             case PhotoCountdown { StationId: var stationId, SecondsLeft: var left }:

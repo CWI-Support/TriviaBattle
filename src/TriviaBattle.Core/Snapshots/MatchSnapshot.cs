@@ -34,6 +34,10 @@ public sealed record Viewer(ViewerRole Role, string? StationId = null)
 /// <param name="You">Only for player screens.</param>
 /// <param name="Streams">Only for admin: every player's/team's current question, with its answer.</param>
 /// <param name="Format">"Classic" or "Dungeon": which game the screens draw.</param>
+/// <param name="ClockStoppedLeftMs">Dungeon games, while the arcade clock is stopped (someone's in a mini game or picking a reward): the time
+/// it shows. Screens show that, standing still, instead of counting down to <paramref name="PhaseEndsAtMs"/>. Null while it runs.</param>
+/// <param name="ClockHeldMs">How long the clock has been held still so far this match: it pushes <paramref name="PhaseEndsAtMs"/> back, so
+/// a screen showing "+10s" for time earned takes this off first.</param>
 public sealed record MatchSnapshot(
     int Version,
     string MatchId,
@@ -54,7 +58,9 @@ public sealed record MatchSnapshot(
     IReadOnlyList<TeamView> Teams,
     IReadOnlyList<Standing> Standings,
     YouView? You,
-    IReadOnlyList<StreamView>? Streams);
+    IReadOnlyList<StreamView>? Streams,
+    long? ClockStoppedLeftMs = null,
+    long ClockHeldMs = 0);
 
 /// <param name="LastAnswer">
 /// Their most recent answer, for a right/wrong flash. Null if they haven't answered yet, or if
@@ -143,6 +149,9 @@ public sealed record YourAnswerView(
 /// <param name="Beat">Dungeon format: the battle beat after their last answer (the next question waits until it ends).</param>
 /// <param name="PhotoOfferUntilMs">Photos asked for first: the intro offers one ("press the action button to put your face on your hero") until this time. Null once they've answered, or with no offer.</param>
 /// <param name="PhotoAtMs">A hero photo is coming (or was taken): the station takes it at this time, after a countdown. The action button in the intro says no.</param>
+/// <param name="Reward">Dungeon format, after a floor's boss: the rewards they're choosing between with their answer buttons (their question waits: <paramref name="Question"/> is null meanwhile).</param>
+/// <param name="Minigame">Dungeon format, between two rooms: the mini game they're playing with their answer buttons (their question waits:
+/// <paramref name="Question"/> is null meanwhile), from its intro until the moment after it ends.</param>
 public sealed record YouView(
     string StationId,
     string Name,
@@ -157,15 +166,57 @@ public sealed record YouView(
     HelpView? Helping,
     BeatView? Beat,
     long? PhotoOfferUntilMs,
-    long? PhotoAtMs);
+    long? PhotoAtMs,
+    RewardOfferView? Reward = null,
+    MinigameView? Minigame = null);
 
 /// <summary>
 /// The fight shown between two questions. The screen plays it from <see cref="StartedAtMs"/> to
 /// <see cref="EndsAtMs"/>, when the next question appears. What exactly happened is in the delve's
 /// LastDealt (your hit) or LastTaken (the monster's).
 /// </summary>
-/// <param name="Kind">"hit", "kill", "floor" (a floor cleared), "boss" (cleared, and the next floor's boss steps up), "hurt" or "downed".</param>
-public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs);
+/// <param name="Kind">"hit", "kill", "floor" (a floor cleared: its boss died), "boss" (the room before a boss's cleared: the boss steps up), "hurt", "downed", or "reward" (a reward just picked: what it gives).</param>
+/// <param name="ByPoison">The party's poison killed the monster (a "kill", "floor" or "boss" beat nobody answered for): its hit is
+/// <see cref="DelveView.LastHit"/>, not <see cref="DelveView.LastDealt"/>.</param>
+public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs, bool ByPoison = false);
+
+/// <summary>
+/// The rewards a player is choosing between after a floor's boss (see <see cref="Reward"/>): answer button A picks
+/// the first, B the second... From <see cref="PickFromMs"/>; at <see cref="EndsAtMs"/> one is picked for them.
+/// </summary>
+/// <param name="OpensAtMs">The cards come up (after the boss's death beat).</param>
+/// <param name="Right">How many of the floor's questions they got right, of <paramref name="Answered"/>.</param>
+/// <param name="ForMinigame">A mini game's prize (the screen says so) rather than the floor's.</param>
+public sealed record RewardOfferView(int Floor, IReadOnlyList<RewardChoiceView> Choices, long OpensAtMs, long PickFromMs, long EndsAtMs, int Right, int Answered,
+    bool ForMinigame = false);
+
+/// <summary>One reward on offer, with the number its card shows (see DungeonRun.RewardAmount: HP, percent, seconds...).</summary>
+public sealed record RewardChoiceView(Reward Reward, double Amount);
+
+/// <summary>A reward a player picked. <see cref="Number"/> counts up, so screens can show each pick once.</summary>
+/// <param name="AtMs">When it was picked (the short beat showing it starts then).</param>
+/// <param name="Picked">False when time ran out and it was picked for them.</param>
+public sealed record RewardTakenView(int Number, Reward Reward, double Amount, int Floor, long AtMs, bool Picked);
+
+/// <summary>
+/// A mini game on a player's station (see Core/Dungeon/Minigames): the intro from <see cref="IntroAtMs"/>, play from
+/// <see cref="PlaysFromMs"/> to the time limit <see cref="EndsAtMs"/>, then (once <see cref="FinishedAtMs"/> is set) how it
+/// went until <see cref="ResultEndsAtMs"/>. Each game's own state is in its own part (only one is set).
+/// </summary>
+/// <param name="Kind">Which game ("RuneLock").</param>
+public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs, long EndsAtMs, long? FinishedAtMs, bool Won, long? ResultEndsAtMs,
+    RuneLockView? RuneLock);
+
+/// <summary>
+/// The rune lock. The needle turns at <see cref="DegreesPerSecond"/> (negative: anticlockwise) from <see cref="TurnAngle"/>
+/// at <see cref="TurnStartedAtMs"/>: the screen spins it from those, and the server works out hits from the same numbers.
+/// Angles are degrees clockwise from the top.
+/// </summary>
+/// <param name="MarkAngle">The middle of the glowing mark, <paramref name="MarkDegrees"/> wide.</param>
+/// <param name="LockedUntilMs">After a miss: the buttons are dead until then.</param>
+/// <param name="Presses">Presses that counted so far (it changes with each, so screens can flash it once); <paramref name="LastWasHit"/> says how the last went.</param>
+public sealed record RuneLockView(int Hits, int HitsNeeded, long? LockedUntilMs, long TurnStartedAtMs, double TurnAngle, double DegreesPerSecond,
+    double MarkAngle, double MarkDegrees, int Presses, bool LastWasHit);
 
 /// <summary>A teammate's question shown to a downed player. Never includes which answer is correct.</summary>
 public sealed record HelpView(string Name, QuestionView Question);
@@ -194,6 +245,15 @@ public sealed record HelpView(string Name, QuestionView Question);
 /// <param name="BossCharge">Fighting a boss: its charge for their question now, 0-based, of <paramref name="BossChargeSteps"/>
 /// (the last step is full charge: a miss takes its big blow, a right answer staggers it).</param>
 /// <param name="BossChargeSteps">How many steps the boss's charge cycle has; 0 when they aren't fighting a boss.</param>
+/// <param name="Trial">Their answers on this floor so far: its reward needs <paramref name="RewardAccuracy"/> of them right.</param>
+/// <param name="LastTrial">How they did on the last floor cleared, and whether it earned a reward (null before the first).</param>
+/// <param name="RewardAccuracy">The share of a floor's questions to get right for its reward (0 with rewards off).</param>
+/// <param name="Rewards">Every reward they've picked, in order (Number counts up, so screens can show each pick once).</param>
+/// <param name="LastStands">Last Stand rewards still to come.</param>
+/// <param name="Minigame">The mini game they're playing now ("RuneLock"...), null when they aren't (the main screen shows they're in one).</param>
+/// <param name="MinigamesWon">Mini games they've won so far.</param>
+/// <param name="Lives">Lives left, of <paramref name="MaxLives"/> (0 there: no limit). Each downing costs one.</param>
+/// <param name="Out">Downed on their last life: out until a continue (they don't get up; <paramref name="DownedUntilMs"/> is null).</param>
 public sealed record DelveView(
     int Floor,
     int Room,
@@ -223,11 +283,23 @@ public sealed record DelveView(
     IReadOnlyList<MonsterView> Foes,
     string HeroClass,
     int BossCharge = 0,
-    int BossChargeSteps = 0);
+    int BossChargeSteps = 0,
+    FloorTrial? Trial = null,
+    FloorTrial? LastTrial = null,
+    double RewardAccuracy = 0,
+    IReadOnlyList<RewardTakenView>? Rewards = null,
+    int LastStands = 0,
+    string? Minigame = null,
+    int MinigamesWon = 0,
+    int Lives = 0,
+    int MaxLives = 0,
+    bool Out = false);
 
 /// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
 /// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>
-public sealed record PartyMemberView(string OwnerId, string Name, int Hp, int MaxHp, long? DownedUntilMs, int ReviveProgress);
+/// <param name="Lives">Lives left (0 with no limit).</param>
+/// <param name="Out">Out of lives: they sit out (no reviving them) until a continue.</param>
+public sealed record PartyMemberView(string OwnerId, string Name, int Hp, int MaxHp, long? DownedUntilMs, int ReviveProgress, int Lives = 0, bool Out = false);
 
 /// <summary>One monster on the path through a Depth. A pack's monsters share a Room; Slot is each one's place in it (1 = in front).</summary>
 public sealed record PathStepView(int Floor, int Room, string Name, string Sprite, bool IsBoss, int Slot = 1);
