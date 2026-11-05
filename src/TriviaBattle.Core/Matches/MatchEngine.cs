@@ -262,10 +262,10 @@ public sealed class MatchEngine
             return NothingHappened;
 
         var stream = StreamFor(player);
+        if (_dungeon?.FindAdventurer(stream.OwnerId) is { Minigame: not null })
+            return PlayMinigame(stream.OwnerId, press); // between two rooms: the buttons play the mini game (the action button too)
         if (press.IsAction)
             return UsePowerUp(stream.OwnerId, now);
-        if (_dungeon?.FindAdventurer(stream.OwnerId) is { Minigame: not null })
-            return PlayMinigame(stream.OwnerId, press); // between two rooms: the answer buttons play the mini game
         if (_dungeon?.FindAdventurer(stream.OwnerId) is { IsChoosing: true })
             return ChooseReward(stream.OwnerId, press.AnswerIndex, now); // after a boss: the answer buttons pick a reward
 

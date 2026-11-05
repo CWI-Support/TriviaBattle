@@ -216,12 +216,18 @@ is in one (and while anyone is picking a reward): they're outside the paid time.
 | Mini game | How it plays |
 | --- | --- |
 | **Rune Lock** | A needle spins round a dial. Press any answer button while it's on the glowing mark: 6 hits in a row open the lock. Each hit moves the mark, makes it 12% narrower and sends the needle back the other way 10% faster. A miss starts the count again (the mark back to full width, the needle back to its first speed) and locks the buttons for 2 seconds. 30 seconds to do it. |
+| **Rune Echo** | A "Simon says": the four runes (one per answer button) light up one after another; press them back in the same order. 5 rounds, 3 runes then one more each round; getting the 7-rune round right wins. A wrong rune shows that round again. 55 seconds. |
+| **Chest Shuffle** | A shell game: a coin drops into one of five chests, the lids close and the chests swap places. Press the button under the chest it's in: A, B, C, D, and the **action button** for the fifth. 3 rounds of 4, 6 and 8 swaps, faster each time; the wrong chest loses it (and shows where the coin was). 30 seconds. |
 
 Set in `"Game:Dungeon:Minigames"` (`MinigameSettings`): `IntroSeconds`, `ResultSeconds`, `WinEarnsReward`, and each
-game's numbers (`RuneLock`: `Hits`, `Seconds`, `LockoutSeconds`, `MarkDegrees`, `DegreesPerSecond`, `SpeedUpPerHit`).
+game's numbers (`RuneLock`: `Hits`, `Seconds`, `LockoutSeconds`, `MarkDegrees`, `MarkShrinkPerHit`, `DegreesPerSecond`,
+`SpeedUpPerHit`; `RuneEcho`: `StartLength`, `Rounds`, `StepSeconds`, `LitSeconds`, `Seconds`...; `ChestShuffle`:
+`RevealSeconds`, `BetweenSeconds`, `Seconds`, and its `Swaps` and `SwapSeconds` per round, which are best changed in
+`MinigameSettings.cs`: a list in appsettings is added to the defaults, not put in their place).
 To add one: a class in `Core/Dungeon/Minigames` (from `Minigame`), a `MinigameKind`, a case in `MinigameCatalog.Create`,
-its part of the snapshot (`MinigameView`) and its drawing in `js/dungeon-minigames.js`. Preview: `/dev/battle?kind=runelock`
-(also `runelock-won`, `runelock-lost`).
+its part of the snapshot (`MinigameView`) and its drawing in `js/dungeon-minigames.js`. Every kind is as likely as the
+others. Preview: `/dev/battle?kind=runelock` (also `runelock-won`, `runelock-lost`), `runeecho`, `chestshuffle`,
+`chestshuffle-lost`.
 
 A kiosk game has no hero choice: everyone plays the Tank. In 2v2 Group, where teammates share one question,
 the team fights as the first teammate's hero.

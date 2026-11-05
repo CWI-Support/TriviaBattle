@@ -47,6 +47,9 @@ public class LoggingMatchBroadcaster(ILogger<LoggingMatchBroadcaster> logger) : 
                 case MinigamePlayed { Result: MinigamePress.Won } m:
                     logger.LogInformation("Match {Id}: {Owner} won the mini game", match.MatchId, m.OwnerId);
                     break;
+                case MinigamePlayed { Result: MinigamePress.Lost } m:
+                    logger.LogInformation("Match {Id}: {Owner} lost the mini game", match.MatchId, m.OwnerId);
+                    break;
                 case MinigameLost m:
                     logger.LogInformation("Match {Id}: {Owner} ran out of time in the mini game", match.MatchId, m.OwnerId);
                     break;

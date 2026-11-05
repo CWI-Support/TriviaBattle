@@ -26,7 +26,8 @@ Tests have rewards off unless they pass `rewards: true` (like battle beats).
 Mini games (`Core/Dungeon/Minigames`: a `Minigame` base for the shared timing, one class per game, `MinigameCatalog`):
 every floor reached may have one between two rooms, loops included (`MinigameChance` in `config/dungeon.json`, `DungeonMap.MinigameOn`);
 the kill that empties the room before it is `DealtHit.MinigameAhead` and the party plays (`DungeonRun.StartMinigames`). Rules
-stay on the server (the rune lock's needle angle comes from the press time). While anyone `IsAway` (a mini game or a reward
+stay on the server (the rune lock's needle angle comes from the press time; the chest shuffle's action button is its
+fifth chest, so mini games get the action button before power-ups do). While anyone `IsAway` (a mini game or a reward
 pick) the arcade clock stops (`MatchEngine.HoldTheClock`); screens show it with `UI.matchClock`.
 A room can hold a pack of monsters (`Delve.Foes`, `FloorDef.Rooms`): the one in front is fought and attacks. Every hero is a
 class (`HeroClass`, key = class name in lower case, numbers in `ClassSettings` / `Game:Dungeon:Classes`); "fast" is a set

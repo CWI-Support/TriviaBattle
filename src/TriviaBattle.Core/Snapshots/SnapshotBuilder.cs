@@ -125,9 +125,20 @@ public static class SnapshotBuilder
             ? new RuneLockView(s.Hits, s.HitsNeeded, ToUnixMs(s.LockedUntil), s.TurnStartedAt.ToUnixTimeMilliseconds(), s.TurnAngle, s.DegreesPerSecond,
                 s.MarkAngle, s.MarkDegrees, s.Presses, s.LastWasHit)
             : null;
+        var runeEcho = game is Dungeon.Minigames.RuneEcho e
+            ? new RuneEchoView(e.Round, e.Rounds, e.Sequence, e.ShowFrom.ToUnixTimeMilliseconds(), Ms(e.StepSeconds), Ms(e.LitSeconds),
+                e.InputFrom.ToUnixTimeMilliseconds(), e.Entered, e.Presses, e.LastRune, e.LastWasRight)
+            : null;
+        var chestShuffle = game is Dungeon.Minigames.ChestShuffle c
+            ? new ChestShuffleView(c.Round, c.Rounds, c.CoinChest, c.RoundStartsAt.ToUnixTimeMilliseconds(), Ms(c.RevealSeconds), Ms(c.SwapSeconds),
+                c.Swaps.Select(s => new[] { s.A, s.B }).ToList(), c.PickFrom.ToUnixTimeMilliseconds(), c.FinalPlaces, c.Picks, c.LastPick, c.LastWasRight, c.FoundAt)
+            : null;
         return new MinigameView(game.Kind.ToString(), game.IntroAt.ToUnixTimeMilliseconds(), game.PlaysFrom.ToUnixTimeMilliseconds(),
-            game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock);
+            game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle);
     }
+
+    private static long Ms(double seconds) => (long)Math.Round(seconds * 1000);
+
 
     /// <summary>Dungeon format: the rewards they're choosing between after a floor's boss, each with the number its card shows. Null when they aren't.</summary>
     private static RewardOfferView? ToRewardOffer(MatchEngine match, Dungeon.Adventurer? adventurer)

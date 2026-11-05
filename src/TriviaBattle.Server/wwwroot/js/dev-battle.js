@@ -33,15 +33,17 @@
 // Floor rewards: reward (the cards to pick from after a boss), rewarded (the moment after picking one: Mastery).
 // poisonkill: the Healer's poison kills the monster between answers (its own kill beat, no blow).
 // Mini games: runelock (the intro, then play: the needle spinning, 2 hits so far), runelock-won and runelock-lost (the result).
+// runeecho (the intro, the runes lighting up, then your turn), chestshuffle (the intro, the coin, the shuffle, the pick),
+// chestshuffle-lost (the wrong chest: the coin shown where it was).
 // out: downed on the last life (OUT!; the plate's hearts all dark).
 //   /dev/battle?kind=hit&charge=2&at=1600   any kind against the boss, and the question after it with the
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'out'];
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-lost', 'out'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
-const BEAT_MS = { out: 1700, kill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-lost': 3000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -263,6 +265,22 @@ function fakeState(kind, startedAt, question) {
         you.beat.kind = 'downed';
         taken.downed = true; taken.out = true; taken.hpLeft = 0;
     }
+    if (kind === 'runeecho' || kind.startsWith('chestshuffle')) {
+        you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt };
+        you.question = null;
+        const playsFromMs = startedAt + 3500;
+        const lost = kind === 'chestshuffle-lost';
+        const swaps = [[0, 3], [1, 2], [2, 4], [0, 1]];
+        you.minigame = { kind: kind === 'runeecho' ? 'RuneEcho' : 'ChestShuffle', introAtMs: lost ? startedAt - 20000 : startedAt,
+                         playsFromMs: lost ? startedAt - 16500 : playsFromMs, endsAtMs: playsFromMs + 30000,
+                         finishedAtMs: lost ? startedAt : null, won: false, resultEndsAtMs: lost ? startedAt + 2500 : null,
+                         runeLock: null,
+                         runeEcho: { round: 2, rounds: 5, sequence: [0, 2, 1, 3], showFromMs: playsFromMs + 800, stepMs: 650, litMs: 450,
+                                     inputFromMs: playsFromMs + 800 + 4 * 650, entered: 0, presses: 0, lastRune: -1, lastWasRight: false },
+                         chestShuffle: { round: 1, rounds: 3, coinChest: 1, roundStartsAtMs: playsFromMs, revealMs: 1600, swapMs: 450, swaps,
+                                         pickFromMs: playsFromMs + 1600 + 4 * 450, finalPlaces: [2, 3, 4, 0, 1], picks: lost ? 1 : 0,
+                                         lastPick: lost ? 2 : null, lastWasRight: false, foundAt: null } };
+    }
     if (kind.startsWith('runelock')) {
         // The kill beat that emptied the room has played; the intro starts now, play 3.5 s later.
         you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt };
@@ -277,7 +295,7 @@ function fakeState(kind, startedAt, question) {
     }
 
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
-                    clockStoppedLeftMs: kind.startsWith('runelock') ? 74000 : null,
+                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') ? 74000 : null,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),

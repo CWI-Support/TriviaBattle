@@ -21,7 +21,8 @@ play on each station's speaker. Floor rewards (Nov 2026, the "power acquisition"
 right and after its boss you pick one of three rewards with the answer buttons (more HP, damage, armour, time,
 a longer fast window, your class's power, a Last Stand), which stack for the rest of the run; deeper floors
 and loops outscale a player who doesn't earn them. Mini games (Nov 2026): a floor may have one between two rooms; the
-first is the Rune Lock (stop a spinning needle on the mark 6 times in a row). The clock stops while you play, and a win
+first is the Rune Lock (stop a spinning needle on the mark 6 times in a row). Then the Rune Echo (a "Simon says") and the Chest
+Shuffle (a shell game: follow the coin, the action button picks the fifth chest). The clock stops while you play, and a win
 earns a reward. Not yet: the station card readers, the fifth button, power-ups, cards as adventurers, heroes, doors, voice, real art.
 
 **Experience design** (the why: the "a-ha" moment, power acquisition, the Host as the story, the

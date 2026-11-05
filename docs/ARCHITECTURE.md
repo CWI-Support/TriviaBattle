@@ -205,8 +205,11 @@ The rules:
   `Delve.ClearTheDead` marks the kill `DealtHit.MinigameAhead`, and `MatchEngine` calls `DungeonRun.StartMinigames`: each
   party member not already away gets their own `Minigame` (`MinigameStarted`), its intro once the kill beat ends. A
   `Minigame` keeps the timing every game shares (`IntroAt`, `PlaysFrom`, `EndsAt`, `FinishedAt`, `ResultEndsAt`); each
-  game is a subclass with its own rules for a press (`RuneLock`: the needle's angle comes from the press time and the
-  turn it's on, so hits are decided on the server and the screen only animates the same numbers). `HandlePress` sends
+  game is a subclass with its own rules for a press, all timed on the server and only animated by the screen from the
+  same numbers: `RuneLock` (the needle's angle from the press time and the turn it's on), `RuneEcho` (a "Simon says":
+  the round's runes shown from `ShowFrom`, presses from `InputFrom`) and `ChestShuffle` (a shell game: the round's
+  `Swaps`, picks from `PickFrom`; the action button is the fifth chest, so `HandlePress` sends it to a mini game before
+  a power-up; `MinigamePress.Lost` is a press that loses it). `HandlePress` sends
   answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
   and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
   others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone,

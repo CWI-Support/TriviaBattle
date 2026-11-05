@@ -205,7 +205,27 @@ public sealed record RewardTakenView(int Number, Reward Reward, double Amount, i
 /// </summary>
 /// <param name="Kind">Which game ("RuneLock").</param>
 public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs, long EndsAtMs, long? FinishedAtMs, bool Won, long? ResultEndsAtMs,
-    RuneLockView? RuneLock);
+    RuneLockView? RuneLock, RuneEchoView? RuneEcho = null, ChestShuffleView? ChestShuffle = null);
+
+/// <summary>
+/// The rune echo (a "Simon says"). This round's runes (<see cref="Sequence"/>, 0-3 = A-D) light one every <see cref="StepMs"/> from
+/// <see cref="ShowFromMs"/>, each for <see cref="LitMs"/>; presses count from <see cref="InputFromMs"/>. The sequence goes to the player's
+/// own screen only (it's what they're shown).
+/// </summary>
+/// <param name="Entered">How many of this round's runes they've pressed back right.</param>
+/// <param name="Presses">Presses that counted (changes with each); <paramref name="LastRune"/> and <paramref name="LastWasRight"/> say how the last went.</param>
+public sealed record RuneEchoView(int Round, int Rounds, IReadOnlyList<int> Sequence, long ShowFromMs, long StepMs, long LitMs, long InputFromMs,
+    int Entered, int Presses, int LastRune, bool LastWasRight);
+
+/// <summary>
+/// The chest shuffle (a shell game). From <see cref="RoundStartsAtMs"/> the coin shows in chest <see cref="CoinChest"/> for
+/// <see cref="RevealMs"/>, then each swap (the two places in <see cref="Swaps"/>) takes <see cref="SwapMs"/>; picks count from
+/// <see cref="PickFromMs"/>. Chests and places are numbered 0-4, left to right (place 4 is the action button).
+/// </summary>
+/// <param name="FinalPlaces">Which chest is in each place once they stop (for showing where the coin was).</param>
+/// <param name="FoundAt">After a right pick: the place it was in, shown until the next round starts.</param>
+public sealed record ChestShuffleView(int Round, int Rounds, int CoinChest, long RoundStartsAtMs, long RevealMs, long SwapMs,
+    IReadOnlyList<int[]> Swaps, long PickFromMs, IReadOnlyList<int> FinalPlaces, int Picks, int? LastPick, bool LastWasRight, int? FoundAt);
 
 /// <summary>
 /// The rune lock. The needle turns at <see cref="DegreesPerSecond"/> (negative: anticlockwise) from <see cref="TurnAngle"/>

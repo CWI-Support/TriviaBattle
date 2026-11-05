@@ -221,3 +221,106 @@
 
 /* The main screen's lane while its player is in a mini game. */
 .dg-overlay.is-minigame { border-color: #ffd23f; color: #ffd23f; }
+
+/* ---------- The rune echo ("Simon says"): four runes, lit in a sequence, pressed back ---------- */
+
+.dg-re { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; }
+.dg-re-round { font-family: var(--dg-font-pixel); font-size: 3vmin; color: var(--text-dim); text-transform: uppercase; }
+/* "Watch..." while the runes show, "Your turn!" once they've all been shown (--input). */
+.dg-re-status { position: relative; height: 6vmin; width: 100%; text-align: center; font-family: var(--dg-font-pixel); font-size: 4.4vmin; white-space: nowrap; }
+.dg-re-status > span { position: absolute; inset: 0; }
+.dg-re-watch { color: var(--dg-mg-rune); animation: dg-mg-veil-out 150ms linear var(--input) forwards; }
+.dg-re-turn { color: var(--dg-mg-gold); animation: dg-mg-veil-in 200ms ease-out var(--input) both; }
+.dg-re-pads { display: grid; grid-template-columns: repeat(2, min(36vw, 22vh)); gap: 3vmin; }
+.dg-re-pad {
+    position: relative;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 2vmin;
+    background: color-mix(in srgb, var(--answer-color) 18%, #15121a);
+    border: 0.9vmin solid color-mix(in srgb, var(--answer-color) 55%, #000);
+    box-shadow: inset 0 0 3vmin rgba(0, 0, 0, 0.7);
+}
+.dg-re-pad[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-re-pad[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-re-pad[data-letter="C"] { --answer-color: var(--answer-c); }
+.dg-re-pad[data-letter="D"] { --answer-color: var(--answer-d); }
+.dg-re-glyph {
+    position: relative;
+    z-index: 1;
+    width: 50%;
+    height: 50%;
+    background: var(--answer-color);
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+    opacity: 0.55;
+}
+.dg-re-letter { position: absolute; left: 1.4vmin; top: 0.8vmin; z-index: 1; font-family: var(--dg-font-pixel); font-size: 3.4vmin; color: var(--answer-color); }
+/* One flash for each time this rune is in the round's sequence, at its step (--at), lit for --lit. */
+.dg-re-lit {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, #fff 0 15%, var(--answer-color) 55%, transparent 80%);
+    opacity: 0;
+    animation: dg-re-lit var(--lit) ease-out var(--at) both;
+}
+@keyframes dg-re-lit { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+/* A press: the rune flashes gold (right) or red (wrong). */
+.dg-re-pad.is-right { animation: dg-re-right 450ms ease-out var(--flash0) both; }
+.dg-re-pad.is-wrong { animation: dg-re-wrong 450ms ease-out var(--flash0) both; }
+@keyframes dg-re-right { from { box-shadow: 0 0 6vmin var(--dg-mg-gold), inset 0 0 6vmin var(--answer-color); transform: scale(0.94); } }
+@keyframes dg-re-wrong { from { box-shadow: 0 0 6vmin var(--wrong); transform: translateX(1.5vmin); } 30% { transform: translateX(-1.5vmin); } }
+
+/* ---------- The chest shuffle: five chests, a coin in one, shuffled ---------- */
+
+.dg-cs { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; }
+.dg-cs-status { position: relative; height: 6vmin; width: 100%; text-align: center; font-family: var(--dg-font-pixel); font-size: 4.4vmin; white-space: nowrap; }
+.dg-cs-status > span { position: absolute; inset: 0; }
+/* "Watch the coin" for the reveal, "Keep your eye on it" while they swap, "Which chest?" once they've stopped. */
+.dg-cs-watch { color: var(--dg-mg-gold); animation: dg-mg-veil-in 200ms linear var(--start) both, dg-mg-veil-out 150ms linear var(--reveal-end) forwards; }
+.dg-cs-shuffle { color: var(--dg-mg-rune); animation: dg-mg-veil-in 150ms linear var(--reveal-end) both, dg-mg-veil-out 150ms linear var(--pick) forwards; }
+.dg-cs-pick { color: #fff; animation: dg-mg-veil-in 200ms ease-out var(--pick) both; }
+/* "Found it!" between rounds: until the next one starts (--start: the snapshot is already that round). */
+.dg-cs-found { color: var(--dg-mg-gold); animation: dg-mg-stamp 500ms cubic-bezier(0.2, 1.5, 0.4, 1) both, dg-mg-veil-out 150ms linear var(--start) forwards; }
+
+/* The row: each chest sits at place --x (0-4, moving between while swapped) and --lift (over or under the others). */
+.dg-cs-row { position: relative; width: 100%; height: 30vmin; }
+.dg-cs-chest {
+    position: absolute;
+    left: calc(var(--x) * 20%);
+    bottom: 0;
+    width: 20%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(calc(var(--lift, 0) * -14vmin)) scale(calc(1 + var(--lift, 0) * 0.12));
+    z-index: 1;
+}
+.dg-cs-sprite { width: 17vmin; height: auto; filter: drop-shadow(0 1vmin 0 rgba(0, 0, 0, 0.6)); }
+/* The coin: over its chest for the reveal (it drops in and the lid closes on it), then gone until it's over. */
+.dg-cs-coin {
+    position: absolute;
+    bottom: 15vmin;
+    width: 8vmin;
+    height: auto;
+    filter: drop-shadow(0 0 1.6vmin var(--dg-mg-gold));
+    animation: dg-cs-coin-drop 600ms cubic-bezier(0.3, 1.4, 0.5, 1) var(--start) both, dg-mg-veil-out 200ms linear var(--reveal-end) forwards;
+}
+@keyframes dg-cs-coin-drop { from { opacity: 0; transform: translateY(-12vmin); } }
+/* Over: the coin shows where it really was, its chest lit; a wrong pick is marked red. */
+.dg-cs.is-over .dg-cs-coin { animation: dg-cs-coin-drop 500ms ease-out var(--start) both; } /* --start: when it ended */
+.dg-cs-chest.is-coin .dg-cs-sprite { filter: drop-shadow(0 0 3vmin var(--dg-mg-gold)); }
+.dg-cs-chest.is-picked .dg-cs-sprite { filter: drop-shadow(0 0 3vmin var(--wrong)) grayscale(0.6); }
+
+/* The buttons under the chests: A-D in their colours, then the action button. */
+.dg-cs-labels { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; text-align: center; }
+.dg-cs-label { margin: 0 1vw; padding: 0.8vh 0; font-family: var(--dg-font-pixel); font-size: 4.4vmin; color: #000; background: var(--answer-color, #ffd23f); }
+.dg-cs-label[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-cs-label[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-cs-label[data-letter="C"] { --answer-color: var(--answer-c); }
+.dg-cs-label[data-letter="D"] { --answer-color: var(--answer-d); }
+.dg-cs-label.is-action { font-size: 2.2vmin; display: grid; place-items: center; background: #ffd23f; }
+/* The chest shuffle's result goes at the top, see-through, so the coin's chest shows where it really was. */
+.dg-minigame.is-chestshuffle .dg-minigame-result { justify-content: flex-start; padding-top: 8vh; background: rgba(8, 5, 10, 0.3); }

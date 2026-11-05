@@ -535,7 +535,7 @@ const DungeonView = {
         const who = Theme.raw(name);
 
         if (lockWon)
-            banner('reward', Theme.text('dungeon.momentMinigameWon', { name: who }), 'icon-chest');
+            banner('reward', Theme.text('dungeon.momentMinigameWon', { name: who, game: Theme.raw(DungeonMinigames.name(lockWon)) }), 'icon-chest');
         if (picked) {
             banner('reward', Theme.text('dungeon.momentReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }), `icon-rw-${picked.reward}`);
             DungeonHost.say(Theme.text('dungeon.hostReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }, `${key}:reward:${picked.number}`));

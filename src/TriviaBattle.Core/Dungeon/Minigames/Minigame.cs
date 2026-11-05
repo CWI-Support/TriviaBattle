@@ -8,6 +8,12 @@ public enum MinigameKind
 {
     /// <summary>A needle spins round a lock: stop it on the glowing mark, several times in a row (<see cref="RuneLock"/>).</summary>
     RuneLock,
+
+    /// <summary>The runes light up in a sequence; press them back in order, one longer each round (<see cref="RuneEcho"/>, a "Simon says").</summary>
+    RuneEcho,
+
+    /// <summary>A coin goes into one of five chests, they're shuffled; pick the right one (<see cref="ChestShuffle"/>, a shell game).</summary>
+    ChestShuffle,
 }
 
 /// <summary>What a press did in a mini game.</summary>
@@ -20,6 +26,9 @@ public enum MinigamePress
 
     /// <summary>The hit that won it.</summary>
     Won,
+
+    /// <summary>A press that lost it there and then (the wrong chest).</summary>
+    Lost,
 }
 
 /// <summary>
@@ -63,8 +72,8 @@ public abstract class Minigame
     public DateTimeOffset? ResultEndsAt => FinishedAt + TimeSpan.FromSeconds(ResultSeconds);
 
     /// <summary>
-    /// An answer button pressed at <paramref name="at"/> (0-3; the games so far don't mind which). Only counts while
-    /// it's being played.
+    /// A button pressed at <paramref name="at"/>: an answer button (0-3) or the action button (4, <see cref="Input.ButtonPress.Action"/>).
+    /// Only counts while it's being played; each game decides what the buttons do.
     /// </summary>
     public MinigamePress Press(int answerIndex, DateTimeOffset at)
     {
@@ -72,8 +81,8 @@ public abstract class Minigame
             return MinigamePress.Ignored;
 
         var result = Play(answerIndex, at);
-        if (result == MinigamePress.Won)
-            Finish(at, won: true);
+        if (result is MinigamePress.Won or MinigamePress.Lost)
+            Finish(at, won: result == MinigamePress.Won);
         return result;
     }
 

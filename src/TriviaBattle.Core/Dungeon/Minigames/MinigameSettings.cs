@@ -19,11 +19,69 @@ public sealed class MinigameSettings
     public bool WinEarnsReward { get; set; } = true;
 
     public RuneLockSettings RuneLock { get; set; } = new();
+    public RuneEchoSettings RuneEcho { get; set; } = new();
+    public ChestShuffleSettings ChestShuffle { get; set; } = new();
 
     public MinigameSettings Copy()
     {
         var copy = (MinigameSettings)MemberwiseClone();
         copy.RuneLock = RuneLock.Copy();
+        copy.RuneEcho = RuneEcho.Copy();
+        copy.ChestShuffle = ChestShuffle.Copy();
+        return copy;
+    }
+}
+
+/// <summary>The rune echo, a "Simon says" (<see cref="RuneEcho"/>).</summary>
+public sealed class RuneEchoSettings
+{
+    /// <summary>How many runes the first round shows; each round after shows one more.</summary>
+    public int StartLength { get; set; } = 3;
+
+    /// <summary>Rounds to get right (with the defaults: 3, 4, 5, 6 and 7 runes).</summary>
+    public int Rounds { get; set; } = 5;
+
+    /// <summary>A rune lights up every this many seconds while a round is shown...</summary>
+    public double StepSeconds { get; set; } = 0.65;
+
+    /// <summary>...and stays lit this long (less than a step, so the same rune twice shows as two).</summary>
+    public double LitSeconds { get; set; } = 0.45;
+
+    /// <summary>The pause before a round's runes start (the first, and after one is got right).</summary>
+    public double PauseSeconds { get; set; } = 0.8;
+
+    /// <summary>After a wrong rune, the pause before that round's runes are shown again.</summary>
+    public double MissPauseSeconds { get; set; } = 1.2;
+
+    /// <summary>The time limit.</summary>
+    public double Seconds { get; set; } = 55;
+
+    public RuneEchoSettings Copy() => (RuneEchoSettings)MemberwiseClone();
+}
+
+/// <summary>The chest shuffle, a shell game (<see cref="ChestShuffle"/>).</summary>
+public sealed class ChestShuffleSettings
+{
+    /// <summary>How many swaps each round has: one round each (so 3 rounds by default), more each time.</summary>
+    public List<int> Swaps { get; set; } = [4, 6, 8];
+
+    /// <summary>How long each swap takes, round by round (the last one for any rounds after): faster each time.</summary>
+    public List<double> SwapSeconds { get; set; } = [0.45, 0.36, 0.29];
+
+    /// <summary>How long the coin is shown going into its chest before the lids close.</summary>
+    public double RevealSeconds { get; set; } = 1.6;
+
+    /// <summary>After a right pick, the moment showing it before the next round.</summary>
+    public double BetweenSeconds { get; set; } = 1.4;
+
+    /// <summary>The time limit, for all the rounds.</summary>
+    public double Seconds { get; set; } = 30;
+
+    public ChestShuffleSettings Copy()
+    {
+        var copy = (ChestShuffleSettings)MemberwiseClone();
+        copy.Swaps = [.. Swaps];
+        copy.SwapSeconds = [.. SwapSeconds];
         return copy;
     }
 }

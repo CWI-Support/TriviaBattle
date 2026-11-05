@@ -254,6 +254,7 @@ public sealed class RoomSoundService(
                 {
                     MinigamePress.Won => _settings.Dungeon.PartyCombo,
                     MinigamePress.Hit => _settings.Dungeon.Hit,
+                    MinigamePress.Lost => _settings.Dungeon.Hurt, // the wrong chest
                     _ => _settings.Dungeon.Block,
                 });
                 break;

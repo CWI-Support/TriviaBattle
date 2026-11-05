@@ -84,6 +84,45 @@ public class DungeonPacingTests(ITestOutputHelper output)
     private static readonly Reward[] Wanted = [Reward.Might, Reward.Time, Reward.Focus, Reward.Vitality, Reward.Armor, Reward.LastStand, Reward.Mastery];
 
     /// <summary>
+    /// One step of a mini game. Waits out the intro and the result first; then each game its own way. The clock is stopped
+    /// meanwhile, so only a win (a reward) matters. The player is as good at each as <see cref="Player.OnTheMark"/> says.
+    /// </summary>
+    private static void PlayTheMinigame(TestMatch match, Minigame game, Random player, Player how)
+    {
+        var waitUntil = game.FinishedAt != null ? game.ResultEndsAt!.Value : game.PlaysFrom;
+        if (waitUntil > match.Now)
+        {
+            match.Wait((waitUntil - match.Now).TotalSeconds + 0.05);
+            return;
+        }
+        switch (game)
+        {
+            case RuneLock runeLock:
+                PlayTheLock(match, runeLock, player, how);
+                break;
+            case RuneEcho echo when echo.InputFrom > match.Now:
+                match.Wait((echo.InputFrom - match.Now).TotalSeconds + 0.05); // watching the runes
+                break;
+            case RuneEcho echo:
+                // Each rune pressed back right as often as they hit the lock's mark (a half-second each).
+                match.Press("A1", player.NextDouble() < how.OnTheMark + 0.15 ? echo.Expected : (echo.Expected + 1) % 4, afterSeconds: 0.5);
+                break;
+            case ChestShuffle shuffle when shuffle.PickFrom > match.Now:
+                match.Wait((shuffle.PickFrom - match.Now).TotalSeconds + 0.05); // watching the chests
+                break;
+            case ChestShuffle shuffle:
+                // They keep their eye on the coin most of the time (a bit less as the rounds get faster).
+                var coinAt = shuffle.FinalPlaces.ToList().IndexOf(shuffle.CoinChest);
+                var followed = player.NextDouble() < how.OnTheMark + 0.1 - 0.1 * shuffle.Round;
+                match.Press("A1", followed ? coinAt : (coinAt + 1) % ChestShuffle.Chests, afterSeconds: 1);
+                break;
+            default:
+                match.Wait(0.5);
+                break;
+        }
+    }
+
+    /// <summary>
     /// One step of a rune lock: wait for the intro, a lockout or the result to pass, or press: on the mark as often as
     /// this player manages, otherwise a little off it. The clock is stopped meanwhile, so only a win (a reward) matters.
     /// </summary>
@@ -115,9 +154,9 @@ public class DungeonPacingTests(ITestOutputHelper output)
         while (match.Engine.Phase == MatchPhase.Playing)
         {
             endsAt = match.Engine.PhaseEndsAt;
-            if (match.AdventurerOf("A1").Minigame is RuneLock game)
+            if (match.AdventurerOf("A1").Minigame is { } minigame)
             {
-                PlayTheLock(match, game, player, how);
+                PlayTheMinigame(match, minigame, player, how);
                 continue;
             }
             if (match.AdventurerOf("A1").Offer is { } offer)
