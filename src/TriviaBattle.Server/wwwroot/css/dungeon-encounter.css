@@ -262,9 +262,13 @@
 .dg-glass.is-frozen .dg-glass-seconds { color: #9fe0ff; animation: dg-thaw 1ms linear var(--thaw) forwards; }
 
 .dg-station.is-encounter .dg-answers { gap: calc(1vh * var(--fit)); }
+/* --rune: the rune box's size, about as tall as a one-line answer's frame. The rune stays that square size
+   and centred beside a long answer that wraps (stretched to the row it grew past its column, over the words). */
 .dg-station.is-encounter .dg-answer {
+    --rune: calc(10.8vmin * var(--fit));
     display: grid;
-    grid-template-columns: calc(8.5vmin * var(--fit)) minmax(0, 1fr);
+    grid-template-columns: var(--rune) minmax(0, 1fr);
+    align-items: center;
     gap: 1.6vw;
     padding: 0;
     background: none;
@@ -274,10 +278,8 @@
 }
 /* The rune box: the button's symbol, in its colour. */
 .dg-station.is-encounter .dg-rune {
-    width: auto;
-    height: auto;
-    aspect-ratio: 1;
-    align-self: stretch;
+    width: var(--rune);
+    height: var(--rune);
     display: grid;
     place-items: center;
     background: rgba(21, 18, 26, 0.82);
@@ -301,9 +303,13 @@
     background: linear-gradient(rgba(33, 29, 39, 0.86), rgba(22, 19, 27, 0.86));
     border: 0.5vmin solid var(--answer-color);
     box-shadow: inset 0 0 0 0.4vmin #000, 0 0 1.4vmin color-mix(in srgb, var(--answer-color) 30%, transparent);
+    min-height: var(--rune);
     text-transform: uppercase;
     line-height: 1.05;
+    overflow-wrap: anywhere;
 }
+/* A long answer takes a smaller size, so it wraps onto two lines rather than four. */
+.dg-station.is-encounter .dg-answer.is-long .dg-answer-text { font-size: 0.78em; }
 .dg-station.is-encounter .dg-answer-text b { font-weight: normal; color: var(--answer-color); }
 
 /* A Warlock's patron showing the answer: it glows purple, pulsing on the shared idle beat (--idle0). */

@@ -124,6 +124,9 @@ function render(state) {
         }
     }
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
+    // The dungeon's room clips what overflows it, so the screen as a whole always "fits": fit the question,
+    // the room and the answers inside it too (a long question or answer shrinks them, never pushes them off).
+    UI.fitToScreen(body.querySelector('.dg-station.is-encounter .dg-hud'));
     // The lobby's photo step first: a game taking over mid-photo closes its window before the intro's opens.
     const seat = match ? null : state.lobby.seats.find(s => s.stationId === state.station.id);
     HeroCamera.followLobby(seat, () => connection.serverNow(), state.station.color);

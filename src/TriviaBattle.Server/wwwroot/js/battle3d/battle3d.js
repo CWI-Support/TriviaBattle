@@ -223,7 +223,7 @@ class Battle {
         }
         if (!hit.killed) return { wanted: waiting(foes.slice(1)), stepUp: -1 };
         // The kill emptied the room: nobody waits here (the next room's pack comes in on the walk, above).
-        if (hit.floorCleared || hit.bossAhead || (this.roomSeen !== null && this.roomSeen !== room)) return { wanted: [], stepUp: -1 };
+        if (hit.roomCleared || hit.floorCleared || hit.bossAhead || (this.roomSeen !== null && this.roomSeen !== room)) return { wanted: [], stepUp: -1 };
         const wanted = waiting(foes);
         return { wanted, stepUp: wanted.length ? 0 : -1 };
     }

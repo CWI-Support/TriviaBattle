@@ -183,8 +183,10 @@ const DungeonEncounter = {
     answer(text, i, dimmed, eliminated, revealed = false) {
         const letter = UI.ANSWER_LETTERS[i];
         const glow = revealed ? `style="--idle0: ${DungeonView.idlePhase(1200)}ms"` : '';
+        // About a line's worth at the full size (css/dungeon-encounter.css shrinks a longer one a little).
+        const long = text.length > 20;
         return `
-            <div class="dg-answer ${dimmed ? 'is-dimmed' : ''} ${eliminated ? 'is-eliminated' : ''} ${revealed ? 'is-revealed' : ''}" data-letter="${letter}" ${glow}>
+            <div class="dg-answer ${dimmed ? 'is-dimmed' : ''} ${eliminated ? 'is-eliminated' : ''} ${revealed ? 'is-revealed' : ''} ${long ? 'is-long' : ''}" data-letter="${letter}" ${glow}>
                 <span class="dg-rune"><i class="dg-rune-glyph" style="--glyph: url('${PixelSprites.url(`rune-${letter}`)}')"></i></span>
                 <span class="dg-answer-text"><b>${letter})</b> ${UI.escape(text)}</span>
             </div>`;

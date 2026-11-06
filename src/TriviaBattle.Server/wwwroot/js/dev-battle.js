@@ -19,6 +19,7 @@
 //   /dev/battle3d?cameo              a rival's moment in the caption with each question: their hero drops in
 //
 //   /dev/battle3d?foes=3             a pack: that many monsters in the room (the one in front, and the rest waiting)
+//   /dev/battle?kind=kill&at=2100&long   a long question and long answers (they shrink to fit)
 //
 // Kinds: hit, crit, combo, party, revive, kill, floor, boss, hurt, slow, downed, and with power-ups:
 // fireball (a Fireball hit), loot (a kill that drops a Potion), blocked (a Shield takes the hit; the
@@ -45,6 +46,11 @@ const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', '
     'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-lost', 'out'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
+// ?long: a long question and long answers (the admin editor allows 250 and 80 letters), to check they shrink to fit.
+const LONG_QUESTION = {
+    text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
+    answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
+};
 const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-lost': 3000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
@@ -123,6 +129,7 @@ function show(kind, startedAt, question = false) {
     document.getElementById('dev-label').textContent = question ? `${kind}: next question` : kind;
     document.getElementById('player-body').innerHTML = DungeonView.station(match, you, devNow(), COLOR);
     const colors = Object.fromEntries([['A1', COLOR], ...TEAM.map((_, i) => [`A${i + 3}`, TEAM_COLORS[i]])]);
+    UI.fitToScreen(document.querySelector('#player-body .dg-station.is-encounter .dg-hud')); // as player-screen.js does
     window.Battle3D?.show({ match, you, color: COLOR, colors });
 }
 
@@ -239,8 +246,8 @@ function fakeState(kind, startedAt, question) {
 
     const you = {
         stationId: 'A1', name: 'Ann', score: 1240, teamId: TEAM.length ? 'side1' : null,
-        question: { number: 8, id: 1, category: 'Movies', text: 'Which wizard school does Harry Potter attend?',
-                    answers: ['Hogwarts', 'Durmstrang', 'Beauxbatons', 'Ilvermorny'], mediaUrl: null, shownAtMs: startedAt + length,
+        question: { number: 8, id: 1, category: 'Movies', text: params.has('long') ? LONG_QUESTION.text : 'Which wizard school does Harry Potter attend?',
+                    answers: params.has('long') ? LONG_QUESTION.answers : ['Hogwarts', 'Durmstrang', 'Beauxbatons', 'Ilvermorny'], mediaUrl: null, shownAtMs: startedAt + length,
                     hidden: kind === 'blocked' ? [1, 3] : null,
                     peekFromMs: kind === 'peek' ? startedAt + length - RANGER_PEEK_MS : null,
                     revealed: kind === 'reveal' && question ? 0 : null },

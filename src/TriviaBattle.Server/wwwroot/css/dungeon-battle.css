@@ -757,7 +757,7 @@
 .dg-peek-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1vh 2vw; }
 .dg-peek .dg-answer { font-size: 3.8vmin; padding: 0.8vh 1.4vw; gap: 1.4vw; }
 .dg-peek .dg-rune { width: 5.4vmin; height: 5.4vmin; font-size: 2.6vmin; }
-.dg-peek .dg-answer-text { min-width: 0; text-transform: uppercase; }
+.dg-peek .dg-answer-text { min-width: 0; text-transform: uppercase; overflow-wrap: anywhere; }
 .dg-peek .dg-answer.is-locked { border-style: dashed; opacity: 0.7; filter: saturate(0.5); }
 
 /* ---------- A poison kill (the Healer's poison finished it between answers: beat.byPoison) ---------- */
