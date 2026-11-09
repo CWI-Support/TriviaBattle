@@ -9,6 +9,9 @@
 import * as THREE from 'three';
 import { Actor } from './actor.js';
 
+/** What a hero card shows, in the room's units: from just under the feet to above the wizard's hat. */
+const BODY_FRAME = { bottom: -0.15, top: 3.2 };
+
 /**
  * A canvas of a hero in the station's colour, wearing this face (a URL of a FaceCutout face; null: its own).
  * options: hero ('tank', 'wizard'...), framing ('head': head and shoulders, square; 'body': all of it,
@@ -30,19 +33,19 @@ export async function heroPortrait(faceUrl, color, { hero = 'tank', framing = 'h
     fill.position.set(-6, 2, 4);
     scene.add(fill);
 
-    // Head: framed tight on the face, from its own height, so a brim doesn't shade the eyes. Body: all of it,
-    // from a little below its middle, the way a hero card looks up at its hero.
+    // Head: framed tight on the face, from its own height, so a brim doesn't shade the eyes. Body: every hero
+    // through the same camera (feet on the floor, BODY_FRAME tall, from a little below the middle, the way a
+    // hero card looks up at its hero), so flipping through the cards their feet stay put and a hat is taller.
     actor.root.updateMatrixWorld(true);
     const width = size;
     const height = framing === 'body' ? Math.round((size * 4) / 3) : size;
     const camera = new THREE.PerspectiveCamera(28, width / height, 0.01, 100);
     const tan = Math.tan(THREE.MathUtils.degToRad(14));
     if (framing === 'body') {
-        const box = new THREE.Box3().expandByObject(actor.model, true);
-        const centre = box.getCenter(new THREE.Vector3());
-        const distance = (box.getSize(new THREE.Vector3()).y * 0.58) / tan;
-        camera.position.set(centre.x, centre.y * 0.8, centre.z + distance);
-        camera.lookAt(centre);
+        const middle = BODY_FRAME.top / 2 + BODY_FRAME.bottom / 2;
+        const distance = ((BODY_FRAME.top - BODY_FRAME.bottom) / 2) / tan;
+        camera.position.set(0, middle * 0.8, distance);
+        camera.lookAt(0, middle, 0);
     } else {
         const spec = actor.spec.face;
         const eyes = new THREE.Vector3(0, spec.eyes - 0.03, 0.4).applyMatrix4(actor.model.matrixWorld);

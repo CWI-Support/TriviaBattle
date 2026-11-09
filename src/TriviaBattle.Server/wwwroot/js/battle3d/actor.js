@@ -59,7 +59,9 @@ export class Actor {
         this.pose({ clip: spec.idle, time: 0 }, model);
         const box = visibleBox(model);
         const size = box.getSize(new THREE.Vector3());
-        const scale = spec.height / Math.max(size.y, 0.001);
+        // A fixed scale (the heroes, all on one rig) keeps them one size, a hat adding to it; otherwise it's
+        // sized to its height, all of it.
+        const scale = spec.scale ?? spec.height / Math.max(size.y, 0.001);
         model.scale.setScalar(scale);
         const centre = box.getCenter(new THREE.Vector3());
         const turn = facing + (spec.turn || 0);

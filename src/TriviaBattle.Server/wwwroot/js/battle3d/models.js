@@ -11,6 +11,7 @@
 //   death   being killed (optional: without it the model just bursts)
 //   run     heroes: running on to the next room (the walk; without it they just stand)
 // height  how tall it stands in the room (the knight is about 2.3; a back wall is 4)
+// scale   optional: a fixed scale instead (the heroes: one rig, one size, so a hat makes one taller)
 // width   its body's width, in the room's units (optional: measured from the model otherwise). Give it when the idle
 //         pose is much wider than the body (arms or a weapon held out): the width frames the camera on a question
 //         and sets where fighters stop to strike, so a wide pose pulls the camera back and keeps the knight away.
@@ -29,7 +30,10 @@
 // A new model: put its .glb in media/models/characters (credit it in CREDITS.md), give its key an entry here
 // (file, which clips are its attacks, which gear shows, which part is dyed the station's colour, where a
 // face goes), then save its pictures with /dev/heroes. A hero class needs its key in Core's Heroes.All too.
-const ADVENTURER = { height: 2.3, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer', run: 'Running_A' };
+// The adventurers are all built on one rig, the same size bare-headed (about 2.2 to 2.3 high), so they keep the
+// model's own scale (scale: 1) rather than each being squeezed to a height: the wizard's hat stands above the
+// rest instead of shrinking him to fit it. height is still their nominal height, for the cameras and effects.
+const ADVENTURER = { height: 2.3, scale: 1, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer', run: 'Running_A' };
 
 /**
  * Where a hero photo goes on an adventurer's head: its own face, inside the helmet, hat or hood (about 1.40
