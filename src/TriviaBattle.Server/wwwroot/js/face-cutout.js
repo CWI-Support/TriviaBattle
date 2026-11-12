@@ -8,6 +8,7 @@
 // chin. It all runs on the station PC: only the finished cut-out leaves it.
 //
 //   FaceCutout.load()        starts loading the finder (about 17 MB; call it early, e.g. once a camera is found)
+//   FaceCutout.find(picture) { face, turn }: the face (as cut) and how far the head is turned (0 = straight on)
 //   FaceCutout.cut(picture)  a SIZE x SIZE canvas with only the face (see-through elsewhere), or null if no
 //                            face was found. picture: a playing <video>, a loaded image or a canvas. It's
 //                            mirrored first, as the player saw themselves in the camera window.
@@ -20,6 +21,9 @@ const FaceCutout = {
     EYES: 0.42,
     MOUTH: 0.69,
     CHIN: 0.88,
+    // A face turned less than this (find's turn) counts as looking straight at the camera. Looking at a camera a
+    // little to one side measured about 0.2; a head turned enough to come out stretched, 0.4.
+    STRAIGHT: 0.25,
 
     finder: null,   // a promise of the Face Landmarker
 
@@ -41,6 +45,16 @@ const FaceCutout = {
     },
 
     async cut(picture) {
+        return (await FaceCutout.find(picture))?.face ?? null;
+    },
+
+    /**
+     * Like cut, with how far the head is turned: { face, turn }, or null if no face was found. turn is 0 for a
+     * face looking straight at the camera, up to 1 for one seen side on (from the nose's distance to each side
+     * of the face). A turned face, laid out like a straight one, comes out squashed on one side and stretched
+     * on the other, so a camera should wait for one under STRAIGHT if it can (js/hero-camera.js).
+     */
+    async find(picture) {
         const { finder, outline } = await FaceCutout.load();
         const width = picture.videoWidth || picture.naturalWidth || picture.width;
         const height = picture.videoHeight || picture.naturalHeight || picture.height;
@@ -82,7 +96,13 @@ const FaceCutout = {
         const to = [FaceCutout.TOP, FaceCutout.EYES, FaceCutout.MOUTH, FaceCutout.CHIN].map(share => share * S);
         const face = FaceCutout.canvas(S, S);
         FaceCutout.stretchRows(levelled, face, y => FaceCutout.between(y, to, from));
-        return face;
+
+        // How far it's turned: the nose tip (1) sits half way between the sides of the face (234, 454) when
+        // it looks straight on, and nearer one side the more it turns.
+        const nose = place(1).x;
+        const [toOne, toOther] = [Math.abs(nose - place(234).x), Math.abs(place(454).x - nose)];
+        const turn = Math.abs(toOne - toOther) / Math.max(1, toOne + toOther);
+        return { face, turn };
     },
 
     // ---- helpers (also used by js/battle3d/face.js: stretchRows, between, canvas)

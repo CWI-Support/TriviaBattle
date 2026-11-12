@@ -283,7 +283,9 @@ The rules:
   `PUT /api/photos/{matchId}/{stationId}` (a form):
   - **face**: `js/face-cutout.js` finds the face with MediaPipe's Face Landmarker (vendored in
     `lib/mediapipe`, run in the browser), cuts it out along its outline and lays it out the same way every
-    time: eyes level and a set distance apart, with eyes, mouth and chin at set heights.
+    time: eyes level and a set distance apart, with eyes, mouth and chin at set heights. It also says how far
+    the head is turned (`FaceCutout.find`): after the countdown the camera keeps looking, for up to 2.5 s, for
+    a face looking straight at it (`FaceCutout.STRAIGHT`), since a turned one comes out stretched on every hero.
   - **portrait**: `js/battle3d/portrait.js` renders the knight's head wearing that face, for every screen
     that draws in 2D. No face found: nothing is sent.
 
@@ -295,10 +297,17 @@ The rules:
   list and the intro line-up. The station's 3D knight wears the face (`Actor.wearFace`, `js/battle3d/face.js`):
   - the front of that knight's head (its own copy) is split off into a face mesh on the same skeleton, so it
     moves exactly as the head does;
+  - only the face is split off: the skin-coloured part of the head (read from the head's own picture) and what
+    the skin has on both sides (eyes and mouth; on an open face only dark ones) and, on the rogue and the
+    ranger, the brown brows (`face.brows`, a band above the eyes); a hood, hair or a beard stays the hero's own;
   - the knight's own eye, brow and nose bumps are smoothed to the face's curve, and the triangles that turns
     over are dropped;
   - the photo is shown on the knight's skin colour, redrawn so the player's eyes, mouth and chin land where
-    `MODELS.hero.face` says, inside the helmet's opening.
+    `MODELS.hero.face` says, and fades into the skin at the bottom edge. Every
+    adventurer's head has the same shape, so two layouts fit them all: *helmeted* (the knight, the barbarian:
+    the middle of the face, its chin squashed up where the helmet or beard hides it) and *open* (everyone else:
+    the whole face, hairline to the bottom of the chin, curving back under it); `/dev/faces` shows where a face
+    lands on each hero (a test card, `?photo=`, or `?camera` for the PC's camera).
 
   `RoomSoundService` plays the countdown's blips and the shutter on the station's speaker. A station names
   its camera with `?camera=` when one PC drives several.

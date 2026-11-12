@@ -75,6 +75,7 @@ Screen URLs and what they show:
 | `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
 | `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=wizard` for another hero, `?rival=/picture.jpg` for a rival's face on the monsters) |
 | `/dev/heroes` | Draws every hero's pictures for `media/heroes` (hero cards and portraits), to save after changing a hero |
+| `/dev/faces` | Where a hero photo lands on each hero's head: a test card, `?photo=/picture.jpg`, or `?camera` for this PC's camera (kept in the page only) |
 
 Add `?room=B` to any URL when there's more than one room. It doesn't matter which machine a screen
 runs on. Point a browser at `http://<server-ip>:5000/...`.

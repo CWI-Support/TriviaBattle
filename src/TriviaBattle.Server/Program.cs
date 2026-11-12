@@ -171,6 +171,7 @@ try
     app.MapFallbackToFile("/dev/battle3d", "screens/portrait-frame.html", staticFiles); // the same, drawn in 3D (js/battle3d)
     app.MapFallbackToFile("/dev/battle3d/screen", "screens/dev-battle3d.html", staticFiles);
     app.MapFallbackToFile("/dev/heroes", "screens/dev-heroes.html", staticFiles); // draws the heroes' pictures for media/heroes
+    app.MapFallbackToFile("/dev/faces", "screens/dev-faces.html", staticFiles); // where a hero photo lands on each hero's head
     app.MapFallbackToFile("/admin", "screens/admin.html", staticFiles);
     app.MapGet("/operator", () => Results.Redirect("/admin#operator")); // the venue staff's screen: sound, rules, theme
 

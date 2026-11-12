@@ -36,17 +36,39 @@
 const ADVENTURER = { height: 2.3, scale: 1, idle: 'Idle', hurt: 'Hit_A', block: 'Block_Hit', death: 'Death_A', cheer: 'Cheer', run: 'Running_A' };
 
 /**
- * Where a hero photo goes on an adventurer's head: its own face, inside the helmet, hat or hood (about 1.40
- * to 1.70 high). The face's curve was measured from the knight's skin; the heights set by eye. lift moves it
- * all up (the mage's face sits higher, under his hat).
+ * Where a hero photo goes on an adventurer's head: its own face. The adventurers' heads are all one shape
+ * (eyes at about 1.60, chin about 1.22, measured from each head's own picture and vertices), so two layouts fit
+ * them all. Only the skin in the area becomes the photo (js/battle3d/face.js): hair, hoods and beards stay.
+ *   helmeted: a helmet or a beard covers the lower face, so the photo is the middle of the face (about 1.30
+ *             to 1.80 high), its chin squashed up under the mouth where the helmet hides it.
+ *   open:     nothing covers it, so the photo is the whole face, from the hairline (1.92) to the bottom of the
+ *             chin (1.23), in a face's own proportions; the surface curves back under the chin as the head's does.
+ * hairline: how high the face reaches (1.8: higher, it would take bits of a fringe or a hood's rim). The
+ * mage's hair parts over his forehead, showing skin up to about 1.9, so his reaches 1.95 to cover it.
+ * brows: brown brows (not dark like the eyes, so not found that way): the band they sit in, above the eyes and
+ * under the fringe; the photo's own brows take their place.
+ * Of what lies between skin, a helmeted face takes anything (the barbarian's lip under his moustache); an open
+ * face only what's dark (eyes, mouth), since a hood sits between skin there too.
+ * The face's curve across was measured from the knight's skin.
  */
-const face = (mesh, lift = 0) => ({
+const face = (mesh, { layout = 'open', hairline = 1.8, brows = null } = {}) => ({
     mesh,
-    top: 2.0 + lift, eyes: 1.61 + lift, mouth: 1.445 + lift, chin: 1.345 + lift, eyeSpan: 0.34,
+    brows,
+    ...(layout === 'helmeted'
+        ? { top: 2.0, eyes: 1.61, mouth: 1.445, chin: 1.345 }
+        : { top: 1.92, eyes: 1.61, mouth: 1.39, chin: 1.23 }),
+    eyeSpan: 0.34,
     skin: '#f6c29e', // the head's skin, round the edge of the face
-    area: { left: -0.55, bottom: 1.21 + lift, side: 1.1 },
-    surface: { front: 0.45, curve: 1.25, area: { from: 0.2, halfWidth: 0.42, bottom: 1.36 + lift, top: 1.8 + lift } },
+    area: { left: -0.55, bottom: layout === 'helmeted' ? 1.21 : 1.1, side: 1.1 },
+    surface: layout === 'helmeted'
+        ? { front: 0.45, curve: 1.25, enclosed: 'any', area: { from: 0.2, halfWidth: 0.42, bottom: 1.3, top: hairline } }
+        // chin: below from, the face falls back by curve * (from - y) squared (0.2 at the bottom of the chin)
+        : { front: 0.45, curve: 1.25, enclosed: 'dark', chin: { from: 1.4, curve: 5 }, area: { from: 0.2, halfWidth: 0.42, bottom: 1.2, top: hairline } },
 });
+
+// The rogue's and the ranger's brows (measured: the ranger's from 1.63, the rogue's up to 1.77, out to 0.33; the
+// rogue's fringe starts at 1.78). The eyes below are dark, not brown, so the band can reach down to them.
+const BROWS = { bottom: 1.62, top: 1.77, halfWidth: 0.34 };
 
 const melee = (clip, contact) => ({ clip, contact });
 
@@ -63,7 +85,7 @@ export const HEROES = {
         gear: ['1H_Sword', 'Round_Shield', 'Knight_Helmet', 'Knight_Cape'],
         allGear: ['1H_Sword', '1H_Sword_Offhand', '2H_Sword', 'Badge_Shield', 'Rectangle_Shield', 'Round_Shield', 'Spike_Shield', 'Knight_Helmet', 'Knight_Cape'],
         tinted: 'Knight_Cape', // the part dyed the station's colour
-        face: face('Knight_Head'),
+        face: face('Knight_Head', { layout: 'helmeted' }),
     },
     pugilist: {
         ...ADVENTURER,
@@ -74,7 +96,7 @@ export const HEROES = {
         gear: ['1H_Axe', 'Barbarian_Round_Shield', 'Barbarian_Hat', 'Barbarian_Cape'],
         allGear: ['1H_Axe', '1H_Axe_Offhand', '2H_Axe', 'Barbarian_Round_Shield', 'Mug', 'Barbarian_Hat', 'Barbarian_Cape'],
         tinted: 'Barbarian_Cape',
-        face: face('Barbarian_Head'),
+        face: face('Barbarian_Head', { layout: 'helmeted' }), // the beard covers the lower face
     },
     wizard: {
         ...ADVENTURER,
@@ -85,7 +107,7 @@ export const HEROES = {
         gear: ['2H_Staff', 'Mage_Hat', 'Mage_Cape'],
         allGear: ['Spellbook', 'Spellbook_open', '1H_Wand', '2H_Staff', 'Mage_Hat', 'Mage_Cape'],
         tinted: 'Mage_Cape',
-        face: face('Mage_Head', 0.1),
+        face: face('Mage_Head', { hairline: 1.95 }),
     },
     healer: { // the mage's model (no model of its own yet): no hat, a wand and a book
         ...ADVENTURER,
@@ -96,7 +118,7 @@ export const HEROES = {
         gear: ['1H_Wand', 'Spellbook', 'Mage_Cape'],
         allGear: ['Spellbook', 'Spellbook_open', '1H_Wand', '2H_Staff', 'Mage_Hat', 'Mage_Cape'],
         tinted: 'Mage_Cape',
-        face: face('Mage_Head', 0.1),
+        face: face('Mage_Head', { hairline: 1.95 }),
     },
     rogue: {
         ...ADVENTURER,
@@ -107,7 +129,7 @@ export const HEROES = {
         gear: ['Knife', 'Knife_Offhand', 'Rogue_Cape'],
         allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
         tinted: 'Rogue_Cape',
-        face: face('Rogue_Head'),
+        face: face('Rogue_Head', { brows: BROWS }),
     },
     ranger: {
         ...ADVENTURER,
@@ -118,7 +140,7 @@ export const HEROES = {
         gear: ['1H_Crossbow', 'Knife_Offhand', 'Rogue_Cape'],
         allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
         tinted: 'Rogue_Cape',
-        face: face('Rogue_Head_Hooded'),
+        face: face('Rogue_Head_Hooded', { brows: BROWS }),
     },
     warlock: { // the ranger's model (no model of its own yet), hooded and casting
         ...ADVENTURER,
@@ -129,7 +151,7 @@ export const HEROES = {
         gear: ['Knife_Offhand', 'Rogue_Cape'],
         allGear: ['Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Knife', 'Throwable', 'Rogue_Cape'],
         tinted: 'Rogue_Cape',
-        face: face('Rogue_Head_Hooded'),
+        face: face('Rogue_Head_Hooded', { brows: BROWS }),
     },
 };
 

@@ -45,7 +45,7 @@ Hero photos: the station puts the player's face on their hero right after they p
 `PhotoStore` keeps it by station until their game starts, then under the match), or in a kiosk game's intro (by
 default; the action button says no, or with `PhotoByDefault` off it says yes). `js/hero-camera.js` takes it,
 `js/face-cutout.js` cuts out the face (MediaPipe, vendored in `lib/mediapipe`), `js/battle3d/face.js` paints it on the
-knight's head, `js/battle3d/portrait.js` renders the 2D portrait, `js/hero-photo.js` fetches them, and `PhotoStore` +
+hero's head (only its skin: hair, hoods and beards stay; check every hero at `/dev/faces`), `js/battle3d/portrait.js` renders the 2D portrait, `js/hero-photo.js` fetches them, and `PhotoStore` +
 `/api/photos` hold them. Photos live in server memory until the player drops it, leaves the lobby or the match ends: never write one
 to disk, the database or a log.
 After each answer a battle beat holds the next question back while the station plays the fight full screen

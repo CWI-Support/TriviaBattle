@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trivia Battle - Hero Faces</title>
+    <link rel="icon" href="/favicon.svg">
+    <style>
+        body { margin: 0; padding: 16px; background: #2a2630; color: #eee; font: 14px sans-serif; }
+        .hero { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 16px 20px 0; vertical-align: top; }
+        .hero .row { display: flex; gap: 4px; }
+        .hero canvas { width: 200px; height: 200px; background: #3a3440; }
+        .hero b { font-size: 16px; }
+        code { color: #ffd479; }
+    </style>
+    <!-- three.js is vendored (the venue LAN may be offline); modules find it through this map. -->
+    <script type="importmap">
+        { "imports": { "three": "/lib/three/three.module.min.js", "three/addons/": "/lib/three/addons/" } }
+    </script>
+</head>
+<body>
+    <!-- Dev page: where a hero photo lands on each hero's head, to set the face numbers in HEROES (js/battle3d/models.js).
+         Each hero three times: its own face; the test card (a face laid out as js/face-cutout.js lays out every
+         face: red pupils, a blue mouth line, a green chin line, a yellow forehead line); and with ?photo=/path/picture.jpg,
+         a real face cut from that picture the way a station's camera does (?camera: from this PC's camera; kept in
+         the page only, like every hero photo). The test card's dots should sit where the
+         hero's own eyes are, its mouth line on the hero's mouth. The page title says "done" when they're all drawn. -->
+    <p>Left: the hero's own face. Middle: the test card. Right (with <code>?photo=/path/picture.jpg</code>, or <code>?camera</code> for this PC's camera): a real face.</p>
+    <div id="camera-panel" hidden>
+        <video id="camera" muted playsinline style="width: 240px; transform: scaleX(-1); background: #000"></video>
+        <div><span id="camera-status"></span> <button id="take">Take again</button></div>
+    </div>
+    <div id="heroes"></div>
+    <script src="/js/face-cutout.js"></script>
+    <script type="module">
+        import { heroPortrait } from '/js/battle3d/portrait.js';
+        import { HEROES } from '/js/battle3d/models.js';
+
+        const COLOR = '#8a6e4b';
+        const params = new URLSearchParams(location.search);
+
+        /** A face laid out as FaceCutout lays out every face, with its features drawn as marks. */
+        function testCard() {
+            const S = FaceCutout.SIZE;
+            const card = FaceCutout.canvas(S, S);
+            const g = card.getContext('2d');
+            const y = share => share * S;
+            g.fillStyle = '#f2c7a5';
+            g.beginPath();
+            g.ellipse(S / 2, (y(FaceCutout.TOP) + y(FaceCutout.CHIN)) / 2, S * 0.36, (y(FaceCutout.CHIN) - y(FaceCutout.TOP)) / 2, 0, 0, Math.PI * 2);
+            g.fill();
+            const line = (share, colour) => {
+                g.strokeStyle = colour;
+                g.lineWidth = 5;
+                g.beginPath();
+                g.moveTo(S * 0.18, y(share));
+                g.lineTo(S * 0.82, y(share));
+                g.stroke();
+            };
+            line(FaceCutout.TOP + 0.03, '#e8c400');
+            line(FaceCutout.MOUTH, '#1f6fff');
+            line(FaceCutout.CHIN, '#14b814');
+            g.fillStyle = '#e01010';
+            for (const side of [-1, 1]) {
+                g.beginPath();
+                g.arc(S / 2 + (side * FaceCutout.EYE_SPAN * S) / 2, y(FaceCutout.EYES), S * 0.035, 0, Math.PI * 2);
+                g.fill();
+            }
+            return card.toDataURL('image/png');
+        }
+
+        async function photoFace(source) {
+            const picture = new Image();
+            picture.src = source;
+            await picture.decode();
+            const face = await FaceCutout.cut(picture);
+            if (!face) console.warn('No face found in', source);
+            return face?.toDataURL('image/png') ?? null;
+        }
+
+        /**
+         * ?camera: this PC's camera, as a station's: counts down, takes the face (mirrored, as FaceCutout does)
+         * and draws the heroes wearing it; "Take again" for another. The face stays in this page (never saved).
+         */
+        async function cameraFace() {
+            const status = document.getElementById('camera-status');
+            const video = document.getElementById('camera');
+            video.srcObject ??= await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+            await video.play();
+            await FaceCutout.load();
+            for (let n = 3; n > 0; n--) {
+                status.textContent = `Look at the camera: ${n}`;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            // As a station does (HeroCamera.findFace): up to 2.5 s for a face looking straight at the camera.
+            const giveUpAt = Date.now() + 2500;
+            let best = null;
+            do {
+                const found = await FaceCutout.find(video);
+                if (found && (!best || found.turn < best.turn)) best = found;
+                if (best && best.turn <= FaceCutout.STRAIGHT) break;
+                await new Promise(r => setTimeout(r, 150));
+            } while (Date.now() < giveUpAt);
+            status.textContent = best ? `Taken (turned ${best.turn.toFixed(2)}; straight is up to ${FaceCutout.STRAIGHT}).` : 'No face found: try again.';
+            return best?.face.toDataURL('image/png') ?? null;
+        }
+
+        async function draw(photo) {
+            document.title = 'drawing';
+            const list = document.getElementById('heroes');
+            list.innerHTML = '';
+            const only = params.get('hero');
+            for (const hero of Object.keys(HEROES).filter(h => !only || h === only)) {
+                const box = document.createElement('div');
+                box.className = 'hero';
+                box.dataset.hero = hero;
+                box.innerHTML = `<b>${hero}</b><div class="row"></div>`;
+                const row = box.querySelector('.row');
+                for (const face of [null, card, ...(photo ? [photo] : [])])
+                    row.appendChild(await heroPortrait(face, COLOR, { hero, framing: 'head', size: 400 }));
+                list.appendChild(box);
+            }
+            document.title = 'done';
+        }
+
+        const card = testCard();
+        if (params.has('camera')) {
+            document.getElementById('camera-panel').hidden = false;
+            const take = async () => draw(await cameraFace());
+            document.getElementById('take').onclick = take;
+            await take();
+        } else {
+            await draw(params.has('photo') ? await photoFace(params.get('photo')) : null);
+        }
+    </script>
+</body>
+</html>

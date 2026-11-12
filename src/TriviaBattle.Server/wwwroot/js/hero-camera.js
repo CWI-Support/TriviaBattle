@@ -265,15 +265,22 @@ const HeroCamera = {
         return window.HeroPortrait ? HeroPortrait.render(face.toDataURL('image/png'), look.color, { hero: look.hero }) : face;
     },
 
-    /** Looks for the face in the camera picture until one is found, or SEARCH_MS has gone by (someone looked away). */
+    /**
+     * Looks for the face in the camera picture until one looks straight at the camera, or SEARCH_MS has gone
+     * by (someone looked away, or at the screen beside it): then the straightest one seen, or null if none.
+     * A turned head would come out squashed on one side on every hero.
+     */
     async findFace(video, run) {
         const giveUpAt = Date.now() + HeroCamera.SEARCH_MS;
+        let best = null;
         do {
-            const face = await FaceCutout.cut(video);
-            if (face || run.cancelled) return face;
-            await HeroCamera.wait(200);
+            const found = await FaceCutout.find(video);
+            if (run.cancelled) return null;
+            if (found && (!best || found.turn < best.turn)) best = found;
+            if (best && best.turn <= FaceCutout.STRAIGHT) break;
+            await HeroCamera.wait(150);
         } while (Date.now() < giveUpAt);
-        return null;
+        return best?.face ?? null;
     },
 
     /**
