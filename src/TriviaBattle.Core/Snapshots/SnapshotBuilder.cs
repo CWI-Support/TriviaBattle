@@ -131,7 +131,7 @@ public static class SnapshotBuilder
             : null;
         var chestShuffle = game is Dungeon.Minigames.ChestShuffle c
             ? new ChestShuffleView(c.Round, c.Rounds, c.CoinChest, c.RoundStartsAt.ToUnixTimeMilliseconds(), Ms(c.RevealSeconds), Ms(c.SwapSeconds),
-                c.Swaps.Select(s => new[] { s.A, s.B }).ToList(), c.PickFrom.ToUnixTimeMilliseconds(), c.FinalPlaces, c.Picks, c.LastPick, c.LastWasRight, c.FoundAt)
+                c.Swaps.Select(s => new[] { s.A, s.B }).ToList(), c.PickFrom.ToUnixTimeMilliseconds(), c.FinalPlaces, c.Picks, c.LastPick, c.LastWasRight, c.FoundAt, ToUnixMs(c.LastPickAt))
             : null;
         return new MinigameView(game.Kind.ToString(), game.IntroAt.ToUnixTimeMilliseconds(), game.PlaysFrom.ToUnixTimeMilliseconds(),
             game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle);

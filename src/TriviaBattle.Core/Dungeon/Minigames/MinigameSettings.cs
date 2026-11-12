@@ -63,10 +63,16 @@ public sealed class RuneEchoSettings
 public sealed class ChestShuffleSettings
 {
     /// <summary>How many swaps each round has: one round each (so 3 rounds by default), more each time.</summary>
-    public List<int> Swaps { get; set; } = [4, 6, 8];
+    public List<int> Swaps { get; set; } = [5, 7, 9];
 
     /// <summary>How long each swap takes, round by round (the last one for any rounds after): faster each time.</summary>
-    public List<double> SwapSeconds { get; set; } = [0.45, 0.36, 0.29];
+    public List<double> SwapSeconds { get; set; } = [0.4, 0.32, 0.26];
+
+    /// <summary>
+    /// The share of swaps (0-1) sure to move the coin's chest; the rest swap any two chests (which may include it too).
+    /// Random swaps alone leave it standing still most of the time, which makes it easy to follow.
+    /// </summary>
+    public double CoinSwapShare { get; set; } = 0.5;
 
     /// <summary>How long the coin is shown going into its chest before the lids close.</summary>
     public double RevealSeconds { get; set; } = 1.6;

@@ -190,7 +190,7 @@ const DungeonMinigames = {
      * the server's list, so a redraw mid-shuffle carries on where it was). Once it's over, the coin's chest lights up where
      * it ended (and the one picked, if that was another).
      * After a right pick the snapshot is already the next round, starting a moment later (roundStartsAtMs): "Found it!"
-     * shows until then, and everything else (the coin dropping in, the words, the chests moving) is timed from that start,
+     * and the coin popping out of the chest they picked (foundAt) show until then, and everything else (the coin dropping in, the words, the chests moving) is timed from that start,
      * because nothing comes from the server when it does.
      */
     chestShuffle(game, you, serverNow, seed) {
@@ -204,8 +204,12 @@ const DungeonMinigames = {
             const isCoin = chest === shuffle.coinChest;
             const lit = over && isCoin ? 'is-coin' : '';
             const wrong = over && !game.won && shuffle.lastPick !== null && shuffle.finalPlaces[shuffle.lastPick] === chest && !isCoin ? 'is-picked' : '';
+            // Between rounds the chests already stand in order for the next one (chest n at place n; they all look
+            // alike), so the chest at the place they picked is the one the coin pops out of.
+            const found = between && chest === shuffle.foundAt ? 'is-found' : '';
             return `
-                <div class="dg-cs-chest ${lit} ${wrong}" data-chest="${chest}" style="--x: ${over ? shuffle.finalPlaces.indexOf(chest) : chest}">
+                <div class="dg-cs-chest ${lit} ${wrong} ${found}" data-chest="${chest}" style="--x: ${over ? shuffle.finalPlaces.indexOf(chest) : chest}">
+                    ${found ? PixelSprites.html('icon-coin', 'dg-cs-coin dg-cs-popped') : ''}
                     ${isCoin ? PixelSprites.html('icon-coin', 'dg-cs-coin') : ''}
                     ${PixelSprites.html('icon-chest', 'dg-cs-sprite')}
                 </div>`;
@@ -223,7 +227,7 @@ const DungeonMinigames = {
                <span class="dg-cs-pick">${Theme.text('dungeon.minigameChestPick', {}, seed)}</span>`;
         return `
             <div class="dg-cs ${over ? 'is-over' : ''}" id="${id}"
-                 style="--reveal-end: ${at(shuffle.roundStartsAtMs + shuffle.revealMs)}ms; --pick: ${at(shuffle.pickFromMs)}ms; --start: ${at(over ? game.finishedAtMs : shuffle.roundStartsAtMs)}ms"
+                 style="--reveal-end: ${at(shuffle.roundStartsAtMs + shuffle.revealMs)}ms; --pick: ${at(shuffle.pickFromMs)}ms; --start: ${at(over ? game.finishedAtMs : shuffle.roundStartsAtMs)}ms; --picked: ${at(shuffle.lastPickAtMs ?? serverNow)}ms"
                  data-coin-place="${coinPlace}">
                 <div class="dg-re-round">${Theme.text('dungeon.minigameRound', { round: shuffle.round, rounds: shuffle.rounds })}</div>
                 <div class="dg-cs-status">${status}</div>

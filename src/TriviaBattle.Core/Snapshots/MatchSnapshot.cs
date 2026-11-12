@@ -226,8 +226,10 @@ public sealed record RuneEchoView(int Round, int Rounds, IReadOnlyList<int> Sequ
 /// </summary>
 /// <param name="FinalPlaces">Which chest is in each place once they stop (for showing where the coin was).</param>
 /// <param name="FoundAt">After a right pick: the place it was in, shown until the next round starts.</param>
+/// <param name="LastPickAtMs">When they last picked: the coin pops out of a right pick's chest from then.</param>
 public sealed record ChestShuffleView(int Round, int Rounds, int CoinChest, long RoundStartsAtMs, long RevealMs, long SwapMs,
-    IReadOnlyList<int[]> Swaps, long PickFromMs, IReadOnlyList<int> FinalPlaces, int Picks, int? LastPick, bool LastWasRight, int? FoundAt);
+    IReadOnlyList<int[]> Swaps, long PickFromMs, IReadOnlyList<int> FinalPlaces, int Picks, int? LastPick, bool LastWasRight, int? FoundAt,
+    long? LastPickAtMs = null);
 
 /// <summary>
 /// The rune lock. The needle turns at <see cref="DegreesPerSecond"/> (negative: anticlockwise) from <see cref="TurnAngle"/>

@@ -309,8 +309,18 @@
     animation: dg-cs-coin-drop 600ms cubic-bezier(0.3, 1.4, 0.5, 1) var(--start) both, dg-mg-veil-out 200ms linear var(--reveal-end) forwards;
 }
 @keyframes dg-cs-coin-drop { from { opacity: 0; transform: translateY(-12vmin); } }
+/* The coin popping up out of its chest: after every right pick (from the pick, --picked: the chest picked, lit until the
+   next round starts, --start) and when it's over (the chest it was really in). */
+@keyframes dg-cs-coin-pop {
+    from { opacity: 0; transform: translateY(9vmin) scale(0.4); }
+    55% { opacity: 1; transform: translateY(-4vmin) scale(1.2); }
+    to { transform: none; }
+}
+.dg-cs-coin.dg-cs-popped { animation: dg-cs-coin-pop 550ms cubic-bezier(0.3, 1.2, 0.5, 1) var(--picked) both, dg-mg-veil-out 150ms linear var(--start) forwards; }
+.dg-cs-chest.is-found .dg-cs-sprite { animation: dg-cs-found-glow 150ms linear var(--start) both; }
+@keyframes dg-cs-found-glow { from { filter: drop-shadow(0 0 3vmin var(--dg-mg-gold)); } }
 /* Over: the coin shows where it really was, its chest lit; a wrong pick is marked red. */
-.dg-cs.is-over .dg-cs-coin { animation: dg-cs-coin-drop 500ms ease-out var(--start) both; } /* --start: when it ended */
+.dg-cs.is-over .dg-cs-coin { animation: dg-cs-coin-pop 550ms cubic-bezier(0.3, 1.2, 0.5, 1) var(--start) both; } /* --start: when it ended */
 .dg-cs-chest.is-coin .dg-cs-sprite { filter: drop-shadow(0 0 3vmin var(--dg-mg-gold)); }
 .dg-cs-chest.is-picked .dg-cs-sprite { filter: drop-shadow(0 0 3vmin var(--wrong)) grayscale(0.6); }
 

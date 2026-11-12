@@ -4,7 +4,8 @@ namespace TriviaBattle.Core.Dungeon.Minigames;
 /// The chest shuffle (a shell game): five chests in a row, a coin drops into one, the lids close and the chests swap
 /// places, pair by pair. Then the player picks the chest the coin's in, with the button under it: A, B, C, D, and the
 /// action button for the fifth. Right, and the next round shuffles more and faster (<see cref="ChestShuffleSettings.Swaps"/>,
-/// <see cref="ChestShuffleSettings.SwapSeconds"/>); right in every round wins it. The wrong chest loses it there and then.
+/// <see cref="ChestShuffleSettings.SwapSeconds"/>,
+/// with the coin's own chest in at least <see cref="ChestShuffleSettings.CoinSwapShare"/> of the swaps); right in every round wins it. The wrong chest loses it there and then.
 ///
 /// Each round's swaps are made when it starts, and the screen moves the chests from the same list: from
 /// <see cref="RoundStartsAt"/> the coin is shown for <see cref="ChestShuffleSettings.RevealSeconds"/>, then swap i
@@ -69,6 +70,9 @@ public sealed class ChestShuffle : Minigame
     /// <summary>A right pick: the coin's place, shown until the next round starts (null before the first, or after a wrong one).</summary>
     public int? FoundAt { get; private set; }
 
+    /// <summary>When they last picked (the coin pops out of a right pick's chest from then).</summary>
+    public DateTimeOffset? LastPickAt { get; private set; }
+
     protected override MinigamePress Play(int answerIndex, DateTimeOffset at)
     {
         if (answerIndex is < 0 or >= Chests || at < PickFrom)
@@ -76,6 +80,7 @@ public sealed class ChestShuffle : Minigame
 
         Picks++;
         LastPick = answerIndex;
+        LastPickAt = at;
         LastWasRight = FinalPlaces[answerIndex] == CoinChest;
         if (!LastWasRight)
             return MinigamePress.Lost;
@@ -95,10 +100,14 @@ public sealed class ChestShuffle : Minigame
         CoinChest = _random.Next(Chests);
         SwapSeconds = _settings.SwapSeconds[Math.Min(round, _settings.SwapSeconds.Count) - 1];
         var swaps = new List<(int, int)>();
+        var coinAt = CoinChest; // the coin's place as the chests move (they start in order)
         for (var i = 0; i < _settings.Swaps[round - 1]; i++)
         {
-            var a = _random.Next(Chests);
+            // Some swaps are sure to move the coin's own chest (CoinSwapShare), so it can't sit still while the others move.
+            var a = _random.NextDouble() < _settings.CoinSwapShare ? coinAt : _random.Next(Chests);
             var b = (a + 1 + _random.Next(Chests - 1)) % Chests; // any other place
+            if (coinAt == a) coinAt = b;
+            else if (coinAt == b) coinAt = a;
             swaps.Add((Math.Min(a, b), Math.Max(a, b)));
         }
         Swaps = swaps;

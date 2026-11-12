@@ -111,10 +111,10 @@ public class RuneEchoAndChestShuffleTests
     {
         var match = Match(MinigameKind.ChestShuffle);
         var shuffle = GameOf<ChestShuffle>(match);
-        Assert.Equal((4, 0.45), (shuffle.Swaps.Count, shuffle.SwapSeconds));
+        Assert.Equal((5, 0.4), (shuffle.Swaps.Count, shuffle.SwapSeconds));
 
         Assert.Equal(MinigamePress.Hit, Pick(match).OfType<MinigamePlayed>().Single().Result);
-        Assert.Equal((2, 6, 0.36), (shuffle.Round, shuffle.Swaps.Count, shuffle.SwapSeconds));
+        Assert.Equal((2, 7, 0.32), (shuffle.Round, shuffle.Swaps.Count, shuffle.SwapSeconds));
         Pick(match);
 
         Assert.Equal(MinigamePress.Won, Pick(match).OfType<MinigamePlayed>().Single().Result);
@@ -156,15 +156,31 @@ public class RuneEchoAndChestShuffleTests
     }
 
     [Fact]
+    public void Coin_swap_share_makes_swaps_move_the_coin_s_chest()
+    {
+        var settings = new MinigameSettings();
+        settings.ChestShuffle.CoinSwapShare = 1; // every swap
+        var shuffle = new ChestShuffle(DateTimeOffset.UnixEpoch, settings, new Random(3));
+
+        var coinAt = shuffle.CoinChest;
+        foreach (var (a, b) in shuffle.Swaps)
+        {
+            Assert.True(coinAt == a || coinAt == b, "every swap should move the coin's chest");
+            coinAt = coinAt == a ? b : a;
+        }
+        Assert.Equal(coinAt, shuffle.FinalPlaces.ToList().IndexOf(shuffle.CoinChest));
+    }
+
+    [Fact]
     public void The_screen_gets_the_swaps_to_move_the_chests_by()
     {
         var match = Match(MinigameKind.ChestShuffle);
 
         var view = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Minigame!.ChestShuffle!;
 
-        Assert.Equal(4, view.Swaps.Count);
+        Assert.Equal(5, view.Swaps.Count);
         Assert.All(view.Swaps, s => Assert.True(s[0] < s[1] && s[1] < 5));
-        Assert.Equal(view.RoundStartsAtMs + 1600 + 4 * 450, view.PickFromMs);
+        Assert.Equal(view.RoundStartsAtMs + 1600 + 5 * 400, view.PickFromMs);
     }
 
     [Fact]
