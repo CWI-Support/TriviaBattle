@@ -71,7 +71,7 @@ public class DungeonBeatTests
         match.Press("A1", 0, afterSeconds: 4); // a crit: second rat dead, floor 1 cleared, the boss steps up
 
         Assert.Equal("boss", BeatOf(match)!.Kind);
-        Assert.Equal(match.Now.AddSeconds(3), match.StreamOf("A1").CurrentShownAt);
+        Assert.Equal(match.Now.AddSeconds(5), match.StreamOf("A1").CurrentShownAt); // its entrance: the curtain, then it leaps in
     }
 
     [Fact]

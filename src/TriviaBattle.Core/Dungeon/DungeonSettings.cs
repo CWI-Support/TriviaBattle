@@ -63,8 +63,14 @@ public sealed class DungeonSettings
     /// </summary>
     public double RoomBeatSeconds { get; set; } = 3;
 
-    /// <summary>A floor cleared: the way down, or the next floor's boss stepping up.</summary>
+    /// <summary>A floor cleared: the way down.</summary>
     public double FloorBeatSeconds { get; set; } = 3;
+
+    /// <summary>
+    /// The kill that empties the room before a boss's: the kill, the WARNING! curtain, then (in 3D) it lifts on the
+    /// empty room and the boss leaps in, lands with a slam and taunts before the first question against it.
+    /// </summary>
+    public double BossBeatSeconds { get; set; } = 5;
 
     // In a party of two or more, a downed adventurer waits for their teammates: ReviveAnswers right
     // answers from them bring them back. PartyDownedSeconds is the safety net if nobody manages it.

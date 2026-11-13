@@ -7,7 +7,8 @@
 // number, the flash and the HP bar laid over this scene in HTML. Change both together:
 //   hit     0 the knight dashes in, 190 the blade lands (the server's sound plays at 0: the blow lands early)
 //   kill    the hit, then 720 the monster goes down, 1000 it bursts into smoke and gold as SLAIN! slams in
-//   floor / boss   the kill; the HTML curtain covers the scene from 1280-1330
+//   floor / boss   the kill; the HTML curtain covers the scene from 1280-1330. The boss beat (5 s) then lifts it at
+//           2900 and the boss leaps in (showBossEntrance, below)
 //   hurt    0 the monster lunges, 240 it strikes; the knight reels
 //   downed  the hurt, then 640 the knight falls (and stays down)
 // The hero classes' moments, on the same clock:
@@ -86,7 +87,7 @@ export function showBeat(beat, ms, cast) {
  * rocks back. heroHealMs: how long ago a teammate's heal landed on you (null: none). charge: a boss's charge
  * for your question now ({ level 0..1, full }, battle3d.js's chargeOf), or null: it glows and crackles with it.
  */
-export function showIdle(cast, { heroDown, foeArrivedMs, foeFlinch = 0, heroHealMs = null, charge = null }) {
+export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, heroHealMs = null, charge = null }) {
     const { hero, foe, fx, stage, homes, seconds } = cast;
     fx.hideAll();
     stage.shake.set(0, 0);
@@ -97,12 +98,17 @@ export function showIdle(cast, { heroDown, foeArrivedMs, foeFlinch = 0, heroHeal
         : { x: homes.hero, clip: hero.spec.idle, time: seconds });
     if (heroHealMs !== null) fx.showHeal(hero.chest(), heroHealMs / 1000);
 
-    // A new monster drops in from above and lands with a squash.
-    const { lift, squash } = dropIn(foeArrivedMs);
+    // A new monster, the first time you see it: its entrance, the camera pushing in from a little wide meanwhile.
+    if (foeEntranceMs !== null && foeEntranceMs < entranceLength(foe)) {
+        const lean = showEntrance(foe, foeEntranceMs, cast);
+        showPack(cast, null, 0);
+        return { ...lean, zoom: lean.zoom * (1 + ENTRANCE_PULL * (1 - easeOut(foeEntranceMs / ENTRANCE_PUSH_MS))) };
+    }
+
     // At full charge the boss trembles, as if it can barely hold the blow in.
     const tremble = charge?.full ? 0.025 * Math.sin(seconds * 70) : 0;
     foe.apply({
-        x: homes.foe + 0.3 * foeFlinch + tremble, lift, squash, tilt: -0.15 * foeFlinch, flash: foeFlinch, flashColor: 0xffffff,
+        x: homes.foe + 0.3 * foeFlinch + tremble, tilt: -0.15 * foeFlinch, flash: foeFlinch, flashColor: 0xffffff,
         ...strongerGlow(poisonGlow(cast.foePoison, seconds), chargeGlow(charge, seconds)),
         clip: foe.spec.idle, time: seconds + 0.37,
     });
@@ -110,6 +116,141 @@ export function showIdle(cast, { heroDown, foeArrivedMs, foeFlinch = 0, heroHeal
     if (charge) fx.showCharge(foe, seconds, charge.level, charge.full);
     showPack(cast, null, 0);
     return { zoom: 1, focus: 0 };
+}
+
+// ---------------------------------------------------------------- Entrances
+
+// A monster's entrance (spec.entrance in models.js), the first time you see it: after a curtain, the reward cards or
+// a mini game hid the moment it was swapped in, it comes on as the question does, rather than already standing there.
+const ENTRANCE_PULL = 0.3;       // the question's camera starts this much further back...
+const ENTRANCE_PUSH_MS = 800;    // ...and pushes in over this long
+const RUN_MS = 850;              // 'run': from the right to its spot
+const RUN_FROM = 3.5;            //        how far right it starts (out of the question's shot)
+const SWOOP_MS = 800;            // 'swoop': down into its spot
+const DROP_MS = 600;             // no entrance: it drops in from above
+const LEAP_MS = 450;             // 'leap': in the air, from high on the right...
+const LEAP_FROM = 4;
+const LEAP_HEIGHT = 3;
+const LAND_MS = 400;             // ...then the landing, then the taunt
+const SETTLE_MS = 200;           // a clip blending back into the idle at the end
+
+// A boss's entrance in the boss beat (5 s: the kill before its room). css/dungeon-battle.css and css/battle3d.css time
+// the HTML (the curtain, its nameplate) and RoomSoundService the landing's sound to the same moments:
+//   1280 the WARNING! curtain covers the kill, 2900 it lifts on the empty room, 3000 the ground rumbles, 3300 the boss
+//   leaps in from the right, 3750 it lands: a slam (dust, a shockwave, a big shake, the knight thrown back a step),
+//   4150 it taunts, burning red, as its nameplate slams in; the question at 5000.
+export const BOSS_CURTAIN_LIFTS = 2900;
+const BOSS_RUMBLE = 3000;
+export const BOSS_LEAPS = 3300;
+const BOSS_LANDS = BOSS_LEAPS + LEAP_MS;   // 3750
+
+/** How long a monster's entrance lasts (ms). */
+export function entranceLength(actor) {
+    const entrance = actor.spec.entrance;
+    switch (entrance?.style) {
+        case 'run': return RUN_MS + SETTLE_MS;
+        case 'rise': return actor.duration(entrance.clip) * 1000 + SETTLE_MS;
+        case 'swoop': return SWOOP_MS;
+        case 'leap': return LEAP_MS + LAND_MS + actor.duration(entrance.taunt) * 1000 + SETTLE_MS;
+        default: return DROP_MS;
+    }
+}
+
+/**
+ * One frame of a monster's entrance, ms after it started, at its home spot (cast.homes.foe). Poses it and shows the
+ * dust and shockwave of a landing. Returns the camera's lean ({ zoom, focus }) and travel: true while it moves
+ * sideways, so it faces the way it's going (battle3d.js turns it).
+ */
+export function showEntrance(actor, ms, { fx, stage, homes, seconds }) {
+    const entrance = actor.spec.entrance;
+    const idle = { clip: actor.spec.idle, time: seconds + 0.37 };
+    const settle = (clip, at) => ({ ...idle, from: { clip, time: at / 1000 }, fade: Math.min(1, (ms - at) / SETTLE_MS) });
+    const looped = (clip, at) => (at / 1000) % Math.max(0.001, actor.duration(clip));
+
+    switch (entrance?.style) {
+        case 'run': {
+            const p = Math.min(1, ms / RUN_MS);
+            const pose = ms < RUN_MS ? { clip: entrance.clip, time: looped(entrance.clip, ms) } : settle(entrance.clip, RUN_MS);
+            actor.apply({ x: homes.foe + RUN_FROM * (1 - easeOut(p)), ...pose });
+            return { zoom: 1, focus: 0, travel: ms < RUN_MS - 150 };
+        }
+        case 'rise': {
+            const riseMs = actor.duration(entrance.clip) * 1000;
+            actor.apply({ x: homes.foe, ...(ms < riseMs ? { clip: entrance.clip, time: ms / 1000 } : settle(entrance.clip, riseMs)) });
+            const feet = actor.chest();
+            feet.y = 0.2;
+            fx.showSlamDust(feet, ms / 1000, 7);  // the ground breaking as it climbs out
+            return { zoom: 1, focus: 0, travel: false };
+        }
+        case 'swoop': {
+            const p = easeOut(ms / SWOOP_MS);
+            actor.apply({ x: homes.foe + 2 * (1 - p), lift: 3 * (1 - p), ...idle });
+            return { zoom: 1, focus: 0, travel: ms < SWOOP_MS * 0.7 };
+        }
+        case 'leap':
+            return showLeap(actor, ms, { fx, stage, homes, seconds }, idle, settle);
+        default: {
+            const { lift, squash } = dropIn(ms);
+            actor.apply({ x: homes.foe, lift, squash, ...idle });
+            return { zoom: 1, focus: 0, travel: false };
+        }
+    }
+}
+
+/** A boss's leap: high in from the right, a slam on landing, then its taunt, burning red. */
+function showLeap(actor, ms, { fx, stage, homes }, idle, settle) {
+    const { air, land, taunt } = actor.spec.entrance;
+    const t = ms - LEAP_MS;           // since it landed
+    const tt = t - LAND_MS;           // since the taunt began
+    const tauntMs = actor.duration(taunt) * 1000;
+    let pose, x = homes.foe, lift = 0, squash = 0;
+    if (t < 0) {
+        const p = ms / LEAP_MS;
+        x = homes.foe + LEAP_FROM * (1 - p);
+        lift = LEAP_HEIGHT * Math.sin(Math.PI * (0.5 + 0.5 * p));  // coming down ever faster
+        pose = { clip: air, time: ms / 1000 };
+    } else {
+        squash = 0.32 * Math.exp(-t / 110) * Math.cos(t / 40);
+        if (tt < 0) pose = { clip: land, time: t / 1000 };
+        else if (tt < tauntMs) pose = { clip: taunt, time: tt / 1000, from: { clip: land, time: LAND_MS / 1000 }, fade: Math.min(1, tt / 120) };
+        else pose = settle(taunt, LEAP_MS + LAND_MS + tauntMs);
+    }
+    actor.apply({ x, lift, squash, glow: tt >= 0 ? 0.28 * Math.sin(Math.PI * Math.min(1, tt / tauntMs)) : 0, glowColor: CHARGE_RED, ...pose });
+
+    // The landing: dust and a shockwave where it came down, the screen shaking (and again, smaller); the taunt's roar
+    // sends out a second ring.
+    const feet = actor.chest();
+    feet.y = 0.2;
+    fx.showSlamDust(feet, t / 1000, 11);
+    fx.showShockwave(actor.root.position, (tt >= 0 ? tt : t) / 1000, true, tt >= 0 ? 1.2 : 1.8);
+    shake(stage, ms, jolt(t, 0.32) + jolt(t - 380, 0.12));
+    const zoom = 1 - 0.12 * punch(t, 700) - 0.04 * (tt >= 0 ? easeInOut(Math.min(1, tt / 300)) : 0);
+    return { zoom, focus: tt >= 0 ? 0.2 * easeInOut(Math.min(1, tt / 300)) : 0, travel: t < 0 };
+}
+
+/**
+ * The boss beat after its curtain lifts (BOSS_CURTAIN_LIFTS on): the knight squares up in the empty room, the ground
+ * rumbles, and the boss (boss: its actor, already in the scene; null until it leaps) makes its entrance, throwing the
+ * knight back a step as it lands. Called after showBeat, over the kill's last moments. Returns the camera's lean.
+ */
+export function showBossEntrance(ms, boss, cast, lean) {
+    if (ms < BOSS_CURTAIN_LIFTS) return lean;
+    const { hero, stage, homes, seconds } = cast;
+    const t = ms - BOSS_LANDS;
+    const heroIdle = { clip: hero.spec.idle, time: seconds };
+    const reel = hero.spec.hurt;
+    const reelMs = hero.duration(reel) * 1000;
+    let heroPose = heroIdle;
+    if (hero.has(reel) && t >= 0 && t < reelMs) heroPose = { clip: reel, time: t / 1000, from: heroIdle, fade: Math.min(1, t / 60) };
+    else if (hero.has(reel) && t >= reelMs) heroPose = { ...heroIdle, from: { clip: reel, time: reelMs / 1000 }, fade: Math.min(1, (t - reelMs) / 200) };
+    hero.apply({ x: homes.hero - 0.35 * kick(t, 80, 600), lift: 0, ...heroPose });
+
+    if (!boss || ms < BOSS_LEAPS) {
+        // The rumble before it comes: the room trembling, more and more.
+        shake(stage, ms, ms >= BOSS_RUMBLE ? 0.035 * Math.min(1, (ms - BOSS_RUMBLE) / 300) : 0);
+        return { zoom: 1, focus: 0, travel: false };
+    }
+    return showEntrance(boss, ms - BOSS_LEAPS, cast);
 }
 
 /**

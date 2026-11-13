@@ -71,6 +71,9 @@ public class DungeonSounds
     /// <summary>A floor cleared, and the next floor's boss steps up.</summary>
     public string Boss { get; set; } = "";
 
+    /// <summary>The boss's entrance: it lands in the room with a slam (after the Boss warning).</summary>
+    public string BossLands { get; set; } = "";
+
     public string PartyCombo { get; set; } = "";
     public string Revive { get; set; } = "";
 
@@ -89,7 +92,7 @@ public class DungeonSounds
     public string PhotoCountdown { get; set; } = "";
     public string Photo { get; set; } = "";
 
-    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp, PhotoCountdown, Photo];
+    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, BossLands, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp, PhotoCountdown, Photo];
 
     /// <summary>At least one is set, so dungeon games play these instead of the stingers.</summary>
     public bool AnySet => All.Any(file => !string.IsNullOrWhiteSpace(file));

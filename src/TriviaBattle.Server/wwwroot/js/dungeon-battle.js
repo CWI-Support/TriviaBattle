@@ -144,6 +144,7 @@ const DungeonBattle = {
                 <div class="dg-battle-line dg-feedback ${feedback.tone}">${feedback.html}</div>
                 <div class="dg-battle-flash"></div>
                 ${beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.curtain(beat.kind, delve, seed) : ''}
+                ${beat.kind === 'boss' ? `<div class="dg-boss-intro">${DungeonBattle.bar(delve.monster.name, delve.monster.maxHp, delve.monster.maxHp, delve.monster.maxHp, 'for-foe is-boss')}</div>` : ''}
                 ${DungeonBattle.peek(you.question, serverNow, seed)}
             </div>`;
     },

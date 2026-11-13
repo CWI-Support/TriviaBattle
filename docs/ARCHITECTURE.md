@@ -177,7 +177,8 @@ The rules:
   `MaxPack` monsters), then the boss's room. The result is a plain `DungeonMap`; floors written out room by room
   still work.
 - **Bosses.** A made-up floor ends in its boss's room. The kill that empties the room before it is marked
-  `DealtHit.BossAhead`: the beat is `boss` (the boss's entrance, with `FloorBeatSeconds`), the room hears the boss
+  `DealtHit.BossAhead`: the beat is `boss` (the boss's entrance, `BossBeatSeconds`: WARNING!, then in 3D it leaps into
+  the room, see Graphics), the room hears the boss
   sound and the main screen shows its banner. (A floor cleared, `FloorCleared`, is the boss's own death, which leads
   to the next floor.) Against a boss each adventurer's questions go round a **charge cycle** of `BossChargeSteps`
   (`Adventurer.ChargeAgainst` / `ChargeUp`, per adventurer, since each has their own questions): its hits build from
@@ -348,7 +349,7 @@ The rules:
 
 - **Battle beats.** After every answer the next question waits a moment while the screen shows the
   fight (`DungeonRun.BeatSecondsAfter`: `HitBeatSeconds`, `HurtBeatSeconds`, `KillBeatSeconds`, `RoomBeatSeconds`,
-  `FloorBeatSeconds`). It's simply the next question's `CurrentShownAt` moved later: presses before it
+  `FloorBeatSeconds`, `BossBeatSeconds`). It's simply the next question's `CurrentShownAt` moved later: presses before it
   are ignored like any press before a question appears, and the hourglass starts when it shows. The
   clocks keep running (time per kill and the round length allow for it). `YouView.Beat` tells the
   station what to play (`hit`, `kill`, `floor`, `boss`, `hurt`, `downed`) and from when to when; hits
@@ -560,7 +561,12 @@ theirs strikes (`others.js`). The walk: the room is a corridor of one stretch re
 exactly one stretch while the heroes run in place (`walkPose`, their `run` clip). The next room's monster
 (`Battle.arrivalOf`, loaded at the beat's start) and its pack stand in their spots, still as far off as the
 corridor has left to go. At the end the corridor goes back to 0, which looks the same, and that monster is handed
-over as the one in front. Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
+over as the one in front. Entrances: a monster that wasn't seen arriving (it came in behind a curtain, the reward cards
+or a mini game) makes its `entrance` (`models.js`: run, rise, swoop, leap; a drop-in without one) the first time the
+question's shot is up with it (`Battle.entranceMs`, `showEntrance`), the camera pushing in meanwhile. The boss beat
+loads the boss at its start like the walk (`arrivalOf`); once its curtain lifts (2900, 3D only: `css/battle3d.css`) it
+leaps in, lands with a slam and taunts as its nameplate comes in (`showBossEntrance`; the landing's sound is
+`Audio:Dungeon:BossLands`). Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
 timed from when the screen saw them, as `others.js` does. The models are CC0 placeholders
 (`media/models/CREDITS.md`) until the real art exists.
 

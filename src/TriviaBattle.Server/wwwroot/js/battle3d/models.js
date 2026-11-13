@@ -17,6 +17,14 @@
 //         and sets where fighters stop to strike, so a wide pose pulls the camera back and keeps the knight away.
 // turn    extra rotation (radians) if the model doesn't face +Z like glTF models should
 // hover   how high it floats (the bat)
+// entrance  monsters: how it comes into the fight the first time you see it (js/battle3d/beats.js, showEntrance).
+//         Without one it drops in from above. A new model only needs its own clips named here:
+//           { style: 'run', clip }     runs (or crawls) in from the right with that clip
+//           { style: 'rise', clip }    plays that clip where it stands (climbing out of the ground)
+//           { style: 'swoop' }         flies down into its spot (a hovering monster: its idle keeps playing)
+//           { style: 'leap', air, land, taunt }   a boss: leaps in from high on the right (air: the clip in
+//                                      the air), lands with a slam (land), then taunts (taunt). Its full
+//                                      entrance plays in the boss beat, after the WARNING! curtain.
 // mask    how big a rival's face is on it (a race or a battle), as a share of its height (0.5 if not given)
 // face    heroes only: where a player's hero photo goes (js/battle3d/face.js). The head mesh, the height
 //         of its eyes, mouth, chin and forehead and the distance between its pupils, all in the model's own
@@ -160,16 +168,19 @@ export const MODELS = {
     rat: {
         file: '/media/models/characters/rat.glb',
         height: 1.0, idle: 'RatArmature|Rat_Idle', death: 'RatArmature|Rat_Death',
+        entrance: { style: 'run', clip: 'RatArmature|Rat_Run' },
         attack: { clip: 'RatArmature|Rat_Attack', contact: 0.3 },
     },
     slime: {
         file: '/media/models/characters/slime.glb',
         height: 1.2, idle: 'Armature|Slime_Idle', death: 'Armature|Slime_Death',
+        entrance: { style: 'run', clip: 'Armature|Slime_Walk' },
         attack: { clip: 'Armature|Slime_Attack', contact: 0.3 },
     },
     bat: {
         file: '/media/models/characters/bat.glb',
         height: 1.1, hover: 1.2, idle: 'BatArmature|Bat_Flying', hurt: 'BatArmature|Bat_Hit', death: 'BatArmature|Bat_Death',
+        entrance: { style: 'swoop' },
         attack: { clip: 'BatArmature|Bat_Attack', contact: 0.4 },
     },
     goblin: {
@@ -178,11 +189,13 @@ export const MODELS = {
         idle: 'EnemyArmature|EnemyArmature|EnemyArmature|Idle',
         hurt: 'EnemyArmature|EnemyArmature|EnemyArmature|HitRecieve',
         death: 'EnemyArmature|EnemyArmature|EnemyArmature|Death',
+        entrance: { style: 'run', clip: 'EnemyArmature|EnemyArmature|EnemyArmature|Run' },
         attack: { clip: 'EnemyArmature|EnemyArmature|EnemyArmature|Attack', contact: 0.25 },
     },
     skeleton: {
         file: '/media/models/characters/skeleton-minion.glb',
         height: 2.2, idle: 'Idle', hurt: 'Hit_A', death: 'Death_C_Skeletons',
+        entrance: { style: 'rise', clip: 'Spawn_Ground' },
         attack: { clip: 'Unarmed_Melee_Attack_Punch_A', contact: 0.55 },
     },
     'goblin-boss': {
@@ -191,6 +204,7 @@ export const MODELS = {
         // tall), so its body width is given: measured, the camera backed off to fit the arms and the knight couldn't reach it.
         height: 2.8, width: 1.6,
         idle: 'CharacterArmature|Idle', hurt: 'CharacterArmature|HitReact', death: 'CharacterArmature|Death',
+        entrance: { style: 'leap', air: 'CharacterArmature|Jump_Idle', land: 'CharacterArmature|Jump_Land', taunt: 'CharacterArmature|Punch' },
         attack: { clip: 'CharacterArmature|Weapon', contact: 0.4 },
     },
 };

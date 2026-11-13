@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
-import { showBeat, showIdle, showWalkIn, walkAt, mix, easeInOut } from './beats.js';
+import { showBeat, showIdle, showWalkIn, showBossEntrance, entranceLength, walkAt, mix, easeInOut, BOSS_LEAPS } from './beats.js';
 import { ROOM_LENGTH } from './models.js';
 import { heroPortrait } from './portrait.js';
 import { Others } from './others.js';
@@ -43,6 +43,9 @@ const PORTRAIT_MAX_HEIGHT = 2.1; // a question's shot fits at most this much of 
 const FIGHT_RIGHT_EDGE = 2.45;   // the right edge of the usual fight shot (span 5.2 round x -0.15)
 const KILLS = ['kill', 'floor', 'boss'];
 const STEP_MS = 500;        // a waiting monster stepping up to the front between beats (the poison killed the one there)
+const FRESH_MS = 3000;      // the first monster makes an entrance if the first question came up this recently
+// Facing the way it's going as it comes in from the right (a monster's entrance): left, turned a little to the camera.
+const TRAVEL_YAW = -1.2;
 const POISON_DEATH_MS = 900;
 
 class Battle {
@@ -56,7 +59,8 @@ class Battle {
         this.foe = null;
         this.foeKey = null;
         this.foeLoadingKey = null;
-        this.foeArrivedAt = null;
+        this.foeEntrance = null; // a new monster's entrance: { at } (null: not started, waiting to be seen), or null: none
+        this.foeTravel = false;  // the monster in front is coming in from the right (its entrance): it faces that way
         this.foeYaw = FOE_FACING;
         this.foesMet = 0;      // counts the monsters, so each wears a rival's face in turn
         this.others = new Others(this.stage.scene, { zAt, homes: HOMES, facing: HERO_FACING }); // teammates, and rivals dropping in
@@ -110,10 +114,13 @@ class Battle {
         const next = died ? this.pack.take(key, now) : null;
         if (next) return this.promote(next, key, now);
 
+        // It makes its entrance the first time you see it (frame: once the question's shot is up). The first monster
+        // too when the game has just started; opening the screen mid-fight, it's simply there.
+        const enters = !!this.foe || (you.question?.shownAtMs ?? 0) > now - FRESH_MS;
         this.foeLoadingKey = key;
         Actor.create(key, FOE_FACING).then(foe => {
             if (this.foeLoadingKey !== key) return foe.dispose(this.stage.scene);  // something newer was asked for
-            this.foeArrivedAt = this.foe ? this.clock() : null;  // the first monster is just there
+            this.foeEntrance = enters ? { at: null } : null;
             this.foe?.dispose(this.stage.scene);
             this.foe = this.place(foe, FOE_HOME);
             this.foe.rivalTurn = this.foesMet++;
@@ -128,8 +135,11 @@ class Battle {
      * { beat (its start), key }, or null. delve.monster is already the next one.
      */
     arrivalOf(you, playing) {
-        if (!playing || !DungeonBattle.walks(you)) return null;
-        return { beat: you.beat.startedAtMs, key: you.delve.monster.sprite };
+        if (!playing) return null;
+        if (DungeonBattle.walks(you)) return { beat: you.beat.startedAtMs, key: you.delve.monster.sprite };
+        // The boss beat: the boss leaps into the room after its curtain (beats.js, showBossEntrance).
+        if (you.beat.kind === 'boss') return { beat: you.beat.startedAtMs, key: you.delve.monster.sprite, boss: true };
+        return null;
     }
 
     /** Loads the arriving monster as soon as the beat starts (it isn't in the scene until the next room comes into view). */
@@ -160,7 +170,7 @@ class Battle {
         this.foe.rivalTurn = this.foesMet++;
         this.foeKey = key;
         this.foeLoadingKey = null;
-        this.foeArrivedAt = null; // it has already landed
+        this.foeEntrance = null; // it came in with the room, or leapt in in the boss beat: already seen
     }
 
     /**
@@ -174,7 +184,7 @@ class Battle {
         this.foe.rivalTurn = this.foesMet++;
         this.foeKey = key;
         this.foeLoadingKey = null;
-        this.foeArrivedAt = null;
+        this.foeEntrance = null; // it stepped up in sight
         this.foeStep = { from: member.drawn ?? member.base, at: now };    }
 
     /**
@@ -251,7 +261,7 @@ class Battle {
             // The walk to the next room (a kill that emptied this one): how far along it is, 0 to 1.
             const arrival = this.arrivalOf(you, playing);
             this.prepareArrival(arrival);
-            const walk = arrival ? walkAt(now - beat.startedAtMs) : 0;
+            const walk = arrival && !arrival.boss ? walkAt(now - beat.startedAtMs) : 0;
             const arriving = walk > 0 && !!this.arrival?.actor;   // the next room is coming into view
             const { wanted, stepUp } = this.packView(you, playing, arriving);
             this.wantFoe(you, now, playing, this.frontDied(you, now, playing));  // before the pack lets go of the one stepping up
@@ -263,15 +273,20 @@ class Battle {
                     hero: this.hero, foe: this.foe, fx: this.fx, stage: this.stage, homes: HOMES, seconds: now / 1000,
                     front: FOE_HOME, pack: this.pack.standing(now), foePoison: this.foePoison(you, playing),
                 };
-                lean = playing
-                    ? showBeat(beatInfo(beat, you, stepUp), now - beat.startedAtMs, cast)
-                    : showIdle(cast, {
+                if (playing) {
+                    lean = showBeat(beatInfo(beat, you, stepUp), now - beat.startedAtMs, cast);
+                    if (this.arrival?.boss) lean = this.showBoss(now - beat.startedAtMs, cast, lean);
+                    this.foeTravel = false;
+                } else {
+                    lean = showIdle(cast, {
                         heroDown: you.delve.downedUntilMs > now,
-                        foeArrivedMs: this.foeArrivedAt === null ? null : now - this.foeArrivedAt,
+                        foeEntranceMs: this.entranceMs(now),
                         foeFlinch,
                         heroHealMs: youHealedAt === null ? null : now - youHealedAt,
                         charge: chargeOf(you.delve),
                     });
+                    this.foeTravel = !!lean.travel;
+                }
                 if (arriving) {
                     // The next room's monsters stand in their spots, still as far off as the corridor has left to scroll.
                     const ahead = ROOM_LENGTH * (1 - walk);
@@ -289,6 +304,40 @@ class Battle {
         this.turnFoe(dt);
         this.aim(lean);
         this.stage.draw(now / 1000, dt);
+    }
+
+    /**
+     * How far into its entrance the monster in front is (ms), or null when it has none. It starts the first time
+     * the question's shot is up with it in (a curtain, the reward cards or a mini game may hide it until then), and
+     * ends once it has played.
+     */
+    entranceMs(now) {
+        const entrance = this.foeEntrance;
+        if (!entrance || !this.foe) return null;
+        if (entrance.at === null) {
+            if (this.stage.mode() !== 'portrait') return null;
+            entrance.at = now;
+            this.foeYaw = this.foe.spec.entrance?.style === 'run' || this.foe.spec.entrance?.style === 'leap' ? TRAVEL_YAW : this.foeYaw;
+        }
+        const ms = now - entrance.at;
+        if (ms >= entranceLength(this.foe)) this.foeEntrance = null;
+        return ms;
+    }
+
+    /**
+     * The boss beat: once its curtain lifts, the boss (loaded at the beat's start: prepareArrival) leaps into the
+     * room. It joins the scene when it leaps, faces the way it's going, then the knight. Returns the camera's lean.
+     */
+    showBoss(ms, cast, lean) {
+        const boss = this.arrival.actor;
+        const leaping = !!boss && ms >= BOSS_LEAPS;
+        if (boss) {
+            if (leaping && !boss.root.parent) this.place(boss, FOE_HOME);
+            boss.root.visible = leaping;
+        }
+        const shown = showBossEntrance(ms, leaping ? boss : null, cast, lean);
+        if (leaping) boss.face(shown.travel ? TRAVEL_YAW : FOE_FACING);
+        return shown;
     }
 
     /** The monster just promoted from the pack walks from where it stood to the front (and grows to full size). */
@@ -339,7 +388,8 @@ class Battle {
     /** While a question is up the monster turns to face you (the player is the one answering); in a fight it faces the knight. */
     turnFoe(dt) {
         if (!this.foe) return;
-        const wanted = this.stage.mode() === 'portrait' ? 0.25 : FOE_FACING;
+        // Coming in from the right (its entrance), it faces the way it's going until it's nearly there.
+        const wanted = this.foeTravel && this.stage.mode() === 'portrait' ? TRAVEL_YAW : this.stage.mode() === 'portrait' ? 0.25 : FOE_FACING;
         this.foeYaw += (wanted - this.foeYaw) * (1 - Math.exp(-dt / 0.15));
         this.foe.face(this.foeYaw);
         this.pack.face(this.foeYaw);  // the waiting ones turn with it
@@ -369,7 +419,8 @@ class Battle {
             const framed = Math.min(height, PORTRAIT_MAX_HEIGHT);
             const top = (spec.hover || 0) + height;
             const target = new THREE.Vector3(FOE_HOME.x, top - framed * 0.48, FOE_HOME.z);
-            const distance = Math.max((framed * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect));
+            // zoom: above 1 while it makes its entrance (the camera pushing in from a little wide), below on a slam.
+            const distance = Math.max((framed * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect)) * zoom;
             const shift = intoGap(distance);
             this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)).add(shift), target.clone().add(shift), FOV);
             return;

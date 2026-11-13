@@ -17,12 +17,13 @@
      watched      a teammate's kill (beat.by, the same beat on every screen in the party): the kill, but their hero
                   strikes and yours stays put, cheering at 1050
      floor 3 s    kill, then 1330 dark, 1650 FLOOR 3 (the dark stays up to the end)
-     boss 3 s     kill, then 1280 red, 1400 WARNING!, 1900 the boss slams down, 2150 its name
+     boss 5 s     kill, then 1280 red, 1400 WARNING!, 1900 the boss slams down, 2150 its name; in 3D the curtain
+                  lifts at 2900 and the boss leaps into the room (3750 it lands, 4150 its nameplate: css/battle3d.css)
    Hero classes, on any hit or hurt beat (the notes under the damage number, --at):
                   190 a Wizard's splash: the waiting pack flinches (a splash kill bursts at 720 like a kill),
                   250 their strip's bars drain, 260 SPLASH 15 · 15; 300 a Tank's ARMOUR; 420 a Healer's
                   +15 / Healed Cat +15 (the healed one's HP bar flashes then, css/dungeon.css) or POISONED x3;
-                  560 a Warlock's patron's price
+                  560 a Warlock's patron's price. Each note goes again 850 ms after it comes in.
      a Ranger     the next question slides in over the bottom of the fight at its peekFromMs (--p0), and
                   goes with the fight's fade-out
    A boss's charge (the hurt or hit beat's own length; these only make it bigger):
@@ -361,7 +362,11 @@
     border: 0.5vmin solid var(--note, #fff);
     box-shadow: 0 0 3vmin color-mix(in srgb, var(--note, #fff) 45%, transparent);
     text-shadow: 0.4vmin 0.4vmin 0 #000;
-    animation: dg-note 420ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + var(--at, 300ms)) both;
+    /* In with its moment, and gone again after a short read: a kill or a walk to the next room is a longer beat, and the
+       note mustn't sit over SLAIN! and the walk. */
+    animation:
+        dg-note 420ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + var(--at, 300ms)) both,
+        dg-note-out 250ms ease-in calc(var(--t0) + var(--at, 300ms) + 850ms) forwards;
 }
 .dg-note b { font-weight: normal; color: #fff; }
 .dg-note .dg-icon { width: 4.4vmin; }
@@ -370,6 +375,7 @@
 .dg-note.is-poison { --note: var(--dg-poison); }
 .dg-note.is-patron { --note: var(--dg-patron); font-size: 3.4vmin; }
 .dg-note.is-armour { --note: #c9d6e3; font-size: 3.4vmin; }
+@keyframes dg-note-out { to { opacity: 0; transform: translateY(-30%); } }
 @keyframes dg-note {
     0% { opacity: 0; transform: scale(0.3) translateY(40%); }
     100% { opacity: 1; transform: none; }

@@ -28,3 +28,26 @@
    put, and a child can still show (visibility: visible), like the pack's HP bars and splash numbers. */
 .is-3d .dg-battle .dg-pack,
 .is-3d .dg-window .dg-pack { visibility: hidden; }
+
+/* The boss beat in 3D (js/battle3d/beats.js, showBossEntrance, has the same moments): the WARNING! curtain lifts at
+   2900 on the empty room (the kill's words and bars go with it), the boss leaps in and lands (3750), and as it taunts
+   (4150) its nameplate slams in where the bars were. Without 3D the curtain simply stays up to the end. */
+.is-3d .dg-battle.is-boss .dg-curtain {
+    animation: dg-curtain 300ms ease-out calc(var(--t0) + 1280ms) both, dg-boss-curtain-lifts 250ms ease-in calc(var(--t0) + 2900ms) forwards;
+}
+@keyframes dg-boss-curtain-lifts { to { opacity: 0; visibility: hidden; } }
+.is-3d .dg-battle.is-boss :is(.dg-arena, .dg-battle-bars) { animation: dg-boss-curtain-lifts 1ms linear calc(var(--t0) + 2900ms) forwards; }
+.is-3d .dg-battle.is-boss .dg-battle-line { animation: dg-line-in 280ms ease-out calc(var(--t0) + 280ms) both, dg-boss-curtain-lifts 1ms linear calc(var(--t0) + 2900ms) forwards; }
+.dg-boss-intro { display: none; }
+.is-3d .dg-battle.is-boss .dg-boss-intro {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 3vh;
+    z-index: 3;
+    padding: 0 3vw;
+    animation: dg-boss-plate 500ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--t0) + 4150ms) both;
+}
+.dg-boss-intro .dg-battle-bar-name { color: var(--blood, #ff3b3b); font-size: 5vmin; text-shadow: 0.5vmin 0.5vmin 0 #000; }
+@keyframes dg-boss-plate { from { opacity: 0; transform: scale(1.8); } }

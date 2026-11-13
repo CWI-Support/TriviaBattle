@@ -55,6 +55,7 @@ public sealed class RoomSoundService(
     private const double KnightFalls = 0.64;
     private const double MonsterBursts = 1.0;
     private const double CurtainFalls = 1.3;
+    private const double BossLandsAt = 3.75; // the boss beat: it leaps into the room after its curtain (BOSS_LANDS in beats.js)
 
     /// <summary>When the LOOT! card comes up (DungeonBattle.loot): after a kill, over the curtain on a floor cleared, soon after a plain hit.</summary>
     private static double LootShows(DealtHit hit) => hit.FloorCleared || hit.BossAhead ? 1.45 : hit.Killed ? 1.25 : 0.6;
@@ -239,7 +240,10 @@ public sealed class RoomSoundService(
                 var poisoned = PartyStationsOf(match, match.Dungeon?.PartyOf(partyId).FirstOrDefault()?.OwnerId ?? partyId);
                 room.PlayEffect(poisoned, _settings.Dungeon.Kill, MonsterBursts);
                 if (kill.BossAhead)
+                {
                     room.PlayEffect(poisoned, _settings.Dungeon.Boss, CurtainFalls);
+                    room.PlayEffect(poisoned, _settings.Dungeon.BossLands, BossLandsAt);
+                }
                 else if (kill.FloorCleared)
                     room.PlayEffect(poisoned, _settings.Dungeon.Floor, CurtainFalls);
                 break;
@@ -317,7 +321,10 @@ public sealed class RoomSoundService(
         if (hit.Killed) // every screen in the party plays the kill (DungeonRun.PartyKilled), so the whole party hears it
             room.PlayEffect(party, sounds.Kill, MonsterBursts);
         if (hit.BossAhead) // the room it emptied leads to a boss: its entrance, for the whole party
+        {
             room.PlayEffect(party, sounds.Boss, CurtainFalls);
+            room.PlayEffect(party, sounds.BossLands, BossLandsAt);
+        }
         else if (hit.FloorCleared)
             room.PlayEffect(party, sounds.Floor, CurtainFalls);
         if (hit.Found != null)

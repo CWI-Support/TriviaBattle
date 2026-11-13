@@ -42,7 +42,7 @@ public class DungeonBossTests
         Assert.True(hit.BossAhead);
         Assert.False(hit.FloorCleared); // the boss is in this floor's last room
         Assert.Equal("boss", SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Beat!.Kind);
-        Assert.Equal(match.Now.AddSeconds(3), match.StreamOf("A1").CurrentShownAt); // the long beat, like a floor's
+        Assert.Equal(match.Now.AddSeconds(5), match.StreamOf("A1").CurrentShownAt); // the boss beat: its curtain, then it leaps in
     }
 
     [Fact]

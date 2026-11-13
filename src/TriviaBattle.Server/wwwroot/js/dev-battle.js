@@ -7,6 +7,8 @@
 //   /dev/battle?kind=boss            just that one, on a loop
 //   /dev/battle?kind=boss&at=2100    frozen 2.1 s into it (for screenshots)
 //   /dev/battle?kind=kill&at=2100    past the beat's end: the next question coming in, frozen
+//   /dev/battle3d?kind=floor&next=goblin   after the beat, that monster's entrance as the question comes in (goblin, rat,
+//                                    slime, bat, skeleton); kind=boss: the boss leaping in after its curtain
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
 //   /dev/battle3d                    the same, drawn in 3D (js/battle3d); takes the same options
 //
@@ -54,7 +56,7 @@ const LONG_QUESTION = {
     text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
     answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
 };
-const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -118,7 +120,7 @@ function start() {
         const startedAt = Date.now();
         show(kind, startedAt);
         setTimeout(() => show(kind, startedAt, true), length);    // the beat ends: the next question
-        setTimeout(next, length + QUESTION_MS);
+        setTimeout(next, length + (Number(params.get('hold')) || QUESTION_MS)); // ?hold=4000: the question stays up 4 s (a monster's entrance)
     };
     next();
 }
@@ -187,6 +189,8 @@ function fakeState(kind, startedAt, question) {
     // boss: the kill emptied the room before the boss's, so the boss is in front now (at full HP).
     const current = vsBoss && !killed ? { ...boss, hp: striking ? hpLeft : 240 }
         : kind === 'boss' ? { ...boss, hp: 300 }
+        // ?next=goblin (rat, slime, bat, skeleton): the monster that comes in after the kill or the floor, for its entrance.
+        : params.has('next') && (kind === 'floor' || killed) ? { name: params.get('next'), sprite: params.get('next'), hp: 100, maxHp: 100, isBoss: false }
         : kind === 'floor' ? { name: 'Bat Swarm', sprite: 'bat', hp: 70, maxHp: 70, isBoss: false }
         : killed ? { name: 'Skeleton Intern', sprite: 'skeleton', hp: 120, maxHp: 120, isBoss: false }
         : { name: struck.name, sprite: struck.sprite, hp: striking ? hpLeft : 55, maxHp: 100, isBoss: false };

@@ -813,7 +813,8 @@ public sealed class DungeonRun
     /// </summary>
     public double BeatSecondsAfter(DealtHit? dealt) =>
         dealt == null ? _settings.HurtBeatSeconds
-        : dealt.FloorCleared || dealt.BossAhead ? _settings.FloorBeatSeconds
+        : dealt.BossAhead ? _settings.BossBeatSeconds // the boss's entrance
+        : dealt.FloorCleared ? _settings.FloorBeatSeconds
         : dealt.RoomCleared && dealt.MinigameAhead == null ? _settings.RoomBeatSeconds // the walk to the next room
         : dealt.Killed ? _settings.KillBeatSeconds
         : _settings.HitBeatSeconds;

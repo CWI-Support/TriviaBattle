@@ -50,6 +50,7 @@ public sealed class TestMatch
             Settings.Dungeon.KillBeatSeconds = 0;
             Settings.Dungeon.RoomBeatSeconds = 0;
             Settings.Dungeon.FloorBeatSeconds = 0;
+            Settings.Dungeon.BossBeatSeconds = 0;
         }
         if (!rewards)
             Settings.Dungeon.Rewards.Enabled = false;
