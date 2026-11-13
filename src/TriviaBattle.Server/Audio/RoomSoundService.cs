@@ -264,6 +264,11 @@ public sealed class RoomSoundService(
                 }, showsIn);
                 break;
 
+            case HourglassCountdown { OwnerId: var ownerId }:
+                // The hourglass's last seconds, one tick each, on that player's station only.
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Countdown);
+                break;
+
             case MinigameLost { OwnerId: var ownerId }:
                 room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Hurt);
                 break;

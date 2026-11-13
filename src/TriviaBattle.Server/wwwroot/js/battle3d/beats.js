@@ -87,7 +87,7 @@ export function showBeat(beat, ms, cast) {
  * rocks back. heroHealMs: how long ago a teammate's heal landed on you (null: none). charge: a boss's charge
  * for your question now ({ level 0..1, full }, battle3d.js's chargeOf), or null: it glows and crackles with it.
  */
-export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, heroHealMs = null, charge = null }) {
+export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, heroHealMs = null, charge = null, windUp = null }) {
     const { hero, foe, fx, stage, homes, seconds } = cast;
     fx.hideAll();
     stage.shake.set(0, 0);
@@ -105,17 +105,85 @@ export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, 
         return { ...lean, zoom: lean.zoom * (1 + ENTRANCE_PULL * (1 - easeOut(foeEntranceMs / ENTRANCE_PUSH_MS))) };
     }
 
-    // At full charge the boss trembles, as if it can barely hold the blow in.
+    // The hourglass's last seconds: it winds up for its attack (and doesn't fidget meanwhile).
+    if (windUp !== null) {
+        const lean = showWindUp(foe, windUp, cast, charge);
+        showPack(cast, null, 0);
+        return lean;
+    }
+
+    // At full charge the boss trembles, as if it can barely hold the blow in (and doesn't fidget: it's all coiled up).
     const tremble = charge?.full ? 0.025 * Math.sin(seconds * 70) : 0;
+    const idle = { clip: foe.spec.idle, time: seconds + 0.37 };
+    const fidget = charge?.full || foeFlinch ? null : fidgetOf(foe, seconds, idle);
     foe.apply({
-        x: homes.foe + 0.3 * foeFlinch + tremble, tilt: -0.15 * foeFlinch, flash: foeFlinch, flashColor: 0xffffff,
+        x: homes.foe + 0.3 * foeFlinch + tremble, tilt: -0.15 * foeFlinch + (fidget?.tilt || 0), flash: foeFlinch, flashColor: 0xffffff,
+        lift: fidget?.lift || 0, squash: fidget?.squash || 0,
         ...strongerGlow(poisonGlow(cast.foePoison, seconds), chargeGlow(charge, seconds)),
-        clip: foe.spec.idle, time: seconds + 0.37,
+        ...(fidget?.pose || idle),
     });
     fx.showPoison(0, foe, seconds, cast.foePoison);
     if (charge) fx.showCharge(foe, seconds, charge.level, charge.full);
     showPack(cast, null, 0);
     return { zoom: 1, focus: 0 };
+}
+
+/**
+ * The hourglass's last seconds (p: 0 as they start, 1 as it runs out; css/dungeon-encounter.css's is-counting has
+ * the same moments): the monster draws back into the start of its attack, rears up, trembles harder and harder and
+ * burns red, pulsing faster, while the camera creeps in. The attack itself is the hurt beat that follows.
+ */
+function showWindUp(foe, p, { fx, seconds, homes, foePoison }, charge) {
+    const attack = foe.spec.attack;
+    const idle = { clip: foe.spec.idle, time: seconds + 0.37 };
+    // The first part of its attack clip, up to a little short of the blow, played slowly over the countdown.
+    const pose = attack && foe.has(attack.clip)
+        ? { clip: attack.clip, time: attack.contact * 0.55 * easeInOut(p), from: idle, fade: Math.min(1, p * 4) }
+        : idle;
+    const tremble = (0.012 + 0.05 * p * p) * Math.sin(seconds * (50 + 40 * p));
+    // Red, throbbing faster as the end nears (the pulse speeds up from about 2 to 8 a second).
+    const throb = 0.5 + 0.5 * Math.sin(seconds * Math.PI * 2 * (2 + 6 * p));
+    const glow = { glow: (0.04 + 0.22 * p) * (0.5 + 0.5 * throb), glowColor: CHARGE_RED };
+    foe.apply({
+        x: homes.foe + tremble, squash: -0.07 * easeInOut(p), lift: 0.06 * easeInOut(p),
+        ...strongerGlow(poisonGlow(foePoison, seconds), strongerGlow(chargeGlow(charge, seconds), glow)),
+        ...pose,
+    });
+    fx.showPoison(0, foe, seconds, foePoison);
+    if (charge) fx.showCharge(foe, seconds, charge.level, charge.full);
+    return { zoom: 1 - 0.08 * easeInOut(p), focus: 0 };
+}
+
+// ---------------------------------------------------------------- Fidgets
+
+// Between questions a monster fidgets now and then, so the question's shot is never a still picture: its spec.fidget
+// clip (models.js), or without one a little hop. Every FIDGET_EVERY on the server clock, each monster at its own
+// moment of the cycle (from its key), so a redraw never restarts one and two monsters don't move together.
+const FIDGET_EVERY = 7000;
+const HOP_MS = 520;
+const FIDGET_BLEND = 150;
+
+/** The fidget at this moment: { pose, lift, squash, tilt } to lay over the idle, or null between them. */
+function fidgetOf(actor, seconds, idle) {
+    const offset = [...(actor.key || '')].reduce((sum, ch) => sum * 31 + ch.charCodeAt(0), 7) % FIDGET_EVERY;
+    const ms = (((seconds * 1000 + offset) % FIDGET_EVERY) + FIDGET_EVERY) % FIDGET_EVERY;
+    const clip = actor.spec.fidget;
+    if (clip && actor.has(clip)) {
+        const length = actor.duration(clip) * 1000;
+        if (ms >= length) return null;
+        const fade = Math.min(1, ms / FIDGET_BLEND, (length - ms) / FIDGET_BLEND);
+        return { pose: { clip, time: ms / 1000, from: idle, fade } };
+    }
+    if (ms >= HOP_MS) return null;
+    // A hop: up and down (a quarter of a unit), landing with a little squash, leaning in as it goes up.
+    const p = ms / HOP_MS;
+    const air = Math.sin(Math.PI * Math.min(1, p / 0.7));
+    const landed = ms - HOP_MS * 0.7;
+    return {
+        lift: p < 0.7 ? 0.25 * air : 0,
+        squash: landed > 0 ? 0.18 * Math.exp(-landed / 70) * Math.cos(landed / 30) : -0.06 * air,
+        tilt: 0.08 * air,
+    };
 }
 
 // ---------------------------------------------------------------- Entrances
@@ -142,7 +210,7 @@ const SETTLE_MS = 200;           // a clip blending back into the idle at the en
 export const BOSS_CURTAIN_LIFTS = 2900;
 const BOSS_RUMBLE = 3000;
 export const BOSS_LEAPS = 3300;
-const BOSS_LANDS = BOSS_LEAPS + LEAP_MS;   // 3750
+export const BOSS_LANDS = BOSS_LEAPS + LEAP_MS;   // 3750
 
 /** How long a monster's entrance lasts (ms). */
 export function entranceLength(actor) {

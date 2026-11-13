@@ -88,11 +88,14 @@ public class DungeonSounds
     public string Loot { get; set; } = "";
     public string PowerUp { get; set; } = "";
 
+    /// <summary>The hourglass's last seconds: a tick for each (3, 2, 1) before the monster attacks.</summary>
+    public string Countdown { get; set; } = "";
+
     /// <summary>A hero photo: a blip each second of the "3, 2, 1", then the shutter as the station takes it.</summary>
     public string PhotoCountdown { get; set; } = "";
     public string Photo { get; set; } = "";
 
-    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, BossLands, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp, PhotoCountdown, Photo];
+    public IEnumerable<string> All => [Hit, Crit, Kill, Floor, Boss, BossLands, PartyCombo, Revive, Hurt, Downed, Block, Loot, PowerUp, Countdown, PhotoCountdown, Photo];
 
     /// <summary>At least one is set, so dungeon games play these instead of the stingers.</summary>
     public bool AnySet => All.Any(file => !string.IsNullOrWhiteSpace(file));

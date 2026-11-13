@@ -7,6 +7,7 @@
 //   /dev/battle?kind=boss            just that one, on a loop
 //   /dev/battle?kind=boss&at=2100    frozen 2.1 s into it (for screenshots)
 //   /dev/battle?kind=kill&at=2100    past the beat's end: the next question coming in, frozen
+//   /dev/battle3d?kind=hit&glass=4&hold=5000   the hourglass running out: its last 3 s wind up for the attack
 //   /dev/battle3d?kind=floor&next=goblin   after the beat, that monster's entrance as the question comes in (goblin, rat,
 //                                    slime, bat, skeleton); kind=boss: the boss leaping in after its curtain
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
@@ -60,6 +61,7 @@ const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
+const GLASS_MS = (Number(new URLSearchParams(location.search).get('glass')) || 10) * 1000; // the question's hourglass (?glass=5)
 // What a Mastery card says each class's power becomes, at the server's defaults (DungeonRun.RewardAmount).
 const MASTERY = { rogue: 3, tank: 15, healer: 25, wizard: 75, pugilist: 20, warlock: 70, ranger: 2.5 };
 
@@ -102,7 +104,7 @@ async function usePhoto(stationId, source, hero) {
 }
 
 function start() {
-    window.Battle3D?.start(document.getElementById('stage3d'), devNow);  // only on /dev/battle3d
+    window.Battle3D?.start(document.getElementById('stage3d'), devNow, { still: frozenAt !== null });  // only on /dev/battle3d
     if (only?.startsWith('moment-')) {
         showMoment(only.slice('moment-'.length));
         return;
@@ -226,7 +228,9 @@ function fakeState(kind, startedAt, question) {
         floor, room: current.isBoss ? 2 : 1, roomsOnFloor: 2,
         bossCharge, bossChargeSteps: current.isBoss ? BOSS_CHARGE_STEPS : 0, depthId: 'cellar', depthName: 'The Cellar of Common Knowledge',
         monster: current, hp, maxHp: 100, streak: kind === 'combo' ? 4 : 1, kills: killed ? 3 : 2,
-        attackStartedAtMs: question ? Date.now() : null, attackAtMs: question ? Date.now() + 10000 : null,
+        // ?glass=5: the question's hourglass lasts 5 s (10 by default), so its last 3 s (the countdown) show with ?hold=.
+        attackStartedAtMs: question ? Date.now() : null, attackAtMs: question ? Date.now() + GLASS_MS : null,
+        countdownFromMs: question ? Date.now() + GLASS_MS - 3000 : null,
         downedUntilMs: kind === 'downed' && question ? Date.now() + 5000 : null,
         lastHit: hit, lastDealt: hit, lastTaken: taken,
         // Floor 1 room 1 is the room you're in: a rat already beaten (slot 1), the one you're fighting, then the pack

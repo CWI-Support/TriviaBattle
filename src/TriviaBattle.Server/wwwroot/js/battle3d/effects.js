@@ -1,7 +1,8 @@
 // The fight's effects: sparks, the sword's slash, the claw marks, the shockwave on the floor, the puff of
 // smoke and the shower of gold when a monster dies, and the hero classes' own: the Wizard's spell reaching
 // the monsters waiting in the room, the Healer's poison bubbling on a monster and its heal sparkling on a
-// hero, the Warlock's patron draining HP; and a boss's: its charge crackling round it while a question is up,
+// hero, the Warlock's patron draining HP; and a boss's: its rune circle glowing on the floor under it, its charge
+// crackling round it while a question is up,
 // the dazed stars when a right answer at full charge staggers it. Cartoon, never gory (the design doc): getting hurt
 // throws out stars, not blood. Like the actors, they're shown at a moment, not
 // played: every frame starts with everything hidden, then the beat asks for each effect at its age
@@ -85,10 +86,11 @@ export class Effects {
         this.embers = new Embers(scene);
         this.daze = new Daze(scene);
         this.slamDust = new Burst(scene, { count: 30, color: 0xb9a48c, size: 0.7, speed: 3.2, rise: 0.6, gravity: 1, life: 0.7, additive: false });
+        this.bossCircle = new BossCircle(scene);
 
         this.all = [this.slash, this.crossSlash, this.shockwave, ...this.claws];
         this.bursts = [this.impact, this.bigImpact, this.hurtStars, this.smoke, this.gold, this.poisonPuff, this.drain,
-            ...this.bolts, ...this.spellHits, ...this.packSmoke, ...this.packGold, ...this.bubbles, this.heal, this.embers, this.daze, this.slamDust];
+            ...this.bolts, ...this.spellHits, ...this.packSmoke, ...this.packGold, ...this.bubbles, this.heal, this.embers, this.daze, this.slamDust, this.bossCircle];
     }
 
     /** Called first every frame: nothing shows unless the beat asks for it again. */
@@ -207,6 +209,42 @@ export class Effects {
     /** A boss's charged blow slamming down: a ring of dust thrown up round where it lands. */
     showSlamDust(at, age, seed) {
         this.slamDust.show(at, age, seed);
+    }
+
+    /** A boss's rune circle glowing on the floor under it (level: its charge, 0..1; it burns brighter as it builds). */
+    showBossCircle(actor, seconds, level) {
+        this.bossCircle.show(actor, seconds, level);
+    }
+}
+
+/**
+ * A boss's rune circle: a ring of runes glowing on the floor under it, turning slowly and breathing, brighter as its
+ * charge builds (from the server clock's seconds, like the embers, so a redraw doesn't jump it). Hidden with the boss.
+ */
+class BossCircle {
+    constructor(scene) {
+        this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
+            map: runeCircleTexture(), color: 0xff4a1a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        }));
+        this.mesh.rotation.x = -Math.PI / 2;
+        this.mesh.visible = false;
+        this.mesh.renderOrder = 1;
+        scene.add(this.mesh);
+    }
+
+    show(actor, seconds, level) {
+        if (!actor?.root.visible) return;
+        const size = Math.max(2.2, actor.width * 2.4) * actor.holder.scale.x;
+        const { x, z } = actor.root.position;
+        this.mesh.position.set(x, 0.07, z); // just over the floor tiles (the shadows are at 0.06)
+        this.mesh.scale.set(size, size, 1);
+        this.mesh.rotation.z = seconds * 0.25;
+        this.mesh.material.opacity = (0.35 + 0.45 * level) * (0.8 + 0.2 * Math.sin(seconds * 2.2));
+        this.mesh.visible = true;
+    }
+
+    hide() {
+        this.mesh.visible = false;
     }
 }
 
@@ -502,4 +540,47 @@ function dotTexture() {
         dot = new THREE.CanvasTexture(canvas);
     }
     return dot;
+}
+
+let runeCircle = null;
+
+/** The boss's rune circle, drawn once: a soft glow in the middle, two rings, and runes between them. */
+function runeCircleTexture() {
+    if (!runeCircle) {
+        const size = 256, c = size / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const g = canvas.getContext('2d');
+        const glow = g.createRadialGradient(c, c, 0, c, c, c);
+        glow.addColorStop(0, 'rgba(255,255,255,0.35)');
+        glow.addColorStop(0.7, 'rgba(255,255,255,0.08)');
+        glow.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = glow;
+        g.fillRect(0, 0, size, size);
+        g.strokeStyle = 'rgba(255,255,255,0.95)';
+        g.lineWidth = 5;
+        for (const r of [0.92, 0.72]) {
+            g.beginPath();
+            g.arc(c, c, c * r, 0, Math.PI * 2);
+            g.stroke();
+        }
+        // Runes round the band between the rings: little angular marks, each turned to face the middle.
+        g.lineWidth = 4;
+        const marks = 12;
+        for (let i = 0; i < marks; i++) {
+            g.save();
+            g.translate(c, c);
+            g.rotate((i / marks) * Math.PI * 2);
+            g.translate(0, -c * 0.82);
+            g.beginPath();
+            const kind = i % 3;
+            if (kind === 0) { g.moveTo(-8, 8); g.lineTo(0, -8); g.lineTo(8, 8); }
+            else if (kind === 1) { g.moveTo(0, -9); g.lineTo(0, 9); g.moveTo(-7, -2); g.lineTo(7, 4); }
+            else { g.moveTo(-7, -7); g.lineTo(7, 7); g.moveTo(7, -7); g.lineTo(-7, 7); }
+            g.stroke();
+            g.restore();
+        }
+        runeCircle = new THREE.CanvasTexture(canvas);
+    }
+    return runeCircle;
 }

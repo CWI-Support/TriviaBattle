@@ -150,7 +150,10 @@ The rules:
 - **Party combo:** when every other standing member of the party has answered right within
   `PartyComboSeconds`, the hit that completes it does `PartyComboBonus` more damage
   (`DealtHit.PartyCombo`). Then everyone needs a fresh right answer for the next one.
-- The hourglass only runs while their buttons work: it stops during a lockout and restarts after.
+- The hourglass only runs while their buttons work: it stops during a lockout and restarts after. Its last
+  `HourglassCountdownSeconds` (3) are a countdown: `Tick` raises `HourglassCountdown` for each whole second
+  (`Adventurer.CountDown`, once each per hourglass), the room ticks, and the station winds up from
+  `DelveView.CountdownFromMs` (the sand red, the glass shaking, red edges, the 3D monster rearing into its attack).
 - **The clock.** Every Dungeon game, solo or group, runs on an arcade clock, one per match: a paid session
   starts at `ClockStartSeconds` and every kill adds time (`DungeonRun.SecondsEarnedBy`: `SecondsPerKill`, or
   `SecondsPerBoss` for a boss; a Wizard's splash kills count), so the better they play, the longer they play.
@@ -337,7 +340,7 @@ The rules:
   `rival`) pops their hero up beside your monster, cheering. None of it is a beat: it's timed from when the
   screen saw it and never holds up your question. `/dev/battle3d?team=pugilist,wizard` and `?cameo` preview it.
 - Events: `MonsterHit`, `AdventurerHit`, `AdventurerGotUp`, `PowerUpFound`, `PowerUpUsed`, `PhotoAsked`,
-  `PhotoDeclined`, `PhotoTaken`, and from `Tick`: `QuestionShown` when a battle beat ends and `PhotoCountdown`
+  `PhotoDeclined`, `PhotoTaken`, and from `Tick`: `QuestionShown` when a battle beat ends, `HourglassCountdown`, and `PhotoCountdown`
   (alongside the usual `AnswerGiven`).
 - **The room joins in.** `RoomSoundService` plays each fight as a timed sequence that lands with the
   beat's picture (the blow at 0.19 s, the burst at 1 s, the floor or boss under the curtain, the loot with
@@ -566,7 +569,9 @@ or a mini game) makes its `entrance` (`models.js`: run, rise, swoop, leap; a dro
 question's shot is up with it (`Battle.entranceMs`, `showEntrance`), the camera pushing in meanwhile. The boss beat
 loads the boss at its start like the walk (`arrivalOf`); once its curtain lifts (2900, 3D only: `css/battle3d.css`) it
 leaps in, lands with a slam and taunts as its nameplate comes in (`showBossEntrance`; the landing's sound is
-`Audio:Dungeon:BossLands`). Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
+`Audio:Dungeon:BossLands`). Between questions nothing stands quite still: a monster fidgets every 7 s or so (its
+`fidget` clip, or a hop: `fidgetOf`), a boss stands in a rune circle that burns brighter with its charge
+(`Effects.showBossCircle`), and the camera drifts a little (`aim`). Moments outside a beat (a poison kill on a screen in a longer beat, a teammate's heal) are
 timed from when the screen saw them, as `others.js` does. The models are CC0 placeholders
 (`media/models/CREDITS.md`) until the real art exists.
 

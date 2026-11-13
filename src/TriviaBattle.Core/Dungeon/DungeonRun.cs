@@ -819,6 +819,17 @@ public sealed class DungeonRun
         : dealt.Killed ? _settings.KillBeatSeconds
         : _settings.HitBeatSeconds;
 
+    /// <summary>
+    /// The hourglasses in their last seconds (<see cref="DungeonSettings.HourglassCountdownSeconds"/>): each adventurer
+    /// that has just reached another whole second left, and that second (3, 2, 1). The room hears each one.
+    /// </summary>
+    public IReadOnlyList<(Adventurer Adventurer, int SecondsLeft)> HourglassCountdowns(DateTimeOffset now) =>
+        _adventurers.Values
+            .Select(a => (Adventurer: a, SecondsLeft: a.CountDown(now, _settings.HourglassCountdownSeconds)))
+            .Where(c => c.SecondsLeft != null)
+            .Select(c => (c.Adventurer, c.SecondsLeft!.Value))
+            .ToList();
+
     /// <summary>The adventurers whose hourglass has run out: their monster attacks.</summary>
     public IReadOnlyList<Adventurer> AttacksDue(DateTimeOffset now) =>
         _adventurers.Values.Where(a => a.IsAttackDue(now)).ToList();

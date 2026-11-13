@@ -67,13 +67,17 @@ const DungeonEncounter = {
         // beat so redraws don't jolt it). Downed, you can't answer, so the warning isn't yours to heed.
         const charge = DungeonEncounter.chargeOf(delve);
         const fullCharge = charge?.full && !downed;
-        const styles = [beat ? `--q0: ${Math.round(beat.endsAtMs - serverNow)}ms` : '', fullCharge ? `--charge0: ${DungeonView.idlePhase(900)}ms` : '']
+        // The hourglass's last seconds (delve.countdownFromMs, the room hears them counted down): the sand goes red and
+        // pulses, the glass shakes and the screen's edges close in red, all timed from --danger so no redraw is needed.
+        const counting = !downed && !!delve.countdownFromMs && !!delve.attackAtMs;
+        const styles = [beat ? `--q0: ${Math.round(beat.endsAtMs - serverNow)}ms` : '', fullCharge ? `--charge0: ${DungeonView.idlePhase(900)}ms` : '',
+            counting ? `--danger: ${Math.round(delve.countdownFromMs - serverNow)}ms; --danger-for: ${Math.round(delve.attackAtMs - delve.countdownFromMs)}ms` : '']
             .filter(Boolean).join('; ');
 
         return `
-            <div class="dg-station is-question is-encounter ${arrival} ${news.taken ? 'is-hurt' : ''} ${fullCharge ? 'is-full-charge' : ''}" ${styles ? `style="${styles}"` : ''}>
+            <div class="dg-station is-question is-encounter ${arrival} ${news.taken ? 'is-hurt' : ''} ${fullCharge ? 'is-full-charge' : ''} ${counting ? 'is-counting' : ''}" ${styles ? `style="${styles}"` : ''}>
                 <div class="dg-world">
-                    <div class="dg-stage" data-stage="portrait">${DungeonBattle.room()}</div>
+                    <div class="dg-stage" data-stage="portrait">${DungeonBattle.room()}${counting ? '<i class="dg-danger"></i>' : ''}</div>
                     <div class="dg-hud">
                         ${DungeonEncounter.foePlate(match, delve, clockKey)}
                         <div class="dg-scroll ${helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>

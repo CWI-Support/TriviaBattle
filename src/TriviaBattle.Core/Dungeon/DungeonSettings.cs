@@ -63,6 +63,13 @@ public sealed class DungeonSettings
     /// </summary>
     public double RoomBeatSeconds { get; set; } = 3;
 
+    /// <summary>
+    /// The hourglass's last seconds: from this many left the room hears each one counted down (3, 2, 1) and the
+    /// station winds up for the monster's attack (the sand goes red, the screen's edges close in, the monster rears
+    /// back). 0 = off.
+    /// </summary>
+    public int HourglassCountdownSeconds { get; set; } = 3;
+
     /// <summary>A floor cleared: the way down.</summary>
     public double FloorBeatSeconds { get; set; } = 3;
 

@@ -60,6 +60,12 @@ public sealed record MinigameStarted(string OwnerId, MinigameKind Kind) : MatchE
 /// <param name="ShowsInSeconds">A win (or a round won): how long until the screen shows it (<see cref="Minigame.WinPauseSeconds"/>), so its sound lands then.</param>
 public sealed record MinigamePlayed(string OwnerId, MinigamePress Result, double ShowsInSeconds = 0) : MatchEvent;
 
+/// <summary>
+/// Dungeon format: an adventurer's hourglass reached another of its last seconds (3, 2, 1: DungeonSettings.HourglassCountdownSeconds),
+/// raised by Tick. The room counts it down; the screens draw the same moment from DelveView.CountdownFromMs.
+/// </summary>
+public sealed record HourglassCountdown(string OwnerId, int SecondsLeft) : MatchEvent;
+
 /// <summary>Dungeon format: a mini game's time limit ran out before it was won (raised by Tick).</summary>
 public sealed record MinigameLost(string OwnerId) : MatchEvent;
 

@@ -335,7 +335,15 @@ public static class SnapshotBuilder
             adventurer.MinigamesWon,
             adventurer.Lives,
             adventurer.MaxLives,
-            adventurer.IsOut);
+            adventurer.IsOut,
+            CountdownFrom(match, adventurer));
+    }
+
+    /// <summary>Where the hourglass's last seconds start (the station winds up for the attack from then), or null.</summary>
+    private static long? CountdownFrom(MatchEngine match, Dungeon.Adventurer adventurer)
+    {
+        var seconds = match.Settings.Dungeon.HourglassCountdownSeconds;
+        return adventurer.AttackAt is { } at && seconds > 0 ? (at - TimeSpan.FromSeconds(seconds)).ToUnixTimeMilliseconds() : null;
     }
 
     private static MonsterView ToMonster(Dungeon.Foe foe) =>

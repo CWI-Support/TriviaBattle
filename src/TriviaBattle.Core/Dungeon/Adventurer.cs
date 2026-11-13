@@ -249,6 +249,26 @@ public sealed class Adventurer
 
     public bool IsAttackDue(DateTimeOffset now) => AttackAt != null && now >= AttackAt;
 
+    /// <summary>The hourglass's last seconds counted down so far: the run-out time they were for, and the last one counted.</summary>
+    private (DateTimeOffset At, int Second)? _countedDown;
+
+    /// <summary>
+    /// The hourglass's countdown: in its last <paramref name="from"/> seconds, each whole second left as it's reached
+    /// (3, then 2, then 1), once each; null otherwise. A fresh hourglass (a new AttackAt) counts down again.
+    /// </summary>
+    public int? CountDown(DateTimeOffset now, int from)
+    {
+        if (AttackAt is not { } at || from <= 0)
+            return null;
+        var left = (int)Math.Ceiling((at - now).TotalSeconds);
+        if (left < 1 || left > from)
+            return null;
+        if (_countedDown is { } done && done.At == at && done.Second <= left)
+            return null;
+        _countedDown = (at, left);
+        return left;
+    }
+
     /// <summary>A correct answer: one more in the streak. Returns the streak including this one.</summary>
     public int AddToStreak() => ++Streak;
 

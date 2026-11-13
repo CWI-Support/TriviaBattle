@@ -191,6 +191,10 @@ public sealed class MatchEngine
                 events.Add(new PatronRevealed(warlock.OwnerId));
             }
 
+            // The hourglass's last seconds: the room counts each one down (no state changes: nothing to redraw).
+            foreach (var (adventurer, secondsLeft) in _dungeon.HourglassCountdowns(now))
+                events.Add(new HourglassCountdown(adventurer.OwnerId, secondsLeft));
+
             foreach (var adventurer in _dungeon.AttacksDue(now))
                 events.AddRange(MonsterAttacks(adventurer.OwnerId, now));
 

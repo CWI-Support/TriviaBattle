@@ -346,3 +346,50 @@
 .dg-station.is-encounter.is-after-beat.is-full-charge .dg-foe-plate {
     animation: dg-q-rise 200ms ease-out var(--q0) both, dg-charge-plate 900ms ease-in-out var(--charge0) infinite;
 }
+
+/* ---------- The hourglass's last seconds (is-counting: --danger, when they start; --danger-for, how long they last) ----------
+   The room hears each second counted down (RoomSoundService); here the sand goes red and pulses faster and faster, the
+   glass shakes, and the screen's edges close in red. All timed from --danger, so nothing waits on a redraw; before
+   it nothing shows (no fill backwards). The 3D monster winds up for its attack meanwhile (js/battle3d/beats.js). */
+.dg-station.is-counting .dg-glass .timer-bar.is-vertical .timer-bar-fill {
+    animation: dg-sand-danger var(--danger-for) linear var(--danger) forwards;
+}
+/* A Freeze's ice thaws first (the countdown only starts after it: the hourglass waits for the freeze). */
+.dg-station.is-counting .dg-glass.is-frozen .timer-bar.is-vertical .timer-bar-fill {
+    animation: dg-thaw 1ms linear var(--thaw) forwards, dg-sand-danger var(--danger-for) linear var(--danger) forwards;
+}
+@keyframes dg-sand-danger {
+    0%, 20%, 40%, 55%, 70%, 80%, 90%, 100% { background: var(--wrong); box-shadow: 0 0 2vmin var(--wrong); }
+    10%, 30%, 48%, 63%, 75%, 85%, 95% { background: #ffb03b; box-shadow: 0 0 4vmin #ff5a2a; }
+}
+.dg-station.is-counting .dg-glass { animation: dg-glass-shake var(--danger-for) linear var(--danger) forwards; }
+@keyframes dg-glass-shake {
+    0% { transform: none; }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-0.3vmin) rotate(-1deg); }
+    20%, 40%, 60%, 80% { transform: translateX(0.3vmin) rotate(1deg); }
+    95% { transform: translateX(-0.6vmin) rotate(-2deg); }
+    100% { transform: translateX(0.6vmin) rotate(2deg); }
+}
+.dg-station.is-counting .dg-glass-seconds.is-hurry { font-size: 4vmin; text-shadow: 0 0 1.5vmin var(--wrong); }
+
+/* The edges closing in: a red glow round the room, stronger and quicker to throb as the attack nears. */
+.dg-danger {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 18vmin 7vmin rgba(255, 24, 24, 0.8);
+    opacity: 0;
+    animation: dg-danger var(--danger-for) linear var(--danger) forwards;
+}
+@keyframes dg-danger {
+    0% { opacity: 0; }
+    15% { opacity: 0.55; }
+    30% { opacity: 0.25; }
+    45% { opacity: 0.75; }
+    58% { opacity: 0.4; }
+    70% { opacity: 0.9; }
+    80% { opacity: 0.55; }
+    88% { opacity: 1; }
+    94% { opacity: 0.7; }
+    100% { opacity: 1; }
+}

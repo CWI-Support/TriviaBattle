@@ -25,6 +25,7 @@
 //           { style: 'leap', air, land, taunt }   a boss: leaps in from high on the right (air: the clip in
 //                                      the air), lands with a slam (land), then taunts (taunt). Its full
 //                                      entrance plays in the boss beat, after the WARNING! curtain.
+// fidget  monsters, optional: a clip it plays now and then between questions (a taunt); without one it hops.
 // mask    how big a rival's face is on it (a race or a battle), as a share of its height (0.5 if not given)
 // face    heroes only: where a player's hero photo goes (js/battle3d/face.js). The head mesh, the height
 //         of its eyes, mouth, chin and forehead and the distance between its pupils, all in the model's own
@@ -195,7 +196,7 @@ export const MODELS = {
     skeleton: {
         file: '/media/models/characters/skeleton-minion.glb',
         height: 2.2, idle: 'Idle', hurt: 'Hit_A', death: 'Death_C_Skeletons',
-        entrance: { style: 'rise', clip: 'Spawn_Ground' },
+        entrance: { style: 'rise', clip: 'Spawn_Ground' }, fidget: 'Taunt',
         attack: { clip: 'Unarmed_Melee_Attack_Punch_A', contact: 0.55 },
     },
     'goblin-boss': {
@@ -205,6 +206,7 @@ export const MODELS = {
         height: 2.8, width: 1.6,
         idle: 'CharacterArmature|Idle', hurt: 'CharacterArmature|HitReact', death: 'CharacterArmature|Death',
         entrance: { style: 'leap', air: 'CharacterArmature|Jump_Idle', land: 'CharacterArmature|Jump_Land', taunt: 'CharacterArmature|Punch' },
+        fidget: 'CharacterArmature|No', // between questions it shakes its head at you
         attack: { clip: 'CharacterArmature|Weapon', contact: 0.4 },
     },
 };

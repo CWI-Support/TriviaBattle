@@ -411,8 +411,9 @@ amps and a powered sub. Windows must have the card set to **7.1**.
 What plays where:
 - **Each station's speaker:** a success or fail stinger the moment that station answers (both
   teammates hear it in 2v2 Group). One is picked at random from the three of each. Dungeon games
-  play the fight instead (`Audio:Dungeon`): hit, crit, kill, floor, boss, party combo, revive, hurt,
-  downed. The files in `media/audio/dungeon/sfx` are generated 8-bit placeholders.
+  play the fight instead (`Audio:Dungeon`): hit, crit, kill, floor, boss (and its landing), party combo, revive, hurt,
+  downed, and a tick for each of the hourglass's last 3 seconds (`Countdown`). The files in `media/audio/dungeon/sfx`
+  are generated 8-bit placeholders.
 - **Room speaker, plus the same on the sub:** main theme in the lobby, the intro's sound,
   in-game music while the clock runs, victory music at the results.
 - **Attract:** the main theme, looping all the time.

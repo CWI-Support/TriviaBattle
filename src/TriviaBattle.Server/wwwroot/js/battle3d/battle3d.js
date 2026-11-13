@@ -10,7 +10,8 @@
 // it only shows what the snapshot says happened.
 //
 // Needs the import map for 'three' (see screens/dev-battle3d.html), and loads as a module:
-//   Battle3D.start(container, clock)   once; clock() = the server's time now (ms)
+//   Battle3D.start(container, clock, { still })   once; clock() = the server's time now (ms); still: a picture frozen at a
+//                                    moment (/dev/battle?at=), so monsters are simply there (no entrance stuck at its start)
 //   Battle3D.show({ match, you, color, colors }) after every redraw (colors: each station's colour, by id)
 //   HeroPortrait.render(faceUrl, color, options)  a hero (wearing a hero photo's face) as a canvas (js/battle3d/portrait.js)
 
@@ -18,7 +19,7 @@ import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
-import { showBeat, showIdle, showWalkIn, showBossEntrance, entranceLength, walkAt, mix, easeInOut, BOSS_LEAPS } from './beats.js';
+import { showBeat, showIdle, showWalkIn, showBossEntrance, entranceLength, walkAt, mix, easeInOut, BOSS_LEAPS, BOSS_LANDS } from './beats.js';
 import { ROOM_LENGTH } from './models.js';
 import { heroPortrait } from './portrait.js';
 import { Others } from './others.js';
@@ -49,8 +50,9 @@ const TRAVEL_YAW = -1.2;
 const POISON_DEATH_MS = 900;
 
 class Battle {
-    constructor(container, clock) {
+    constructor(container, clock, { still = false } = {}) {
         this.clock = clock;
+        this.still = still;
         this.stage = new Stage(container);
         this.fx = new Effects(this.stage.scene);
         this.view = null;
@@ -61,6 +63,7 @@ class Battle {
         this.foeLoadingKey = null;
         this.foeEntrance = null; // a new monster's entrance: { at } (null: not started, waiting to be seen), or null: none
         this.foeTravel = false;  // the monster in front is coming in from the right (its entrance): it faces that way
+        this.bossKeys = new Set(); // the monsters seen as bosses (delve.monster.isBoss): they stand in a rune circle
         this.foeYaw = FOE_FACING;
         this.foesMet = 0;      // counts the monsters, so each wears a rival's face in turn
         this.others = new Others(this.stage.scene, { zAt, homes: HOMES, facing: HERO_FACING }); // teammates, and rivals dropping in
@@ -116,7 +119,7 @@ class Battle {
 
         // It makes its entrance the first time you see it (frame: once the question's shot is up). The first monster
         // too when the game has just started; opening the screen mid-fight, it's simply there.
-        const enters = !!this.foe || (you.question?.shownAtMs ?? 0) > now - FRESH_MS;
+        const enters = !this.still && (!!this.foe || (you.question?.shownAtMs ?? 0) > now - FRESH_MS);
         this.foeLoadingKey = key;
         Actor.create(key, FOE_FACING).then(foe => {
             if (this.foeLoadingKey !== key) return foe.dispose(this.stage.scene);  // something newer was asked for
@@ -284,6 +287,7 @@ class Battle {
                         foeFlinch,
                         heroHealMs: youHealedAt === null ? null : now - youHealedAt,
                         charge: chargeOf(you.delve),
+                        windUp: windUpOf(you.delve, now),
                     });
                     this.foeTravel = !!lean.travel;
                 }
@@ -297,12 +301,13 @@ class Battle {
                 }
                 this.stepUp(now);
                 this.showPoisonDeath(now);
+                this.showBossCircle(you, now, playing);
             }
         }
         this.wearFace();
         this.maskFoe();
         this.turnFoe(dt);
-        this.aim(lean);
+        this.aim(lean, now / 1000);
         this.stage.draw(now / 1000, dt);
     }
 
@@ -338,6 +343,20 @@ class Battle {
         const shown = showBossEntrance(ms, leaping ? boss : null, cast, lean);
         if (leaping) boss.face(shown.travel ? TRAVEL_YAW : FOE_FACING);
         return shown;
+    }
+
+    /**
+     * A boss stands in its rune circle, burning brighter as its charge builds: the one in front, or in the boss beat
+     * the one leaping in, once it has landed. Gone with it when it dies (it bursts: no longer visible).
+     */
+    showBossCircle(you, now, playing) {
+        const delve = you.delve;
+        if (delve.monster.isBoss) this.bossKeys.add(delve.monster.sprite);
+        const boss = this.arrival?.boss ? this.arrival.actor : null;
+        if (boss?.root.parent && playing && now - you.beat.startedAtMs >= BOSS_LANDS)
+            return this.fx.showBossCircle(boss, now / 1000, 0.25);
+        if (this.foe && this.bossKeys.has(this.foeKey))
+            this.fx.showBossCircle(this.foe, now / 1000, chargeOf(delve)?.level ?? 0.25);
     }
 
     /** The monster just promoted from the pack walks from where it stood to the front (and grows to full size). */
@@ -400,13 +419,16 @@ class Battle {
      * the screen with words floating over it, so the subject goes in the gap they leave (Stage.focus): the
      * camera is raised or lowered by however far that gap's middle is from the box's.
      */
-    aim({ zoom, focus }) {
+    aim({ zoom, focus }, seconds = 0) {
         const aspect = this.stage.aspect();
         const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
         const clear = this.stage.focus();
         const clearShare = clear.bottom - clear.top;
         // Moves the shot so a point aimed at lands in the gap, a share 'at' of the way down it (0.5: its middle): at
         // this distance the box shows 2 x distance x tan of height, and that spot is (spot - 0.5) of it below the box's middle.
+        // A slow drift of the camera (the aim stays put, so the scene turns a touch), so the picture is never quite still:
+        // a few percent of the distance, on two slow loops that never line up.
+        const drift = distance => new THREE.Vector3(0.025 * distance * Math.sin(seconds * 0.31), 0.015 * distance * Math.sin(seconds * 0.23 + 1.3), 0);
         const intoGap = (distance, at = 0.5) =>
             new THREE.Vector3(0, (clear.top + (clear.bottom - clear.top) * at - 0.5) * 2 * distance * tan, 0);
 
@@ -422,7 +444,7 @@ class Battle {
             // zoom: above 1 while it makes its entrance (the camera pushing in from a little wide), below on a slam.
             const distance = Math.max((framed * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect)) * zoom;
             const shift = intoGap(distance);
-            this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)).add(shift), target.clone().add(shift), FOV);
+            this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)).add(shift).add(drift(distance)), target.clone().add(shift), FOV);
             return;
         }
 
@@ -435,7 +457,7 @@ class Battle {
         const distance = ((span / 2) / (tan * Math.min(aspect, 1.2))) * zoom;
         const target = new THREE.Vector3(focus - 0.15 + reach / 2, 0.75, 0);
         const shift = intoGap(distance, 0.6); // a little low in the fight's space: the words go above them
-        this.stage.frame(target.clone().add(new THREE.Vector3(0, distance * 0.36, distance)).add(shift), target.clone().add(shift), FOV);
+        this.stage.frame(target.clone().add(new THREE.Vector3(0, distance * 0.36, distance)).add(shift).add(drift(distance * 0.6)), target.clone().add(shift), FOV);
     }
 }
 
@@ -483,13 +505,23 @@ function chargeOf(delve) {
     return { level: (step + 1) / steps, full: step === steps - 1 };
 }
 
+/**
+ * How far into the hourglass's last seconds you are (0 as they start, 1 as it runs out: delve.countdownFromMs to
+ * attackAtMs), so the monster winds up for its attack; null outside them (or downed: it isn't coming for you).
+ */
+function windUpOf(delve, now) {
+    const from = delve.countdownFromMs, at = delve.attackAtMs;
+    if (!from || !at || now < from || now >= at || delve.downedUntilMs > now || delve.out) return null;
+    return (now - from) / (at - from);
+}
+
 let battle = null;
 // The knight wearing a player's face, for the screens that draw in 2D (js/hero-camera.js makes it after a hero photo).
 window.HeroPortrait = { render: heroPortrait };
 
 window.Battle3D = {
-    start(container, clock) {
-        battle ??= new Battle(container, clock);
+    start(container, clock, options) {
+        battle ??= new Battle(container, clock, options);
     },
     show(view) {
         battle?.show(view);

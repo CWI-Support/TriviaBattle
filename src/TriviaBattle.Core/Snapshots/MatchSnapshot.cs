@@ -294,6 +294,8 @@ public sealed record HelpView(string Name, QuestionView Question);
 /// <param name="MinigamesWon">Mini games they've won so far.</param>
 /// <param name="Lives">Lives left, of <paramref name="MaxLives"/> (0 there: no limit). Each downing costs one.</param>
 /// <param name="Out">Downed on their last life: out until a continue (they don't get up; <paramref name="DownedUntilMs"/> is null).</param>
+/// <param name="CountdownFromMs">The hourglass's last seconds start here (<paramref name="AttackAtMs"/> minus DungeonSettings.HourglassCountdownSeconds):
+/// the station winds up for the attack from then. Null while it's stopped, or with the countdown off.</param>
 public sealed record DelveView(
     int Floor,
     int Room,
@@ -333,7 +335,8 @@ public sealed record DelveView(
     int MinigamesWon = 0,
     int Lives = 0,
     int MaxLives = 0,
-    bool Out = false);
+    bool Out = false,
+    long? CountdownFromMs = null);
 
 /// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
 /// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>
