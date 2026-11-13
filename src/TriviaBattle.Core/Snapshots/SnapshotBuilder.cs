@@ -133,23 +133,37 @@ public static class SnapshotBuilder
             ? new ChestShuffleView(c.Round, c.Rounds, c.CoinChest, c.RoundStartsAt.ToUnixTimeMilliseconds(), Ms(c.RevealSeconds), Ms(c.SwapSeconds),
                 c.Swaps.Select(s => new[] { s.A, s.B }).ToList(), c.PickFrom.ToUnixTimeMilliseconds(), c.FinalPlaces, c.Picks, c.LastPick, c.LastWasRight, c.FoundAt, ToUnixMs(c.LastPickAt))
             : null;
+        var ringPuzzle = game is Dungeon.Minigames.RingPuzzle r
+            ? new RingPuzzleView(r.Round, r.Rounds, r.Rings, r.Steps, r.Offsets.ToList(), r.Selected, r.RoundStartsAt.ToUnixTimeMilliseconds(),
+                r.SolvedRings, r.Presses, ToUnixMs(r.WholeAt))
+            : null;
         return new MinigameView(game.Kind.ToString(), game.IntroAt.ToUnixTimeMilliseconds(), game.PlaysFrom.ToUnixTimeMilliseconds(),
-            game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle);
+            game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle,
+            ringPuzzle, ToUnixMs(game.ResultFrom));
     }
 
     private static long Ms(double seconds) => (long)Math.Round(seconds * 1000);
 
 
-    /// <summary>Dungeon format: the rewards they're choosing between after a floor's boss, each with the number its card shows. Null when they aren't.</summary>
-    private static RewardOfferView? ToRewardOffer(MatchEngine match, Dungeon.Adventurer? adventurer)
+    /// <summary>A reward they picked; the newest also carries the offer it was picked from (the moment after a pick shows it).</summary>
+    private static RewardTakenView ToRewardTaken(MatchEngine match, Dungeon.Adventurer adventurer, Dungeon.RewardTaken taken)
     {
-        if (adventurer?.Offer is not { } offer || match.Phase != MatchPhase.Playing)
-            return null;
+        var offer = taken == adventurer.LastReward && taken.Offer is { } from ? ToRewardOffer(match, adventurer, from, taken) : null;
+        return new RewardTakenView(taken.Number, taken.Reward, taken.Amount, taken.Floor, taken.At.ToUnixTimeMilliseconds(), taken.Picked,
+            offer, offer != null ? taken.Choice : null);
+    }
 
+    /// <summary>Dungeon format: the rewards they're choosing between after a floor's boss, each with the number its card shows. Null when they aren't.</summary>
+    private static RewardOfferView? ToRewardOffer(MatchEngine match, Dungeon.Adventurer? adventurer) =>
+        adventurer?.Offer is { } offer && match.Phase == MatchPhase.Playing ? ToRewardOffer(match, adventurer, offer) : null;
+
+    /// <summary>An offer's cards (<paramref name="taken"/>: picked from it already, so that card shows what it gave).</summary>
+    private static RewardOfferView ToRewardOffer(MatchEngine match, Dungeon.Adventurer adventurer, Dungeon.RewardOffer offer, Dungeon.RewardTaken? taken = null)
+    {
         var trial = adventurer.LastTrial;
         return new RewardOfferView(
             offer.Floor,
-            offer.Choices.Select(r => new RewardChoiceView(r, match.Dungeon!.RewardAmount(adventurer, r))).ToList(),
+            offer.Choices.Select((r, i) => new RewardChoiceView(r, i == taken?.Choice ? taken.Amount : match.Dungeon!.RewardAmount(adventurer, r))).ToList(),
             offer.OpensAt.ToUnixTimeMilliseconds(),
             (offer.OpensAt + TimeSpan.FromSeconds(match.Settings.Dungeon.Rewards.PickDelaySeconds)).ToUnixTimeMilliseconds(),
             offer.EndsAt.ToUnixTimeMilliseconds(),
@@ -315,7 +329,7 @@ public static class SnapshotBuilder
             adventurer.Trial,
             adventurer.LastTrial,
             match.Settings.Dungeon.Rewards.Enabled ? match.Settings.Dungeon.Rewards.Accuracy : 0,
-            adventurer.Rewards.Select(r => new RewardTakenView(r.Number, r.Reward, r.Amount, r.Floor, r.At.ToUnixTimeMilliseconds(), r.Picked)).ToList(),
+            adventurer.Rewards.Select(r => ToRewardTaken(match, adventurer, r)).ToList(),
             adventurer.LastStands,
             adventurer.Minigame?.Kind.ToString(),
             adventurer.MinigamesWon,

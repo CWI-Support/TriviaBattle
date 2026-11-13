@@ -56,8 +56,9 @@ public sealed record RewardOffered(string OwnerId, RewardOffer Offer) : MatchEve
 /// <summary>Dungeon format: a kill emptied the room before the floor's mini game, and this adventurer's go at it begins (its intro first).</summary>
 public sealed record MinigameStarted(string OwnerId, MinigameKind Kind) : MatchEvent;
 
-/// <summary>Dungeon format: a press in a mini game counted (a hit, a miss, or the hit that won it).</summary>
-public sealed record MinigamePlayed(string OwnerId, MinigamePress Result) : MatchEvent;
+/// <summary>Dungeon format: a press in a mini game counted (a hit, a miss, a round won, or the hit that won it).</summary>
+/// <param name="ShowsInSeconds">A win (or a round won): how long until the screen shows it (<see cref="Minigame.WinPauseSeconds"/>), so its sound lands then.</param>
+public sealed record MinigamePlayed(string OwnerId, MinigamePress Result, double ShowsInSeconds = 0) : MatchEvent;
 
 /// <summary>Dungeon format: a mini game's time limit ran out before it was won (raised by Tick).</summary>
 public sealed record MinigameLost(string OwnerId) : MatchEvent;

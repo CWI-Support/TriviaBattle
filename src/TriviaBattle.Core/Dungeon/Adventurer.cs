@@ -178,9 +178,10 @@ public sealed class Adventurer
     /// </summary>
     /// <param name="amount">What its card said it gives (kept for the screens).</param>
     /// <param name="floor">The floor it was earned on.</param>
-    public RewardTaken TakeReward(Reward reward, double amount, int floor, DateTimeOffset now, bool picked)
+    public RewardTaken TakeReward(Reward reward, double amount, int floor, DateTimeOffset now, bool picked,
+        RewardOffer? offer = null, int? choice = null)
     {
-        var taken = new RewardTaken(_rewards.Count + 1, reward, amount, floor, now, picked);
+        var taken = new RewardTaken(_rewards.Count + 1, reward, amount, floor, now, picked, offer, choice);
         _rewards.Add(taken);
         if (reward == Dungeon.Reward.LastStand)
             LastStands++;

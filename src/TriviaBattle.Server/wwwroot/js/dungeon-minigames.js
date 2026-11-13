@@ -12,7 +12,10 @@
 //   - the rune echo (runeEcho, a "Simon says"): the runes light up in a sequence (each step timed from showFromMs); press
 //     them back in order, one longer each round.
 //   - the chest shuffle (chestShuffle, a shell game): a coin goes in one of five chests, they swap places (followChests
-//     moves them each frame from the round's list of swaps); pick it with the button under it, the action button the fifth. On the main screen a lane shows when its player is in one, and a win gets a banner.
+//     moves them each frame from the round's list of swaps); pick it with the button under it, the action button the fifth.
+//   - the ring puzzle (ringPuzzle): a hero's picture cut into rings, each turned out of line; A and D turn the ring
+//     you're on, the action button moves out a ring. Each round has a ring more (and another hero).
+// On the main screen a lane shows when its player is in one, and a win gets a banner.
 // Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js and dungeon-battle.js. Styles: css/dungeon-minigames.css.
 
 const DungeonMinigames = {
@@ -22,6 +25,7 @@ const DungeonMinigames = {
             case 'RuneLock': return Theme.text('dungeon.minigameRuneLock');
             case 'RuneEcho': return Theme.text('dungeon.minigameRuneEcho');
             case 'ChestShuffle': return Theme.text('dungeon.minigameChestShuffle');
+            case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzle');
             case 'Minigame': return Theme.text('dungeon.minigameGeneric'); // which one isn't known
             default: return UI.escape(kind);
         }
@@ -33,6 +37,7 @@ const DungeonMinigames = {
             case 'RuneLock': return Theme.text('dungeon.minigameRuneLockHow', { hits: minigame.runeLock.hitsNeeded });
             case 'RuneEcho': return Theme.text('dungeon.minigameRuneEchoHow', { rounds: minigame.runeEcho.rounds });
             case 'ChestShuffle': return Theme.text('dungeon.minigameChestShuffleHow', { rounds: minigame.chestShuffle.rounds });
+            case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzleHow', { rounds: minigame.ringPuzzle.rounds });
             default: return '';
         }
     },
@@ -43,6 +48,7 @@ const DungeonMinigames = {
             case 'RuneLock': return DungeonMinigames.runeLock(game, you, serverNow, seed);
             case 'RuneEcho': return DungeonMinigames.runeEcho(game, you, serverNow, seed);
             case 'ChestShuffle': return DungeonMinigames.chestShuffle(game, you, serverNow, seed);
+            case 'RingPuzzle': return DungeonMinigames.ringPuzzle(game, you, serverNow, seed);
             default: return '';
         }
     },
@@ -58,12 +64,14 @@ const DungeonMinigames = {
         const seed = `${match.matchId}:${you.stationId}:minigame:${game.introAtMs}`;
         const toPlay = Math.round(game.playsFromMs - serverNow);
         const body = DungeonMinigames.body(game, you, serverNow, seed);
-        const result = game.finishedAtMs ? DungeonMinigames.result(game, seed, Math.round(game.finishedAtMs - serverNow)) : '';
+        // The result from resultFromMs: when it finished, or a moment later for a win that holds its picture (the ring puzzle).
+        const result = game.finishedAtMs ? DungeonMinigames.result(game, seed, Math.round((game.resultFromMs ?? game.finishedAtMs) - serverNow)) : '';
         return `
             <div class="dg-station is-minigame">
                 <div class="dg-world">
                     <div class="dg-minigame-room">${DungeonBattle.room()}</div>
-                    <div class="dg-minigame is-${game.kind.toLowerCase()}" style="--t0: ${Math.round(game.introAtMs - serverNow)}ms; --play: ${toPlay}ms">
+                    <div class="dg-minigame is-${game.kind.toLowerCase()} ${game.resultEndsAtMs ? 'is-leaving' : ''}"
+                         style="--t0: ${Math.round(game.introAtMs - serverNow)}ms; --play: ${toPlay}ms${game.resultEndsAtMs ? `; --out: ${Math.round(game.resultEndsAtMs - serverNow) - 450}ms` : ''}">
                         <div class="dg-minigame-top">
                             <span class="dg-minigame-name">${DungeonMinigames.name(game.kind)}</span>
                             <span class="dg-minigame-clock">${Theme.text('dungeon.minigameClockStopped')}
@@ -275,6 +283,66 @@ const DungeonMinigames = {
             if (t < shuffle.swaps.length * shuffle.swapMs) requestAnimationFrame(step);
         };
         step();
+    },
+
+    /** The heroes whose pictures (media/heroes/{key}-head.png) the ring puzzle cuts up. */
+    RING_PICTURES: ['tank', 'pugilist', 'wizard', 'healer', 'rogue', 'ranger', 'warlock'],
+
+    /**
+     * The ring puzzle: a hero's picture cut into rings round a middle disc, each turned out of line (offsets, in steps of
+     * 360 / steps degrees clockwise). The ring A and D turn is lit gold. Each ring is a disc of the whole picture, the
+     * bigger ones under the smaller, so only its band shows; a ring turns smoothly from where it was last drawn (the
+     * short way round). Which hero is cosmetic: a different one each round, from the seed.
+     * A picture put back together holds a moment, its last ring turning into place, then shows whole from wholeAtMs
+     * (--whole: the cuts fade, it glows, "Solved!"; the last round's is the win, its result from resultFromMs). After a
+     * solved round the snapshot is already the next one, starting at roundStartsAtMs: until then the solved picture lies
+     * over it, and lifts by itself when the next starts (no redraw comes then).
+     */
+    ringPuzzle(game, you, serverNow, seed) {
+        const puzzle = game.ringPuzzle;
+        const over = !!game.finishedAtMs;
+        const picture = round => {
+            const all = DungeonMinigames.RING_PICTURES;
+            return `/media/heroes/${all[(Theme.hash(seed) + (round - 1) * 3) % all.length]}-head.png`;
+        };
+        // One round's picture: each ring where it was last drawn (an angle that keeps counting past 360), turning on to
+        // its offset the short way.
+        const discs = (round, rings, offsets) => Array.from({ length: rings }, (_, i) => rings - 1 - i).map(ring => {
+            const key = `rp:${you.stationId}:${game.introAtMs}:${round}:${ring}`;
+            const deg = (offsets[ring] * 360) / puzzle.steps;
+            const from = DungeonView.seen[key] ?? deg;
+            const to = from + ((((deg - from) % 360) + 540) % 360) - 180;
+            DungeonView.seen[key] = to;
+            return `<i class="dg-rp-disc" style="--share: ${(ring + 1) / rings}; --from: ${from}deg; --deg: ${to}deg; background-image: url('${picture(round)}')"></i>`;
+        }).join('');
+        // The ring A and D turn: a gold band between its two edges (radii as shares of the whole picture's).
+        const inner = (puzzle.selected / puzzle.rings) * 100, outer = ((puzzle.selected + 1) / puzzle.rings) * 100;
+        const band = 'rgba(255, 210, 63, 0.16)', edge = 'var(--dg-mg-gold)';
+        const lit = over ? '' : `<i class="dg-rp-lit" style="background: radial-gradient(circle closest-side,
+                ${inner ? `transparent ${inner - 1.6}%, ${edge} ${inner - 1.6}%, ${edge} ${inner}%,` : ''}
+                ${band} ${inner}%, ${band} ${outer - 1.6}%, ${edge} ${outer - 1.6}%, ${edge} ${outer}%, transparent ${outer}%)"></i>`;
+        const between = !over && puzzle.solvedRings && serverNow < puzzle.roundStartsAtMs;
+        const solved = between
+            ? `<div class="dg-rp-board is-solving is-between">${discs(puzzle.round - 1, puzzle.solvedRings, Array(puzzle.solvedRings).fill(0))}</div>`
+            : '';
+        const status = over ? ''
+            : `${between ? `<span class="dg-rp-found">${Theme.text('dungeon.minigameRingSolved', {}, `${seed}:${puzzle.round}`)}</span>` : ''}
+               <span class="dg-rp-goal">${Theme.text('dungeon.minigameRingGoal', {}, seed)}</span>`;
+        const at = ms => Math.round((ms ?? serverNow) - serverNow);
+        return `
+            <div class="dg-rp ${over ? 'is-over' : ''}" style="--start: ${at(puzzle.roundStartsAtMs)}ms; --whole: ${at(puzzle.wholeAtMs)}ms">
+                <div class="dg-re-round">${Theme.text('dungeon.minigameRound', { round: puzzle.round, rounds: puzzle.rounds })}</div>
+                <div class="dg-rp-status">${status}</div>
+                <div class="dg-rp-frame">
+                    <div class="dg-rp-board ${over && game.won ? 'is-solving' : ''}">${discs(puzzle.round, puzzle.rings, puzzle.offsets)}${lit}</div>
+                    ${solved}
+                </div>
+                <div class="dg-rp-keys">
+                    <span class="dg-rp-key" data-letter="A"><b>A</b>${Theme.text('dungeon.minigameRingLeft')}</span>
+                    <span class="dg-rp-key is-action"><b>${Theme.text('dungeon.minigameActionButton')}</b>${Theme.text('dungeon.minigameRingNext')}</span>
+                    <span class="dg-rp-key" data-letter="D"><b>D</b>${Theme.text('dungeon.minigameRingRight')}</span>
+                </div>
+            </div>`;
     },
 
     /**

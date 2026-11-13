@@ -13,7 +13,7 @@ public sealed class MinigameSettings
     public double IntroSeconds { get; set; } = 3.5;
 
     /// <summary>The moment after it's won or lost that shows how it went.</summary>
-    public double ResultSeconds { get; set; } = 2.5;
+    public double ResultSeconds { get; set; } = 3.2;
 
     /// <summary>Winning earns a pick of the floor rewards (see Reward), as after a boss.</summary>
     public bool WinEarnsReward { get; set; } = true;
@@ -21,6 +21,7 @@ public sealed class MinigameSettings
     public RuneLockSettings RuneLock { get; set; } = new();
     public RuneEchoSettings RuneEcho { get; set; } = new();
     public ChestShuffleSettings ChestShuffle { get; set; } = new();
+    public RingPuzzleSettings RingPuzzle { get; set; } = new();
 
     public MinigameSettings Copy()
     {
@@ -28,8 +29,36 @@ public sealed class MinigameSettings
         copy.RuneLock = RuneLock.Copy();
         copy.RuneEcho = RuneEcho.Copy();
         copy.ChestShuffle = ChestShuffle.Copy();
+        copy.RingPuzzle = RingPuzzle.Copy();
         return copy;
     }
+}
+
+/// <summary>The ring puzzle: a picture cut into rings, each turned out of line (<see cref="RingPuzzle"/>).</summary>
+public sealed class RingPuzzleSettings
+{
+    /// <summary>How many rings the first round's picture has (the middle disc counts as one); each round after has one more.</summary>
+    public int StartRings { get; set; } = 3;
+
+    /// <summary>Rounds to solve (with the defaults: 3, 4 and 5 rings).</summary>
+    public int Rounds { get; set; } = 3;
+
+    /// <summary>Steps to a full turn: each press turns a ring 360 / Steps degrees (12: 30 degrees, at most 6 presses a ring).</summary>
+    public int Steps { get; set; } = 12;
+
+    /// <summary>
+    /// After the press that puts a picture back together, a moment with the last ring turning into place before it
+    /// shows as solved (with the win sound), so it doesn't flip the instant the last ring lines up.
+    /// </summary>
+    public double SolvedPauseSeconds { get; set; } = 1;
+
+    /// <summary>Then the picture shows whole ("Solved!") this long before the next round.</summary>
+    public double BetweenSeconds { get; set; } = 1.5;
+
+    /// <summary>The time limit, for all the rounds.</summary>
+    public double Seconds { get; set; } = 60;
+
+    public RingPuzzleSettings Copy() => (RingPuzzleSettings)MemberwiseClone();
 }
 
 /// <summary>The rune echo, a "Simon says" (<see cref="RuneEcho"/>).</summary>

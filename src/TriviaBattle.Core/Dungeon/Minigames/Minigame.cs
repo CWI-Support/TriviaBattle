@@ -14,6 +14,9 @@ public enum MinigameKind
 
     /// <summary>A coin goes into one of five chests, they're shuffled; pick the right one (<see cref="ChestShuffle"/>, a shell game).</summary>
     ChestShuffle,
+
+    /// <summary>A picture cut into rings, each turned out of line; turn them back to put it together (<see cref="RingPuzzle"/>).</summary>
+    RingPuzzle,
 }
 
 /// <summary>What a press did in a mini game.</summary>
@@ -26,6 +29,9 @@ public enum MinigamePress
 
     /// <summary>The hit that won it.</summary>
     Won,
+
+    /// <summary>A hit that won a round, with more to play (the ring puzzle: a picture put back together).</summary>
+    Cleared,
 
     /// <summary>A press that lost it there and then (the wrong chest).</summary>
     Lost,
@@ -69,7 +75,19 @@ public abstract class Minigame
     public bool Won { get; private set; }
 
     /// <summary>The moment showing how it went is over: back to the fight (or, won, to a reward). Null while it's on.</summary>
-    public DateTimeOffset? ResultEndsAt => FinishedAt + TimeSpan.FromSeconds(ResultSeconds);
+    public DateTimeOffset? ResultEndsAt => ResultFrom + TimeSpan.FromSeconds(ResultSeconds);
+
+    /// <summary>
+    /// The result starts showing: when it finished, or, won, after the game's <see cref="WinPauseSeconds"/> (the ring
+    /// puzzle's last ring turning into place). Null while it's on.
+    /// </summary>
+    public DateTimeOffset? ResultFrom => FinishedAt + TimeSpan.FromSeconds(Won ? WinPauseSeconds : 0);
+
+    /// <summary>
+    /// How long after the press that wins it (or a round of it: <see cref="MinigamePress.Cleared"/>) the screen shows the
+    /// win, and the room hears it. 0 for most: the ring puzzle holds the finished picture a moment first.
+    /// </summary>
+    public virtual double WinPauseSeconds => 0;
 
     /// <summary>
     /// A button pressed at <paramref name="at"/>: an answer button (0-3) or the action button (4, <see cref="Input.ButtonPress.Action"/>).

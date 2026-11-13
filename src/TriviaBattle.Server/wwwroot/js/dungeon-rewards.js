@@ -113,24 +113,23 @@ const DungeonRewards = {
      * down to when one is picked for them.
      */
     pick(match, you, serverNow) {
-        const offer = you.reward;
+        return DungeonRewards.board(match, you, serverNow, you.reward, null);
+    },
+
+    /**
+     * The cards screen for an offer. Before a pick (chosen null) it's dealt in, with the time to choose. Just after
+     * one (chosen: the card picked) it's the same screen already in place, its cards marked is-chosen and is-passed for
+     * the moment after the pick to play out (css/dungeon-rewards.css, timed from the pick: --t0).
+     */
+    board(match, you, serverNow, offer, chosen) {
+        const picking = chosen === null;
         const seed = `${match.matchId}:${you.stationId}:reward:${offer.floor}`;
-        const toPick = Math.round(offer.pickFromMs - serverNow);
-        const cards = offer.choices.map((choice, i) => {
-            const letter = UI.ANSWER_LETTERS[i];
-            return `
-                <div class="dg-reward-card is-${choice.reward.toLowerCase()}" data-letter="${letter}" style="${UI.animateAt(offer.opensAtMs + i * 140)}">
-                    <span class="dg-reward-letter">${letter}</span>
-                    ${DungeonRewards.icon(choice.reward, 'dg-reward-icon')}
-                    <span class="dg-reward-text">
-                        <b class="dg-reward-name">${DungeonRewards.name(choice.reward)}</b>
-                        <span class="dg-reward-detail">${DungeonRewards.describe(choice.reward, choice.amount, you.delve.heroClass)}</span>
-                    </span>
-                </div>`;
-        }).join('');
+        const toPick = picking ? Math.round(offer.pickFromMs - serverNow) : -99999; // picked: the veils are long gone
+        const cards = offer.choices.map((choice, i) => DungeonRewards.card(choice, i, you.delve.heroClass,
+            picking ? '' : i === chosen ? 'is-chosen' : 'is-passed', picking ? UI.animateAt(offer.opensAtMs + i * 140) : '')).join('');
         return `
-            <div class="dg-reward" style="--pick: ${toPick}ms">
-                <div class="dg-reward-head" style="${UI.animateAt(offer.opensAtMs)}">
+            <div class="dg-reward ${picking ? '' : 'is-picked'}" style="--pick: ${toPick}ms">
+                <div class="dg-reward-head" style="${picking ? UI.animateAt(offer.opensAtMs) : ''}">
                     ${PixelSprites.html('icon-chest', 'dg-reward-chest')}
                     <div class="dg-reward-title">${offer.forMinigame ? Theme.text('dungeon.rewardTitleMinigame', {}, seed) : Theme.text('dungeon.rewardTitle', {}, seed)}</div>
                     <div class="dg-reward-sub">${offer.forMinigame ? Theme.text('dungeon.rewardSubMinigame')
@@ -139,22 +138,48 @@ const DungeonRewards = {
                 <div class="dg-reward-cards">${cards}</div>
                 <div class="dg-reward-foot">
                     <span>${Theme.text('dungeon.rewardPress')}</span>
-                    <span class="dg-reward-seconds" data-ends-at="${offer.endsAtMs}" data-hurry-at="4"></span>
+                    <span class="dg-reward-seconds" ${picking ? `data-ends-at="${offer.endsAtMs}" data-hurry-at="4"` : ''}></span>
                 </div>
-                <div class="timer-bar dg-reward-timer" data-starts-at="${offer.opensAtMs}" data-ends-at="${offer.endsAtMs}"><div class="timer-bar-fill"></div></div>
+                ${picking ? `<div class="timer-bar dg-reward-timer" data-starts-at="${offer.opensAtMs}" data-ends-at="${offer.endsAtMs}"><div class="timer-bar-fill"></div></div>`
+                    : '<div class="timer-bar dg-reward-timer"></div>'}
             </div>`;
     },
 
-    /** The moment after a pick: the reward big, what it gives, and "picked for you" if time ran out. */
+    /** One card: its answer button's letter, the reward's icon, name and what it gives. */
+    card(choice, i, heroClass, cssClass = '', style = '') {
+        const letter = UI.ANSWER_LETTERS[i];
+        return `
+            <div class="dg-reward-card is-${choice.reward.toLowerCase()} ${cssClass}" data-letter="${letter}" style="${style}">
+                <span class="dg-reward-letter">${letter}</span>
+                ${DungeonRewards.icon(choice.reward, 'dg-reward-icon')}
+                <span class="dg-reward-text">
+                    <b class="dg-reward-name">${DungeonRewards.name(choice.reward)}</b>
+                    <span class="dg-reward-detail">${DungeonRewards.describe(choice.reward, choice.amount, heroClass)}</span>
+                </span>
+            </div>`;
+    },
+
+    /**
+     * The moment after a pick (the "reward" beat), timed from the pick (--t0) so a redraw carries on where it was:
+     * the cards screen stays as it was (taken.offer: the newest pick's), the card picked lights up and the others fall
+     * away; then the reward, big, with what it gives, and "picked for you" if time ran out; then it all fades (--out)
+     * just before the question rises back in.
+     */
     chosen(match, you, serverNow) {
         const taken = you.delve.rewards?.at(-1);
         if (!taken) return '';
+        const t0 = Math.round(taken.atMs - serverNow);
+        const out = Math.round(you.beat.endsAtMs - serverNow) - 350;
+        const cards = taken.offer ? DungeonRewards.board(match, you, serverNow, taken.offer, taken.choice) : '';
         return `
-            <div class="dg-reward-got is-${taken.reward.toLowerCase()}" style="--t0: ${Math.round(taken.atMs - serverNow)}ms">
-                ${DungeonRewards.icon(taken.reward, 'dg-reward-got-icon')}
-                <div class="dg-reward-got-name">${DungeonRewards.name(taken.reward)}!</div>
-                <div class="dg-reward-got-detail">${DungeonRewards.describe(taken.reward, taken.amount, you.delve.heroClass)}</div>
-                ${taken.picked ? '' : `<div class="dg-reward-got-auto">${Theme.text('dungeon.rewardAuto')}</div>`}
+            <div class="dg-reward-chosen ${cards ? 'has-cards' : ''}" style="--t0: ${t0}ms; --out: ${out}ms">
+                ${cards}
+                <div class="dg-reward-got is-${taken.reward.toLowerCase()}">
+                    ${DungeonRewards.icon(taken.reward, 'dg-reward-got-icon')}
+                    <div class="dg-reward-got-name">${DungeonRewards.name(taken.reward)}!</div>
+                    <div class="dg-reward-got-detail">${DungeonRewards.describe(taken.reward, taken.amount, you.delve.heroClass)}</div>
+                    ${taken.picked ? '' : `<div class="dg-reward-got-auto">${Theme.text('dungeon.rewardAuto')}</div>`}
+                </div>
             </div>`;
     },
 

@@ -8,7 +8,7 @@ namespace TriviaBattle.Tests.Dungeon;
 
 // Mini games between two rooms of a floor (Core/Dungeon/Minigames). The first is the rune lock: stop the needle on
 // the glowing mark 6 times in a row; a miss starts the count again and locks the buttons for 2 seconds; 30 seconds to
-// do it. The intro takes 3.5 seconds, the result 2.5. Easy questions do 20, so one hit kills a rat.
+// do it. The intro takes 3.5 seconds, the result 3.2. Easy questions do 20, so one hit kills a rat.
 public class DungeonMinigameTests
 {
     /// <summary>Floor 1: a rat, the lock, another rat, then a boss. Floor 2: a rat.</summary>
@@ -159,7 +159,7 @@ public class DungeonMinigameTests
         Assert.Single(match.Wait(30).OfType<MinigameLost>());
         Assert.Contains("Rat", SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Delve!.Monster.Name);
 
-        Assert.Single(match.Wait(2.5).OfType<MinigameOver>());
+        Assert.Single(match.Wait(3.2).OfType<MinigameOver>());
         var adventurer = match.AdventurerOf("A1");
         Assert.Null(adventurer.Minigame);
         Assert.Equal(match.Now, match.StreamOf("A1").CurrentShownAt); // the question comes back
@@ -188,7 +188,7 @@ public class DungeonMinigameTests
         for (var i = 0; i < 6; i++)
             PressOnTheMark(match);
 
-        var events = match.Wait(2.5);
+        var events = match.Wait(3.2);
 
         Assert.Single(events.OfType<MinigameOver>());
         Assert.Single(events.OfType<RewardOffered>());

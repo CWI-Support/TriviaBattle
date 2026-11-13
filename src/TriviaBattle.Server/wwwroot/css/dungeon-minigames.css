@@ -21,6 +21,10 @@
     gap: 2vh;
     padding: 1.4vh 3vw 1.6vh;
 }
+/* Over: once its result has shown, the game shrinks and fades into the room (--out: just before it ends), and the
+   question (or the reward cards) comes in after it, instead of it vanishing in a frame. */
+.dg-minigame.is-leaving { animation: dg-mg-leave 450ms ease-in var(--out) forwards; }
+@keyframes dg-mg-leave { to { opacity: 0; transform: scale(0.94); filter: blur(0.4vmin); } }
 
 /* The game's name, and the arcade clock: stopped while you play. */
 .dg-minigame-top {
@@ -334,3 +338,51 @@
 .dg-cs-label.is-action { font-size: 2.2vmin; display: grid; place-items: center; background: #ffd23f; }
 /* The chest shuffle's result goes at the top, see-through, so the coin's chest shows where it really was. */
 .dg-minigame.is-chestshuffle .dg-minigame-result { justify-content: flex-start; padding-top: 8vh; background: rgba(8, 5, 10, 0.3); }
+
+/* ---------- The ring puzzle: a picture cut into rings, each turned out of line ---------- */
+
+.dg-rp { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; }
+.dg-rp-status { position: relative; height: 6vmin; width: 100%; text-align: center; font-family: var(--dg-font-pixel); font-size: 4.4vmin; white-space: nowrap; }
+.dg-rp-status > span { position: absolute; inset: 0; }
+/* "Line up the rings!" while they play; "Solved!" between rounds, from when the picture shows whole (--whole) until the
+   next starts (--start). */
+.dg-rp-goal { color: var(--dg-mg-rune); animation: dg-mg-veil-in 200ms linear var(--start) both; }
+.dg-rp-found { color: var(--dg-mg-gold); animation: dg-mg-stamp 500ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--whole) both, dg-mg-veil-out 150ms linear var(--start) forwards; }
+
+/* The picture: each ring is a disc of the whole picture (--share of its size), centred, the bigger ones under the
+   smaller; it shows turned --deg, turning there from --from. The dark line round each disc is the cut between rings. */
+.dg-rp-frame { position: relative; width: min(80vw, 44vh); aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 0 1.4vmin #2b2030, 0 0 0 2vmin #120c16, 0 2vmin 4vmin rgba(0, 0, 0, 0.7); }
+.dg-rp-board { position: absolute; inset: 0; border-radius: 50%; background: #120c16; }
+.dg-rp-disc {
+    position: absolute;
+    left: calc((1 - var(--share)) * 50%);
+    top: calc((1 - var(--share)) * 50%);
+    width: calc(var(--share) * 100%);
+    height: calc(var(--share) * 100%);
+    border-radius: 50%;
+    background-size: calc(100% / var(--share));
+    background-position: center;
+    box-shadow: 0 0 0 0.5vmin rgba(10, 6, 14, 0.9);
+    transform: rotate(var(--deg));
+    animation: dg-rp-turn 180ms ease-out both;
+}
+@keyframes dg-rp-turn { from { transform: rotate(var(--from)); } }
+/* The ring A and D turn: a gold band (its gradient is drawn by the script). */
+.dg-rp-lit { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+/* Put back together: a moment with the last ring turning into place, then from --whole the cuts fade and the picture
+   pulses and glows (no fill before --whole, so it waits as it is). */
+.dg-rp-board.is-solving .dg-rp-disc { animation: dg-rp-turn 180ms ease-out both, dg-rp-seams 300ms linear var(--whole) forwards; }
+.dg-rp-board.is-solving { animation: dg-rp-whole 600ms ease-out var(--whole), dg-rp-glow 300ms ease-out var(--whole) forwards; }
+@keyframes dg-rp-seams { to { box-shadow: 0 0 0 0 transparent; } }
+@keyframes dg-rp-whole { from { transform: scale(1.06); filter: brightness(1.6); } }
+@keyframes dg-rp-glow { to { box-shadow: 0 0 5vmin var(--dg-mg-gold); } }
+/* Between rounds: the solved picture lies over the next one until it starts (--start). */
+.dg-rp-board.is-between { animation: dg-rp-whole 600ms ease-out var(--whole), dg-rp-glow 300ms ease-out var(--whole) forwards, dg-mg-veil-out 200ms linear var(--start) forwards; }
+
+/* What the buttons do: A turns left, the action button moves out a ring, D turns right. */
+.dg-rp-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; width: 100%; }
+.dg-rp-key { display: flex; flex-direction: column; align-items: center; gap: 0.6vh; font-family: var(--dg-font-pixel); font-size: 2.6vmin; color: #fff; text-align: center; }
+.dg-rp-key b { display: block; width: 100%; padding: 0.8vh 0; font-size: 4.4vmin; font-weight: normal; color: #000; background: var(--answer-color, #ffd23f); }
+.dg-rp-key[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-rp-key[data-letter="D"] { --answer-color: var(--answer-d); }
+.dg-rp-key.is-action b { font-size: 3vmin; padding: 1.5vh 0; }

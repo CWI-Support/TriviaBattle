@@ -1,5 +1,6 @@
 using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Dungeon.Minigames;
+using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Questions;
@@ -115,6 +116,17 @@ public class DungeonPacingTests(ITestOutputHelper output)
                 var coinAt = shuffle.FinalPlaces.ToList().IndexOf(shuffle.CoinChest);
                 var followed = player.NextDouble() < how.OnTheMark + 0.1 - 0.1 * shuffle.Round;
                 match.Press("A1", followed ? coinAt : (coinAt + 1) % ChestShuffle.Chests, afterSeconds: 1);
+                break;
+            case RingPuzzle puzzle when puzzle.RoundStartsAt > match.Now:
+                match.Wait((puzzle.RoundStartsAt - match.Now).TotalSeconds + 0.05); // the solved picture
+                break;
+            case RingPuzzle puzzle:
+                // A press every half second: the ring they're on the short way back in line (now and then the
+                // wrong way), or on to the next ring once it's in line.
+                var offset = puzzle.Offsets[puzzle.Selected];
+                var shortWay = offset <= puzzle.Steps / 2 ? RingPuzzle.TurnLeft : RingPuzzle.TurnRight;
+                var turn = player.NextDouble() < how.OnTheMark ? shortWay : RingPuzzle.TurnLeft + RingPuzzle.TurnRight - shortWay;
+                match.Press("A1", offset == 0 ? ButtonPress.Action : turn, afterSeconds: 0.5);
                 break;
             default:
                 match.Wait(0.5);

@@ -345,7 +345,8 @@ public sealed class MatchEngine
         if (result == MinigamePress.Ignored)
             return NothingHappened;
         Version++;
-        return [new MinigamePlayed(ownerId, result)];
+        var showsIn = result is MinigamePress.Won or MinigamePress.Cleared ? _dungeon.FindAdventurer(ownerId)?.Minigame?.WinPauseSeconds ?? 0 : 0;
+        return [new MinigamePlayed(ownerId, result, showsIn)];
     }
 
     /// <summary>

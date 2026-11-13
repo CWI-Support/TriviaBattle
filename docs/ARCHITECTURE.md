@@ -193,7 +193,8 @@ The rules:
   their hourglass is stopped (`StartHourglass` won't run it), the snapshot has no question but `YouView.Reward`, and
   `HandlePress` sends answer buttons to `ChooseReward` (after `PickDelaySeconds`); at `EndsAt` the tick picks one at
   random. A pick (`RewardChosen`) goes on `Adventurer.Rewards`, and the question comes back after a `reward` beat
-  (`RewardSettings.BeatSeconds`). The arcade clock stands still meanwhile (see Mini games: `IsAway`, `HoldTheClock`).
+  (`RewardSettings.BeatSeconds`: the same cards, from `RewardTaken.Offer`, the one picked lighting up as the others fall
+  away, then the reward big). The arcade clock stands still while they choose (see Mini games: `IsAway`, `HoldTheClock`).
   Rewards are read live where the numbers are used (`DamageShare`, `DamageTakenShare`, `FastSecondsOf`, and each class
   power's `...Of`); only Vitality (max HP) and Last Stand (a count, used in `Adventurer.TakeHit`) change state.
   `RewardAmount` is the number each card shows. Screens: `js/dungeon-rewards.js`, `css/dungeon-rewards.css`.
@@ -207,9 +208,12 @@ The rules:
   `Minigame` keeps the timing every game shares (`IntroAt`, `PlaysFrom`, `EndsAt`, `FinishedAt`, `ResultEndsAt`); each
   game is a subclass with its own rules for a press, all timed on the server and only animated by the screen from the
   same numbers: `RuneLock` (the needle's angle from the press time and the turn it's on), `RuneEcho` (a "Simon says":
-  the round's runes shown from `ShowFrom`, presses from `InputFrom`) and `ChestShuffle` (a shell game: the round's
+  the round's runes shown from `ShowFrom`, presses from `InputFrom`), `ChestShuffle` (a shell game: the round's
   `Swaps`, picks from `PickFrom`; the action button is the fifth chest, so `HandlePress` sends it to a mini game before
-  a power-up; `MinigamePress.Lost` is a press that loses it). `HandlePress` sends
+  a power-up; `MinigamePress.Lost` is a press that loses it) and `RingPuzzle` (a picture cut into rings: A and D turn
+  the `Selected` ring by a step, the action button moves out a ring; all `Offsets` 0 solves the round (`MinigamePress.Cleared`;
+  it shows whole at `WholeAt`, a `WinPauseSeconds` later, as does a win: `Minigame.ResultFrom`), and the next
+  one, a ring more, starts at `RoundStartsAt`). `HandlePress` sends
   answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
   and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
   others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone,

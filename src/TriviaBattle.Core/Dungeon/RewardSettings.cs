@@ -25,8 +25,11 @@ public sealed class RewardSettings
     /// <summary>Presses only pick once the cards have been up this long, so an answer meant for the last question doesn't take one.</summary>
     public double PickDelaySeconds { get; set; } = 1;
 
-    /// <summary>The moment after a pick that shows what they got, before their next question.</summary>
-    public double BeatSeconds { get; set; } = 1.5;
+    /// <summary>
+    /// The moment after a pick that shows what they got, before their next question: the card picked lights up as the
+    /// others fall away, then the reward, big, with what it does (long enough to read it).
+    /// </summary>
+    public double BeatSeconds { get; set; } = 2.8;
 
     // What each reward does (each pick adds it again).
 

@@ -45,7 +45,10 @@ public sealed record RewardOffer(int Floor, IReadOnlyList<Reward> Choices, DateT
 /// <param name="Amount">What it gave, as the card said (see DungeonRun.RewardAmount).</param>
 /// <param name="At">When it was picked: the short beat showing it starts then.</param>
 /// <param name="Picked">False when time ran out and it was picked for them.</param>
-public sealed record RewardTaken(int Number, Reward Reward, double Amount, int Floor, DateTimeOffset At, bool Picked);
+/// <param name="Offer">The offer it was picked from (null when it was given without one: the dev tools).</param>
+/// <param name="Choice">Which of the offer's cards it was (0-based).</param>
+public sealed record RewardTaken(int Number, Reward Reward, double Amount, int Floor, DateTimeOffset At, bool Picked,
+    RewardOffer? Offer = null, int? Choice = null);
 
 /// <summary>How an adventurer did on a floor: the floor's reward needs enough of its questions answered right.</summary>
 /// <param name="Right">Right answers on the floor.</param>

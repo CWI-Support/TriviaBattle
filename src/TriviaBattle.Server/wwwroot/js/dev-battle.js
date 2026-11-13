@@ -31,20 +31,22 @@
 // armour (a Tank takes a softened hit).
 // Bosses: boss (a kill that empties the room before the boss's: its entrance), charged (a boss at full
 // charge lands its big blow on a miss), stagger (a right answer at full charge staggers it).
-// Floor rewards: reward (the cards to pick from after a boss), rewarded (the moment after picking one: Mastery).
+// Floor rewards: reward (the cards to pick from after a boss), rewarded (the moment after picking one: card C, Mastery,
+// lights up as the others fall away, then the reward big, then it fades for the question).
 // poisonkill: the Healer's poison kills the monster between answers (its own kill beat, no blow).
 // kill ends on NEXT UP (the next monster's bar); roomclear: a kill that emptied the room (ROOM 2 OF 2: the walk,
 // the dungeon scrolling past to the next room's monster); teamkill: a teammate (Cat) lands the kill and your knight watches.
 // Mini games: runelock (the intro, then play: the needle spinning, 2 hits so far), runelock-won and runelock-lost (the result).
 // runeecho (the intro, the runes lighting up, then your turn), chestshuffle (the intro, the coin, the shuffle, the pick),
 // chestshuffle-found (a right pick: the coin pops out of chest D, then round 2 starts), chestshuffle-lost (the wrong
-// chest: the coin shown where it was).
+// chest: the coin shown where it was). ringpuzzle (the intro, then round 2 of 3: four rings, the second lit),
+// ringpuzzle-solved (round 1's picture whole, then round 2 starts), ringpuzzle-won (the last one whole).
 // out: downed on the last life (OUT!; the plate's hearts all dark).
 //   /dev/battle?kind=hit&charge=2&at=1600   any kind against the boss, and the question after it with the
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', 'teamkill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'out'];
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'out'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
 // ?long: a long question and long answers (the admin editor allows 250 and 80 letters), to check they shrink to fit.
@@ -52,7 +54,7 @@ const LONG_QUESTION = {
     text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
     answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
 };
-const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3000, 'runelock-won': 3000, 'runelock-lost': 3000 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 3000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -270,7 +272,11 @@ function fakeState(kind, startedAt, question) {
         you.reward = { floor: 2, opensAtMs: startedAt, pickFromMs: startedAt + 1000, endsAtMs: startedAt + 12000, right: 9, answered: 10,
                        choices: [{ reward: 'Vitality', amount: 25 }, { reward: 'Focus', amount: 1 }, { reward: 'Mastery', amount: MASTERY[hero] }] };
     }
-    if (kind === 'rewarded') delve.rewards.at(-1).amount = MASTERY[hero];
+    if (kind === 'rewarded') { // picked C (Mastery) from the cards the reward preview shows
+        const offer = { floor: 3, opensAtMs: startedAt - 4000, pickFromMs: startedAt - 3000, endsAtMs: startedAt + 8000, right: 9, answered: 10,
+                        choices: [{ reward: 'Vitality', amount: 25 }, { reward: 'Focus', amount: 1 }, { reward: 'Mastery', amount: MASTERY[hero] }] };
+        Object.assign(delve.rewards.at(-1), { amount: MASTERY[hero], offer, choice: 2 });
+    }
     if (kind === 'poisonkill') you.beat.byPoison = true; // nobody answered: the party's poison did it (delve.lastHit)
     if (kind === 'teamkill') Object.assign(you.beat, { by: 'Cat', hit }); // Cat's blow, carried on the beat
     if (kind === 'roomclear') { // the kill emptied room 1: the one in front is room 2's first, nothing beaten there yet
@@ -301,7 +307,7 @@ function fakeState(kind, startedAt, question) {
         const playing = lost || found; // past the intro
         you.minigame = { kind: kind === 'runeecho' ? 'RuneEcho' : 'ChestShuffle', introAtMs: playing ? startedAt - 20000 : startedAt,
                          playsFromMs: playing ? startedAt - 16500 : playsFromMs, endsAtMs: playing ? startedAt + 13500 : playsFromMs + 30000,
-                         finishedAtMs: lost ? startedAt : null, won: false, resultEndsAtMs: lost ? startedAt + 2500 : null,
+                         finishedAtMs: lost ? startedAt : null, won: false, resultEndsAtMs: lost ? startedAt + 3200 : null,
                          runeLock: null,
                          runeEcho: { round: 2, rounds: 5, sequence: [0, 2, 1, 3], showFromMs: playsFromMs + 800, stepMs: 650, litMs: 450,
                                      inputFromMs: playsFromMs + 800 + 4 * 650, entered: 0, presses: 0, lastRune: -1, lastWasRight: false },
@@ -315,13 +321,34 @@ function fakeState(kind, startedAt, question) {
         const over = kind !== 'runelock';
         you.minigame = { kind: 'RuneLock', introAtMs: over ? startedAt - 20000 : startedAt, playsFromMs: over ? startedAt - 16500 : playsFromMs,
                          endsAtMs: over ? startedAt + 13500 : playsFromMs + 30000, finishedAtMs: over ? startedAt : null, won: kind === 'runelock-won',
-                         resultEndsAtMs: over ? startedAt + 2500 : null,
+                         resultEndsAtMs: over ? startedAt + 3200 : null,
                          runeLock: { hits: kind === 'runelock-won' ? 6 : 2, hitsNeeded: 6, lockedUntilMs: null, turnStartedAtMs: playsFromMs, turnAngle: 0,
                                      degreesPerSecond: 200, markAngle: 150, markDegrees: 40, presses: 2, lastWasHit: true } };
     }
+    if (kind.startsWith('ringpuzzle')) {
+        // ringpuzzle: the intro now, then round 2 (four rings, the second lit). solved: round 1's last ring was just
+        // turned into place (its outside ring turns in), it shows whole 1 s later, and round 2 starts 1.5 s after that.
+        // won: the last round (five rings): its outside ring turns in, then whole and the result 1 s later.
+        you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt };
+        you.question = null;
+        const intro = kind === 'ringpuzzle';
+        const won = kind === 'ringpuzzle-won';
+        const playsFromMs = intro ? startedAt + 3500 : startedAt - 16500;
+        const wholeAtMs = intro ? null : startedAt + 1000;
+        // Where the screen last drew the ring that's just been turned in (one step short of in line), so it turns in.
+        DungeonView.seen[`rp:A1:${playsFromMs - 3500}:${won ? 3 : 1}:${won ? 4 : 2}`] = 330;
+        you.minigame = { kind: 'RingPuzzle', introAtMs: playsFromMs - 3500, playsFromMs, endsAtMs: playsFromMs + 60000,
+                         finishedAtMs: won ? startedAt : null, won, resultFromMs: won ? wholeAtMs : null,
+                         resultEndsAtMs: won ? wholeAtMs + 3200 : null, runeLock: null,
+                         ringPuzzle: won
+                             ? { round: 3, rounds: 3, rings: 5, steps: 12, offsets: [0, 0, 0, 0, 0], selected: 4, roundStartsAtMs: startedAt - 9000, solvedRings: 4,
+                                 presses: 40, wholeAtMs }
+                             : { round: 2, rounds: 3, rings: 4, steps: 12, offsets: [0, 7, 3, 10], selected: 1,
+                                 roundStartsAtMs: intro ? playsFromMs : wholeAtMs + 1500, solvedRings: intro ? null : 3, presses: intro ? 0 : 14, wholeAtMs } };
+    }
 
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
-                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') ? 74000 : null,
+                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') ? 74000 : null,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),

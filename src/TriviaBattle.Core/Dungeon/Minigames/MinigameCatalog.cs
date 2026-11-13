@@ -18,6 +18,7 @@ public static class MinigameCatalog
         MinigameKind.RuneLock => new RuneLock(introAt, settings, random),
         MinigameKind.RuneEcho => new RuneEcho(introAt, settings, random),
         MinigameKind.ChestShuffle => new ChestShuffle(introAt, settings, random),
+        MinigameKind.RingPuzzle => new RingPuzzle(introAt, settings, random),
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "A mini game needs a case here."),
     };
 }

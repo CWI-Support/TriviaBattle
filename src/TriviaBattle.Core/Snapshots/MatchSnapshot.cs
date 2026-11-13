@@ -198,7 +198,11 @@ public sealed record RewardChoiceView(Reward Reward, double Amount);
 /// <summary>A reward a player picked. <see cref="Number"/> counts up, so screens can show each pick once.</summary>
 /// <param name="AtMs">When it was picked (the short beat showing it starts then).</param>
 /// <param name="Picked">False when time ran out and it was picked for them.</param>
-public sealed record RewardTakenView(int Number, Reward Reward, double Amount, int Floor, long AtMs, bool Picked);
+/// <param name="Offer">The newest pick only: the offer it was picked from, so the moment after it can show the same cards,
+/// the one picked lighting up as the others fall away (null on the others, and when it was given without an offer).</param>
+/// <param name="Choice">Which of the offer's cards it was (0-based).</param>
+public sealed record RewardTakenView(int Number, Reward Reward, double Amount, int Floor, long AtMs, bool Picked,
+    RewardOfferView? Offer = null, int? Choice = null);
 
 /// <summary>
 /// A mini game on a player's station (see Core/Dungeon/Minigames): the intro from <see cref="IntroAtMs"/>, play from
@@ -206,8 +210,20 @@ public sealed record RewardTakenView(int Number, Reward Reward, double Amount, i
 /// went until <see cref="ResultEndsAtMs"/>. Each game's own state is in its own part (only one is set).
 /// </summary>
 /// <param name="Kind">Which game ("RuneLock").</param>
+/// <param name="ResultFromMs">When the result shows: when it finished, or a moment later for a win that holds its picture first (the ring puzzle).</param>
 public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs, long EndsAtMs, long? FinishedAtMs, bool Won, long? ResultEndsAtMs,
-    RuneLockView? RuneLock, RuneEchoView? RuneEcho = null, ChestShuffleView? ChestShuffle = null);
+    RuneLockView? RuneLock, RuneEchoView? RuneEcho = null, ChestShuffleView? ChestShuffle = null, RingPuzzleView? RingPuzzle = null,
+    long? ResultFromMs = null);
+
+/// <summary>
+/// The ring puzzle. This round's picture is cut into <see cref="Rings"/> rings (0 = the middle disc), ring i turned
+/// <see cref="Offsets"/>[i] steps clockwise out of line (<see cref="Steps"/> to a full turn); A and D turn ring
+/// <see cref="Selected"/>. Presses count from <see cref="RoundStartsAtMs"/>; until then, after a solved round, the screen
+/// shows that round's picture (<see cref="SolvedRings"/>: how many rings it had): its last ring turning into place, then
+/// whole from <see cref="WholeAtMs"/> (also when the last round's picture is, for the win).
+/// </summary>
+public sealed record RingPuzzleView(int Round, int Rounds, int Rings, int Steps, IReadOnlyList<int> Offsets, int Selected,
+    long RoundStartsAtMs, int? SolvedRings, int Presses, long? WholeAtMs = null);
 
 /// <summary>
 /// The rune echo (a "Simon says"). This round's runes (<see cref="Sequence"/>, 0-3 = A-D) light one every <see cref="StepMs"/> from

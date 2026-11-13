@@ -249,14 +249,15 @@ public sealed class RoomSoundService(
                 room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Floor, match.Settings.Dungeon.KillBeatSeconds);
                 break;
 
-            case MinigamePlayed { OwnerId: var ownerId, Result: var result }:
+            case MinigamePlayed { OwnerId: var ownerId, Result: var result, ShowsInSeconds: var showsIn }:
                 room.PlayEffect(StationsOf(match, ownerId), result switch
                 {
-                    MinigamePress.Won => _settings.Dungeon.PartyCombo,
+                    // A win (or a round of one: a ring puzzle's picture back together) lands as the screen shows it.
+                    MinigamePress.Won or MinigamePress.Cleared => _settings.Dungeon.PartyCombo,
                     MinigamePress.Hit => _settings.Dungeon.Hit,
                     MinigamePress.Lost => _settings.Dungeon.Hurt, // the wrong chest
                     _ => _settings.Dungeon.Block,
-                });
+                }, showsIn);
                 break;
 
             case MinigameLost { OwnerId: var ownerId }:

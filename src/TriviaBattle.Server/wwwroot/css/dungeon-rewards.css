@@ -77,13 +77,26 @@
 .dg-reward-seconds { font-family: var(--dg-font-pixel); font-size: 4vmin; color: var(--text); }
 .dg-reward-timer .timer-bar-fill { background: var(--dg-reward); }
 
-/* ---------- Just picked: the reward big, then the question comes back ---------- */
+/* ---------- Just picked: the card lights up, the reward big, then the question comes back ---------- */
 
-.dg-reward-got { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; text-align: center; }
-.dg-reward-got-icon { width: 30vmin; height: auto; filter: drop-shadow(0 0 4vmin rgba(255, 210, 63, 0.8)); animation: dg-reward-claim 700ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--t0) both; }
-.dg-reward-got-name { font-family: var(--dg-font-pixel); font-size: 9vmin; color: var(--dg-reward); text-shadow: 0 0.8vmin 0 #000; text-transform: uppercase; animation: dg-reward-drop 400ms ease-out calc(var(--t0) + 200ms) both; }
-.dg-reward-got-detail { font-size: 4vmin; color: var(--text); animation: dg-reward-drop 400ms ease-out calc(var(--t0) + 350ms) both; }
-.dg-reward-got-auto { font-size: 2.6vmin; color: var(--text-dim); }
+/* Everything here is timed from the pick (--t0), and fades out (--out) just before the question rises back in. The
+   cards screen and the reward lie on top of each other. */
+.dg-reward-chosen { flex: 1; min-height: 0; display: grid; animation: dg-reward-out 350ms ease-in var(--out) forwards; }
+.dg-reward-chosen > * { grid-area: 1 / 1; }
+
+/* The cards screen as it was (nothing dealt in again): the card picked flashes and lifts away, the others fall away
+   first, and the words round them go. */
+.dg-reward.is-picked .dg-reward-card { animation: dg-reward-pass 320ms ease-in calc(var(--t0) + 100ms) both; }
+.dg-reward.is-picked .dg-reward-card.is-chosen { z-index: 1; animation: dg-reward-picked 700ms ease-in-out var(--t0) both; }
+.dg-reward.is-picked :is(.dg-reward-head, .dg-reward-foot, .dg-reward-timer) { animation: dg-reward-out 300ms ease-in calc(var(--t0) + 150ms) both; }
+
+/* Then the reward, big (after the card has gone: --got). */
+.dg-reward-got { --got: var(--t0); flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; text-align: center; }
+.dg-reward-chosen.has-cards .dg-reward-got { --got: calc(var(--t0) + 600ms); }
+.dg-reward-got-icon { width: 30vmin; height: auto; filter: drop-shadow(0 0 4vmin rgba(255, 210, 63, 0.8)); animation: dg-reward-claim 700ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--got) both; }
+.dg-reward-got-name { font-family: var(--dg-font-pixel); font-size: 9vmin; color: var(--dg-reward); text-shadow: 0 0.8vmin 0 #000; text-transform: uppercase; animation: dg-reward-drop 400ms ease-out calc(var(--got) + 200ms) both; }
+.dg-reward-got-detail { font-size: 4vmin; color: var(--text); animation: dg-reward-drop 400ms ease-out calc(var(--got) + 350ms) both; }
+.dg-reward-got-auto { font-size: 2.6vmin; color: var(--text-dim); animation: dg-reward-drop 400ms ease-out calc(var(--got) + 500ms) both; }
 
 /* ---------- The floor curtain's line, and the main screen's banner ---------- */
 
@@ -100,3 +113,12 @@
 @keyframes dg-reward-drop { from { opacity: 0; transform: translateY(-3vh); } to { opacity: 1; transform: none; } }
 @keyframes dg-reward-glow { 50% { filter: drop-shadow(0 0 0.6vmin rgba(255, 210, 63, 0.3)); } }
 @keyframes dg-reward-claim { from { opacity: 0; transform: scale(0.2) rotate(-20deg); } to { opacity: 1; transform: none; } }
+@keyframes dg-reward-out { to { opacity: 0; transform: scale(0.97); } }
+@keyframes dg-reward-pass { to { opacity: 0; transform: translateY(3vh) scale(0.94); } }
+/* The card picked: a gold flash and a little pop, a moment held, then it lifts away. */
+@keyframes dg-reward-picked {
+    0% { transform: none; }
+    18% { transform: scale(1.07); box-shadow: 0 0 7vmin var(--dg-reward), inset 0 0 4vmin rgba(255, 255, 255, 0.5); border-color: #fff; }
+    60% { opacity: 1; transform: scale(1.05); box-shadow: 0 0 5vmin var(--dg-reward); }
+    100% { opacity: 0; transform: translateY(-6vh) scale(1.12); box-shadow: 0 0 5vmin var(--dg-reward); }
+}

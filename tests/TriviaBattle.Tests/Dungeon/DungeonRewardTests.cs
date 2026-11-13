@@ -84,8 +84,13 @@ public class DungeonRewardTests
         var adventurer = match.AdventurerOf("A1");
         Assert.False(adventurer.IsChoosing);
         Assert.Equal([offer.Choices[1]], adventurer.Rewards.Select(r => r.Reward));
-        Assert.Equal(match.Now.AddSeconds(1.5), match.StreamOf("A1").CurrentShownAt);
-        Assert.Equal("reward", SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Beat!.Kind);
+        Assert.Equal(match.Now + TimeSpan.FromSeconds(2.8), match.StreamOf("A1").CurrentShownAt);
+        var you = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!;
+        Assert.Equal("reward", you.Beat!.Kind);
+        // The moment after the pick shows the same cards, that one lit up.
+        var taken = you.Delve!.Rewards.Single();
+        Assert.Equal(offer.Choices, taken.Offer!.Choices.Select(c => c.Reward));
+        Assert.Equal(1, taken.Choice);
     }
 
     [Fact]

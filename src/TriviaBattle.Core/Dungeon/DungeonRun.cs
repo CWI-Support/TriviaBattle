@@ -391,8 +391,8 @@ public sealed class DungeonRun
         if (choice is { } index && (index < 0 || index >= offer.Choices.Count || now < offer.OpensAt + TimeSpan.FromSeconds(Rewards.PickDelaySeconds)))
             return null;
 
-        var reward = offer.Choices[choice ?? _random.Next(offer.Choices.Count)];
-        var (taken, seconds) = Grant(adventurer, reward, offer.Floor, now, picked: choice != null);
+        var picked = choice ?? _random.Next(offer.Choices.Count);
+        var (taken, seconds) = Grant(adventurer, offer.Choices[picked], offer.Floor, now, picked: choice != null, offer, picked);
         adventurer.CloseOffer();
 
         var stream = _streams[ownerId];
@@ -415,9 +415,10 @@ public sealed class DungeonRun
     /// A reward goes on an adventurer's list (most read it from there: see <see cref="DamageShare"/> and the others);
     /// Vitality raises their max HP now. Returns it, and the seconds for the clock (a Time reward's).
     /// </summary>
-    private (RewardTaken Taken, double ClockSeconds) Grant(Adventurer adventurer, Reward reward, int floor, DateTimeOffset now, bool picked)
+    private (RewardTaken Taken, double ClockSeconds) Grant(Adventurer adventurer, Reward reward, int floor, DateTimeOffset now, bool picked,
+        RewardOffer? offer = null, int? choice = null)
     {
-        var taken = adventurer.TakeReward(reward, RewardAmount(adventurer, reward), floor, now, picked);
+        var taken = adventurer.TakeReward(reward, RewardAmount(adventurer, reward), floor, now, picked, offer, choice);
         if (reward == Reward.Vitality)
             adventurer.RaiseMaxHp(VitalityHp(adventurer));
         return (taken, reward == Reward.Time ? RewardTimeSeconds(adventurer) : 0);
