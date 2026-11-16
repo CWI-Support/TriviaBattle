@@ -231,6 +231,12 @@ public sealed class RoomSoundService(
                     room.PlayEffect(hurt, _settings.Dungeon.Downed, KnightFalls);
                 break;
 
+            case PowerUpUsed { OwnerId: var ownerId, Use: { PowerUp: PowerUp.FogBomb or PowerUp.TinyHourglass } use }:
+                // Thrown at a rival: the thrower hears it go, the rival hears it land (or bounce off their Shield).
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.PowerUp);
+                room.PlayEffect(StationsOf(match, use.TargetOwnerId), use.Blocked ? _settings.Dungeon.Block : _settings.Dungeon.Hurt);
+                break;
+
             case PowerUpUsed { OwnerId: var ownerId, Use: var use }:
                 room.PlayEffect([.. StationsOf(match, ownerId), .. StationsOf(match, use.TargetOwnerId)], _settings.Dungeon.PowerUp);
                 break;

@@ -393,3 +393,13 @@
     94% { opacity: 0.7; }
     100% { opacity: 1; }
 }
+
+/* A rival's Fog Bomb (is-fogged: --fog0, when it starts; --fog-for, how long): the answers blur over and clear
+   again, timed from the server's numbers so it clears by itself (no fill outside it: clear before and after). */
+.dg-answers.is-fogged .dg-answer-text,
+.dg-answers.is-fogged .dg-rune { animation: dg-fog var(--fog-for) ease-in-out var(--fog0); }
+@keyframes dg-fog {
+    0% { filter: none; }
+    10%, 85% { filter: blur(1.3vmin) grayscale(0.6); opacity: 0.7; }
+    100% { filter: none; }
+}

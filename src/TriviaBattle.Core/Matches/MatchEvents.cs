@@ -30,6 +30,12 @@ public sealed record AdventurerHit(string OwnerId, TakenHit Hit) : MatchEvent;
 public sealed record AdventurerGotUp(string OwnerId) : MatchEvent;
 
 /// <summary>
+/// Dungeon format, a race or a team battle (a clock per side, see PartyClock): this side's time ran out (or it's all out
+/// of lives), so it's done for the match while the others play on. Raised by Tick.
+/// </summary>
+public sealed record SideFinished(string PartyId) : MatchEvent;
+
+/// <summary>
 /// Dungeon format: a battle beat ended and the owner's next question is showing, so their buttons count
 /// again (the button LEDs come back on). Raised by Tick; nothing in the snapshot changes.
 /// </summary>

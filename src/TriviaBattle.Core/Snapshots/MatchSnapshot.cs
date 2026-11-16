@@ -145,7 +145,9 @@ public sealed record YourAnswerView(
 /// </summary>
 /// <param name="Question">The question to answer now. Null outside Playing.</param>
 /// <param name="Delve">Dungeon format: their party's delve and their own HP (the team's in 2v2 Group).</param>
-/// <param name="Helping">Dungeon format, while they're downed in a party: a standing teammate's question, so they can shout the answer.</param>
+/// <param name="Helping">Dungeon format, while they're downed in a party: a standing teammate's question, so they can shout the answer;
+/// or a teammate's Phone a Friend call (<see cref="HelpView.Phoned"/>): that question, which their answer buttons answer.</param>
+/// <param name="CallingName">Dungeon format, their Phone a Friend call is on: the teammate answering their question with them.</param>
 /// <param name="Beat">Dungeon format: the battle beat after their last answer (the next question waits until it ends).</param>
 /// <param name="PhotoOfferUntilMs">Photos asked for first: the intro offers one ("press the action button to put your face on your hero") until this time. Null once they've answered, or with no offer.</param>
 /// <param name="PhotoAtMs">A hero photo is coming (or was taken): the station takes it at this time, after a countdown. The action button in the intro says no.</param>
@@ -168,7 +170,8 @@ public sealed record YouView(
     long? PhotoOfferUntilMs,
     long? PhotoAtMs,
     RewardOfferView? Reward = null,
-    MinigameView? Minigame = null);
+    MinigameView? Minigame = null,
+    string? CallingName = null);
 
 /// <summary>
 /// The fight shown between two questions. The screen plays it from <see cref="StartedAtMs"/> to
@@ -258,8 +261,11 @@ public sealed record ChestShuffleView(int Round, int Rounds, int CoinChest, long
 public sealed record RuneLockView(int Hits, int HitsNeeded, long? LockedUntilMs, long TurnStartedAtMs, double TurnAngle, double DegreesPerSecond,
     double MarkAngle, double MarkDegrees, int Presses, bool LastWasHit);
 
-/// <summary>A teammate's question shown to a downed player. Never includes which answer is correct.</summary>
-public sealed record HelpView(string Name, QuestionView Question);
+/// <summary>
+/// A teammate's question shown to a downed player, or to the teammate they phoned (Phoned: their buttons answer it;
+/// the caller's hourglass, AttackStartedAtMs to AttackAtMs, is the one running). Never includes which answer is correct.
+/// </summary>
+public sealed record HelpView(string Name, QuestionView Question, bool Phoned = false, long? AttackStartedAtMs = null, long? AttackAtMs = null);
 
 /// <summary>
 /// Dungeon format: one adventurer's fight. The floor, monster, kills, path and <see cref="LastHit"/> are
@@ -296,6 +302,10 @@ public sealed record HelpView(string Name, QuestionView Question);
 /// <param name="Out">Downed on their last life: out until a continue (they don't get up; <paramref name="DownedUntilMs"/> is null).</param>
 /// <param name="CountdownFromMs">The hourglass's last seconds start here (<paramref name="AttackAtMs"/> minus DungeonSettings.HourglassCountdownSeconds):
 /// the station winds up for the attack from then. Null while it's stopped, or with the countdown off.</param>
+/// <param name="FogFromMs">A rival's Fog Bomb: their answers are blurred from then until <paramref name="FogUntilMs"/>.</param>
+/// <param name="LastSabotage">The last rival's Fog Bomb or Tiny Hourglass that came at them (null before the first).</param>
+/// <param name="ClockEndsAtMs">A race or a team battle (a clock per side): when their side's time runs out (null with one clock for the match);
+/// <paramref name="ClockStoppedLeftMs"/> while it's held still. <paramref name="TimeUp"/>: their side's done, waiting for the others.</param>
 public sealed record DelveView(
     int Floor,
     int Room,
@@ -336,7 +346,16 @@ public sealed record DelveView(
     int Lives = 0,
     int MaxLives = 0,
     bool Out = false,
-    long? CountdownFromMs = null);
+    long? CountdownFromMs = null,
+    long? FogFromMs = null,
+    long? FogUntilMs = null,
+    SabotageView? LastSabotage = null,
+    long? ClockEndsAtMs = null,
+    long? ClockStoppedLeftMs = null,
+    bool TimeUp = false);
+
+/// <summary>A rival's Fog Bomb or Tiny Hourglass that came at them (Number counts up: the screen shows each once), from FromName; Blocked: their Shield soaked it.</summary>
+public sealed record SabotageView(int Number, PowerUp PowerUp, string FromName, bool Blocked, long AtMs);
 
 /// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
 /// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>

@@ -212,7 +212,8 @@ and `?kind=rewarded` preview the screens.
 one between two of its rooms, loops back to the top included (they repeat a floor's rooms, not its mini game): at most
 one a floor, never right before the boss, and each kind of mini game as likely as the others. Luck never runs dry for long: there's at least one every 3 floors (`MinigameEvery`). When the room before it is cleared, everyone in the party plays their own go on their own station:
 an intro (what it is, how to play, 3-2-1), then the game, then how it went. **The arcade clock stops** while anyone
-is in one (and while anyone is picking a reward): they're outside the paid time. Winning earns a reward pick.
+is in one (and while anyone is picking a reward): they're outside the paid time. In a race or a team battle each
+side has its own clock, so only that player's (or team's) clock stops. Winning earns a reward pick.
 
 | Mini game | How it plays |
 | --- | --- |

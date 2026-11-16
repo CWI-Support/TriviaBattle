@@ -110,8 +110,11 @@ damage, more time (solo), or a power-up. The clock pauses; after 8 seconds one i
    the design doc's four-button box came up (Brett, 2 Nov 2026).
 7. Done (v1): power-ups. Potion, Fireball, Freeze, 50/50, Shield, Time Crystal (solo). A kill drops one
    35% of the time (a boss always), a streak of 5 earns one; one slot; the action button lights while
-   you hold one. Not yet: the co-op and group-only ones (Heal Ally, Phone a Friend, Fog Bomb, Tiny
-   Hourglass), and power-ups aimed at rivals.
+   you hold one. Done (Nov 2026): Phone a Friend (co-op), Fog Bomb and Tiny Hourglass (aimed at the leading rival in
+   a race or team battle; a Shield soaks them); Heal Ally and Revive are the Potion, which already goes to the teammate
+   who needs it most; Time Crystal drops in solo games only. Not yet: the rest of the sabotage list (Shuffle Hex, Goblin
+   Raid...)
+   and Mirror Shield.
 8. Boons and doors by party vote.
 
 **Hardware to build:** a fifth button with an LED on each podium, and a card reader at each station.

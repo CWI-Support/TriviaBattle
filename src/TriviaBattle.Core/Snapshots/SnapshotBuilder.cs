@@ -26,13 +26,21 @@ public static class SnapshotBuilder
         var players = match.Roster.Players.Select(p => BuildPlayer(match, p)).ToList();
         var teams = match.Roster.Teams.Select(t => BuildTeam(match, t)).ToList();
 
+        // A race or a team battle has a clock per side: a station's match clock is its own side's (the screens read the
+        // same fields either way). Room screens get the match's, which runs until the last side's done.
+        var viewerPlayer = viewer.Role == ViewerRole.Player ? match.Roster.FindPlayer(viewer.StationId!) : null;
+        var sideClock = viewerPlayer != null ? match.ClockOf(match.StreamFor(viewerPlayer).OwnerId) : null;
+        var clockEndsAt = sideClock != null && match.Phase == MatchPhase.Playing ? sideClock.EndsAt : match.PhaseEndsAt;
+        var clockStoppedLeft = sideClock != null ? sideClock.StoppedLeft : match.ClockStoppedAt;
+        var clockHeldFor = sideClock?.HeldFor ?? match.ClockHeldFor;
+
         return new MatchSnapshot(
             match.Version,
             match.MatchId,
             match.Settings.Format.ToString(),
             match.Phase,
             match.PhaseStartedAt.ToUnixTimeMilliseconds(),
-            ToUnixMs(match.PhaseEndsAt),
+            ToUnixMs(clockEndsAt),
             match.Mode.Kind.ToString(),
             match.Mode.DisplayName,
             match.Mode.UsesTeams,
@@ -47,8 +55,8 @@ public static class SnapshotBuilder
             match.GetStandings(),
             viewer.Role == ViewerRole.Player ? BuildYou(match, viewer.StationId!) : null,
             viewer.Role == ViewerRole.Admin ? match.Streams.Select(BuildStream).ToList() : null,
-            match.ClockStoppedAt is { } left ? (long)left.TotalMilliseconds : null,
-            (long)match.ClockHeldFor.TotalMilliseconds);
+            clockStoppedLeft is { } left ? (long)left.TotalMilliseconds : null,
+            (long)clockHeldFor.TotalMilliseconds);
     }
 
     private static PlayerView BuildPlayer(MatchEngine match, Player player)
@@ -113,7 +121,8 @@ public static class SnapshotBuilder
             player.PhotoAt == null && !player.PhotoDeclined && !player.PhotoFromLobby ? ToUnixMs(match.PhotoOfferEndsAt) : null,
             ToUnixMs(player.PhotoAt),
             ToRewardOffer(match, adventurer),
-            match.Phase == MatchPhase.Playing ? ToMinigame(adventurer?.Minigame) : null);
+            match.Phase == MatchPhase.Playing ? ToMinigame(adventurer?.Minigame) : null,
+            adventurer?.CalledFriend is { } friend ? NameOf(match, friend) : null);
     }
 
     /// <summary>Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one.</summary>
@@ -250,13 +259,25 @@ public static class SnapshotBuilder
     }
 
     /// <summary>
-    /// While a player is downed in a Dungeon party: a standing teammate's question, so they can shout the
+    /// A teammate's Phone a Friend call: their question, which this player's answer buttons answer. Or, while a player
+    /// is downed in a Dungeon party: a standing teammate's question, so they can shout the
     /// answer to them (their own buttons are dead). Null otherwise.
     /// </summary>
     private static HelpView? ToHelping(MatchEngine match, QuestionStream stream)
     {
         var adventurer = match.Dungeon?.FindAdventurer(stream.OwnerId);
-        if (match.Phase != MatchPhase.Playing || adventurer is not { IsDowned: true })
+        if (match.Phase != MatchPhase.Playing || adventurer == null)
+            return null;
+
+        // Phone a Friend: a teammate called them, so they see that question (their buttons answer it), and its hourglass.
+        if (match.Dungeon!.CallerFor(stream.OwnerId) is { } callerId)
+        {
+            var caller = match.Dungeon.FindAdventurer(callerId)!;
+            return new HelpView(NameOf(match, callerId), ToQuestion(match, match.FindStream(callerId)!), Phoned: true,
+                ToUnixMs(caller.AttackStartedAt), ToUnixMs(caller.AttackAt));
+        }
+
+        if (!adventurer.IsDowned)
             return null;
 
         var teammate = match.Dungeon!.StandingTeammateOf(adventurer);
@@ -292,6 +313,7 @@ public static class SnapshotBuilder
         var delve = match.Dungeon!.DelveOf(adventurer);
         var encounter = delve.Encounter;
         var charge = match.Dungeon.BossChargeOf(ownerId);
+        var sideClock = match.ClockOf(ownerId); // a race or a team battle: their side's own clock
         return new DelveView(
             encounter.Floor,
             encounter.Room,
@@ -336,7 +358,13 @@ public static class SnapshotBuilder
             adventurer.Lives,
             adventurer.MaxLives,
             adventurer.IsOut,
-            CountdownFrom(match, adventurer));
+            CountdownFrom(match, adventurer),
+            ToUnixMs(adventurer.FogFrom),
+            ToUnixMs(adventurer.FogUntil),
+            adventurer.LastSabotage is { } s ? new SabotageView(s.Number, s.PowerUp, NameOf(match, s.FromOwnerId), s.Blocked, s.At.ToUnixTimeMilliseconds()) : null,
+            ToUnixMs(sideClock?.EndsAt),
+            sideClock?.StoppedLeft is { } stoppedLeft ? (long)stoppedLeft.TotalMilliseconds : null,
+            sideClock?.IsDone == true);
     }
 
     /// <summary>Where the hourglass's last seconds start (the station winds up for the attack from then), or null.</summary>
@@ -371,6 +399,10 @@ public static class SnapshotBuilder
             ReviveProgress = 0,
             LastDealt = delve.LastHit,
             LastTaken = delve.LastTaken,
+            // The newest rival's Fog Bomb or Tiny Hourglass that came at any of them (the room's banner shows it).
+            LastSabotage = party.Where(a => a.LastSabotage != null).MaxBy(a => a.LastSabotage!.At) is { LastSabotage: { } s }
+                ? new SabotageView(s.Number, s.PowerUp, NameOf(match, s.FromOwnerId), s.Blocked, s.At.ToUnixTimeMilliseconds())
+                : null,
         };
     }
 

@@ -124,8 +124,24 @@ public sealed class MatchEngine
     public MatchPhase Phase { get; private set; }
     public DateTimeOffset PhaseStartedAt { get; private set; }
 
-    /// <summary>When the current phase is scheduled to end. Screens use this for countdowns (the match clock while Playing).</summary>
+    /// <summary>
+    /// When the current phase is scheduled to end. Screens use this for countdowns (the match clock while Playing).
+    /// With a clock per side (<see cref="PartyClocks"/>) it's the last side's end: Playing goes on until every side's done.
+    /// </summary>
     public DateTimeOffset PhaseEndsAt { get; private set; }
+
+    private readonly Dictionary<string, PartyClock> _partyClocks = new();
+
+    /// <summary>
+    /// A Dungeon game with several sides (a race: each player; a team battle: each team) runs a clock per side, from
+    /// when Playing starts: each plays on its own time and is done when it runs out, with no continue. Empty with one
+    /// side (solo, a party), which plays on the match's clock and can continue.
+    /// </summary>
+    public IReadOnlyCollection<PartyClock> PartyClocks => _partyClocks.Values;
+
+    /// <summary>The clock of an answer owner's side, or null when the match has one clock.</summary>
+    public PartyClock? ClockOf(string ownerId) =>
+        _dungeon?.FindAdventurer(ownerId) is { } adventurer ? _partyClocks.GetValueOrDefault(adventurer.PartyId) : null;
 
     /// <summary>Goes up by one every time anything changes. Screens use it to ignore stale updates.</summary>
     public int Version { get; private set; }
@@ -191,6 +207,9 @@ public sealed class MatchEngine
                 events.Add(new PatronRevealed(warlock.OwnerId));
             }
 
+            // Phone a Friend calls one of them can't go on with (downed, off to a mini game) end: the friend's question goes on.
+            _dungeon.EndStaleCalls(now);
+
             // The hourglass's last seconds: the room counts each one down (no state changes: nothing to redraw).
             foreach (var (adventurer, secondsLeft) in _dungeon.HourglassCountdowns(now))
                 events.Add(new HourglassCountdown(adventurer.OwnerId, secondsLeft));
@@ -205,7 +224,7 @@ public sealed class MatchEngine
                 events.Add(new MonsterPoisoned(partyId, damage, kill));
                 if (kill != null)
                 {
-                    AddTime(_dungeon.SecondsEarnedBy(partyId, kill));
+                    AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, kill));
                     _dungeon.PartyKilled(partyId, kill, killerId: null, now); // a kill beat for the party, as for any kill
                     events.AddRange(StartMinigames(partyId, kill, now));
                 }
@@ -244,6 +263,18 @@ public sealed class MatchEngine
         }
         _lastTickAt = now;
 
+        // A clock per side (a race, a team battle): each side is done when its own time runs out or it's all out of lives,
+        // and Playing ends when the last one is.
+        if (_partyClocks.Count > 0 && Phase == MatchPhase.Playing)
+        {
+            events.AddRange(FinishSides(now));
+            if (_partyClocks.Values.All(c => c.IsDone))
+                events.AddRange(AdvanceToNextPhase(now));
+            else
+                PhaseEndsAt = LastSideEndsAt(now);
+            return events;
+        }
+
         // The clock running out ends Playing, and so does everyone being out of lives (DungeonSettings.Lives).
         var everyoneOut = Phase == MatchPhase.Playing && _dungeon?.EveryoneOut == true;
         if (now >= PhaseEndsAt || everyoneOut)
@@ -266,12 +297,22 @@ public sealed class MatchEngine
             return NothingHappened;
 
         var stream = StreamFor(player);
+        if (ClockOf(stream.OwnerId) is { IsDone: true })
+            return NothingHappened; // their side's time is up (a race, a team battle): they wait for the others
         if (_dungeon?.FindAdventurer(stream.OwnerId) is { Minigame: not null })
             return PlayMinigame(stream.OwnerId, press); // between two rooms: the buttons play the mini game (the action button too)
         if (press.IsAction)
             return UsePowerUp(stream.OwnerId, now);
         if (_dungeon?.FindAdventurer(stream.OwnerId) is { IsChoosing: true })
             return ChooseReward(stream.OwnerId, press.AnswerIndex, now); // after a boss: the answer buttons pick a reward
+
+        // Phone a Friend: a teammate's question is up on their screen (theirs waits), and their answer buttons answer
+        // it for them: it's the teammate's answer, scored as theirs (the hit is the caller's).
+        if (_dungeon?.CallerFor(stream.OwnerId) is { } callerId)
+        {
+            stream = _streams[callerId];
+            player = Roster.Players.First(p => Mode.GetAnswerOwnerId(p) == callerId);
+        }
 
         var shownAt = stream.CurrentShownAt!.Value;
 
@@ -322,7 +363,7 @@ public sealed class MatchEngine
             if (dealt.RevivedOwnerId is { } revived)
                 events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
             var partyId = _dungeon.FindAdventurer(stream.OwnerId)!.PartyId;
-            AddTime(_dungeon.SecondsEarnedBy(partyId, dealt));
+            AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, dealt));
             if (dealt.Killed)
                 _dungeon.PartyKilled(partyId, dealt, stream.OwnerId, now); // the teammates watch it: the same kill beat, together
             if (dealt.FloorCleared)
@@ -369,6 +410,17 @@ public sealed class MatchEngine
     /// </summary>
     private void HoldTheClock(DateTimeOffset now)
     {
+        if (_partyClocks.Count > 0)
+        {
+            // A clock per side: each stands still only while one of its own is away; the others run on.
+            foreach (var clock in _partyClocks.Values)
+                if (clock.Hold(Phase == MatchPhase.Playing && _dungeon!.ClockStoppedFor(clock.PartyId), now - _lastTickAt, now))
+                    Version++;
+            if (Phase == MatchPhase.Playing)
+                PhaseEndsAt = LastSideEndsAt(now);
+            return;
+        }
+
         var stopped = Phase == MatchPhase.Playing && _dungeon?.ClockStopped == true;
         if (stopped)
         {
@@ -395,7 +447,7 @@ public sealed class MatchEngine
         if (_dungeon!.ChooseReward(ownerId, choice, now) is not { } pick)
             return NothingHappened;
 
-        AddTime(pick.ClockSeconds);
+        AddTime(PartyOf(ownerId), pick.ClockSeconds);
         Version++;
         return [new RewardChosen(ownerId, pick.Taken)];
     }
@@ -403,17 +455,34 @@ public sealed class MatchEngine
     /// <summary>The action button: uses the power-up the owner holds, if any (a Time Crystal adds to the clock).</summary>
     private IReadOnlyList<MatchEvent> UsePowerUp(string ownerId, DateTimeOffset now)
     {
-        if (_dungeon?.UsePowerUp(ownerId, now) is not { } use)
+        if (_dungeon?.UsePowerUp(ownerId, now, LeadingRivalOf(ownerId)) is not { } use)
             return NothingHappened;
 
         if (use.PowerUp == PowerUp.TimeCrystal)
-            AddTime(use.Amount);
+            AddTime(PartyOf(ownerId), use.Amount);
 
         Version++;
         List<MatchEvent> events = [new PowerUpUsed(ownerId, use)];
         if (use.Revived)
             events.Add(new AdventurerGotUp(use.TargetOwnerId));
         return events;
+    }
+
+    /// <summary>
+    /// Where a Fog Bomb or Tiny Hourglass goes: the rival (an answer owner in another party: a racer, or the other
+    /// team in a battle) with the most points who can take it (<see cref="DungeonRun.CanBeSabotaged"/>), or null.
+    /// The scores are the match's, so the engine picks; the dungeon only applies it.
+    /// </summary>
+    private string? LeadingRivalOf(string ownerId)
+    {
+        if (_dungeon?.FindAdventurer(ownerId) is not { } user)
+            return null;
+        return Roster.Players
+            .Select(player => (player.Tally.Score, Adventurer: _dungeon.FindAdventurer(Mode.GetAnswerOwnerId(player))))
+            .Where(x => x.Adventurer is { } rival && rival.PartyId != user.PartyId && _dungeon.CanBeSabotaged(rival))
+            .OrderByDescending(x => x.Score)
+            .Select(x => x.Adventurer!.OwnerId)
+            .FirstOrDefault();
     }
 
     /// <summary>
@@ -444,7 +513,7 @@ public sealed class MatchEngine
 
         var ownerId = Mode.GetAnswerOwnerId(player);
         var (taken, seconds) = _dungeon.GiveReward(ownerId, reward, now);
-        AddTime(seconds);
+        AddTime(PartyOf(ownerId), seconds);
         Version++;
         return [new RewardChosen(ownerId, taken)];
     }
@@ -522,11 +591,45 @@ public sealed class MatchEngine
     /// The arcade clock: pushes the end of Playing back. There's no cap: as long as they keep earning time,
     /// they keep playing.
     /// </summary>
-    private void AddTime(double seconds)
+    private void AddTime(string partyId, double seconds)
     {
-        if (EarnsTime && seconds > 0)
-            PhaseEndsAt += TimeSpan.FromSeconds(seconds);
+        if (!EarnsTime || seconds <= 0)
+            return;
+        if (_partyClocks.GetValueOrDefault(partyId) is { } clock)
+        {
+            clock.Add(seconds); // a clock per side: only theirs
+            PhaseEndsAt = LastSideEndsAt(clock.EndsAt);
+            return;
+        }
+        PhaseEndsAt += TimeSpan.FromSeconds(seconds);
     }
+
+    /// <summary>With a clock per side: when the last side still playing runs out (<paramref name="fallback"/> if none is).</summary>
+    private DateTimeOffset LastSideEndsAt(DateTimeOffset fallback)
+    {
+        var playing = _partyClocks.Values.Where(c => !c.IsDone).ToList();
+        return playing.Count == 0 ? fallback : playing.Max(c => c.EndsAt);
+    }
+
+    /// <summary>
+    /// With a clock per side: the sides whose time just ran out, or who are all out of lives, are done (their monsters
+    /// stop, their buttons go dead); the others play on. Playing ends once every side's done (<see cref="Tick"/>).
+    /// </summary>
+    private IEnumerable<MatchEvent> FinishSides(DateTimeOffset now)
+    {
+        var events = new List<MatchEvent>();
+        foreach (var clock in _partyClocks.Values.Where(c => !c.IsDone && (now >= c.EndsAt || _dungeon!.PartyOut(c.PartyId))))
+        {
+            clock.Finish();
+            _dungeon!.EndParty(clock.PartyId);
+            Version++;
+            events.Add(new SideFinished(clock.PartyId));
+        }
+        return events;
+    }
+
+    /// <summary>The side of an answer owner, for its clock.</summary>
+    private string PartyOf(string ownerId) => _dungeon?.FindAdventurer(ownerId)?.PartyId ?? ownerId;
 
     /// <summary>
     /// A continue: a card swipe at any station in the match (or the operator giving one), paying for a second
@@ -600,11 +703,15 @@ public sealed class MatchEngine
                     stream.Start(now);
                 _dungeon?.Start(now);
                 EnterPhase(MatchPhase.Playing, now, RoundSeconds);
+                // Several sides (a race, a team battle): each gets its own clock, starting the same.
+                if (EarnsTime && _dungeon!.PartyIds.Count > 1)
+                    foreach (var partyId in _dungeon.PartyIds)
+                        _partyClocks[partyId] = new PartyClock(partyId, PhaseEndsAt);
                 return [new PhaseChanged(Phase)];
 
             case MatchPhase.Playing:
                 _dungeon?.Stop();
-                if (CanContinue)
+                if (CanContinue && _partyClocks.Count == 0) // a race or a battle has no continue: each side was done in turn
                 {
                     EnterPhase(MatchPhase.Continue, now, Settings.Dungeon.ContinueCountdownSeconds);
                     return [new PhaseChanged(Phase)];

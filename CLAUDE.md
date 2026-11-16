@@ -28,7 +28,9 @@ every floor reached may have one between two rooms, loops included (`MinigameCha
 the kill that empties the room before it is `DealtHit.MinigameAhead` and the party plays (`DungeonRun.StartMinigames`). Rules
 stay on the server (the rune lock's needle angle comes from the press time; the chest shuffle's action button is its
 fifth chest, so mini games get the action button before power-ups do). While anyone `IsAway` (a mini game or a reward
-pick) the arcade clock stops (`MatchEngine.HoldTheClock`); screens show it with `UI.matchClock`.
+pick) the arcade clock stops (`MatchEngine.HoldTheClock`); screens show it with `UI.matchClock`. A race or a team
+battle runs a clock per side (`PartyClock`): only that side's stops, its kills add to its own, and a side out of time is
+done (no continue) while the others play on; results come when the last side's done.
 A room can hold a pack of monsters (`Delve.Foes`, `FloorDef.Rooms`): the one in front is fought and attacks. Every hero is a
 class (`HeroClass`, key = class name in lower case, numbers in `ClassSettings` / `Game:Dungeon:Classes`); "fast" is a set
 `CritWithinSeconds` (3 s), longer for the Tank. Only the Pugilist combos. Tests play `TestMatch.PlainHero` (the Ranger, whose
@@ -142,7 +144,7 @@ live in `themes/<name>/theme.css`, scoped to `[data-theme="<name>"]`. See docs/T
   then start network sends without awaiting them (see `SignalRMatchBroadcaster.Send`).
 - Every visibility rule lives in `SnapshotBuilder`: a player sees only its own (or team's) current question, never its
   correct answer until answered (exceptions: downed in a Dungeon party, it also sees a teammate's question, to shout the
-  answer; a Warlock's own screen gets `QuestionView.Revealed` once their patron shows it; a Ranger's own screen gets
+  answer; a teammate they Phone a Friend sees their question, to answer it; a Warlock's own screen gets `QuestionView.Revealed` once their patron shows it; a Ranger's own screen gets
   `PeekFromMs`); main screen sees right/wrong and scores only. `ScreenEvent`s must never carry answer indexes.
 - At the kiosk, starting a match and registering RFID cards are REST calls (`POST /api/matches`, `/api/players`),
   not hub calls, so the kiosk gets validation problems back as a 400. A match takes `categoryIds` (one or more,

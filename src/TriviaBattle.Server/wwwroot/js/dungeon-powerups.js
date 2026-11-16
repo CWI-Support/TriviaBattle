@@ -4,7 +4,8 @@
 //     action button that uses it (nothing at all with empty pockets),
 //     and what's armed (a Fireball ready, a Shield up). A Freeze shows on the hourglass instead
 //     (DungeonView.enemy), which thaws by itself: a mark here would need a redraw to go away.
-//   - a pop over the monster strip when one is used ("POTION! Ann +50 HP"), once per use
+//   - a pop over the monster strip when one is used ("POTION! Ann +50 HP"), once per use, and on the screen of a
+//     rival a Fog Bomb or Tiny Hourglass came at (noticeSabotage: "FOGGED!", or "BLOCKED!" when their Shield soaked it)
 // Finding one is part of the battle beat (DungeonBattle.stamps: LOOT!). The 50/50's hidden answers are
 // drawn by DungeonView.station (is-eliminated); the Time Crystal's seconds show as the clock's "+20s".
 // Needs ui.js, theme.js, pixel-sprites.js and dungeon-view.js on the page. Styles: css/dungeon-powerups.css.
@@ -19,6 +20,9 @@ const DungeonPowerUps = {
             case 'FiftyFifty': return Theme.text('dungeon.powerUpFiftyFifty');
             case 'Shield': return Theme.text('dungeon.powerUpShield');
             case 'TimeCrystal': return Theme.text('dungeon.powerUpTimeCrystal');
+            case 'PhoneAFriend': return Theme.text('dungeon.powerUpPhoneAFriend');
+            case 'FogBomb': return Theme.text('dungeon.powerUpFogBomb');
+            case 'TinyHourglass': return Theme.text('dungeon.powerUpTinyHourglass');
             default: return UI.escape(kind);
         }
     },
@@ -61,6 +65,27 @@ const DungeonPowerUps = {
         DungeonView.effect(key, DungeonPowerUps.pop(use, nameOf), 1800);
     },
 
+    /**
+     * A rival's Fog Bomb or Tiny Hourglass that came at you (delve.lastSabotage), once: "FOGGED! Ann threw a Fog
+     * Bomb", or "BLOCKED!" when your Shield soaked it. The fog itself is drawn on the answers (DungeonEncounter).
+     */
+    noticeSabotage(key, delve) {
+        const sabotage = delve.lastSabotage;
+        const before = DungeonView.seen[`${key}:sabotage`];
+        DungeonView.seen[`${key}:sabotage`] = sabotage?.number || 0;
+        if (before === undefined || !sabotage || sabotage.number === before) return;
+        const values = { name: sabotage.fromName, powerUp: Theme.raw(DungeonPowerUps.name(sabotage.powerUp)) };
+        const title = sabotage.blocked ? Theme.text('dungeon.sabotageBlocked', values)
+            : sabotage.powerUp === 'FogBomb' ? Theme.text('dungeon.sabotageFog', values)
+            : Theme.text('dungeon.sabotageTiny', values);
+        DungeonView.effect(key, `
+            <div class="dg-pu-pop is-sabotage ${sabotage.blocked ? 'is-blocked' : ''} is-${sabotage.powerUp}">
+                ${DungeonPowerUps.icon(sabotage.blocked ? 'Shield' : sabotage.powerUp, 'dg-pu-pop-icon')}
+                <div class="dg-pu-pop-name">${title}</div>
+                <div class="dg-pu-pop-detail">${Theme.text('dungeon.sabotageFrom', values)}</div>
+            </div>`, 1800);
+    },
+
     /** "POTION!" with what it did underneath. */
     pop(use, nameOf) {
         const values = { name: nameOf(use.targetOwnerId), amount: use.amount };
@@ -72,6 +97,9 @@ const DungeonPowerUps = {
             case 'FiftyFifty': detail = Theme.text('dungeon.usedFiftyFifty', values); break;
             case 'Shield': detail = Theme.text('dungeon.usedShield', values); break;
             case 'TimeCrystal': detail = Theme.text('dungeon.usedTimeCrystal', values); break;
+            case 'PhoneAFriend': detail = Theme.text('dungeon.usedPhoneAFriend', values); break;
+            case 'FogBomb': detail = use.blocked ? Theme.text('dungeon.usedBlocked', values) : Theme.text('dungeon.usedFogBomb', values); break;
+            case 'TinyHourglass': detail = use.blocked ? Theme.text('dungeon.usedBlocked', values) : Theme.text('dungeon.usedTinyHourglass', values); break;
             default: detail = '';
         }
         return `
@@ -104,6 +132,18 @@ Object.assign(PixelSprites.SPRITES, {
     'icon-pu-Shield': {
         palette: { k: '#000000', s: '#9aa7b8', S: '#5f6b7c', y: '#ffd23f' },
         rows: ['kkkkkkkkk', 'ksssysssk', 'ksssysssk', 'kyyyyyyyk', 'ksssysssk', '.kSSySSk.', '..kSySk..', '...kyk...', '....k....'],
+    },
+    'icon-pu-PhoneAFriend': {
+        palette: { k: '#000000', r: '#ff5a5a', R: '#b52a2a', w: '#ffffff' },
+        rows: ['.kkk..kkk.', 'krrrkkrrrk', 'krRRRRRRrk', 'kk.kkkk.kk', '...krrk...', '..krwwrk..', '.krwrrwrk.', '.krrrrrrk.', '.kkkkkkkk.'],
+    },
+    'icon-pu-FogBomb': {
+        palette: { k: '#000000', g: '#5a5266', G: '#3a3444', f: '#c9c2d6', y: '#ffd23f' },
+        rows: ['.....y.f.', '....ky.ff', '...kk..f.', '..kggk...', '.kggggk..', 'kgggGGgk.', 'kggGGGgk.', 'kgGGGGgk.', '.kGGGGk..', '..kkkk...'],
+    },
+    'icon-pu-TinyHourglass': {
+        palette: { k: '#000000', w: '#c9b38a', s: '#ffd23f', r: '#ff3b3b' },
+        rows: ['..kkkkk..', '..kssskr.', '...ksk.r.', '....k..r.', '...kwk.r.', '..kwwwk..', '..kkkkk..'],
     },
     'icon-pu-TimeCrystal': {
         palette: { k: '#000000', c: '#b56bff', C: '#7a3fd0', w: '#f3e3ff' },

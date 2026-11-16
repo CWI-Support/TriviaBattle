@@ -158,6 +158,9 @@ public sealed class DungeonSettings
     /// <summary>How long a Freeze stops the monster's hourglass.</summary>
     public double FreezeSeconds { get; set; } = 10;
 
+    /// <summary>How long a Fog Bomb blurs the rival's answers.</summary>
+    public double FogBombSeconds { get; set; } = 3;
+
     /// <summary>The time a Time Crystal adds to the clock.</summary>
     public double TimeCrystalSeconds { get; set; } = 20;
 

@@ -159,9 +159,15 @@ The rules:
   starts at `ClockStartSeconds` and every kill adds time (`DungeonRun.SecondsEarnedBy`: `SecondsPerKill`, or
   `SecondsPerBoss` for a boss; a Wizard's splash kills count), so the better they play, the longer they play.
   `MatchEngine` moves `PhaseEndsAt` back, with no cap: a session lasts until the clock runs out. Time per kill
-  is scaled two ways: a party faces monsters with `PartyHpPerMember` more HP per extra member
-  (`DungeonRun.HpScaleFor`, applied by `Delve`), so its kills earn `HpScaleFor(n) / n` of the time; and parties
-  racing on one clock each earn their share of it (divided by the number of parties). The defaults aim at 3-4
+  is scaled for a party: it faces monsters with `PartyHpPerMember` more HP per extra member
+  (`DungeonRun.HpScaleFor`, applied by `Delve`), so its kills earn `HpScaleFor(n) / n` of the time. A match with
+  several sides (a race: each player; a team battle: each team) runs a clock per side instead (`PartyClock`,
+  `MatchEngine.PartyClocks`, made when Playing starts): a side's kills and Time rewards add to its own clock and its
+  mini games and reward picks hold only its own; a side whose time runs out, or that's all out of lives, is done
+  (`SideFinished`, `DungeonRun.EndParty`: its hourglasses stop, its presses are ignored), with no continue; Playing ends
+  when the last side is done, and `PhaseEndsAt` follows the last side still playing. Each station's snapshot carries its
+  own side's clock in the match-clock fields, and each lane's `DelveView.ClockEndsAtMs`/`TimeUp` (the main screen's lanes).
+  The defaults aim at 3-4
   minutes for an average player, about two bosses; `DungeonPacingTests` plays simulated games on the shipped
   `config/dungeon.json` to keep it there (run it after changing the content or the clock). `MatchEngine.RoundSeconds`
   is the starting length, `EarnsTime` says it's the arcade clock (Classic plays a fixed `MatchSeconds`); the
@@ -221,7 +227,8 @@ The rules:
   one, a ring more, starts at `RoundStartsAt`). `HandlePress` sends
   answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
   and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
-  others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone,
+  others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone
+  (with a clock per side, anyone on that side: `DungeonRun.ClockStoppedFor`, `PartyClock.Hold`),
   `DungeonRun.ClockStopped` is true and `MatchEngine.HoldTheClock` pushes `PhaseEndsAt` back every tick, so everything
   that checks the clock works as normal; `ClockHeldFor` adds it up. Snapshots: `YouView.Minigame` (`MinigameView` with
   each game's part, `RuneLockView`), `DelveView.Minigame`/`MinigamesWon` for the main screen, and
@@ -235,7 +242,7 @@ The rules:
   `LoopQuestionShift` points of the last floor's mix a step harder), rather than going back to the first floor's easy mix.
   Without weights the match's chosen difficulty comes first, as in Classic
   (the kiosk's difficulty only matters there now).
-- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal. Each
+- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal, Phone a Friend, Fog Bomb, Tiny Hourglass. Each
   adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (a boss
   always) and every `PowerUpStreak` right answers in a row earn one, only with empty hands
   (`DungeonRun.FindPowerUp`; it's recorded on the hit as `DealtHit.Found`). The action button (the fifth
@@ -245,7 +252,17 @@ The rules:
   then it starts over); a 50/50 hides two wrong answers of the current question, which the snapshot
   sends as `QuestionView.Hidden` (wrong ones only) and presses on them are ignored; a Shield blocks the
   next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
-  to the clock. The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
+  to the clock (solo games only). Between players (`DungeonRun.CanFind` keeps each to the games it fits): Phone a
+  Friend (with teammates) puts the caller's question on a free teammate's screen (`Adventurer.CalledFriend` /
+  `AnsweringFor`, `YouView.Helping` with `Phoned`); `HandlePress` sends that teammate's answer buttons to the caller's
+  stream (`DungeonRun.CallerFor`: their answer is the caller's), their own hourglass waits, and the call ends on an answer or
+  a timeout (`AfterTurn`) or when either can't go on (`EndStaleCalls`, each tick). Fog Bomb and Tiny Hourglass (a race
+  or a team battle) go to the leading rival the engine picks by score (`MatchEngine.LeadingRivalOf`, among those
+  `DungeonRun.CanBeSabotaged`): their answers blur for `FogBombSeconds` from when their question is up
+  (`DelveView.FogFromMs`), or their hourglass runs out in half the time it had left (`Adventurer.HalveHourglass`, the
+  next one if it was stopped). A Shield soaks either (`PowerUpUse.Blocked`, `Adventurer.LastSabotage`). The target's
+  screen pops, the main screen shows a banner and the Host comments. With nobody to call or aim at, it stays in hand.
+  The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
 - **The arcade lobby** (`Core/Arcade`). Games start at the stations: `Lobby` (one per room) is every
   station that isn't in a game, as a `LobbySeat` stepping Idle, Hero, Photo, Game, Category, Waiting, and

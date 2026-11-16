@@ -236,6 +236,11 @@ public sealed class Adventurer
     /// <summary>Turns the hourglass over: the monster attacks after <paramref name="attackSeconds"/>.</summary>
     public void StartHourglass(DateTimeOffset now, double attackSeconds)
     {
+        if (TinyHourglassNext)
+        {
+            attackSeconds /= 2; // a rival's Tiny Hourglass came while it was stopped: this one's theirs
+            TinyHourglassNext = false;
+        }
         AttackStartedAt = now;
         AttackAt = now + TimeSpan.FromSeconds(attackSeconds);
     }
@@ -364,10 +369,70 @@ public sealed class Adventurer
         return healed;
     }
 
-    public PowerUpUse RecordPowerUp(PowerUp powerUp, string targetOwnerId, int amount, bool revived)
+    public PowerUpUse RecordPowerUp(PowerUp powerUp, string targetOwnerId, int amount, bool revived, bool blocked = false)
     {
-        LastPowerUp = new PowerUpUse((LastPowerUp?.Number ?? 0) + 1, powerUp, targetOwnerId, amount, revived);
+        LastPowerUp = new PowerUpUse((LastPowerUp?.Number ?? 0) + 1, powerUp, targetOwnerId, amount, revived, blocked);
         return LastPowerUp;
+    }
+
+    // ------------------------------------------------------------------
+    // Power-ups between players: a rival's sabotage, and Phone a Friend.
+    // ------------------------------------------------------------------
+
+    /// <summary>A rival's Fog Bomb: their answers are blurred from <see cref="FogFrom"/> until <see cref="FogUntil"/>.</summary>
+    public DateTimeOffset? FogFrom { get; private set; }
+    public DateTimeOffset? FogUntil { get; private set; }
+
+    /// <summary>A rival's Tiny Hourglass is waiting for their next hourglass (it was stopped when it came): that one runs half as long.</summary>
+    public bool TinyHourglassNext { get; private set; }
+
+    /// <summary>The last rival's sabotage that came at them (null before the first).</summary>
+    public Sabotage? LastSabotage { get; private set; }
+
+    /// <summary>Phone a Friend: the teammate answering their question with them (null when there's no call).</summary>
+    public string? CalledFriend { get; private set; }
+
+    /// <summary>Phone a Friend: the teammate whose question they're answering (their own waits meanwhile), or null.</summary>
+    public string? AnsweringFor { get; private set; }
+
+    /// <summary>A rival's sabotage came at them: their Shield soaks it if it's up (and goes). Returns true if it did.</summary>
+    public bool BlockSabotage(PowerUp powerUp, string fromOwnerId, DateTimeOffset at)
+    {
+        var blocked = Shielded;
+        Shielded = false;
+        LastSabotage = new Sabotage((LastSabotage?.Number ?? 0) + 1, powerUp, fromOwnerId, blocked, at);
+        return blocked;
+    }
+
+    public void Fog(DateTimeOffset from, DateTimeOffset until)
+    {
+        FogFrom = from;
+        FogUntil = until;
+    }
+
+    /// <summary>
+    /// A Tiny Hourglass: the hourglass they're on (or the one waiting for their next question, after a battle beat)
+    /// keeps its start and runs out in half the time it had left. Stopped (a lockout, a reward to pick), it's their next.
+    /// </summary>
+    public void HalveHourglass(DateTimeOffset now)
+    {
+        if (AttackAt is not { } at)
+        {
+            TinyHourglassNext = true;
+            return;
+        }
+        var from = AttackStartedAt > now ? AttackStartedAt.Value : now;
+        AttackAt = from + (at - from) / 2;
+    }
+
+    public void Call(string friendOwnerId) => CalledFriend = friendOwnerId;
+    public void AnswerFor(string callerOwnerId) => AnsweringFor = callerOwnerId;
+
+    /// <summary>The call's over (it was answered, the hourglass ran out, or one of them can't go on with it).</summary>
+    public void HangUp()
+    {
+        CalledFriend = null;
+        AnsweringFor = null;
     }
 
     /// <summary>

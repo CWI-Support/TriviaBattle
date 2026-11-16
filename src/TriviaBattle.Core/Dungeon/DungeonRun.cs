@@ -39,7 +39,7 @@ namespace TriviaBattle.Core.Dungeon;
 ///     the screens show the fight meanwhile.</item>
 ///   <item>Every game runs on an arcade clock: every kill earns time (<see cref="SecondsEarnedBy"/>), scaled so a
 ///     party (which faces tougher monsters, <see cref="DungeonSettings.PartyHpPerMember"/>) earns about what a solo
-///     player does, and so several parties sharing the clock in a race earn it together.</item>
+///     player does; in a race or a team battle each side has its own clock (MatchEngine's PartyClock).</item>
 ///   <item>Each floor asks its own mix of easy, medium and hard questions (<see cref="NextDifficulty"/>).</item>
 ///   <item>Floor rewards: answer enough of a floor right and, once its boss dies, pick a reward that lasts the rest of
 ///     the match (<see cref="OpenRewards"/>, <see cref="ChooseReward"/>). Rewards raise the numbers below where they're used.</item>
@@ -338,7 +338,7 @@ public sealed class DungeonRun
     private double RewardTimeSeconds(Adventurer adventurer)
     {
         var members = PartyOf(adventurer.PartyId).Count;
-        return Rewards.TimeSeconds * HpScaleFor(members) / members / _delves.Count;
+        return Rewards.TimeSeconds * HpScaleFor(members) / members;
     }
 
     // ------------------------------------------------------------------
@@ -438,6 +438,38 @@ public sealed class DungeonRun
     /// </summary>
     public bool ClockStopped => _adventurers.Values.Any(a => a.IsAway);
 
+    // ------------------------------------------------------------------
+    // Sides with their own clock (a race, a team battle: see MatchEngine's PartyClock): each party is a side.
+    // ------------------------------------------------------------------
+
+    private readonly HashSet<string> _doneParties = [];
+
+    /// <summary>Every party in the match (a solo player, a party or a battle team, each racer).</summary>
+    public IReadOnlyList<string> PartyIds => _delves.Keys.ToList();
+
+    /// <summary>A side's clock stands still while any of it is in a mini game or picking a reward.</summary>
+    public bool ClockStoppedFor(string partyId) => PartyOf(partyId).Any(a => a.IsAway);
+
+    /// <summary>Everyone in the party is out of lives.</summary>
+    public bool PartyOut(string partyId) => _settings.Lives > 0 && PartyOf(partyId).All(a => a.IsOut);
+
+    /// <summary>A side done for the match (its time ran out, or it's all out of lives).</summary>
+    public bool IsDone(string partyId) => _doneParties.Contains(partyId);
+
+    /// <summary>
+    /// A side's done for the match (its own clock ran out, or everyone in it is out): its monsters stop attacking (no
+    /// hourglasses), its poison stops, and any Phone a Friend call is over. The other sides play on.
+    /// </summary>
+    public void EndParty(string partyId)
+    {
+        _doneParties.Add(partyId);
+        foreach (var adventurer in PartyOf(partyId))
+        {
+            adventurer.HangUp();
+            adventurer.StopHourglass();
+        }
+    }
+
     /// <summary>
     /// A party has cleared the room before the floor's mini game (<paramref name="kill"/>'s <c>MinigameAhead</c>): everyone in
     /// it not already away starts their go, its intro once the kill beat that emptied the room has played. Their
@@ -512,7 +544,7 @@ public sealed class DungeonRun
     public IReadOnlyList<(string PartyId, int Damage, DealtHit? Kill)> TickPoison(DateTimeOffset now)
     {
         var results = new List<(string, int, DealtHit?)>();
-        foreach (var delve in _delves.Values)
+        foreach (var delve in _delves.Values.Where(d => !IsDone(d.PartyId))) // a side whose time is up is done: no more poison
         {
             var (damage, kill) = delve.PoisonTick(now, _settings.Classes.PoisonDamage, _settings.Classes.PoisonTickSeconds);
             if (damage > 0)
@@ -576,10 +608,82 @@ public sealed class DungeonRun
         if (!dropped && !earned)
             return null;
 
-        var choices = Enum.GetValues<PowerUp>();
-        var found = choices[_random.Next(choices.Length)];
+        var choices = PowerUpsFor(adventurer.OwnerId);
+        var found = choices[_random.Next(choices.Count)];
         adventurer.PickUp(found);
         return found;
+    }
+
+    /// <summary>The power-ups that can drop for an adventurer in this match (see <see cref="CanFind"/>), each as likely.</summary>
+    public IReadOnlyList<PowerUp> PowerUpsFor(string ownerId) =>
+        Enum.GetValues<PowerUp>().Where(p => CanFind(_adventurers[ownerId], p)).ToList();
+
+    /// <summary>
+    /// Whether a power-up can drop for them: a Time Crystal only in a solo game (the clock is everyone's), Phone a
+    /// Friend only with teammates, and the ones aimed at a rival only with another party in the match (a race, a
+    /// team battle). The rest drop anywhere.
+    /// </summary>
+    private bool CanFind(Adventurer adventurer, PowerUp powerUp) => powerUp switch
+    {
+        PowerUp.TimeCrystal => IsSolo,
+        PowerUp.PhoneAFriend => PartyOf(adventurer.PartyId).Count > 1,
+        PowerUp.FogBomb or PowerUp.TinyHourglass => _adventurers.Values.Any(a => a.PartyId != adventurer.PartyId),
+        _ => true,
+    };
+
+    /// <summary>
+    /// A rival a Fog Bomb or Tiny Hourglass can be aimed at: still playing, on their feet and in the fight (not in a
+    /// mini game or picking a reward). The match engine aims at the one of these with the most points.
+    /// </summary>
+    public bool CanBeSabotaged(Adventurer rival) => !rival.IsOut && !rival.IsDowned && !rival.IsAway && !IsDone(rival.PartyId);
+
+    /// <summary>
+    /// Phone a Friend: a teammate free to take the call, or null. The caller needs their question up (not between
+    /// two, in a battle beat), and so does the friend: standing, in the fight, and not already on a call.
+    /// </summary>
+    private Adventurer? FreeFriendOf(Adventurer caller, DateTimeOffset now)
+    {
+        bool QuestionUp(Adventurer a) => _streams[a.OwnerId].CurrentShownAt <= now;
+        bool Free(Adventurer a) => !a.IsDowned && !a.IsOut && !a.IsAway && a.CalledFriend == null && a.AnsweringFor == null && QuestionUp(a);
+        if (!Free(caller) || caller.AttackAt == null)
+            return null;
+        return PartyOf(caller.PartyId).FirstOrDefault(a => a != caller && Free(a));
+    }
+
+    /// <summary>
+    /// Phone a Friend: whose question this adventurer is answering (their answer buttons answer it for them), or
+    /// null. A call one of them can't go on with is over (see <see cref="EndStaleCalls"/>).
+    /// </summary>
+    public string? CallerFor(string ownerId) =>
+        _adventurers.GetValueOrDefault(ownerId) is { AnsweringFor: { } callerId } friend && CallStillOn(_adventurers[callerId], friend)
+            ? callerId
+            : null;
+
+    /// <summary>Both still able to go on with the call: on their feet and in the fight.</summary>
+    private static bool CallStillOn(Adventurer caller, Adventurer friend) =>
+        caller.CalledFriend == friend.OwnerId && friend.AnsweringFor == caller.OwnerId
+        && !caller.IsDowned && !caller.IsOut && !caller.IsAway
+        && !friend.IsDowned && !friend.IsOut && !friend.IsAway;
+
+    /// <summary>The calls one of them can't go on with (downed, off to a mini game...) are over: the friend's own question goes on.</summary>
+    public void EndStaleCalls(DateTimeOffset now)
+    {
+        foreach (var caller in _adventurers.Values.Where(a => a.CalledFriend != null).ToList())
+            if (!CallStillOn(caller, _adventurers[caller.CalledFriend!]))
+                HangUp(caller, now);
+    }
+
+    /// <summary>The call's over: the friend's own question comes back, with a fresh hourglass (unless their buttons are dead).</summary>
+    private void HangUp(Adventurer caller, DateTimeOffset now)
+    {
+        var friend = _adventurers[caller.CalledFriend!];
+        caller.HangUp();
+        friend.HangUp();
+        var stream = _streams[friend.OwnerId];
+        if (stream.IsLockedOutAt(now) || friend.IsAway || friend.IsDowned)
+            friend.StopHourglass();
+        else
+            StartHourglass(friend, now);
     }
 
     /// <summary>Hands an adventurer a power-up, replacing any they held (the dev tools, for testing).</summary>
@@ -587,17 +691,51 @@ public sealed class DungeonRun
 
     /// <summary>
     /// The action button: uses the power-up they're holding. Returns null if they hold none or are
-    /// downed. A Time Crystal's seconds are for the match engine to add to the clock.
+    /// downed, or it has nobody to go to (Phone a Friend with no teammate free, a rival's one with no rival to
+    /// aim at): then they keep it. A Time Crystal's seconds are for the match engine to add to the clock.
     /// </summary>
-    public PowerUpUse? UsePowerUp(string ownerId, DateTimeOffset now)
+    /// <param name="rivalOwnerId">For a Fog Bomb or Tiny Hourglass: the leading rival, picked by the match engine (it
+    /// keeps the scores); null if there's none to aim at (see <see cref="CanBeSabotaged"/>).</param>
+    public PowerUpUse? UsePowerUp(string ownerId, DateTimeOffset now, string? rivalOwnerId = null)
     {
         var adventurer = _adventurers[ownerId];
         if (adventurer.IsDowned || adventurer.Held is not { } powerUp)
             return null;
 
+        var friend = powerUp == PowerUp.PhoneAFriend ? FreeFriendOf(adventurer, now) : null;
+        if (powerUp == PowerUp.PhoneAFriend && friend == null)
+            return null; // nobody free to call: they keep it
+        var rival = rivalOwnerId != null ? _adventurers.GetValueOrDefault(rivalOwnerId) : null;
+        if (powerUp is PowerUp.FogBomb or PowerUp.TinyHourglass && rival == null)
+            return null; // nobody to aim it at: they keep it
+
         adventurer.DropHeld();
         switch (powerUp)
         {
+            case PowerUp.PhoneAFriend:
+                adventurer.Call(friend!.OwnerId);
+                friend.AnswerFor(ownerId);
+                friend.StopHourglass(); // their own question waits while they help
+                return adventurer.RecordPowerUp(powerUp, friend.OwnerId, 0, revived: false);
+            case PowerUp.FogBomb:
+            {
+                var blocked = rival!.BlockSabotage(powerUp, ownerId, now);
+                if (!blocked)
+                {
+                    // From when their question is up: thrown during their battle beat, it waits for the next one.
+                    var shownAt = _streams[rival.OwnerId].CurrentShownAt ?? now;
+                    var from = shownAt > now ? shownAt : now;
+                    rival.Fog(from, from + TimeSpan.FromSeconds(_settings.FogBombSeconds));
+                }
+                return adventurer.RecordPowerUp(powerUp, rival.OwnerId, (int)_settings.FogBombSeconds, revived: false, blocked);
+            }
+            case PowerUp.TinyHourglass:
+            {
+                var blocked = rival!.BlockSabotage(powerUp, ownerId, now);
+                if (!blocked)
+                    rival.HalveHourglass(now);
+                return adventurer.RecordPowerUp(powerUp, rival.OwnerId, 0, revived: false, blocked);
+            }
             case PowerUp.Potion:
                 var (target, healed, revived) = DrinkPotion(adventurer, now);
                 return adventurer.RecordPowerUp(powerUp, target.OwnerId, healed, revived);
@@ -698,7 +836,8 @@ public sealed class DungeonRun
     /// <list type="bullet">
     ///   <item>a party kills faster than one player but faces tougher monsters: its time per kill is
     ///     <see cref="HpScaleFor"/> over its size (two players: 1.75 / 2, so 87.5% each);</item>
-    ///   <item>parties racing share one clock, so each party's kills earn their share of it.</item>
+    ///   <item>sides racing (a race, a team battle) each have their own clock (MatchEngine's PartyClock), so each
+    ///     side's kills earn it the full time.</item>
     /// </list>
     /// The match engine adds it to the clock.
     /// </summary>
@@ -712,7 +851,7 @@ public sealed class DungeonRun
             ? _settings.SecondsPerBoss + (kills - 1) * _settings.SecondsPerKill
             : kills * _settings.SecondsPerKill;
         var members = PartyOf(partyId).Count;
-        return seconds * HpScaleFor(members) / members / _delves.Count;
+        return seconds * HpScaleFor(members) / members;
     }
 
     /// <summary>
@@ -769,6 +908,8 @@ public sealed class DungeonRun
     public void AfterTurn(QuestionStream stream, DateTimeOffset now)
     {
         var adventurer = _adventurers[stream.OwnerId];
+        if (adventurer.CalledFriend != null)
+            HangUp(adventurer, now); // Phone a Friend: their question's answered (by either of them) or ran out
         if (adventurer.DownedUntil is { } downedUntil && (stream.LockedOutUntil == null || stream.LockedOutUntil < downedUntil))
             stream.LockOut(downedUntil);
 
@@ -840,9 +981,10 @@ public sealed class DungeonRun
     /// </summary>
     private void StartHourglass(Adventurer adventurer, DateTimeOffset now)
     {
-        if (adventurer.IsAway)
+        if (adventurer.IsAway || adventurer.AnsweringFor != null || IsDone(adventurer.PartyId))
         {
-            adventurer.StopHourglass(); // it waits while they pick a reward or play a mini game
+            // It waits while they pick a reward, play a mini game or answer a teammate's call; their side's time is up: no more.
+            adventurer.StopHourglass();
             return;
         }
         var shownAt = _streams[adventurer.OwnerId].CurrentShownAt ?? now;

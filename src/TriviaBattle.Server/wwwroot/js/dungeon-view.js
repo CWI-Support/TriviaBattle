@@ -105,6 +105,20 @@ const DungeonView = {
         return before && earnedEnd > before + 500 ? Math.round((earnedEnd - before) / 1000) : 0;
     },
 
+    /**
+     * Main screen, a race or a team battle (a clock per side): the lane's own time, counting down (or standing still
+     * while one of them is in a mini game or picking a reward), or TIME'S UP once that side's done. Nothing with one
+     * clock for the match (the main screen's own clock shows it).
+     */
+    laneClock(delve) {
+        if (!delve.clockEndsAtMs) return '';
+        if (delve.timeUp) return `<span class="dg-lane-clock is-up">${Theme.text('dungeon.laneTimeUp')}</span>`;
+        const timing = delve.clockStoppedLeftMs != null
+            ? `data-stopped-left="${delve.clockStoppedLeftMs}"`
+            : `data-ends-at="${delve.clockEndsAtMs}"`;
+        return `<span class="dg-lane-clock" ${timing} data-hurry-at="10"></span>`;
+    },
+
     /** "+10s" popping up beside a clock, or nothing. */
     timeAddedPop(seconds) {
         return seconds ? `<span class="dg-time-added">${Theme.text('dungeon.timeAdded', { seconds })}</span>` : '';
@@ -430,7 +444,10 @@ const DungeonView = {
 
         // A power-up used (by you, or a teammate's Potion aimed at you): a pop over the monster, once.
         const powerUpKey = `pu:${you.stationId}`;
-        DungeonPowerUps.noticeUse(powerUpKey, delve, ownerId => delve.party.find(p => p.ownerId === ownerId)?.name || you.name);
+        // A Fog Bomb or Tiny Hourglass names the rival it went to: from the match's players, as they're not in your party.
+        DungeonPowerUps.noticeUse(powerUpKey, delve, ownerId => delve.party.find(p => p.ownerId === ownerId)?.name
+            || match.players?.find(p => p.stationId === ownerId)?.name || you.name);
+        DungeonPowerUps.noticeSabotage(powerUpKey, delve); // a rival's that came at you
 
         // Between two rooms: the floor's mini game (js/dungeon-minigames.js).
         if (DungeonMinigames.showing(you, serverNow))
@@ -491,6 +508,7 @@ const DungeonView = {
                     ${rank ? `<span class="dg-rank">${UI.ordinal(rank)}</span>` : ''}
                     <span class="dg-lane-name ${name.replace(/&[^;]+;/g, 'x').length > 16 ? 'is-long' : ''}">${name}</span>
                     <span class="dg-floor-badge">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</span>
+                    ${DungeonView.laneClock(delve)}
                 </div>
                 ${DungeonView.trail(delve)}
                 <div class="dg-lane-stage">
@@ -522,7 +540,12 @@ const DungeonView = {
         const hit = DungeonView.news(`moment:${key}`, delve).dealt;
         const picked = DungeonRewards.newPick(key, delve); // a floor reward picked
         const lockWon = DungeonMinigames.newWin(key, delve); // a mini game won
-        if (!hit && !picked && !lockWon) return;
+        // A rival's Fog Bomb or Tiny Hourglass that came at this lane, once (by when: teammates' counts are their own).
+        const sabotage = delve.lastSabotage;
+        const sabotageBefore = DungeonView.seen[`sabotage:${key}`];
+        DungeonView.seen[`sabotage:${key}`] = sabotage?.atMs || 0;
+        const sabotaged = sabotageBefore !== undefined && sabotage && sabotage.atMs !== sabotageBefore ? sabotage : null;
+        if (!hit && !picked && !lockWon && !sabotaged) return;
 
         const lanePlayers = match.players.filter(p => p.stationId === key || p.teamId === key);
         const faces = `<div class="dg-moment-faces">${lanePlayers.map(p => HeroPhoto.portrait(match, p.stationId, 'dg-moment-face', color)).join('')}</div>`;
@@ -534,6 +557,12 @@ const DungeonView = {
             </div>`, 2600);
         const who = Theme.raw(name);
 
+        if (sabotaged) {
+            const values = { name: sabotaged.fromName, target: who, powerUp: Theme.raw(DungeonPowerUps.name(sabotaged.powerUp)) };
+            banner('sabotage', sabotaged.blocked ? Theme.text('dungeon.momentSabotageBlocked', values) : Theme.text('dungeon.momentSabotage', values),
+                `icon-pu-${sabotaged.blocked ? 'Shield' : sabotaged.powerUp}`);
+            DungeonHost.say(Theme.text(sabotaged.blocked ? 'dungeon.hostSabotageBlocked' : 'dungeon.hostSabotage', values, `${key}:sabotage:${sabotaged.atMs}`));
+        }
         if (lockWon)
             banner('reward', Theme.text('dungeon.momentMinigameWon', { name: who, game: Theme.raw(DungeonMinigames.name(lockWon)) }), 'icon-chest');
         if (picked) {

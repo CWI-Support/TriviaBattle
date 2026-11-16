@@ -32,13 +32,18 @@ const DungeonEncounter = {
         const stunned = !downed && you.lockedOutUntilMs && you.lockedOutUntilMs > serverNow;
         const seed = `${match.matchId}:${you.stationId}`;
 
-        // Downed in a party: your buttons are dead, so you get a teammate's question to shout them the answer.
-        const helping = downed ? you.helping : null;
+        // Downed in a party: your buttons are dead, so you get a teammate's question to shout them the answer. Or a
+        // teammate phoned you (Phone a Friend): their question, which your buttons answer (yours waits meanwhile).
+        const helping = downed || you.helping?.phoned ? you.helping : null;
         const shown = helping ? helping.question : you.question;
-        const dimmed = (downed && !helping) || stunned;
+        // A race or a team battle: their side's own time ran out, and they wait for the others (buttons dead).
+        const timeUp = !!delve.timeUp;
+        const dimmed = (downed && !helping) || stunned || timeUp;
 
         const overlaySeed = `${seed}:${delve.lastTaken?.number}`;
-        const overlay = !downed
+        const overlay = timeUp
+            ? `<div class="dg-overlay is-downed is-out is-time-up">${Theme.text('dungeon.timeUpWaiting', {}, seed)}</div>`
+            : !downed
             ? stunned ? `<div class="dg-overlay is-stunned">${Theme.text('dungeon.stunned', {}, overlaySeed)}</div>` : ''
             : delve.out
                 ? `<div class="dg-overlay is-downed is-out">${delve.party.length > 1 ? Theme.text('dungeon.outParty', {}, overlaySeed) : Theme.text('dungeon.outSolo', {}, overlaySeed)}</div>`
@@ -53,9 +58,23 @@ const DungeonEncounter = {
             ? { html: Theme.text('dungeon.patronWhispers', {}, `${seed}:${shown.number}`), tone: 'is-patron',
                 style: `--t0: ${DungeonView.since(`patron:${match.matchId}:${you.stationId}:${shown.number}`)}ms` }
             : DungeonView.feedback(delve, you.lastAnswer, seed);
-        const tag = helping
+        // Phone a Friend: the call's on both screens (the one answering for a teammate, and the teammate who called).
+        const callSeed = `${seed}:call:${shown.number}`;
+        const tag = helping?.phoned
+            ? `<div class="dg-scroll-tag is-help is-call">${Theme.text('dungeon.phoneTeammate', { name: helping.name }, callSeed)}</div>`
+            : helping
             ? `<div class="dg-scroll-tag is-help">${Theme.text('dungeon.helpTeammate', { name: helping.name }, overlaySeed)}</div>`
+            : you.callingName
+            ? `<div class="dg-scroll-tag is-call">${Theme.text('dungeon.phoneCalling', { name: you.callingName }, callSeed)}</div>`
             : match.category.includes(',') ? `<div class="dg-scroll-tag">${UI.escape(shown.category)}</div>` : '';
+        // Answering a teammate's call, their hourglass is the one running (yours waits): show theirs.
+        const glass = helping?.phoned
+            ? { ...delve, attackStartedAtMs: helping.attackStartedAtMs, attackAtMs: helping.attackAtMs, frozenUntilMs: null }
+            : delve;
+        // A rival's Fog Bomb: your answers blur from fogFromMs to fogUntilMs (a CSS animation timed from those, so it
+        // clears by itself). Not over a teammate's question you're answering for them.
+        const fogged = !helping && delve.fogUntilMs > serverNow;
+        const fogStyle = fogged ? `style="--fog0: ${Math.round(delve.fogFromMs - serverNow)}ms; --fog-for: ${Math.round(delve.fogUntilMs - delve.fogFromMs)}ms"` : '';
 
         // Just after a battle beat the question comes in (and after a kill the next monster drops in, unless the
         // walk to the next room already brought it), timed from the beat's end so a redraw doesn't play it again.
@@ -80,7 +99,7 @@ const DungeonEncounter = {
                     <div class="dg-stage" data-stage="portrait">${DungeonBattle.room()}${counting ? '<i class="dg-danger"></i>' : ''}</div>
                     <div class="dg-hud">
                         ${DungeonEncounter.foePlate(match, delve, clockKey)}
-                        <div class="dg-scroll ${helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
+                        <div class="dg-scroll ${helping?.phoned ? 'is-call' : helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
                         <div class="dg-window" data-focus>
                             ${DungeonView.packSprites(delve.foes?.slice(1) || [])}
                             ${DungeonView.monster(delve, news, `fx:station:${you.stationId}`)}
@@ -91,8 +110,8 @@ const DungeonEncounter = {
                             ${DungeonView.activeEffects(powerUpKey)}
                         </div>
                         <div class="dg-answer-area">
-                            ${DungeonEncounter.hourglass(delve, serverNow)}
-                            <div class="dg-answers ${helping ? 'is-helping' : ''}">
+                            ${DungeonEncounter.hourglass(glass, serverNow)}
+                            <div class="dg-answers ${helping && !helping.phoned ? 'is-helping' : ''} ${fogged ? 'is-fogged' : ''}" ${fogStyle}>
                                 ${shown.answers.map((text, i) => DungeonEncounter.answer(text, i, dimmed, shown.hidden?.includes(i), revealed === i)).join('')}
                             </div>
                         </div>

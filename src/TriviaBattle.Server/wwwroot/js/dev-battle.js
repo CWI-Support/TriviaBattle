@@ -8,6 +8,8 @@
 //   /dev/battle?kind=boss&at=2100    frozen 2.1 s into it (for screenshots)
 //   /dev/battle?kind=kill&at=2100    past the beat's end: the next question coming in, frozen
 //   /dev/battle3d?kind=hit&glass=4&hold=5000   the hourglass running out: its last 3 s wind up for the attack
+//   /dev/battle?kind=hit&call=friend&hold=5000   Phone a Friend (call=caller: the one who phoned); ?sabotage=FogBomb (TinyHourglass,
+//                                    Blocked): a rival's power-up landing on you
 //   /dev/battle3d?kind=floor&next=goblin   after the beat, that monster's entrance as the question comes in (goblin, rat,
 //                                    slime, bat, skeleton); kind=boss: the boss leaping in after its curtain
 //   /dev/battle?kind=moment-floor    a main-screen banner (moment-floor, -boss, -slain, -revive, -combo)
@@ -273,6 +275,21 @@ function fakeState(kind, startedAt, question) {
                         charged: 'hurt', stagger: 'hit', rewarded: 'reward' }[kind] || kind,
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
+    // Power-ups between players, on the question after the beat (they start when it comes up):
+    //   ?call=friend   Cat phoned you: her question, which your buttons answer (yours waits), and her hourglass
+    //   ?call=caller   you phoned Cat: she's on the line
+    //   ?sabotage=FogBomb (or TinyHourglass, or Blocked): Bob threw one at you: the pop, and a Fog Bomb's blur
+    const questionUpAt = startedAt + length;
+    if (params.get('call') === 'friend')
+        you.helping = { name: 'Cat', phoned: true, attackStartedAtMs: questionUpAt, attackAtMs: questionUpAt + 8000,
+                        question: { ...you.question, number: 5, text: 'What is the capital of Australia?', answers: ['Canberra', 'Sydney', 'Melbourne', 'Perth'] } };
+    if (params.get('call') === 'caller') you.callingName = 'Cat';
+    if (params.has('sabotage') && question) {
+        const kindOf = params.get('sabotage');
+        const blocked = kindOf === 'Blocked';
+        delve.lastSabotage = { number: teamHits, powerUp: blocked ? 'FogBomb' : kindOf, fromName: 'Bob', blocked, atMs: questionUpAt };
+        if (kindOf === 'FogBomb') Object.assign(delve, { fogFromMs: questionUpAt, fogUntilMs: questionUpAt + 3000 });
+    }
     // Floor rewards: the cards up after the boss's death beat (it has ended), and no question meanwhile.
     if (kind === 'reward') {
         you.beat = { kind: 'floor', startedAtMs: startedAt - 3000, endsAtMs: startedAt };

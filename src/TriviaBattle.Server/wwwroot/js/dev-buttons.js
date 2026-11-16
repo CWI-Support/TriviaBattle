@@ -3,7 +3,7 @@
 // Joins as a main screen just to show what the match is doing.
 
 let keyMap = []; // [{ key, buttonId, stationId, answer }]
-const POWER_UPS = ['Potion', 'Fireball', 'Freeze', 'FiftyFifty', 'Shield', 'TimeCrystal'];
+const POWER_UPS = ['Potion', 'Fireball', 'Freeze', 'FiftyFifty', 'Shield', 'TimeCrystal', 'PhoneAFriend', 'FogBomb', 'TinyHourglass'];
 
 const connection = new ScreenConnection({ role: 'main', onState: render });
 connection.start().then(loadKeyMap);

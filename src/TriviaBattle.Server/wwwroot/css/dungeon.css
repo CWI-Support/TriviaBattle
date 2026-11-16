@@ -639,3 +639,13 @@
 .dg-member-down.is-out { background: #5a0a0a; color: #fff; }
 .dg-overlay.is-out { border-color: var(--wrong); color: var(--wrong); }
 .continue-out { color: var(--wrong); }
+
+/* Phone a Friend: the call on both screens. The one answering for a teammate sees their question in the call's
+   colour (solid: their buttons do answer it, unlike a downed player's shout-it-out help, dashed red). */
+.dg-scroll-tag.is-call { opacity: 1; display: inline-block; padding: 0.3vh 1.6vmin; font-size: 0.68em; color: #fff; background: #0d6f8a; border-radius: 0.6vmin; }
+.dg-scroll.is-call { outline: 0.6vmin solid #2bb6dc; outline-offset: -1.2vmin; box-shadow: 0 0 4vmin rgba(111, 227, 255, 0.35); }
+
+/* A race or a team battle (a clock per side): each lane's own time on the main screen, or TIME'S UP once that side's done. */
+.dg-lane-clock { margin-left: auto; font-family: var(--dg-font-pixel); font-size: 2.6vmin; color: var(--text); }
+.dg-lane-clock.is-hurry { color: var(--wrong); }
+.dg-lane-clock.is-up { font-size: 1.8vmin; color: var(--wrong); }

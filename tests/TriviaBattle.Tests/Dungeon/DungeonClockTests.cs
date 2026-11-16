@@ -29,6 +29,10 @@ public class DungeonClockTests
 
     private static TimeSpan ClockLength(TestMatch match) => match.Engine.PhaseEndsAt - match.Engine.PhaseStartedAt;
 
+    /// <summary>A race or a battle: a side's own clock (PartyClock), from when Playing started.</summary>
+    private static TimeSpan SideClockLength(TestMatch match, string stationId) =>
+        match.Engine.ClockOf(match.StreamOf(stationId).OwnerId)!.EndsAt - match.Engine.PhaseStartedAt;
+
     [Fact]
     public void A_solo_game_starts_on_the_solo_clock()
     {
@@ -79,23 +83,24 @@ public class DungeonClockTests
     }
 
     [Fact]
-    public void In_a_race_each_party_s_kills_earn_their_share_of_the_shared_clock()
+    public void In_a_race_each_side_s_kills_earn_its_own_clock_the_full_time()
     {
         var match = new TestMatch(GameModeKind.FreeForAll, Settings(), stations: ["A1", "A2"]);
         match.StartPlaying();
 
         match.Press("A1", 0, afterSeconds: 4);
-        match.Press("A1", 0, afterSeconds: 4); // rat dead: 10 seconds, shared by two parties
+        match.Press("A1", 0, afterSeconds: 4); // rat dead: 10 seconds, all Ann's (each racer has their own clock)
 
         Assert.Equal(1, match.DelveOf("A1").Kills);
-        Assert.Equal(TimeSpan.FromSeconds(65), ClockLength(match));
+        Assert.Equal(TimeSpan.FromSeconds(70), SideClockLength(match, "A1"));
+        Assert.Equal(TimeSpan.FromSeconds(60), SideClockLength(match, "A2"));
         Assert.True(SnapshotBuilder.Build(match.Engine, Viewer.Main).EarnsTime);
     }
 
     [Fact]
     public void A_party_faces_tougher_monsters_and_earns_less_time_per_kill()
     {
-        // 2v2 Combined: two parties of two. Monsters have 175% HP for them; a kill earns 10 x 1.75 / 2, shared by the two parties.
+        // 2v2 Combined: two teams of two, each with its own clock. Monsters have 175% HP for them; a kill earns 10 x 1.75 / 2.
         var match = new TestMatch(GameModeKind.TeamCombinedScore, Settings());
         match.StartPlaying();
         Assert.Equal(70, match.DelveOf("A1").MonsterHp);
@@ -104,7 +109,8 @@ public class DungeonClockTests
             match.Press("A1", 0, afterSeconds: 1); // 30 a crit: dead on the third (only Ann answers, so no party combo)
 
         Assert.Equal(1, match.DelveOf("A1").Kills);
-        Assert.Equal(TimeSpan.FromSeconds(60 + 10 * 1.75 / 2 / 2), ClockLength(match));
+        Assert.Equal(TimeSpan.FromSeconds(60 + 10 * 1.75 / 2), SideClockLength(match, "A1"));
+        Assert.Equal(TimeSpan.FromSeconds(60), SideClockLength(match, "A2")); // the other team's
     }
 
     [Fact]
@@ -196,11 +202,13 @@ public class DungeonClockTests
     }
 
     [Fact]
-    public void A_group_game_waits_for_a_continue_too_and_one_swipe_brings_everyone_back()
+    public void A_party_waits_for_a_continue_too_and_one_swipe_brings_everyone_back()
     {
-        var match = new TestMatch(GameModeKind.FreeForAll, Settings(), stations: ["A1", "A2"]);
+        // A party: everyone on one team, one run, one clock (a race or a battle has a clock per side: PartyClockTests).
+        var match = new TestMatch(GameModeKind.TeamCombinedScore, Settings(), stations: ["A1", "A3"]);
         match.StartPlaying();
-        match.Press("A2", 1, afterSeconds: 4); // Bob is hit: 90 HP
+        Assert.Empty(match.Engine.PartyClocks);
+        match.Press("A3", 1, afterSeconds: 4); // Cat is hit: 90 HP
 
         match.FinishPhase();
         Assert.Equal(MatchPhase.Continue, match.Engine.Phase);
@@ -209,7 +217,7 @@ public class DungeonClockTests
 
         Assert.Equal(MatchPhase.Playing, match.Engine.Phase);
         Assert.Equal(TimeSpan.FromSeconds(60), ClockLength(match));
-        Assert.Equal(90, match.AdventurerOf("A2").Hp);
+        Assert.Equal(90, match.AdventurerOf("A3").Hp);
         Assert.NotNull(match.AdventurerOf("A1").AttackAt); // both are fighting again
     }
 
