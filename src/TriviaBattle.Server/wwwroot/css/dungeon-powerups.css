@@ -93,6 +93,6 @@
 }
 
 .is-fireball .dg-stamp.is-early { color: #ff9a1f; text-shadow: 0.7vmin 0.7vmin 0 #000, 0 0 5vmin #ff5a1f; }
-.is-fireball .dg-bignum { color: #ff9a1f; font-size: 15vmin; text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 4vmin #ff5a1f; }
+.is-fireball .dg-bignum { color: #ff9a1f; --num-size: 15vmin; text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 4vmin #ff5a1f; }
 .is-blocked .dg-stamp.is-early { color: #bfe4ff; }
 .is-blocked .dg-battle-flash { background: radial-gradient(ellipse at center, transparent 40%, rgba(150, 210, 255, 0.6)); }

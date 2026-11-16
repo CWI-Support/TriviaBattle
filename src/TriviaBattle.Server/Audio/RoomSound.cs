@@ -23,6 +23,7 @@ public sealed class RoomSound : IDisposable
 
     private AudioVolumes _volumes;
     private string? _roomMusicFile;
+    private bool _roomMusicPlaysOnce; // the room's music is playing once as an effect (victory), not as the loop
     private CancellationTokenSource? _introDelay;
 
     public RoomSound(string roomId, RoomSpeakers speakers, AudioSettings settings, AudioVolumes volumes, string webRoot, ILogger logger)
@@ -80,7 +81,8 @@ public sealed class RoomSound : IDisposable
 
     /// <summary>
     /// The room's music: a loop on the room and sub zones, or (loop: false, e.g. victory) played once.
-    /// Null = silence. Asking for what's already playing does nothing.
+    /// Null = silence. Asking for what's already playing does nothing. Whatever was playing stops, the
+    /// played-once kind too: victory is a full song, and it went on playing under the lobby music after a game.
     /// </summary>
     public void SetRoomMusic(string? file, bool loop = true)
     {
@@ -93,6 +95,13 @@ public sealed class RoomSound : IDisposable
 
             Zone(RoomZone)?.StopLoop();
             Zone(SubZone)?.StopLoop();
+            // Music played once is an effect on those zones, which StopLoop doesn't touch.
+            if (_roomMusicPlaysOnce)
+            {
+                Zone(RoomZone)?.StopEffect();
+                Zone(SubZone)?.StopEffect();
+            }
+            _roomMusicPlaysOnce = false;
 
             if (Path(file) is not { } path)
                 return;
@@ -106,6 +115,7 @@ public sealed class RoomSound : IDisposable
             {
                 Zone(RoomZone)?.PlayEffect(path, (float)_volumes.Music);
                 Zone(SubZone)?.PlayEffect(path, (float)_volumes.Sub);
+                _roomMusicPlaysOnce = true;
             }
         }
     }

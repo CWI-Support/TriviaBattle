@@ -122,6 +122,34 @@ public class DungeonPlanTests
         Assert.Equal(1, stream.CurrentQuestion.Id); // all asked: it starts over
     }
 
+    [Fact]
+    public void Past_the_last_floor_the_questions_keep_getting_harder_instead_of_starting_over()
+    {
+        var mix = (int easy, int medium, int hard) => new Dictionary<Difficulty, int> { [Difficulty.Easy] = easy, [Difficulty.Medium] = medium, [Difficulty.Hard] = hard };
+        var map = new DungeonMap(
+            [new DepthDef("d", "Depth", [new FloorDef(["rat"], Questions: mix(85, 15, 0)), new FloorDef(["rat"], Questions: mix(20, 50, 30))])],
+            Monsters, loopQuestionShift: 10);
+
+        Assert.Equal(mix(85, 15, 0), map.QuestionsOn(1));
+        Assert.Equal(mix(20, 50, 30), map.QuestionsOn(2));
+        Assert.Equal(mix(10, 50, 40), map.QuestionsOn(3)); // not floor 1's easy mix again
+        Assert.Equal(mix(0, 50, 50), map.QuestionsOn(4));
+        Assert.Equal(mix(0, 40, 60), map.QuestionsOn(5));
+        Assert.Equal(mix(0, 0, 100), map.QuestionsOn(20));
+        Assert.Equal(map.RoomAt(1, 1).Select(e => e.Monster.Id), map.RoomAt(3, 1).Select(e => e.Monster.Id)); // the rooms still loop round
+    }
+
+    [Fact]
+    public void A_loop_question_shift_of_0_asks_the_first_pass_s_mixes_again()
+    {
+        var map = new DungeonMap(
+            [new DepthDef("d", "Depth", [new FloorDef(["rat"], Questions: new Dictionary<Difficulty, int> { [Difficulty.Easy] = 1 }),
+                new FloorDef(["rat"], Questions: new Dictionary<Difficulty, int> { [Difficulty.Hard] = 1 })])],
+            Monsters, loopQuestionShift: 0);
+
+        Assert.Equal(map.QuestionsOn(1), map.QuestionsOn(3));
+    }
+
     private static GivenAnswer Answer(QuestionStream stream) =>
         new(stream.OwnerId, stream.CurrentNumber, stream.CurrentQuestion, "A1", 0, true, 20, TestMatch.Start, TimeSpan.FromSeconds(1));
 }

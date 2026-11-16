@@ -8,7 +8,7 @@ namespace TriviaBattle.Tests.Dungeon;
 
 // Mini games between two rooms of a floor (Core/Dungeon/Minigames). The first is the rune lock: stop the needle on
 // the glowing mark 6 times in a row; a miss starts the count again and locks the buttons for 2 seconds; 30 seconds to
-// do it. The intro takes 3.5 seconds, the result 3.2. Easy questions do 20, so one hit kills a rat.
+// do it. The intro takes 3.5 seconds, the result 3.2. Right answers do 20 (TestMatch's HitDamage), so one hit kills a rat.
 public class DungeonMinigameTests
 {
     /// <summary>Floor 1: a rat, the lock, another rat, then a boss. Floor 2: a rat.</summary>

@@ -63,7 +63,6 @@ class Battle {
         this.foeLoadingKey = null;
         this.foeEntrance = null; // a new monster's entrance: { at } (null: not started, waiting to be seen), or null: none
         this.foeTravel = false;  // the monster in front is coming in from the right (its entrance): it faces that way
-        this.bossKeys = new Set(); // the monsters seen as bosses (delve.monster.isBoss): they stand in a rune circle
         this.foeYaw = FOE_FACING;
         this.foesMet = 0;      // counts the monsters, so each wears a rival's face in turn
         this.others = new Others(this.stage.scene, { zAt, homes: HOMES, facing: HERO_FACING }); // teammates, and rivals dropping in
@@ -309,6 +308,37 @@ class Battle {
         this.turnFoe(dt);
         this.aim(lean, now / 1000);
         this.stage.draw(now / 1000, dt);
+        this.pinNumbers();
+    }
+
+    /**
+     * Lays the beat's damage number and the class's notes under it over whoever got hit (the monster, or your hero on
+     * a hurt beat), wherever the camera has them this frame: on their upper body (their home spot, not where the
+     * blow has knocked them, so it doesn't jitter with the fight). Each is measured and kept wholly on the screen,
+     * and set as --pin-x/--pin-y, its middle in pixels from the arena's corner (css/battle3d.css).
+     */
+    pinNumbers() {
+        const arena = this.stage.mode() === 'fight' ? document.querySelector('[data-stage] .dg-arena') : null;
+        if (!arena || !this.hero || !this.foe) return;
+        const number = arena.querySelector('.dg-bignum');
+        const notes = arena.querySelector('.dg-beat-notes');
+        if (!number && !notes) return;
+        const hurt = !!arena.closest('.is-hurting');
+        const [actor, home] = hurt ? [this.hero, HERO_HOME] : [this.foe, FOE_HOME];
+        const height = (actor.spec.hover || 0) + Math.min(actor.spec.height || 2, 2.3) * 0.6; // a tall boss's chest, not up at its head
+        const at = this.stage.screenPoint(new THREE.Vector3(home.x, height, home.z));
+        if (!at) return;
+        const box = arena.getBoundingClientRect();
+        const margin = box.width * 0.03;
+        // Its middle as near the fighter as it can be with all of it on the screen (offsetWidth ignores its pop-in scale).
+        const keepIn = el => Math.max(el.offsetWidth / 2 + margin, Math.min(box.width - el.offsetWidth / 2 - margin, at.x - box.left));
+        const y = Math.max(box.height * 0.1, Math.min(box.height * 0.75, at.y - box.top));
+        const pin = (el, top) => {
+            el.style.setProperty('--pin-x', `${Math.round(keepIn(el))}px`);
+            el.style.setProperty('--pin-y', `${Math.round(top)}px`);
+        };
+        if (number) pin(number, y);
+        if (notes) pin(notes, y + (number ? number.offsetHeight / 2 : 0) + box.height * 0.02 + notes.offsetHeight / 2);
     }
 
     /**
@@ -347,15 +377,19 @@ class Battle {
 
     /**
      * A boss stands in its rune circle, burning brighter as its charge builds: the one in front, or in the boss beat
-     * the one leaping in, once it has landed. Gone with it when it dies (it bursts: no longer visible).
+     * the one leaping in, once it has landed. Gone with it when it dies (it bursts: no longer visible). Whether it's a
+     * boss comes from the snapshot (delve.monster.isBoss; during a beat, the monster in it), never from its picture:
+     * an ordinary monster can wear a boss's model (a skeleton).
      */
     showBossCircle(you, now, playing) {
         const delve = you.delve;
-        if (delve.monster.isBoss) this.bossKeys.add(delve.monster.sprite);
         const boss = this.arrival?.boss ? this.arrival.actor : null;
         if (boss?.root.parent && playing && now - you.beat.startedAtMs >= BOSS_LANDS)
             return this.fx.showBossCircle(boss, now / 1000, 0.25);
-        if (this.foe && this.bossKeys.has(this.foeKey))
+        const hurt = you.beat?.kind === 'hurt' || you.beat?.kind === 'downed';
+        const hit = playing && !hurt ? DungeonBattle.beatHit(you) : null;
+        const inFrontIsBoss = hit ? !!hit.isBoss : !!delve.monster.isBoss;
+        if (this.foe && inFrontIsBoss)
             this.fx.showBossCircle(this.foe, now / 1000, chargeOf(delve)?.level ?? 0.25);
     }
 

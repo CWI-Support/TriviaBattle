@@ -7,7 +7,7 @@ using TriviaBattle.Core.Snapshots;
 namespace TriviaBattle.Tests.Dungeon;
 
 // Uses TestMatch.Dungeon: floor 1 = two rats (40 HP, hit for 10), floor 2 = a boss (60 HP, hits for 50).
-// Easy questions do 20 damage (30 once the streak makes it a combo); presses here wait 4 seconds, so
+// Right answers do 20 damage (TestMatch's HitDamage) (30 once the streak makes it a combo); presses here wait 4 seconds, so
 // no crits. Drops are switched off unless a test is about them, so nothing turns up by chance.
 public class PowerUpTests
 {

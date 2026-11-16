@@ -6,7 +6,7 @@ using TriviaBattle.Core.Snapshots;
 namespace TriviaBattle.Tests.Dungeon;
 
 // Uses TestMatch.Dungeon: floor 1 = two rats (40 HP, hit for 10), floor 2 = a boss (60 HP, hits for 50).
-// Easy questions do 20 damage; an answer within 3 seconds crits (x1.5). Players are the plain hero
+// Right answers do 20 damage (TestMatch's HitDamage); an answer within 3 seconds crits (x1.5). Players are the plain hero
 // (TestMatch.PlainHero); each class's own powers are in HeroClassTests.
 // TestMatch.Press waits 1 second by default (a crit), so "slow" presses below wait 4.
 public class DungeonCombatTests

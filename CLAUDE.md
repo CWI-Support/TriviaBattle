@@ -60,7 +60,8 @@ Stations draw the fight in 3D (`js/battle3d/`, three.js; `?view=2d` or no WebGL 
 Combat numbers are `Game:Dungeon` (`DungeonSettings`);
 floors and monsters are `config/dungeon.json`, loaded by `Server/Game/DungeonContent.cs` at startup as a `DungeonPlan`;
 each match lays out its own `DungeonMap` (`DungeonPlan.Build`: made-up floors are `RoomCount` rooms filled from a `Pool` to
-`RoomHp`, then the `Boss`), and each floor's `Questions` weights pick its questions' difficulty. Every Dungeon game earns time
+`RoomHp`, then the `Boss`), and each floor's `Questions` weights pick its questions' difficulty (past the last floor they keep
+getting harder: `LoopQuestionShift`). Every Dungeon game earns time
 per kill (solo and group; a party's monsters have more HP, `PartyHpPerMember`, and its time per kill is scaled to match), and a
 swipe on "Continue?" is a second paid session. The target is 3-4 minutes and about two bosses for an average player:
 `DungeonPacingTests` simulates it on the shipped content, so run it after changing monsters, floors or clock numbers.

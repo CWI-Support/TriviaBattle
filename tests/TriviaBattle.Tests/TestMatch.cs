@@ -40,7 +40,7 @@ public sealed class TestMatch
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
         IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false,
         IReadOnlyDictionary<string, bool>? lobbyPhotos = null, IReadOnlyDictionary<string, string>? heroes = null,
-        DungeonMap? dungeon = null, bool rewards = false)
+        DungeonMap? dungeon = null, bool rewards = false, int? hitDamage = 20)
     {
         Settings = settings ?? new MatchSettings();
         if (!battleBeats)
@@ -52,6 +52,9 @@ public sealed class TestMatch
             Settings.Dungeon.FloorBeatSeconds = 0;
             Settings.Dungeon.BossBeatSeconds = 0;
         }
+        // Right answers do 20 here (the arithmetic in the tests: one hit kills a rat), unless a test wants the real number.
+        if (hitDamage is { } damage)
+            Settings.Dungeon.HitDamage = damage;
         if (!rewards)
             Settings.Dungeon.Rewards.Enabled = false;
         Now = Start;

@@ -12,10 +12,11 @@ public sealed class DungeonSettings
     /// <summary>Each adventurer's (or party's, in 2v2 Group) hit points.</summary>
     public int AdventurerHp { get; set; } = 100;
 
-    // Damage a correct answer does, by the question's difficulty.
-    public int EasyDamage { get; set; } = 20;
-    public int MediumDamage { get; set; } = 30;
-    public int HardDamage { get; set; } = 40;
+    /// <summary>
+    /// The damage a right answer does, before the hero class's share, crits, combos and the rest. The same whatever the
+    /// question's difficulty: a harder question doesn't hit harder (the screen never said why one hit was bigger).
+    /// </summary>
+    public int HitDamage { get; set; } = 25;
 
     /// <summary>
     /// A correct answer this fast is a fast answer: a critical hit, and what sets off the Healer's, Wizard's
@@ -175,13 +176,6 @@ public sealed class DungeonSettings
 
     /// <summary>The "3, 2, 1" before the station takes a hero photo.</summary>
     public double PhotoCountdownSeconds { get; set; } = 3;
-
-    public int DamageFor(Difficulty difficulty) => difficulty switch
-    {
-        Difficulty.Easy => EasyDamage,
-        Difficulty.Hard => HardDamage,
-        _ => MediumDamage,
-    };
 
     public DungeonSettings Copy()
     {

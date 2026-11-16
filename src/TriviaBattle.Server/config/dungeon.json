@@ -3,6 +3,8 @@
 
   "LoopHpBonus": 0.75,
   "LoopDamageBonus": 1,
+  "_LoopQuestionShift": "Past the last floor the rooms loop round, but the questions keep getting harder: each floor deeper moves this many points of the last floor's mix a step harder (easy to medium, medium to hard; 20/50/30 becomes 10/50/40, then 0/50/50, 0/40/60...). 0 = the loops ask the first pass's mixes again.",
+  "LoopQuestionShift": 10,
   "MinigameChance": 0.4,
   "MinigameEvery": 3,
 
@@ -38,15 +40,15 @@
   ],
 
   "Monsters": [
-    { "Id": "rat", "Name": "Cellar Rat", "Sprite": "rat", "Hp": 25, "Damage": 6, "AttackSeconds": 12 },
-    { "Id": "slime", "Name": "Damp Slime", "Sprite": "slime", "Hp": 35, "Damage": 8, "AttackSeconds": 12 },
-    { "Id": "bats", "Name": "Bat Swarm", "Sprite": "bat", "Hp": 20, "Damage": 6, "AttackSeconds": 10 },
-    { "Id": "goblin-bandit", "Name": "Goblin Bandit", "Sprite": "goblin", "Hp": 55, "Damage": 28, "AttackSeconds": 11 },
-    { "Id": "skeleton-intern", "Name": "Skeleton Intern", "Sprite": "skeleton", "Hp": 70, "Damage": 34, "AttackSeconds": 11 },
+    { "Id": "rat", "Name": "Cellar Rat", "Sprite": "rat", "Hp": 25, "Damage": 6, "AttackSeconds": 8 },
+    { "Id": "slime", "Name": "Damp Slime", "Sprite": "slime", "Hp": 35, "Damage": 8, "AttackSeconds": 8 },
+    { "Id": "bats", "Name": "Bat Swarm", "Sprite": "bat", "Hp": 20, "Damage": 6, "AttackSeconds": 8 },
+    { "Id": "goblin-bandit", "Name": "Goblin Bandit", "Sprite": "goblin", "Hp": 55, "Damage": 28, "AttackSeconds": 8 },
+    { "Id": "skeleton-intern", "Name": "Skeleton Intern", "Sprite": "skeleton", "Hp": 70, "Damage": 34, "AttackSeconds": 8 },
 
-    { "Id": "goblin-quizmaster", "Name": "Goblin Quizmaster", "Sprite": "goblin-boss", "Hp": 70, "Damage": 15, "AttackSeconds": 10, "IsBoss": true },
-    { "Id": "bone-registrar", "Name": "Bone Registrar", "Sprite": "skeleton", "Hp": 80, "Damage": 24, "AttackSeconds": 10, "IsBoss": true },
-    { "Id": "goblin-warlord", "Name": "Goblin Warlord", "Sprite": "goblin-boss", "Hp": 200, "Damage": 48, "AttackSeconds": 10, "IsBoss": true },
-    { "Id": "dean-of-darkness", "Name": "Dean of Darkness", "Sprite": "skeleton", "Hp": 270, "Damage": 60, "AttackSeconds": 9, "IsBoss": true }
+    { "Id": "goblin-quizmaster", "Name": "Goblin Quizmaster", "Sprite": "goblin-boss", "Hp": 70, "Damage": 15, "AttackSeconds": 8, "IsBoss": true },
+    { "Id": "bone-registrar", "Name": "Bone Registrar", "Sprite": "skeleton", "Hp": 80, "Damage": 24, "AttackSeconds": 8, "IsBoss": true },
+    { "Id": "goblin-warlord", "Name": "Goblin Warlord", "Sprite": "goblin-boss", "Hp": 200, "Damage": 48, "AttackSeconds": 8, "IsBoss": true },
+    { "Id": "dean-of-darkness", "Name": "Dean of Darkness", "Sprite": "skeleton", "Hp": 270, "Damage": 60, "AttackSeconds": 8, "IsBoss": true }
   ]
 }

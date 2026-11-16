@@ -68,7 +68,8 @@
 @keyframes dg-mg-veil-out { to { opacity: 0; visibility: hidden; } }
 .dg-minigame-intro-stamp {
     font-family: var(--dg-font-pixel);
-    font-size: 8.5vmin;
+    /* As big as fits: a longer one ("A CHALLENGE!", --chars: its length) shrinks to stay on the screen. */
+    font-size: min(8.5vmin, calc(80vmin / var(--chars, 10)));
     white-space: nowrap;
     color: var(--dg-mg-gold);
     text-shadow: 0 1vmin 0 #000, 0 0 4vmin rgba(255, 210, 63, 0.6);

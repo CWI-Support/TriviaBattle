@@ -111,7 +111,8 @@ tick. The run is built around parties, so solo and group play share one set of r
   team's delve.
 
 The rules:
-- A correct answer is `DungeonRun.Strike`: damage by difficulty and a crit if fast (within
+- A correct answer is `DungeonRun.Strike`: `HitDamage` (the same for every question, whatever its difficulty: a
+  bigger number the screen couldn't explain only confused players) and a crit if fast (within
   `CritWithinSeconds`, a set 3 seconds), taken off the monster in front. The answer's points are what it did
   (`DealtHit.TotalDamage` plus any HP healed), so scores, results and leaderboards work unchanged.
 - **Class stats** (`ClassStats`, one per class in `ClassSettings`, `StatsFor`): `Hp` (of `AdventurerHp`), `DamageDealt` (of a right
@@ -229,8 +230,10 @@ The rules:
 - **Each floor's questions.** A floor's `Questions` weights (`{ "Easy": 80, "Medium": 20 }`) pick each next
   question's difficulty (`DungeonRun.NextDifficulty`, by the adventurer's floor); `QuestionStream.Record` takes it
   and gives the first question of that difficulty not yet asked (any, if none is left), and `QuestionStream.Prefer`
-  picks the first question. Harder questions also hit harder (`DungeonSettings.DamageFor`), so a deeper floor's
-  tougher monsters come with bigger blows. Without weights the match's chosen difficulty comes first, as in Classic
+  picks the first question. Difficulty doesn't change damage (every right answer starts from `HitDamage`). Past the
+  last floor the rooms loop round but the questions keep getting harder (`DungeonMap.QuestionsOn`: each floor deeper moves
+  `LoopQuestionShift` points of the last floor's mix a step harder), rather than going back to the first floor's easy mix.
+  Without weights the match's chosen difficulty comes first, as in Classic
   (the kiosk's difficulty only matters there now).
 - **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal. Each
   adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (a boss

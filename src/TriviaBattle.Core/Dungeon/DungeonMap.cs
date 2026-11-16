@@ -92,10 +92,12 @@ public sealed class DungeonMap
     /// <param name="minigameSeed">Makes this match's rolls for them (the same for every party, so a race is fair).</param>
     /// <param name="minigameEvery">At least one mini game every this many floors: after that many less one without, the next floor
     /// that can hold one has one whatever its roll (0 = no such promise, the rolls alone).</param>
+    /// <param name="loopQuestionShift">Past the last floor, how much harder each floor's questions get (see <see cref="QuestionsOn"/>).</param>
     public DungeonMap(IReadOnlyList<DepthDef> depths, IEnumerable<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
-        double minigameChance = 0, int minigameSeed = 0, int minigameEvery = 0)
+        double minigameChance = 0, int minigameSeed = 0, int minigameEvery = 0, int loopQuestionShift = 10)
     {
         MinigameEvery = minigameEvery;
+        LoopQuestionShift = loopQuestionShift;
         _monsters = monsters.ToDictionary(m => m.Id);
         _floors = depths.SelectMany(d => d.Floors.Select(f => (d, f, f.RoomList()))).ToList();
         Depths = depths;
@@ -122,8 +124,39 @@ public sealed class DungeonMap
     /// <summary>How many rooms a floor (1-based) has.</summary>
     public int RoomsOn(int floor) => _floors[(floor - 1) % _floors.Count].Rooms.Count;
 
-    /// <summary>How often each difficulty is asked on a floor (1-based), as weights; null if the floor doesn't say.</summary>
-    public IReadOnlyDictionary<Difficulty, int>? QuestionsOn(int floor) => _floors[(floor - 1) % _floors.Count].Floor.Questions;
+    /// <summary>
+    /// Past the last floor, how much harder the questions get with each floor deeper: this many points of the mix
+    /// move a step harder (easy to medium, and as many medium to hard), from the last floor's mix. 0 = the loops ask
+    /// the same mixes as the first pass.
+    /// </summary>
+    public int LoopQuestionShift { get; }
+
+    /// <summary>
+    /// How often each difficulty is asked on a floor (1-based), as weights; null if the floor doesn't say. Past the
+    /// last floor the questions don't go back to the first floor's easy mix: they keep getting harder from the last
+    /// floor's (<see cref="LoopQuestionShift"/>), while the rooms loop round.
+    /// </summary>
+    public IReadOnlyDictionary<Difficulty, int>? QuestionsOn(int floor)
+    {
+        if (floor <= _floors.Count || LoopQuestionShift <= 0)
+            return _floors[(floor - 1) % _floors.Count].Floor.Questions;
+        if (_floors[^1].Floor.Questions is not { Count: > 0 } last)
+            return null;
+
+        var easy = last.GetValueOrDefault(Difficulty.Easy);
+        var medium = last.GetValueOrDefault(Difficulty.Medium);
+        var hard = last.GetValueOrDefault(Difficulty.Hard);
+        for (var deeper = floor - _floors.Count; deeper > 0; deeper--)
+        {
+            var toMedium = Math.Min(LoopQuestionShift, easy);
+            easy -= toMedium;
+            medium += toMedium;
+            var toHard = Math.Min(LoopQuestionShift, medium);
+            medium -= toHard;
+            hard += toHard;
+        }
+        return new Dictionary<Difficulty, int> { [Difficulty.Easy] = easy, [Difficulty.Medium] = medium, [Difficulty.Hard] = hard };
+    }
 
     /// <summary>
     /// The mini game played once <paramref name="room"/> of <paramref name="floor"/> (both 1-based) is cleared, before

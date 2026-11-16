@@ -94,7 +94,7 @@ const DungeonMinigames = {
     intro(game, seed) {
         return `
             <div class="dg-minigame-intro">
-                <div class="dg-minigame-intro-stamp">${Theme.text('dungeon.minigameStamp', {}, seed)}</div>
+                <div class="dg-minigame-intro-stamp" style="--chars: ${Theme.plain('dungeon.minigameStamp', {}, seed).length}">${Theme.text('dungeon.minigameStamp', {}, seed)}</div>
                 <div class="dg-minigame-intro-name">${DungeonMinigames.name(game.kind)}</div>
                 <div class="dg-minigame-intro-how">${DungeonMinigames.howTo(game)}</div>
                 <div class="dg-minigame-intro-prize">${Theme.text('dungeon.minigamePrize')}</div>

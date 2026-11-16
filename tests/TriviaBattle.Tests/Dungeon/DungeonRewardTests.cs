@@ -6,7 +6,7 @@ using TriviaBattle.Core.Snapshots;
 namespace TriviaBattle.Tests.Dungeon;
 
 // Floor rewards (see Reward): answer 80% of a floor's questions right and, once its boss dies, pick one of three
-// rewards with the answer buttons. Easy questions do 20; slow presses (4 seconds) don't crit.
+// rewards with the answer buttons. Right answers do 20 (TestMatch's HitDamage); slow presses (4 seconds) don't crit.
 public class DungeonRewardTests
 {
     /// <summary>Floor 1: a rat (20 HP: one easy hit, hits for 20), then a boss (40 HP: two hits). Floor 2: a rat.</summary>

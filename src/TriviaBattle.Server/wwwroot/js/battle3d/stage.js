@@ -145,6 +145,16 @@ export class Stage {
         renderer.render(this.scene, camera);
     }
 
+    /**
+     * Where a point in the room shows on the page, as drawn this frame ({ x, y } in page pixels), or null when
+     * nothing is drawn. For laying the HTML's words over the scene (the damage number over whoever got hit).
+     */
+    screenPoint(point) {
+        if (!this.rect) return null;
+        const p = point.clone().project(this.camera);
+        return { x: this.rect.x + (p.x + 1) / 2 * this.rect.w, y: this.rect.y + (1 - p.y) / 2 * this.rect.h };
+    }
+
     /** The aspect (width / height) of the box being drawn in, or of the one it's gliding to. */
     aspect() {
         const box = document.querySelector('[data-stage]')?.getBoundingClientRect();

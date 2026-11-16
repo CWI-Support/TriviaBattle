@@ -174,7 +174,7 @@ public sealed class DungeonRun
     /// party combo, and counts towards reviving a downed teammate (<see cref="DealtHit.RevivedOwnerId"/> says
     /// if it brought one back). A Healer's fast answer also heals, or poisons; a Warlock's slow one costs HP.
     /// </summary>
-    public DealtHit Strike(string ownerId, Difficulty difficulty, TimeSpan responseTime, DateTimeOffset now)
+    public DealtHit Strike(string ownerId, TimeSpan responseTime, DateTimeOffset now)
     {
         var adventurer = _adventurers[ownerId];
         var delve = DelveOf(adventurer);
@@ -187,7 +187,7 @@ public sealed class DungeonRun
 
         var fireball = adventurer.ThrowFireball();
 
-        var damage = _settings.DamageFor(difficulty) * DamageShare(adventurer);
+        var damage = _settings.HitDamage * DamageShare(adventurer);
         if (fast)
             damage *= adventurer.Class == HeroClass.Rogue ? RogueCritOf(adventurer) : _settings.CritMultiplier;
         if (combo)

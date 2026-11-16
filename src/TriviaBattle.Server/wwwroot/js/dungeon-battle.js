@@ -128,7 +128,7 @@ const DungeonBattle = {
                     ${hit?.staggered && !hit.killed ? '<div class="dg-fx-daze"><i></i><i></i><i></i></div>' : ''}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}
                     ${beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.sparks(22, 'is-death') : ''}
-                    ${taken?.blocked || byPoison ? '' : `<div class="dg-bignum">-${hit ? hit.damage : taken?.damage || 0}${hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || taken?.charged ? '!' : ''}</div>`}
+                    ${taken?.blocked || byPoison ? '' : DungeonBattle.bigNumber(hit, taken)}
                     ${DungeonBattle.stamps(beat, hit, taken, delve, seed)}
                     ${DungeonBattle.notes(hit, taken, delve, you, seed)}
                     ${hurt ? DungeonBattle.reveal(you.lastAnswer, seed) : ''}
@@ -147,6 +147,17 @@ const DungeonBattle = {
                 ${beat.kind === 'boss' ? `<div class="dg-boss-intro">${DungeonBattle.bar(delve.monster.name, delve.monster.maxHp, delve.monster.maxHp, delve.monster.maxHp, 'for-foe is-boss')}</div>` : ''}
                 ${DungeonBattle.peek(you.question, serverNow, seed)}
             </div>`;
+    },
+
+    /**
+     * The damage, huge, over whoever got hit ("-30", "-45!" for a big one). --chars is its length, so a long one
+     * (a three-figure crit) shrinks to fit the screen rather than run off its edge (css/dungeon-battle.css). In 3D it
+     * stands over the monster or the hero wherever the camera has them (js/battle3d/battle3d.js pins it there).
+     */
+    bigNumber(hit, taken) {
+        const big = hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || taken?.charged;
+        const text = `-${hit ? hit.damage : taken?.damage || 0}${big ? '!' : ''}`;
+        return `<div class="dg-bignum" style="--chars: ${text.length}">${text}</div>`;
     },
 
     /**

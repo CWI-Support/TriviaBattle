@@ -10,7 +10,7 @@ public sealed class ClassStats
     /// <summary>Max HP, as a share of <see cref="DungeonSettings.AdventurerHp"/>.</summary>
     public double Hp { get; set; } = 1;
 
-    /// <summary>Damage their right answers do, as a share of the normal (by difficulty, before crits and combos; a splash follows it).</summary>
+    /// <summary>Damage their right answers do, as a share of the normal (of DungeonSettings.HitDamage, before crits and combos; a splash follows it).</summary>
     public double DamageDealt { get; set; } = 1;
 
     /// <summary>Damage they take from a monster's hit, as a share of the monster's (rounded).</summary>

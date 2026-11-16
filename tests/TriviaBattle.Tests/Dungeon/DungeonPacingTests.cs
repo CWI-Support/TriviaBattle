@@ -157,7 +157,7 @@ public class DungeonPacingTests(ITestOutputHelper output)
             .SelectMany((difficulty, d) => TestMatch.MakeQuestions(80, difficulty, firstId: 1 + d * 100))
             .ToList();
         var match = new TestMatch(GameModeKind.FreeForAll, new MatchSettings { Format = GameFormat.Dungeon }, questions: questions,
-            stations: ["A1"], battleBeats: true, dungeon: map, rewards: rewardsOn);
+            stations: ["A1"], battleBeats: true, dungeon: map, rewards: rewardsOn, hitDamage: null); // the real damage
         match.StartPlaying();
         var started = match.Now;
         var endsAt = match.Engine.PhaseEndsAt;

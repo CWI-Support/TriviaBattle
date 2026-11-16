@@ -7,7 +7,7 @@ namespace TriviaBattle.Tests.Dungeon;
 
 // Bosses: their entrance, and their charge cycle (DungeonSettings.BossChargeSteps). The default cycle is 3
 // steps: the boss hits for 50% of its damage, then 100%, then at full charge 250% (a right answer then
-// staggers it for 50% more damage). Easy questions do 20; slow presses (4 seconds) don't crit.
+// staggers it for 50% more damage). Right answers do 20 (TestMatch's HitDamage); slow presses (4 seconds) don't crit.
 public class DungeonBossTests
 {
     /// <summary>Floor 1: a rat's room (20 HP: one easy hit), then the boss's room (a boss that hits for 20). Floor 2: a rat.</summary>

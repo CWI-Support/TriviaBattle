@@ -4,7 +4,7 @@ Working draft for Brett and Mike to argue over. Everything below is an idea to k
 the "Decisions needed" list at the end is what blocks building.
 
 **Built so far (phase 1 slice, branch `feature/dungeon`):** Dungeon format on the existing engine:
-monsters with HP, damage by difficulty, crits for fast answers, combos for streaks, the monster's
+monsters with HP, the same damage for every right answer (it used to grow with difficulty; dropped Nov 2026), crits for fast answers, combos for streaks, the monster's
 hourglass, getting hit for wrong or slow answers, being downed and getting back up, floors and a
 Depth 1 boss from `config/dungeon.json`, endless deeper loops. The station screen follows the
 reference layout; the main screen shows a lane per adventurer or party; a `dungeon` theme with pixel

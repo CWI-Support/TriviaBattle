@@ -51,3 +51,20 @@
 }
 .dg-boss-intro .dg-battle-bar-name { color: var(--blood, #ff3b3b); font-size: 5vmin; text-shadow: 0.5vmin 0.5vmin 0 #000; }
 @keyframes dg-boss-plate { from { opacity: 0; transform: scale(1.8); } }
+
+/* The damage number in 3D, and the class's notes under it: on whoever got hit, wherever the camera has them this
+   frame (js/battle3d/battle3d.js, pinNumbers, sets --pin-x/--pin-y: each one's middle, kept wholly on the screen). Not
+   above the head: a tall boss's would run into the stamped word (CRITICAL!) at the top. The 2D version's fixed spots
+   only fit its own drawing. */
+.is-3d .dg-battle .dg-bignum,
+.is-3d .dg-battle.is-charged .dg-bignum,
+.is-3d .dg-battle .dg-beat-notes,
+.is-3d .dg-battle.is-hurting .dg-beat-notes {
+    left: var(--pin-x, 70%);
+    top: var(--pin-y, 40%);
+    right: auto;
+    bottom: auto;
+    translate: -50% -50%;
+    white-space: nowrap;
+}
+.is-3d .dg-battle .dg-beat-notes { align-items: center; }

@@ -288,7 +288,7 @@ public sealed class MatchEngine
 
         // Dungeon format: a correct answer is an attack, and its points are what it did: all the damage
         // (a Wizard's splash included) plus any HP a Healer's answer healed.
-        var dealt = isCorrect ? _dungeon?.Strike(stream.OwnerId, question.Difficulty, press.PressedAt - shownAt, now) : null;
+        var dealt = isCorrect ? _dungeon?.Strike(stream.OwnerId, press.PressedAt - shownAt, now) : null;
         var correctPoints = dealt != null ? dealt.TotalDamage + dealt.Healed : Settings.CorrectPoints;
 
         var answer = new GivenAnswer(

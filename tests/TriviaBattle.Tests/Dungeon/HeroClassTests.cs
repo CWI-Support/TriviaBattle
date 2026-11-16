@@ -8,7 +8,7 @@ namespace TriviaBattle.Tests.Dungeon;
 
 // What each hero class does in a fight (HeroClass, ClassSettings). Uses TestMatch.Dungeon unless a test needs
 // a tougher monster: floor 1 = two rats (40 HP, hit for 10, 10-second hourglass), floor 2 = a boss.
-// Easy questions do 20 damage; a fast answer (within 3 seconds; the Tank's 5) crits for x1.5.
+// Right answers do 20 damage (TestMatch's HitDamage); a fast answer (within 3 seconds; the Tank's 5) crits for x1.5.
 // TestMatch.Press waits 1 second by default (fast), so slow presses wait 4.
 public class HeroClassTests
 {
