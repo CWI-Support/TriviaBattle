@@ -235,6 +235,39 @@
           "correct": "C"
         },
         {
+          "difficulty": "Easy",
+          "text": "On The Office, what's the name of the paper company Michael Scott works for?",
+          "answers": [
+            "Dunder Mifflin",
+            "Wernham Hogg",
+            "Vance Refrigeration",
+            "Staples"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "On The Office, which Pennsylvania city is Michael's branch in?",
+          "answers": [
+            "Stamford",
+            "Scranton",
+            "Utica",
+            "Nashua"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "On The Office, what's the name of the beet farm Dwight runs with his family?",
+          "answers": [
+            "Beet Acres",
+            "Dunder Farms",
+            "Scranton Beet Co.",
+            "Schrute Farms"
+          ],
+          "correct": "D"
+        },
+        {
           "difficulty": "Medium",
           "text": "Which movie series features the famous line \"May the Force be with you\"?",
           "answers": [
@@ -444,6 +477,28 @@
           "correct": "B"
         },
         {
+          "difficulty": "Medium",
+          "text": "On The Office, what's the name of the office awards show Michael hosts every year?",
+          "answers": [
+            "The Mifflins",
+            "The Dundies",
+            "The Scrantys",
+            "The Paperies"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "On The Office, what's Stanley's favorite day of the year?",
+          "answers": [
+            "Pretzel Day",
+            "Casual Friday",
+            "Pizza Day",
+            "Hawaiian Shirt Day"
+          ],
+          "correct": "A"
+        },
+        {
           "difficulty": "Hard",
           "text": "Which film won the very first Academy Award for Best Picture?",
           "answers": [
@@ -629,6 +684,28 @@
             "Duke & Duke"
           ],
           "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On The Office, what's the name of the secret agent Michael plays in his own movie?",
+          "answers": [
+            "Agent Mike Steele",
+            "Michael Blade",
+            "Michael Scarn",
+            "Jack Midnight"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On The Office, what was the name of Andy Bernard's a cappella group at Cornell?",
+          "answers": [
+            "Here Comes Treble",
+            "Pitch Slapped",
+            "The Harmonizers",
+            "Big Red Tones"
+          ],
+          "correct": "A"
         }
       ]
     }
