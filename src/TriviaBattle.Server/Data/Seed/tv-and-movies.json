@@ -1,7 +1,7 @@
 {
   "categories": [
     {
-      "name": "Movies",
+      "name": "TV & Movies",
       "questions": [
         {
           "difficulty": "Easy",
@@ -110,6 +110,127 @@
             "Doc Hudson",
             "Lightning McQueen",
             "Sally"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Which actor played Walter White in Breaking Bad?",
+          "answers": [
+            "Aaron Paul",
+            "Bryan Cranston",
+            "Bob Odenkirk",
+            "Giancarlo Esposito"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In which city is Breaking Bad set?",
+          "answers": [
+            "Santa Fe, New Mexico",
+            "Phoenix, Arizona",
+            "Albuquerque, New Mexico",
+            "El Paso, Texas"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "On Friends, what's the name of the coffee shop where the gang is always hanging out?",
+          "answers": [
+            "Central Perk",
+            "The Grind",
+            "Java Joe's",
+            "Monk's Café"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What's the name of Phoebe's signature song on Friends?",
+          "answers": [
+            "\"Grumpy Dog\"",
+            "\"Sticky Shoes\"",
+            "\"Dirty Pigeon\"",
+            "\"Smelly Cat\""
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What does Ted Mosby do for a living for most of How I Met Your Mother?",
+          "answers": [
+            "Lawyer",
+            "Teacher",
+            "Architect",
+            "Journalist"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "What's Barney Stinson's famous two-word catchphrase on How I Met Your Mother?",
+          "answers": [
+            "\"Suit up!\"",
+            "\"Game on!\"",
+            "\"Bring it!\"",
+            "\"Let's roll!\""
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "On How I Met Your Mother, what color is the French horn Ted steals for Robin?",
+          "answers": [
+            "Red",
+            "Gold",
+            "Green",
+            "Blue"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "In Interstellar, what's the name of the blocky, wisecracking robot that travels with Cooper?",
+          "answers": [
+            "CASE",
+            "HAL",
+            "TARS",
+            "KIPP"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who plays stockbroker Jordan Belfort in The Wolf of Wall Street?",
+          "answers": [
+            "Matt Damon",
+            "Jonah Hill",
+            "Leonardo DiCaprio",
+            "Matthew McConaughey"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who plays Odysseus in Christopher Nolan's The Odyssey?",
+          "answers": [
+            "Matt Damon",
+            "Tom Holland",
+            "Robert Pattinson",
+            "Cillian Murphy"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Easy",
+          "text": "Who won an Oscar for playing the Joker in The Dark Knight?",
+          "answers": [
+            "Jack Nicholson",
+            "Jared Leto",
+            "Heath Ledger",
+            "Joaquin Phoenix"
           ],
           "correct": "C"
         },
@@ -224,6 +345,105 @@
           "correct": "B"
         },
         {
+          "difficulty": "Medium",
+          "text": "In Breaking Bad, what is Saul Goodman's real name?",
+          "answers": [
+            "Jimmy McGill",
+            "Chuck McGill",
+            "Howard Hamlin",
+            "Mike Ehrmantraut"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In Breaking Bad, what is the name of Walter and Skyler White's daughter?",
+          "answers": [
+            "Marie",
+            "Lydia",
+            "Jane",
+            "Holly"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "On Friends, what's the name of Joey's beloved stuffed penguin?",
+          "answers": [
+            "Waddles",
+            "Hugsy",
+            "Pengy",
+            "Mr. Flippers"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Phoebe has an identical twin sister on Friends. What's her name?",
+          "answers": [
+            "Ursula",
+            "Leslie",
+            "Frances",
+            "Alice"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "On How I Met Your Mother, what was Robin's stage name as a teenage pop star in Canada?",
+          "answers": [
+            "Robin Daggers",
+            "Robin Sparkles",
+            "Robbie Glitter",
+            "Robin Starr"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Marshall Eriksen is a proud Midwesterner on How I Met Your Mother. Which state is he from?",
+          "answers": [
+            "Wisconsin",
+            "Iowa",
+            "Ohio",
+            "Minnesota"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In Interstellar, what's the name of Cooper's daughter, who grows up to save humanity?",
+          "answers": [
+            "Amelia",
+            "Murph",
+            "Brand",
+            "Tars"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "Christopher Nolan's The Odyssey is based on an epic poem by which ancient Greek poet?",
+          "answers": [
+            "Virgil",
+            "Sophocles",
+            "Plato",
+            "Homer"
+          ],
+          "correct": "D"
+        },
+        {
+          "difficulty": "Medium",
+          "text": "In The Dark Knight, which Gotham district attorney becomes Two-Face?",
+          "answers": [
+            "Jim Gordon",
+            "Harvey Dent",
+            "Rachel Dawes",
+            "Lucius Fox"
+          ],
+          "correct": "B"
+        },
+        {
           "difficulty": "Hard",
           "text": "Which film won the very first Academy Award for Best Picture?",
           "answers": [
@@ -332,6 +552,83 @@
             "Ernest"
           ],
           "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In Breaking Bad, what is the White family's home address?",
+          "answers": [
+            "1229 Rio Grande Boulevard",
+            "308 Negra Arroyo Lane",
+            "742 Sandia Vista Drive",
+            "516 Tramway Ridge Court"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In Breaking Bad, what does Walter buy to remember where he buried his money in the desert?",
+          "answers": [
+            "A GPS tracker",
+            "A disposable camera",
+            "A lottery ticket",
+            "A road atlas"
+          ],
+          "correct": "C"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On Friends, Chandler is embarrassed by his middle name. What is it?",
+          "answers": [
+            "Matthew",
+            "Muriel",
+            "Marion",
+            "Morgan"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In the Friends trivia game that bets the apartment, what does Rachel guess Chandler does for a living?",
+          "answers": [
+            "Data processor",
+            "Transponster",
+            "Statistician",
+            "Logistics manager"
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On How I Met Your Mother, what is Ted Mosby's middle name?",
+          "answers": [
+            "Evelyn",
+            "Eugene",
+            "Everett",
+            "Edmund"
+          ],
+          "correct": "A"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "On How I Met Your Mother, what's the name of Robin Sparkles' big hit song?",
+          "answers": [
+            "\"Sandcastles in the Sand\"",
+            "\"Let's Go to the Mall\"",
+            "\"Beaver Song\"",
+            "\"P.S. I Love You\""
+          ],
+          "correct": "B"
+        },
+        {
+          "difficulty": "Hard",
+          "text": "In The Wolf of Wall Street, what's the name of Jordan Belfort's brokerage firm?",
+          "answers": [
+            "Sterling Cooper",
+            "Stratton Oakmont",
+            "Bluestar Airlines",
+            "Duke & Duke"
+          ],
+          "correct": "B"
         }
       ]
     }
