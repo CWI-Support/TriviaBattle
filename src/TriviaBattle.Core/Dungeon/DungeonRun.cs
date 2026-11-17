@@ -495,17 +495,21 @@ public sealed class DungeonRun
         _adventurers[ownerId].Minigame?.Press(answerIndex, at) ?? MinigamePress.Ignored;
 
     /// <summary>
-    /// Mini games moving on: the ones whose time limit just ran out are lost (<paramref name="lost"/>), and the ones whose
+    /// Mini games moving on: the ones won by how things stand (the tuner's bars all held in place: <paramref name="wonByPlay"/>),
+    /// the ones whose time limit just ran out are lost (<paramref name="lost"/>), and the ones whose
     /// result has been shown are over (<paramref name="over"/>): a winner is offered rewards (when that's on), everyone
     /// else gets their question back with a fresh hourglass.
     /// </summary>
-    public void MinigamesDue(DateTimeOffset now, out IReadOnlyList<Adventurer> lost, out IReadOnlyList<Adventurer> over)
+    public void MinigamesDue(DateTimeOffset now, out IReadOnlyList<Adventurer> wonByPlay, out IReadOnlyList<Adventurer> lost, out IReadOnlyList<Adventurer> over)
     {
+        var wonNow = new List<Adventurer>();
         var timedOut = new List<Adventurer>();
         var finished = new List<Adventurer>();
         foreach (var adventurer in _adventurers.Values.Where(a => a.Minigame != null))
         {
             var game = adventurer.Minigame!;
+            if (game.WinDue(now))
+                wonNow.Add(adventurer);
             if (game.TimeUp(now))
                 timedOut.Add(adventurer);
             if (game.ResultEndsAt is not { } resultEnds || resultEnds > now)
@@ -523,6 +527,7 @@ public sealed class DungeonRun
             stream.Start(now); // the question they were on comes back, fresh
             AfterTurn(stream, now);
         }
+        wonByPlay = wonNow;
         lost = timedOut;
         over = finished;
     }

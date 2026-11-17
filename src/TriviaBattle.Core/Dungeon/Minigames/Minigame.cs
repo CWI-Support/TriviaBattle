@@ -17,6 +17,9 @@ public enum MinigameKind
 
     /// <summary>A picture cut into rings, each turned out of line; turn them back to put it together (<see cref="RingPuzzle"/>).</summary>
     RingPuzzle,
+
+    /// <summary>Four sinking bars, one per answer button: press them up into their zones, all four at once (<see cref="Tuner"/>).</summary>
+    Tuner,
 }
 
 /// <summary>What a press did in a mini game.</summary>
@@ -35,6 +38,9 @@ public enum MinigamePress
 
     /// <summary>A press that lost it there and then (the wrong chest).</summary>
     Lost,
+
+    /// <summary>A press that only nudges something along (a tuner bar), many a second: no sound of its own.</summary>
+    Nudge,
 }
 
 /// <summary>
@@ -103,6 +109,21 @@ public abstract class Minigame
             Finish(at, won: result == MinigamePress.Won);
         return result;
     }
+
+    /// <summary>
+    /// A game won by how things stand rather than by a press (the tuner: every bar held in its zone, which can happen
+    /// as a bar sinks into place): checked every tick, before the time limit. Returns true if it was just won.
+    /// </summary>
+    public bool WinDue(DateTimeOffset now)
+    {
+        if (FinishedAt != null || now < PlaysFrom || WonAt(now) is not { } at || at > EndsAt)
+            return false;
+        Finish(at, won: true);
+        return true;
+    }
+
+    /// <summary>When it was won by how things stand, if it has been by <paramref name="now"/> (see <see cref="WinDue"/>); null for most games.</summary>
+    protected virtual DateTimeOffset? WonAt(DateTimeOffset now) => null;
 
     /// <summary>The time limit ran out: it's lost. Returns true if that just happened.</summary>
     public bool TimeUp(DateTimeOffset now)

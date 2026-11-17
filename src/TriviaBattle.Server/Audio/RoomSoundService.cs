@@ -266,6 +266,7 @@ public sealed class RoomSoundService(
                     MinigamePress.Won or MinigamePress.Cleared => _settings.Dungeon.PartyCombo,
                     MinigamePress.Hit => _settings.Dungeon.Hit,
                     MinigamePress.Lost => _settings.Dungeon.Hurt, // the wrong chest
+                    MinigamePress.Nudge => null, // a tuner bar nudged up: many a second, so no sound of its own
                     _ => _settings.Dungeon.Block,
                 }, showsIn);
                 break;

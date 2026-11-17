@@ -221,10 +221,13 @@ The rules:
   same numbers: `RuneLock` (the needle's angle from the press time and the turn it's on), `RuneEcho` (a "Simon says":
   the round's runes shown from `ShowFrom`, presses from `InputFrom`), `ChestShuffle` (a shell game: the round's
   `Swaps`, picks from `PickFrom`; the action button is the fifth chest, so `HandlePress` sends it to a mini game before
-  a power-up; `MinigamePress.Lost` is a press that loses it) and `RingPuzzle` (a picture cut into rings: A and D turn
+  a power-up; `MinigamePress.Lost` is a press that loses it), `RingPuzzle` (a picture cut into rings: A and D turn
   the `Selected` ring by a step, the action button moves out a ring; all `Offsets` 0 solves the round (`MinigamePress.Cleared`;
   it shows whole at `WholeAt`, a `WinPauseSeconds` later, as does a win: `Minigame.ResultFrom`), and the next
-  one, a ring more, starts at `RoundStartsAt`). `HandlePress` sends
+  one, a ring more, starts at `RoundStartsAt`) and `Tuner` (four sinking bars, one per answer button: a press raises one
+  by `Step` (`MinigamePress.Nudge`, silent); each `TunerBar` sinks steadily from its last press, so when all four were in
+  their zones together for `HoldSeconds` is worked out exactly (`Tuner.WonAt`), and the tick can win it with no press:
+  `Minigame.WinDue`, before the time limit, raised as a winning `MinigamePlayed`). `HandlePress` sends
   answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
   and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
   others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone

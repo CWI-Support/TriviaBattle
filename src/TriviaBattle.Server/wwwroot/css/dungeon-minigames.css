@@ -387,3 +387,42 @@
 .dg-rp-key[data-letter="A"] { --answer-color: var(--answer-a); }
 .dg-rp-key[data-letter="D"] { --answer-color: var(--answer-d); }
 .dg-rp-key.is-action b { font-size: 3vmin; padding: 1.5vh 0; }
+
+/* ---------- The tuner: four sinking bars, pressed up into their zones ---------- */
+
+.dg-tu { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; }
+.dg-tu-status { position: relative; height: 6vmin; width: 100%; text-align: center; font-family: var(--dg-font-pixel); font-size: 4.4vmin; white-space: nowrap; }
+.dg-tu-status > span { position: absolute; inset: 0; }
+.dg-tu-goal { color: var(--dg-mg-rune); }
+/* "Hold it!" while all four are in their zones together (--in0 to --in0 + --in-for), over the goal; no fill outside it. */
+.dg-tu-hold { color: var(--dg-mg-gold); opacity: 0; animation: dg-tu-hold var(--in-for) linear var(--in0); }
+@keyframes dg-tu-hold { 0%, 100% { opacity: 1; background: rgba(8, 5, 10, 0.9); } }
+
+/* The bars, side by side, each in its button's colour, its letter underneath. */
+.dg-tu-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4vw; width: 88%; height: min(46vh, 70vmin); }
+.dg-tu-bar { display: flex; flex-direction: column; align-items: center; gap: 1vh; min-height: 0; }
+.dg-tu-bar[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-tu-bar[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-tu-bar[data-letter="C"] { --answer-color: var(--answer-c); }
+.dg-tu-bar[data-letter="D"] { --answer-color: var(--answer-d); }
+.dg-tu-tube { position: relative; flex: 1; width: 100%; background: #120c16; border: 0.6vmin solid var(--dg-frame-edge); box-shadow: inset 0 0 0 0.4vmin #000; overflow: hidden; }
+/* The fill: from --from (its level at the last press, --t0) down to empty over --dur, steadily. */
+.dg-tu-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--answer-color) 70%, #000), var(--answer-color) 50%, color-mix(in srgb, var(--answer-color) 70%, #fff));
+    animation: dg-tu-sink var(--dur) linear var(--t0) both;
+}
+.dg-tu-fill.is-still { animation: none; }
+@keyframes dg-tu-sink { from { height: var(--from); } to { height: 0; } }
+/* The target zone: a band with white edges (outlined dark, so they show on every colour) over the fill; it lights up gold
+   while the bar is in it (--in0 for --in-for). */
+.dg-tu-zone { position: absolute; left: 0; right: 0; z-index: 1; border-top: 0.5vmin solid #fff; border-bottom: 0.5vmin solid #fff; background: rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 0.3vmin rgba(0, 0, 0, 0.7), inset 0 0 0 0.3vmin rgba(0, 0, 0, 0.5); }
+.dg-tu-glow { position: absolute; inset: 0; opacity: 0; animation: dg-tu-in var(--in-for) linear var(--in0); }
+@keyframes dg-tu-in { 0%, 100% { opacity: 1; background: rgba(255, 210, 63, 0.35); box-shadow: 0 0 3vmin var(--dg-mg-gold); } }
+.dg-tu-letter { font-family: var(--dg-font-pixel); font-size: 5vmin; font-weight: normal; color: #000; background: var(--answer-color); width: 100%; text-align: center; padding: 0.6vh 0; }
+/* Won: every zone gold. */
+.dg-minigame .dg-tu.is-over .dg-tu-zone { background: rgba(255, 210, 63, 0.4); box-shadow: 0 0 3vmin var(--dg-mg-gold); }

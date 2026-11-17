@@ -117,6 +117,19 @@ public class DungeonPacingTests(ITestOutputHelper output)
                 var followed = player.NextDouble() < how.OnTheMark + 0.1 - 0.1 * shuffle.Round;
                 match.Press("A1", followed ? coinAt : (coinAt + 1) % ChestShuffle.Chests, afterSeconds: 1);
                 break;
+            case Tuner tuner:
+            {
+                // Five presses a second, each on the bar furthest below the middle of its zone (a slower player for a
+                // weaker one); with every bar at or over its middle, a moment's wait for them to sink.
+                var lowest = Enumerable.Range(0, Tuner.Bars)
+                    .Select(bar => (Bar: bar, Below: (tuner.BarList[bar].ZoneLow + tuner.BarList[bar].ZoneHigh) / 2 - tuner.LevelOf(bar, match.Now)))
+                    .MaxBy(x => x.Below);
+                if (lowest.Below > 0)
+                    match.Press("A1", lowest.Bar, afterSeconds: 0.2 / how.OnTheMark);
+                else
+                    match.Wait(0.1);
+                break;
+            }
             case RingPuzzle puzzle when puzzle.RoundStartsAt > match.Now:
                 match.Wait((puzzle.RoundStartsAt - match.Now).TotalSeconds + 0.05); // the solved picture
                 break;

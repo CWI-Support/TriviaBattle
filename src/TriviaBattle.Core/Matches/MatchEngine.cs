@@ -237,7 +237,9 @@ public sealed class MatchEngine
                 events.AddRange(ChooseReward(chooser.OwnerId, choice: null, now));
 
             // Mini games: lost when their time runs out; over once their result has been shown.
-            _dungeon.MinigamesDue(now, out var lost, out var over);
+            _dungeon.MinigamesDue(now, out var wonNow, out var lost, out var over);
+            foreach (var winner in wonNow)
+                events.Add(new MinigamePlayed(winner.OwnerId, MinigamePress.Won)); // won by how things stand (the tuner), heard like a winning press
             foreach (var loser in lost)
                 events.Add(new MinigameLost(loser.OwnerId));
             foreach (var done in over)
@@ -247,7 +249,7 @@ public sealed class MatchEngine
                 if (done.Offer is { } offer)
                     events.Add(new RewardOffered(done.OwnerId, offer)); // won: a reward to pick
             }
-            if (lost.Count > 0)
+            if (lost.Count > 0 || wonNow.Count > 0)
                 Version++;
         }
 

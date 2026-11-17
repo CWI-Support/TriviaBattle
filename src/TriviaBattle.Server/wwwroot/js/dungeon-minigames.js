@@ -15,6 +15,8 @@
 //     moves them each frame from the round's list of swaps); pick it with the button under it, the action button the fifth.
 //   - the ring puzzle (ringPuzzle): a hero's picture cut into rings, each turned out of line; A and D turn the ring
 //     you're on, the action button moves out a ring. Each round has a ring more (and another hero).
+//   - the tuner (tuner): four sinking bars, one per answer button; press them up into their zones and hold all four
+//     there together. Each bar sinks as a CSS animation from its last press, so it moves without a redraw.
 // On the main screen a lane shows when its player is in one, and a win gets a banner.
 // Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js and dungeon-battle.js. Styles: css/dungeon-minigames.css.
 
@@ -26,6 +28,7 @@ const DungeonMinigames = {
             case 'RuneEcho': return Theme.text('dungeon.minigameRuneEcho');
             case 'ChestShuffle': return Theme.text('dungeon.minigameChestShuffle');
             case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzle');
+            case 'Tuner': return Theme.text('dungeon.minigameTuner');
             case 'Minigame': return Theme.text('dungeon.minigameGeneric'); // which one isn't known
             default: return UI.escape(kind);
         }
@@ -38,6 +41,7 @@ const DungeonMinigames = {
             case 'RuneEcho': return Theme.text('dungeon.minigameRuneEchoHow', { rounds: minigame.runeEcho.rounds });
             case 'ChestShuffle': return Theme.text('dungeon.minigameChestShuffleHow', { rounds: minigame.chestShuffle.rounds });
             case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzleHow', { rounds: minigame.ringPuzzle.rounds });
+            case 'Tuner': return Theme.text('dungeon.minigameTunerHow');
             default: return '';
         }
     },
@@ -49,6 +53,7 @@ const DungeonMinigames = {
             case 'RuneEcho': return DungeonMinigames.runeEcho(game, you, serverNow, seed);
             case 'ChestShuffle': return DungeonMinigames.chestShuffle(game, you, serverNow, seed);
             case 'RingPuzzle': return DungeonMinigames.ringPuzzle(game, you, serverNow, seed);
+            case 'Tuner': return DungeonMinigames.tuner(game, serverNow, seed);
             default: return '';
         }
     },
@@ -283,6 +288,67 @@ const DungeonMinigames = {
             if (t < shuffle.swaps.length * shuffle.swapMs) requestAnimationFrame(step);
         };
         step();
+    },
+
+    /**
+     * The tuner: four bars (A-D, in their buttons' colours), each with its target zone. A bar was at level (0-1) when last
+     * pressed (atMs) and sinks rate a second: its fill is a CSS animation from there to empty, timed from the server's
+     * numbers, so it sinks smoothly with no redraw (each press brings a new snapshot, and the animation starts again from
+     * the new level). The zone glows while the bar's in it, and "Hold it!" shows while all four are in together (the
+     * same sums as the server's Tuner.WonAt). Over, the bars stand where they ended.
+     */
+    tuner(game, serverNow, seed) {
+        const tuner = game.tuner;
+        const over = !!game.finishedAtMs;
+        const at = ms => Math.round(ms - serverNow);
+        // When a bar is in its zone, sinking from its last press: [from, until] in server ms, or null (below it).
+        const inZone = bar => {
+            if (bar.level < bar.zoneLow) return null;
+            if (bar.rate <= 0) return bar.level <= bar.zoneHigh ? [bar.atMs, Infinity] : null;
+            const from = bar.level > bar.zoneHigh ? bar.atMs + ((bar.level - bar.zoneHigh) / bar.rate) * 1000 : bar.atMs;
+            return [from, bar.atMs + ((bar.level - bar.zoneLow) / bar.rate) * 1000];
+        };
+        const bars = tuner.bars.map((bar, i) => {
+            const letter = UI.ANSWER_LETTERS[i];
+            const zone = `bottom: ${(bar.zoneLow * 100).toFixed(1)}%; height: ${((bar.zoneHigh - bar.zoneLow) * 100).toFixed(1)}%`;
+            let fill, glow = '';
+            if (over) {
+                // Where it stood when it ended (it stops sinking).
+                const level = Math.max(0, bar.level - bar.rate * Math.max(0, game.finishedAtMs - bar.atMs) / 1000);
+                fill = `<i class="dg-tu-fill is-still" style="height: ${(level * 100).toFixed(1)}%"></i>`;
+            } else {
+                const emptyIn = bar.rate > 0 ? (bar.level / bar.rate) * 1000 : 3.6e9;
+                fill = `<i class="dg-tu-fill" style="--from: ${(bar.level * 100).toFixed(1)}%; --dur: ${Math.round(emptyIn)}ms; --t0: ${at(bar.atMs)}ms"></i>`;
+                const stretch = inZone(bar);
+                if (stretch && stretch[1] > serverNow)
+                    glow = `style="--in0: ${at(stretch[0])}ms; --in-for: ${Math.min(3.6e9, Math.round(stretch[1] - stretch[0]))}ms"`;
+            }
+            return `
+                <div class="dg-tu-bar" data-letter="${letter}">
+                    <div class="dg-tu-tube">
+                        <i class="dg-tu-zone" style="${zone}">${glow ? `<b class="dg-tu-glow" ${glow}></b>` : ''}</i>
+                        ${fill}
+                    </div>
+                    <b class="dg-tu-letter">${letter}</b>
+                </div>`;
+        }).join('');
+        // All four in together: from the latest of their entries to the earliest of their exits.
+        const stretches = tuner.bars.map(inZone);
+        let hold = '';
+        if (!over && stretches.every(Boolean)) {
+            const from = Math.max(...stretches.map(s => s[0]));
+            const until = Math.min(...stretches.map(s => s[1]));
+            if (until > from && until > serverNow)
+                hold = `<span class="dg-tu-hold" style="--in0: ${at(from)}ms; --in-for: ${Math.min(3.6e9, Math.round(until - from))}ms; --hold: ${tuner.holdMs}ms">${Theme.text('dungeon.minigameTunerHold', {}, `${seed}:${tuner.presses}`)}</span>`;
+        }
+        return `
+            <div class="dg-tu ${over ? 'is-over' : ''}">
+                <div class="dg-tu-status">
+                    ${over ? '' : `<span class="dg-tu-goal">${Theme.text('dungeon.minigameTunerGoal', {}, seed)}</span>`}
+                    ${hold}
+                </div>
+                <div class="dg-tu-bars">${bars}</div>
+            </div>`;
     },
 
     /** The heroes whose pictures (media/heroes/{key}-head.png) the ring puzzle cuts up. */

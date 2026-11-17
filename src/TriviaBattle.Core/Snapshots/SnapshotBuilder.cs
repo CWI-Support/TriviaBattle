@@ -148,7 +148,11 @@ public static class SnapshotBuilder
             : null;
         return new MinigameView(game.Kind.ToString(), game.IntroAt.ToUnixTimeMilliseconds(), game.PlaysFrom.ToUnixTimeMilliseconds(),
             game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle,
-            ringPuzzle, ToUnixMs(game.ResultFrom));
+            ringPuzzle, ToUnixMs(game.ResultFrom),
+            game is Dungeon.Minigames.Tuner t
+                ? new TunerView(t.BarList.Select(b => new TunerBarView(b.Level, b.At.ToUnixTimeMilliseconds(), b.Rate, b.ZoneLow, b.ZoneHigh)).ToList(),
+                    Ms(t.HoldSeconds), t.Presses)
+                : null);
     }
 
     private static long Ms(double seconds) => (long)Math.Round(seconds * 1000);

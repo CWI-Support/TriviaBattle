@@ -221,17 +221,19 @@ side has its own clock, so only that player's (or team's) clock stops. Winning e
 | **Rune Echo** | A "Simon says": the four runes (one per answer button) light up one after another; press them back in the same order. 5 rounds, 3 runes then one more each round; getting the 7-rune round right wins. A wrong rune shows that round again. 55 seconds. |
 | **Chest Shuffle** | A shell game: a coin drops into one of five chests, the lids close and the chests swap places. Press the button under the chest it's in: A, B, C, D, and the **action button** for the fifth. 3 rounds of 5, 7 and 9 swaps, faster each time, and at least half of them move the coin's own chest; a right pick pops the coin out of its chest, the wrong chest loses it (and shows where the coin was). 30 seconds. |
 | **Ring Puzzle** | A hero's picture cut into rings round a middle disc, each ring turned out of line. **A** turns the ring you're on anticlockwise, **D** clockwise, and the **action button** moves out to the next ring (from the outside one, back to the middle); the ring you're on is lit gold. Every ring in line solves the round: the last ring settles, and a second later the picture shows whole with the win sound. 3 rounds of 3, 4 and 5 rings, a different hero each time. Only the time limit loses it. 60 seconds. |
+| **Tuner** | Four bars, one per answer button (A-D, in their colours), each sinking at its own speed. Press a button to lift its bar; each bar has a glowing target zone. Get all four into their zones and hold them there together for half a second. The action button does nothing; only the time limit loses it. 40 seconds. |
 
 Set in `"Game:Dungeon:Minigames"` (`MinigameSettings`): `IntroSeconds`, `ResultSeconds`, `WinEarnsReward`, and each
 game's numbers (`RuneLock`: `Hits`, `Seconds`, `LockoutSeconds`, `MarkDegrees`, `MarkShrinkPerHit`, `DegreesPerSecond`,
 `SpeedUpPerHit`; `RuneEcho`: `StartLength`, `Rounds`, `StepSeconds`, `LitSeconds`, `Seconds`...; `ChestShuffle`:
 `RevealSeconds`, `BetweenSeconds`, `CoinSwapShare`, `Seconds`, and its `Swaps` and `SwapSeconds` per round, which are best changed in
 `MinigameSettings.cs`: a list in appsettings is added to the defaults, not put in their place); `RingPuzzle`: `StartRings`,
-`Rounds`, `Steps` (to a full turn), `SolvedPauseSeconds`, `BetweenSeconds`, `Seconds`).
+`Rounds`, `Steps` (to a full turn), `SolvedPauseSeconds`, `BetweenSeconds`, `Seconds`; `Tuner`: `Step`, `SinkSlowest`,
+`SinkFastest`, `ZoneSize`, `ZoneLowest`, `ZoneHighest`, `HoldSeconds`, `Seconds`).
 To add one: a class in `Core/Dungeon/Minigames` (from `Minigame`), a `MinigameKind`, a case in `MinigameCatalog.Create`,
 its part of the snapshot (`MinigameView`) and its drawing in `js/dungeon-minigames.js`. Every kind is as likely as the
 others. Preview: `/dev/battle?kind=runelock` (also `runelock-won`, `runelock-lost`), `runeecho`, `chestshuffle`, `chestshuffle-found`,
-`chestshuffle-lost`, `ringpuzzle` (also `ringpuzzle-solved`, `ringpuzzle-won`).
+`chestshuffle-lost`, `ringpuzzle` (also `ringpuzzle-solved`, `ringpuzzle-won`), `tuner` (also `tuner-won`).
 
 A kiosk game has no hero choice: everyone plays the Tank. In 2v2 Group, where teammates share one question,
 the team fights as the first teammate's hero.

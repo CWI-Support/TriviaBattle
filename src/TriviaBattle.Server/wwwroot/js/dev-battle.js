@@ -46,12 +46,13 @@
 // chestshuffle-found (a right pick: the coin pops out of chest D, then round 2 starts), chestshuffle-lost (the wrong
 // chest: the coin shown where it was). ringpuzzle (the intro, then round 2 of 3: four rings, the second lit),
 // ringpuzzle-solved (round 1's picture whole, then round 2 starts), ringpuzzle-won (the last one whole).
+// tuner (the intro, then the four bars sinking: A and C already in their zones), tuner-won (all four held in).
 // out: downed on the last life (OUT!; the plate's hearts all dark).
 //   /dev/battle?kind=hit&charge=2&at=1600   any kind against the boss, and the question after it with the
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', 'teamkill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'out'];
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'out'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
 // ?long: a long question and long answers (the admin editor allows 250 and 80 letters), to check they shrink to fit.
@@ -59,7 +60,7 @@ const LONG_QUESTION = {
     text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
     answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
 };
-const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -350,6 +351,23 @@ function fakeState(kind, startedAt, question) {
                          runeLock: { hits: kind === 'runelock-won' ? 6 : 2, hitsNeeded: 6, lockedUntilMs: null, turnStartedAtMs: playsFromMs, turnAngle: 0,
                                      degreesPerSecond: 200, markAngle: 150, markDegrees: 40, presses: 2, lastWasHit: true } };
     }
+    if (kind.startsWith('tuner')) {
+        // tuner: the intro now, then the bars sinking from where they were last pressed (A and C in their zones, B under
+        // its, D over it and sinking in). won: all four held in, stood where they ended.
+        you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt };
+        you.question = null;
+        const won = kind === 'tuner-won';
+        const playsFromMs = won ? startedAt - 16500 : startedAt + 3500;
+        const pressedAt = won ? startedAt : playsFromMs;
+        const bar = (level, rate, zoneLow) => ({ level, atMs: pressedAt, rate, zoneLow, zoneHigh: zoneLow + 0.15 });
+        you.minigame = { kind: 'Tuner', introAtMs: playsFromMs - 3500, playsFromMs, endsAtMs: playsFromMs + 40000,
+                         finishedAtMs: won ? startedAt : null, won, resultFromMs: won ? startedAt : null, resultEndsAtMs: won ? startedAt + 3200 : null,
+                         runeLock: null,
+                         tuner: { bars: won
+                                      ? [bar(0.5, 0.04, 0.4), bar(0.35, 0.08, 0.25), bar(0.65, 0.05, 0.55), bar(0.62, 0.03, 0.5)]
+                                      : [bar(0.5, 0.04, 0.4), bar(0.15, 0.08, 0.25), bar(0.65, 0.05, 0.55), bar(0.9, 0.03, 0.5)],
+                                  holdMs: 500, presses: won ? 30 : 12 } };
+    }
     if (kind.startsWith('ringpuzzle')) {
         // ringpuzzle: the intro now, then round 2 (four rings, the second lit). solved: round 1's last ring was just
         // turned into place (its outside ring turns in), it shows whole 1 s later, and round 2 starts 1.5 s after that.
@@ -373,7 +391,7 @@ function fakeState(kind, startedAt, question) {
     }
 
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
-                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') ? 74000 : null,
+                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') || kind.startsWith('tuner') ? 74000 : null,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),

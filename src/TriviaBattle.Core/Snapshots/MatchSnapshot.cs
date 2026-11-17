@@ -216,7 +216,17 @@ public sealed record RewardTakenView(int Number, Reward Reward, double Amount, i
 /// <param name="ResultFromMs">When the result shows: when it finished, or a moment later for a win that holds its picture first (the ring puzzle).</param>
 public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs, long EndsAtMs, long? FinishedAtMs, bool Won, long? ResultEndsAtMs,
     RuneLockView? RuneLock, RuneEchoView? RuneEcho = null, ChestShuffleView? ChestShuffle = null, RingPuzzleView? RingPuzzle = null,
-    long? ResultFromMs = null);
+    long? ResultFromMs = null,
+    TunerView? Tuner = null);
+
+/// <summary>
+/// The tuner: four bars (A-D). Bar i was at <see cref="TunerBarView.Level"/> (0-1) at <see cref="TunerBarView.AtMs"/> and
+/// sinks <see cref="TunerBarView.Rate"/> a second until it's empty; its target zone is <see cref="TunerBarView.ZoneLow"/> to
+/// <see cref="TunerBarView.ZoneHigh"/>. All four held in their zones together for <see cref="HoldMs"/> wins it.
+/// </summary>
+public sealed record TunerView(IReadOnlyList<TunerBarView> Bars, long HoldMs, int Presses);
+
+public sealed record TunerBarView(double Level, long AtMs, double Rate, double ZoneLow, double ZoneHigh);
 
 /// <summary>
 /// The ring puzzle. This round's picture is cut into <see cref="Rings"/> rings (0 = the middle disc), ring i turned

@@ -190,7 +190,7 @@ public class RuneEchoAndChestShuffleTests
 
         var counts = Enumerable.Range(0, 3000).Select(_ => MinigameCatalog.Pick(random)).GroupBy(k => k).ToDictionary(g => g.Key, g => g.Count());
 
-        Assert.Equal(4, counts.Count);
-        Assert.All(counts.Values, n => Assert.InRange(n, 650, 850));
+        Assert.Equal(5, counts.Count);
+        Assert.All(counts.Values, n => Assert.InRange(n, 500, 700));
     }
 }

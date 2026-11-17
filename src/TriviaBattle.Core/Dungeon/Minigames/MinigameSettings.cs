@@ -22,6 +22,7 @@ public sealed class MinigameSettings
     public RuneEchoSettings RuneEcho { get; set; } = new();
     public ChestShuffleSettings ChestShuffle { get; set; } = new();
     public RingPuzzleSettings RingPuzzle { get; set; } = new();
+    public TunerSettings Tuner { get; set; } = new();
 
     public MinigameSettings Copy()
     {
@@ -30,8 +31,38 @@ public sealed class MinigameSettings
         copy.RuneEcho = RuneEcho.Copy();
         copy.ChestShuffle = ChestShuffle.Copy();
         copy.RingPuzzle = RingPuzzle.Copy();
+        copy.Tuner = Tuner.Copy();
         return copy;
     }
+}
+
+/// <summary>The tuner: four sinking bars, pressed up into their zones (<see cref="Tuner"/>). Levels are shares of the bar (0-1).</summary>
+public sealed class TunerSettings
+{
+    /// <summary>How far one press raises a bar.</summary>
+    public double Step { get; set; } = 0.1;
+
+    /// <summary>
+    /// How fast the bars sink, a second: each picks its own speed between these. With these, about four presses a second
+    /// (aimed at the lowest bar) wins it 9 times in 10, in about 20 s; three and a half a second, about half the time.
+    /// </summary>
+    public double SinkSlowest { get; set; } = 0.04;
+    public double SinkFastest { get; set; } = 0.11;
+
+    /// <summary>How tall each target zone is (keep it taller than a Step, so a press can always land a bar in it).</summary>
+    public double ZoneSize { get; set; } = 0.15;
+
+    /// <summary>Where a zone's middle can be: each picks its own height between these.</summary>
+    public double ZoneLowest { get; set; } = 0.3;
+    public double ZoneHighest { get; set; } = 0.8;
+
+    /// <summary>All four in their zones together for this long wins it (0: the moment they all are).</summary>
+    public double HoldSeconds { get; set; } = 0.5;
+
+    /// <summary>The time limit.</summary>
+    public double Seconds { get; set; } = 40;
+
+    public TunerSettings Copy() => (TunerSettings)MemberwiseClone();
 }
 
 /// <summary>The ring puzzle: a picture cut into rings, each turned out of line (<see cref="RingPuzzle"/>).</summary>
