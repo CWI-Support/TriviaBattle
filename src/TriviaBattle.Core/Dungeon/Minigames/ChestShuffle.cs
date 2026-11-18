@@ -16,6 +16,9 @@ public sealed class ChestShuffle : Minigame
 {
     public const int Chests = 5;
 
+    /// <summary>The fifth chest is the action button's.</summary>
+    public override bool UsesActionButton => true;
+
     private readonly ChestShuffleSettings _settings;
     private readonly Random _random;
 

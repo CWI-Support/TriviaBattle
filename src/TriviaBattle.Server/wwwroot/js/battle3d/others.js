@@ -15,7 +15,7 @@
 
 import { Actor } from './actor.js';
 import { HealSparkle } from './effects.js';
-import { mix, easeOut, easeInOut, pulse, kick, walkPose, HEAL_AT } from './beats.js';
+import { mix, easeOut, easeInOut, pulse, kick, walkPose, openingPose, HEAL_AT } from './beats.js';
 
 // Where teammates stand, in joining order: behind and beside your hero. x is along the floor; back is how
 // far behind the slanted line the fight is staged on (your hero and the monster stand on it); reach is how
@@ -125,7 +125,9 @@ export class Others {
             actor.root.position.set(slot.x, 0, actor.zAt(slot.x));
             this.scene.add(actor.root);
             ally.actor = actor;
-        });
+        }, () => setTimeout(() => {
+            if (this.allies.get(player.stationId) === ally) this.remove(player.stationId); // didn't load: a later update adds them again
+        }, 2000));
         return ally;
     }
 
@@ -197,8 +199,15 @@ export class Others {
             return 0;
         }
 
-        // On the walk to the next room (your beat's: the whole party sees the same one), they run on with you.
+        // The game's opening (the same beat on every screen): they run in with you, a step behind.
         const you = this.view?.you;
+        if (you?.beat?.kind === 'enter' && now >= you.beat.startedAtMs && now < you.beat.endsAtMs) {
+            const { dx, lift, squash, pose } = openingPose(spec, now - you.beat.startedAtMs - 120 * (1 + slot.back), idle);
+            actor.apply({ x: slot.x + dx, lift, squash, ...pose });
+            return 0;
+        }
+
+        // On the walk to the next room (your beat's: the whole party sees the same one), they run on with you.
         const walking = you && DungeonBattle.walks(you) && now >= you.beat.startedAtMs && now < you.beat.endsAtMs
             ? walkPose(spec, now - you.beat.startedAtMs, idle) : null;
         if (walking) {
@@ -242,7 +251,7 @@ export class Others {
             actor.root.visible = false;
             this.scene.add(actor.root);
             cameo.actor = actor;
-        });
+        }, () => {}); // didn't load: this moment goes without the rival dropping in
         return cameo;
     }
 

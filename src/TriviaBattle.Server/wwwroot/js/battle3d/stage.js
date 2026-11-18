@@ -13,10 +13,16 @@ import { ROOM, TORCH_LIGHTS } from './models.js';
 const loader = new GLTFLoader();
 const loaded = new Map();
 
-/** Loads a .glb once; later calls get the same promise. */
+/**
+ * Loads a .glb once; later calls get the same promise. A failed load (a blip on the venue's network) isn't kept, so
+ * the next ask tries again instead of that model never showing until the page reloads.
+ */
 export function loadModel(file) {
     if (!loaded.has(file))
-        loaded.set(file, loader.loadAsync(file));
+        loaded.set(file, loader.loadAsync(file).catch(error => {
+            loaded.delete(file);
+            throw error;
+        }));
     return loaded.get(file);
 }
 

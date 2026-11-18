@@ -32,9 +32,12 @@ const DungeonView = {
     states: {},  // key -> { cls, at }: short animation states still playing (see lasting)
     firstSeen: {}, // key -> when it was first drawn (see since)
 
-    /** Starts a short effect under a key: it's drawn by activeEffects until it has played for ms. */
-    effect(key, html, ms) {
-        (DungeonView.effects[key] ??= []).push({ html, at: Date.now(), ms });
+    /**
+     * Starts a short effect under a key: it's drawn by activeEffects until it has played for ms. delay: it starts that
+     * much later (until then its animations wait: --t0 is positive), e.g. once a battle beat covering it is over.
+     */
+    effect(key, html, ms, delay = 0) {
+        (DungeonView.effects[key] ??= []).push({ html, at: Date.now() + delay, ms });
     },
 
     /**
@@ -406,7 +409,7 @@ const DungeonView = {
         const delve = you.delve;
         const q = you.question;
         const news = DungeonView.news(`station:${you.stationId}`, delve);
-        const clockKey = `clock:${match.matchId}`;
+        const clockKey = `clock:${match.matchId}:${match.continuesUsed}`; // a continue's 140 s isn't time earned
         const timeAdded = DungeonView.timeAdded(clockKey, match);
         if (timeAdded)
             DungeonView.effect(clockKey, DungeonView.timeAddedPop(timeAdded), 1600);
@@ -434,7 +437,7 @@ const DungeonView = {
             <div class="dg-plate">
                 ${HeroPhoto.portrait(match, you.stationId, 'dg-portrait', stationColor)}
                 <div class="dg-plate-info">
-                    <div class="dg-plate-name"><span class="dg-plate-name-text">${UI.escape(you.name)}</span>${DungeonView.classBadge(delve.heroClass)}${DungeonView.lives(delve.lives, delve.maxLives)}</div>
+                    <div class="dg-plate-name"><span class="dg-plate-name-text" style="--chars: ${you.name.length}">${UI.escape(you.name)}</span>${DungeonView.classBadge(delve.heroClass)}${DungeonView.lives(delve.lives, delve.maxLives)}</div>
                     ${DungeonView.hp(delve.hp, delve.maxHp, `is-hero ${selfHealed ? 'is-healed' : ''}`, selfHealed ? `--t0: ${healed.t0}ms` : '')}
                     ${DungeonRewards.badges(delve)}
                 </div>
@@ -444,10 +447,12 @@ const DungeonView = {
 
         // A power-up used (by you, or a teammate's Potion aimed at you): a pop over the monster, once.
         const powerUpKey = `pu:${you.stationId}`;
+        // The pop is drawn over the question: one that comes during a battle beat waits for it to end, or it'd be over unseen.
+        const popWaits = DungeonBattle.isPlaying(you, serverNow) ? Math.max(0, you.beat.endsAtMs - serverNow) : 0;
         // A Fog Bomb or Tiny Hourglass names the rival it went to: from the match's players, as they're not in your party.
         DungeonPowerUps.noticeUse(powerUpKey, delve, ownerId => delve.party.find(p => p.ownerId === ownerId)?.name
-            || match.players?.find(p => p.stationId === ownerId)?.name || you.name);
-        DungeonPowerUps.noticeSabotage(powerUpKey, delve); // a rival's that came at you
+            || match.players?.find(p => p.stationId === ownerId)?.name || you.name, popWaits);
+        DungeonPowerUps.noticeSabotage(powerUpKey, delve, popWaits); // a rival's that came at you
 
         // Between two rooms: the floor's mini game (js/dungeon-minigames.js).
         if (DungeonMinigames.showing(you, serverNow))
@@ -463,7 +468,7 @@ const DungeonView = {
             return `
                 <div class="dg-station is-battle">
                     <div class="dg-world">
-                        ${DungeonBattle.scene(match, you, stationColor, serverNow)}
+                        ${you.beat.kind === 'enter' ? DungeonBattle.opening(match, you, stationColor, serverNow) : DungeonBattle.scene(match, you, stationColor, serverNow)}
                         ${top}
                     </div>
                     ${DungeonView.teammates(delve, you.stationId, match, healed)}
@@ -498,9 +503,11 @@ const DungeonView = {
      * A player with a hero photo has their face where the knight's portrait would be.
      */
     lane({ key, name, color, delve, score, rank, isLeader, serverNow, match }) {
-        const news = DungeonView.news(`lane:${key}`, delve);
+        // What's been seen is kept per game: the room's screens stay up between games, which number their hits from 1.
+        const memo = `${match.matchId}:${key}`;
+        const news = DungeonView.news(`lane:${memo}`, delve);
         const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
-        const shake = DungeonView.lasting(`lane:${key}:hurt`, news.taken ? 'is-hurt' : null, 450);
+        const shake = DungeonView.lasting(`lane:${memo}:hurt`, news.taken ? 'is-hurt' : null, 450);
         const waiting = delve.foes?.slice(1) || []; // a pack: the monsters behind the one being fought
         return `
             <div class="dg-lane ${isLeader ? 'is-leader' : ''} ${shake.cls}" style="--lane-color: ${color}; --t0: ${shake.t0}ms">
@@ -513,7 +520,7 @@ const DungeonView = {
                 ${DungeonView.trail(delve)}
                 <div class="dg-lane-stage">
                     ${DungeonView.packSprites(waiting)}
-                    ${DungeonView.monster(delve, news, `fx:lane:${key}`)}
+                    ${DungeonView.monster(delve, news, `fx:lane:${memo}`)}
                     ${downed ? `<div class="dg-overlay is-downed small">${Theme.text('dungeon.downedShort')}</div>` : ''}
                     ${delve.minigame ? `<div class="dg-overlay is-minigame small">${Theme.text('dungeon.laneMinigame', { game: Theme.raw(DungeonMinigames.name(delve.minigame)) })}</div>` : ''}
                     ${DungeonView.packStrip(waiting, 'is-lane')}
@@ -537,13 +544,14 @@ const DungeonView = {
      * name is already HTML-escaped.
      */
     noteMoments({ key, name, color, delve, match }) {
-        const hit = DungeonView.news(`moment:${key}`, delve).dealt;
-        const picked = DungeonRewards.newPick(key, delve); // a floor reward picked
-        const lockWon = DungeonMinigames.newWin(key, delve); // a mini game won
+        const memo = `${match.matchId}:${key}`; // kept per game (see lane)
+        const hit = DungeonView.news(`moment:${memo}`, delve).dealt;
+        const picked = DungeonRewards.newPick(memo, delve); // a floor reward picked
+        const lockWon = DungeonMinigames.newWin(memo, delve); // a mini game won
         // A rival's Fog Bomb or Tiny Hourglass that came at this lane, once (by when: teammates' counts are their own).
         const sabotage = delve.lastSabotage;
-        const sabotageBefore = DungeonView.seen[`sabotage:${key}`];
-        DungeonView.seen[`sabotage:${key}`] = sabotage?.atMs || 0;
+        const sabotageBefore = DungeonView.seen[`sabotage:${memo}`];
+        DungeonView.seen[`sabotage:${memo}`] = sabotage?.atMs || 0;
         const sabotaged = sabotageBefore !== undefined && sabotage && sabotage.atMs !== sabotageBefore ? sabotage : null;
         if (!hit && !picked && !lockWon && !sabotaged) return;
 
@@ -561,17 +569,17 @@ const DungeonView = {
             const values = { name: sabotaged.fromName, target: who, powerUp: Theme.raw(DungeonPowerUps.name(sabotaged.powerUp)) };
             banner('sabotage', sabotaged.blocked ? Theme.text('dungeon.momentSabotageBlocked', values) : Theme.text('dungeon.momentSabotage', values),
                 `icon-pu-${sabotaged.blocked ? 'Shield' : sabotaged.powerUp}`);
-            DungeonHost.say(Theme.text(sabotaged.blocked ? 'dungeon.hostSabotageBlocked' : 'dungeon.hostSabotage', values, `${key}:sabotage:${sabotaged.atMs}`));
+            DungeonHost.say(Theme.text(sabotaged.blocked ? 'dungeon.hostSabotageBlocked' : 'dungeon.hostSabotage', values, `${memo}:sabotage:${sabotaged.atMs}`));
         }
         if (lockWon)
             banner('reward', Theme.text('dungeon.momentMinigameWon', { name: who, game: Theme.raw(DungeonMinigames.name(lockWon)) }), 'icon-chest');
         if (picked) {
             banner('reward', Theme.text('dungeon.momentReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }), `icon-rw-${picked.reward}`);
-            DungeonHost.say(Theme.text('dungeon.hostReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }, `${key}:reward:${picked.number}`));
+            DungeonHost.say(Theme.text('dungeon.hostReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }, `${memo}:reward:${picked.number}`));
         }
         if (!hit) return;
 
-        const seed = `${key}:${hit.number}`;
+        const seed = `${memo}:${hit.number}`;
         const host = (lineKey, values) => DungeonHost.say(Theme.text(lineKey, values, seed));
 
         if (hit.killed && hit.isBoss) {

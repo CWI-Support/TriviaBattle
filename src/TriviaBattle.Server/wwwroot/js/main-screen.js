@@ -159,7 +159,9 @@ function renderIntro(match) {
         <div class="intro-show">
             <div class="center-stack intro-stage" style="${UI.animateAt(match.phaseEndsAtMs - 3000)}">
                 <div class="intro-slam" ${at(0)}><h1 class="big-title">${Theme.text('intro.title', {}, momentSeed(match))}</h1></div>
-                <p class="subtitle intro-rise" ${at(400)}>${modeName(match)} &middot; ${UI.escape(match.category)} &middot; ${UI.escape(match.difficulty)}</p>
+                <p class="subtitle intro-rise" ${at(400)}>${modeName(match)} &middot; ${UI.escape(match.category)}${
+                    // A dungeon's questions get harder floor by floor (config/dungeon.json): one difficulty would be wrong.
+                    match.format === 'Dungeon' ? '' : ` &middot; ${UI.escape(match.difficulty)}`}</p>
                 ${lineup}
                 <p class="subtitle intro-rise" ${at(1700)}>${Theme.text('intro.rules', { seconds: match.matchSeconds }, momentSeed(match))}</p>
                 ${match.earnsTime ? `<p class="subtitle intro-rise" ${at(2100)}>${Theme.text('intro.earnTime', {}, momentSeed(match))}</p>` : ''}
@@ -223,8 +225,11 @@ function renderDungeonPlaying(match) {
     const rankOf = o => owners.filter(other => ahead(other, o) < 0).length + 1;
     const anyoneBehind = owners.some(o => rankOf(o) > 1); // nobody glows while it's all square
     const now = connection.serverNow();
-    const clockKey = `clock:${match.matchId}`;
-    const timeAdded = DungeonView.timeAdded(clockKey, match); // a solo kill earned time
+    const clockKey = `clock:${match.matchId}:${match.continuesUsed}`; // a continue's 140 s isn't time earned
+    // A kill earned time. Not with a clock per side (a race, a battle): the big clock is whichever side ends last, so a
+    // jump there isn't anyone's kill (each lane shows its own clock).
+    const sideClocks = owners.some(o => o.delve?.clockEndsAtMs);
+    const timeAdded = sideClocks ? 0 : DungeonView.timeAdded(clockKey, match);
     if (timeAdded)
         DungeonView.effect(clockKey, DungeonView.timeAddedPop(timeAdded), 1600);
     owners.forEach(o => DungeonView.noteMoments({ ...o, match })); // floors cleared, bosses, revives, party combos: banners across the room

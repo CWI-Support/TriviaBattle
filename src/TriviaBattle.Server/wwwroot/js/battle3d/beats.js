@@ -11,6 +11,8 @@
 //           2900 and the boss leaps in (showBossEntrance, below)
 //   hurt    0 the monster lunges, 240 it strikes; the knight reels
 //   downed  the hurt, then 640 the knight falls (and stays down)
+//   enter   the opening, after the intro's countdown (3.5 s): 200-1300 the hero runs in from off the left, hops into
+//           its spot and lands at 1700; 900 the first monster makes its entrance (showOpening, below)
 // The hero classes' moments, on the same clock:
 //   splash  (Wizard) 70 a spell leaves the hero for each waiting monster, 190 it lands with the blow: they
 //           flinch; one it killed goes down at 720 and bursts at 1000, with the one in front
@@ -206,8 +208,11 @@ const SETTLE_MS = 200;           // a clip blending back into the idle at the en
 // the HTML (the curtain, its nameplate) and RoomSoundService the landing's sound to the same moments:
 //   1280 the WARNING! curtain covers the kill, 2900 it lifts on the empty room, 3000 the ground rumbles, 3300 the boss
 //   leaps in from the right, 3750 it lands: a slam (dust, a shockwave, a big shake, the knight thrown back a step),
-//   4150 it taunts, burning red, as its nameplate slams in; the question at 5000.
+//   4150 it taunts, burning red, as its nameplate slams in; the question at 5000. A boss with another entrance (a
+//   skeleton climbing out of the ground) starts it so it's there at 3750 too, landing with the same slam (bossEntersAt).
 export const BOSS_CURTAIN_LIFTS = 2900;
+const BOSS_HIDDEN_FROM = 1400;   // the curtain covers the room by now (1280-1330): a boss's entrance can start under it
+const DROP_LANDS_MS = 300;       // no entrance: it drops in, hitting the floor this far in (dropIn)
 const BOSS_RUMBLE = 3000;
 export const BOSS_LEAPS = 3300;
 export const BOSS_LANDS = BOSS_LEAPS + LEAP_MS;   // 3750
@@ -238,7 +243,9 @@ export function showEntrance(actor, ms, { fx, stage, homes, seconds }) {
     switch (entrance?.style) {
         case 'run': {
             const p = Math.min(1, ms / RUN_MS);
-            const pose = ms < RUN_MS ? { clip: entrance.clip, time: looped(entrance.clip, ms) } : settle(entrance.clip, RUN_MS);
+            // It settles from the stride it was on (the clip loops), not the clip's own end: that would pop its legs.
+            const pose = ms < RUN_MS ? { clip: entrance.clip, time: looped(entrance.clip, ms) }
+                : { ...idle, from: { clip: entrance.clip, time: looped(entrance.clip, RUN_MS) }, fade: Math.min(1, (ms - RUN_MS) / SETTLE_MS) };
             actor.apply({ x: homes.foe + RUN_FROM * (1 - easeOut(p)), ...pose });
             return { zoom: 1, focus: 0, travel: ms < RUN_MS - 150 };
         }
@@ -313,12 +320,111 @@ export function showBossEntrance(ms, boss, cast, lean) {
     else if (hero.has(reel) && t >= reelMs) heroPose = { ...heroIdle, from: { clip: reel, time: reelMs / 1000 }, fade: Math.min(1, (t - reelMs) / 200) };
     hero.apply({ x: homes.hero - 0.35 * kick(t, 80, 600), lift: 0, ...heroPose });
 
-    if (!boss || ms < BOSS_LEAPS) {
-        // The rumble before it comes: the room trembling, more and more.
-        shake(stage, ms, ms >= BOSS_RUMBLE ? 0.035 * Math.min(1, (ms - BOSS_RUMBLE) / 300) : 0);
+    // The rumble before it gets there: the room trembling, more and more.
+    const rumble = () => shake(stage, ms, ms >= BOSS_RUMBLE ? 0.035 * Math.min(1, (ms - BOSS_RUMBLE) / 300) : 0);
+    if (!boss || ms < bossEntersAt(boss)) {
+        rumble();
         return { zoom: 1, focus: 0, travel: false };
     }
-    return showEntrance(boss, ms - BOSS_LEAPS, cast);
+    const shown = showEntrance(boss, ms - bossEntersAt(boss), cast);
+    if (boss.spec.entrance?.style === 'leap') return shown; // its landing is its own slam
+    // Any other entrance (a skeleton climbing out of the ground...) gets to its spot as the room hears the slam, and
+    // lands with the same impact: dust, a shockwave, the screen jolting.
+    if (t < 0) {
+        rumble();
+        return shown;
+    }
+    const feet = boss.chest();
+    feet.y = 0.2;
+    cast.fx.showSlamDust(feet, t / 1000, 11);
+    cast.fx.showShockwave(boss.root.position, t / 1000, true, 1.8);
+    shake(stage, ms, jolt(t, 0.32) + jolt(t - 380, 0.12));
+    return { ...shown, zoom: shown.zoom * (1 - 0.12 * punch(t, 700)) };
+}
+
+/** How long a monster's entrance takes to get it to its spot (ms): a leap's flight, a run, a climb out of the ground... */
+function arrivalMs(actor) {
+    const entrance = actor.spec.entrance;
+    switch (entrance?.style) {
+        case 'leap': return LEAP_MS;
+        case 'run': return RUN_MS;
+        case 'rise': return actor.duration(entrance.clip) * 1000;
+        case 'swoop': return SWOOP_MS;
+        default: return DROP_LANDS_MS;
+    }
+}
+
+/**
+ * When a boss starts its entrance in the boss beat, so it gets to its spot at BOSS_LANDS (the slam's sound on the
+ * server: RoomSoundService): a leap at BOSS_LEAPS, a longer entrance earlier (a skeleton's climb starts under the
+ * WARNING! curtain, already half out of the ground as it lifts), never before the curtain covers the room.
+ */
+export function bossEntersAt(actor) {
+    return Math.max(BOSS_HIDDEN_FROM, BOSS_LANDS - arrivalMs(actor));
+}
+
+// ---------------------------------------------------------------- The opening
+
+// The opening (beat 'enter', 3.5 s after the intro's countdown: DungeonSettings.OpeningBeatSeconds; css/dungeon-battle.css
+// times the HTML over it to the same moments): 0-700 the dark lifts, the camera pushing in from wide meanwhile;
+// 200-1300 the hero runs in from off the left, then 1300-1700 hops the last stretch into its spot and lands ready;
+// 900 the first monster makes its entrance (showEntrance); 1100 FLOOR 1, 2300 FIGHT!; the question at 3500.
+export const OPENING_RUN_FROM = 200;
+const OPENING_HOP_FROM = 1300;
+const OPENING_LANDS = 1700;
+const OPENING_FROM_X = 4.2;    // how far left of their spot heroes start (out of the shot)
+const OPENING_HOP_X = 0.9;     // the hop's share of that, at the end
+const OPENING_HOP_HEIGHT = 0.55;
+const OPENING_FOE_FROM = 900;
+const OPENING_PULL = 0.35;     // the camera starts this much further back...
+const OPENING_PUSH_MS = 1800;  // ...and pushes in over this long
+
+/**
+ * A hero in the opening (yours, or a teammate's in js/battle3d/others.js), ms into it: { dx (how far left of their
+ * spot), lift, squash, pose }. The run clip while running and in the air, blending into the idle as they land.
+ */
+export function openingPose(spec, ms, idle) {
+    const runFor = OPENING_HOP_FROM - OPENING_RUN_FROM;
+    const run = spec.run ? { clip: spec.run, time: Math.max(0, ms - OPENING_RUN_FROM) / 1000 } : idle;
+    if (ms < OPENING_HOP_FROM) {
+        const p = Math.max(0, (ms - OPENING_RUN_FROM) / runFor);
+        // Full speed from the start (it comes from off the screen), slowing a little as it reaches the hop.
+        return { dx: -OPENING_FROM_X + (OPENING_FROM_X - OPENING_HOP_X) * (p * (1.3 - 0.3 * p)), lift: 0, squash: 0, pose: run };
+    }
+    if (ms < OPENING_LANDS) {
+        const p = (ms - OPENING_HOP_FROM) / (OPENING_LANDS - OPENING_HOP_FROM);
+        return { dx: -OPENING_HOP_X * (1 - p), lift: OPENING_HOP_HEIGHT * Math.sin(Math.PI * p), squash: -0.08 * Math.sin(Math.PI * p), pose: run };
+    }
+    const landed = ms - OPENING_LANDS;
+    return {
+        dx: 0, lift: 0,
+        squash: 0.22 * Math.exp(-landed / 90) * Math.cos(landed / 45),
+        pose: spec.run && landed < 250 ? { ...idle, from: run, fade: landed / 250 } : idle,
+    };
+}
+
+/**
+ * One frame of the opening: the hero runs and hops in, the first monster makes its entrance (from before it starts:
+ * its first frame, which has it out of the shot or out of sight), the waiting pack stands in the room. Returns the
+ * camera's lean, with travel: true while the monster moves sideways.
+ */
+export function showOpening(ms, cast) {
+    const { hero, foe, fx, stage, homes, seconds } = cast;
+    fx.hideAll();
+    stage.shake.set(0, 0);
+    const { dx, lift, squash, pose } = openingPose(hero.spec, ms, { clip: hero.spec.idle, time: seconds });
+    hero.apply({ x: homes.hero + dx, lift, squash, ...pose });
+    // A little dust as the hero lands (before the monster's entrance: its own dust, climbing out of the ground, wins).
+    const feet = hero.chest();
+    feet.y = 0.2;
+    fx.showSlamDust(feet, (ms - OPENING_LANDS) / 1000, 5);
+    // The monster isn't in the room until its entrance starts (the first frame of one can be in the shot: a bat hanging
+    // in the corner, a skeleton's dust).
+    let lean = { zoom: 1, focus: 0, travel: false };
+    if (ms >= OPENING_FOE_FROM) lean = showEntrance(foe, ms - OPENING_FOE_FROM, cast);
+    else foe.root.visible = false;
+    showPack(cast, null, 0);
+    return { zoom: lean.zoom * (1 + OPENING_PULL * (1 - easeInOut(Math.min(1, ms / OPENING_PUSH_MS)))), focus: lean.focus, travel: lean.travel && ms > OPENING_FOE_FROM };
 }
 
 /**

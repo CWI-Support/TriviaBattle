@@ -162,6 +162,16 @@ public sealed class DungeonRun
         }
     }
 
+    /// <summary>
+    /// A continue: play was paused (Continue?, waiting for a swipe), so the poison carries on from now, not with every
+    /// bite it missed landing at once.
+    /// </summary>
+    public void ResumePoison(DateTimeOffset now)
+    {
+        foreach (var delve in _delves.Values)
+            delve.HoldPoison(now + TimeSpan.FromSeconds(_settings.Classes.PoisonTickSeconds));
+    }
+
     /// <summary>The clock has stopped: no more attacks.</summary>
     public void Stop()
     {
@@ -548,9 +558,17 @@ public sealed class DungeonRun
     /// </summary>
     public IReadOnlyList<(string PartyId, int Damage, DealtHit? Kill)> TickPoison(DateTimeOffset now)
     {
+        var tick = TimeSpan.FromSeconds(_settings.Classes.PoisonTickSeconds);
         var results = new List<(string, int, DealtHit?)>();
         foreach (var delve in _delves.Values.Where(d => !IsDone(d.PartyId))) // a side whose time is up is done: no more poison
         {
+            // Nobody in the room (all off at a mini game, or picking a reward: their clock's stopped too): it waits for
+            // them, rather than killing monsters nobody sees die.
+            if (PartyOf(delve.PartyId).All(a => a.IsAway))
+            {
+                delve.HoldPoison(now + tick);
+                continue;
+            }
             var (damage, kill) = delve.PoisonTick(now, _settings.Classes.PoisonDamage, _settings.Classes.PoisonTickSeconds);
             if (damage > 0)
                 results.Add((delve.PartyId, damage, kill));
@@ -685,10 +703,24 @@ public sealed class DungeonRun
         caller.HangUp();
         friend.HangUp();
         var stream = _streams[friend.OwnerId];
+        if (!friend.IsAway)
+            ShowOwnQuestionAgain(friend, now);
         if (stream.IsLockedOutAt(now) || friend.IsAway || friend.IsDowned)
             friend.StopHourglass();
         else
             StartHourglass(friend, now);
+    }
+
+    /// <summary>
+    /// Their own question is on their screen again (a call's over, or they're back on their feet): it counts as shown
+    /// from now, so a press meant for what was there a moment ago can't answer it unseen (the new-question grace), and
+    /// how fast they answer is timed from now. One still held back by a battle beat shows when that ends anyway.
+    /// </summary>
+    private void ShowOwnQuestionAgain(Adventurer adventurer, DateTimeOffset now)
+    {
+        var stream = _streams[adventurer.OwnerId];
+        if (stream.CurrentShownAt is not { } shownAt || shownAt <= now)
+            stream.Start(now);
     }
 
     /// <summary>Hands an adventurer a power-up, replacing any they held (the dev tools, for testing).</summary>
@@ -777,6 +809,7 @@ public sealed class DungeonRun
             var healed = downed.MaxHp - downed.Hp;
             _streams[downed.OwnerId].EndLockout();
             downed.GetUp();
+            ShowOwnQuestionAgain(downed, now);
             StartHourglass(downed, now);
             return (downed, healed, true);
         }
@@ -830,6 +863,7 @@ public sealed class DungeonRun
 
         _streams[downed.OwnerId].EndLockout();
         downed.GetUp();
+        ShowOwnQuestionAgain(downed, now);
         StartHourglass(downed, now);
         return downed;
     }
@@ -947,7 +981,12 @@ public sealed class DungeonRun
         var adventurer = _adventurers[ownerId];
         var gotUp = adventurer.IsDowned;
         if (gotUp)
+        {
             adventurer.GetUp();
+            // In a party they were shown a teammate's question meanwhile (alone, their own stayed up, dimmed).
+            if (PartyOf(adventurer.PartyId).Count > 1)
+                ShowOwnQuestionAgain(adventurer, now);
+        }
 
         StartHourglass(adventurer, now);
         return gotUp;

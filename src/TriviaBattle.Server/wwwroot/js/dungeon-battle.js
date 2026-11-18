@@ -17,6 +17,8 @@
 // A Fireball hit gets its own stamp, and a power-up found with the hit (dropped, or earned by the
 // streak) is held up as LOOT!.
 //   downed  the same, and your knight falls
+//   enter   the game's opening, after the intro's countdown (opening(), 3.5 s): out of the dark, your knight runs into
+//           the first room and the first monster makes its entrance under FLOOR 1 and the depth's name, then FIGHT!
 //
 // In a pack the monsters waiting their turn stand small behind the one fighting (.dg-pack; the 3D draws
 // its own), and their strip of mini HP bars sits under the big bar. The hero classes add notes in a fixed
@@ -45,7 +47,8 @@ const DungeonBattle = {
      */
     beatHit(you) {
         const beat = you.beat;
-        if (!beat || beat.kind === 'hurt' || beat.kind === 'downed') return null;
+        // No hit in these: the monster hit you, the game's opening, a reward just picked (its fight was the beat before).
+        if (!beat || ['hurt', 'downed', 'enter', 'reward'].includes(beat.kind)) return null;
         return beat.hit || (beat.byPoison ? you.delve.lastHit : you.delve.lastDealt);
     },
 
@@ -146,6 +149,33 @@ const DungeonBattle = {
                 ${beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.curtain(beat.kind, delve, seed) : ''}
                 ${beat.kind === 'boss' ? `<div class="dg-boss-intro">${DungeonBattle.bar(delve.monster.name, delve.monster.maxHp, delve.monster.maxHp, delve.monster.maxHp, 'for-foe is-boss')}</div>` : ''}
                 ${DungeonBattle.peek(you.question, serverNow, seed)}
+            </div>`;
+    },
+
+    /**
+     * The game's opening (beat 'enter', before the first question; the server holds the clock meanwhile): the screen
+     * comes up out of the dark the intro's countdown ended on, your knight runs into the first room and the first
+     * monster comes in (in 3D, its own entrance: js/battle3d/beats.js showOpening), FLOOR 1 and the depth's name
+     * rise over them, then FIGHT! as the question comes up. Timed from --t0 like any beat (css/dungeon-battle.css).
+     */
+    opening(match, you, stationColor, serverNow) {
+        const beat = you.beat;
+        const delve = you.delve;
+        const seed = `${match.matchId}:${you.stationId}:${beat.startedAtMs}`;
+        const go = Theme.text('dungeon.stampFight', {}, seed);
+        return `
+            <div class="dg-battle is-enter" data-stage="fight" style="--t0: ${Math.round(beat.startedAtMs - serverNow)}ms; --t1: ${Math.round(beat.endsAtMs - serverNow)}ms">
+                ${DungeonBattle.room()}
+                <div class="dg-arena" data-focus>
+                    <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}<i class="dg-shadow"></i></div>
+                    <div class="dg-actor is-foe ${delve.monster.isBoss ? 'is-boss' : ''}">${PixelSprites.html(delve.monster.sprite, 'dg-actor-sprite')}<i class="dg-shadow"></i></div>
+                    <div class="dg-opening-title">
+                        <div class="dg-opening-floor">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</div>
+                        <div class="dg-opening-depth">${UI.escape(delve.depthName)}</div>
+                    </div>
+                    <div class="dg-stamp is-late" style="--chars: ${go.replace(/<[^>]*>|&[a-z#0-9]+;/gi, 'x').length}">${go}</div>
+                </div>
+                <div class="dg-opening-dark"></div>
             </div>`;
     },
 

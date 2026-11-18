@@ -49,7 +49,8 @@ namespace TriviaBattle.Server.Middleware
                 return;
             }
 
-            logger.LogInformation("Admin endpoint accessed successfully from {IP}",
+            // Debug, not Information: the admin page polls these every second or two, which would bury the live log.
+            logger.LogDebug("Admin endpoint accessed successfully from {IP}",
                 context.HttpContext.Connection.RemoteIpAddress);
 
             await next();

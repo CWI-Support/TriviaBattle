@@ -192,7 +192,7 @@ public sealed class MatchEngine
                 events.Add(new AdventurerGotUp(stream.OwnerId));
         }
 
-        HoldTheClock(now);
+        events.AddRange(HoldTheClock(now));
 
         if (_dungeon != null && Phase == MatchPhase.Playing && now < PhaseEndsAt)
         {
@@ -224,7 +224,7 @@ public sealed class MatchEngine
                 events.Add(new MonsterPoisoned(partyId, damage, kill));
                 if (kill != null)
                 {
-                    AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, kill));
+                    AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, kill), now);
                     _dungeon.PartyKilled(partyId, kill, killerId: null, now); // a kill beat for the party, as for any kill
                     events.AddRange(StartMinigames(partyId, kill, now));
                 }
@@ -299,8 +299,10 @@ public sealed class MatchEngine
             return NothingHappened;
 
         var stream = StreamFor(player);
-        if (ClockOf(stream.OwnerId) is { IsDone: true })
-            return NothingHappened; // their side's time is up (a race, a team battle): they wait for the others
+        // Their side's time is up (a race, a team battle): they wait for the others. Pressed after it ran out counts as up,
+        // though the tick that finishes the side hasn't come yet.
+        if (ClockOf(stream.OwnerId) is { } side && (side.IsDone || press.PressedAt > side.EndsAt))
+            return NothingHappened;
         if (_dungeon?.FindAdventurer(stream.OwnerId) is { Minigame: not null })
             return PlayMinigame(stream.OwnerId, press); // between two rooms: the buttons play the mini game (the action button too)
         if (press.IsAction)
@@ -365,7 +367,7 @@ public sealed class MatchEngine
             if (dealt.RevivedOwnerId is { } revived)
                 events.Add(new AdventurerGotUp(revived)); // their teammates' right answers brought them back
             var partyId = _dungeon.FindAdventurer(stream.OwnerId)!.PartyId;
-            AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, dealt));
+            AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, dealt), now);
             if (dealt.Killed)
                 _dungeon.PartyKilled(partyId, dealt, stream.OwnerId, now); // the teammates watch it: the same kill beat, together
             if (dealt.FloorCleared)
@@ -397,43 +399,103 @@ public sealed class MatchEngine
     }
 
     /// <summary>
-    /// Arcade clock time spent with the clock stopped so far (mini games, reward picks), so screens can tell time
-    /// earned from the clock being held: see <see cref="HoldTheClock"/>.
+    /// Arcade clock time spent with the clock stopped so far (mini games, reward picks, the opening), so screens can tell
+    /// time earned from the clock being held: see <see cref="HoldTheClock"/>. With a clock per side, the side's that ends
+    /// last (the one the room's screens show: <see cref="ShowLastSideClock"/>).
     /// </summary>
     public TimeSpan ClockHeldFor { get; private set; }
 
-    /// <summary>While the clock is stopped: the time it shows (what was left when it stopped). Null while it runs.</summary>
+    /// <summary>
+    /// While the clock is stopped: the time it shows (what was left when it stopped). Null while it runs. With a clock
+    /// per side, the last side's, like <see cref="ClockHeldFor"/>.
+    /// </summary>
     public TimeSpan? ClockStoppedAt { get; private set; }
 
     /// <summary>
-    /// While anyone is away from the fight (a mini game, a reward to pick: <see cref="DungeonRun.ClockStopped"/>) the arcade
-    /// clock stands still: every tick pushes the end of Playing back by the time since the last one. Everything that
-    /// checks the clock keeps working as normal, and screens show the time it stopped at.
+    /// Dungeon: the opening after the intro (<see cref="DungeonSettings.OpeningBeatSeconds"/>), from the start of Playing
+    /// until the first questions come up; the clock is held meanwhile. Null with none.
     /// </summary>
-    private void HoldTheClock(DateTimeOffset now)
+    public DateTimeOffset? OpeningFrom { get; private set; }
+    public DateTimeOffset? OpeningEndsAt { get; private set; }
+
+    private bool InOpening(DateTimeOffset now) => Phase == MatchPhase.Playing && now < OpeningEndsAt;
+
+    /// <summary>
+    /// How much of the time since the last tick was the opening (the clock waits for it): all of it while it plays, the
+    /// part before it ended on the tick after it, then none. Exact, however far apart the ticks are.
+    /// </summary>
+    private TimeSpan OpeningShare(DateTimeOffset now)
     {
+        if (Phase != MatchPhase.Playing || OpeningFrom is not { } from || OpeningEndsAt is not { } until || _lastTickAt >= until)
+            return TimeSpan.Zero;
+        var start = _lastTickAt > from ? _lastTickAt : from;
+        var end = now < until ? now : until;
+        return end > start ? end - start : TimeSpan.Zero;
+    }
+
+    /// <summary>
+    /// While anyone is away from the fight (a mini game, a reward to pick: <see cref="DungeonRun.ClockStopped"/>), and
+    /// through the opening, the arcade clock stands still: every tick pushes the end of Playing back by the time since the
+    /// last one. Everything that checks the clock keeps working as normal, and screens show the time it stopped at.
+    /// Returns <see cref="ClockHeld"/> when a clock stops or starts again: nothing else may happen on that tick, and the
+    /// screens must still hear of it (a clock left counting on a screen, or frozen, until some other event comes).
+    /// </summary>
+    private IReadOnlyList<MatchEvent> HoldTheClock(DateTimeOffset now)
+    {
+        var sinceLastTick = now - _lastTickAt;
+        var opening = OpeningShare(now);
+        var changed = false;
         if (_partyClocks.Count > 0)
         {
-            // A clock per side: each stands still only while one of its own is away; the others run on.
+            // A clock per side: each stands still only while one of its own is away; the others run on. All of them wait
+            // for the opening.
             foreach (var clock in _partyClocks.Values)
-                if (clock.Hold(Phase == MatchPhase.Playing && _dungeon!.ClockStoppedFor(clock.PartyId), now - _lastTickAt, now))
-                    Version++;
+            {
+                var away = Phase == MatchPhase.Playing && _dungeon!.ClockStoppedFor(clock.PartyId);
+                changed |= clock.Hold(away || InOpening(now), away ? sinceLastTick : opening, now);
+            }
             if (Phase == MatchPhase.Playing)
+            {
                 PhaseEndsAt = LastSideEndsAt(now);
-            return;
+                changed |= ShowLastSideClock();
+            }
         }
-
-        var stopped = Phase == MatchPhase.Playing && _dungeon?.ClockStopped == true;
-        if (stopped)
+        else
         {
-            var held = now - _lastTickAt;
-            PhaseEndsAt += held;
-            ClockHeldFor += held;
+            var everyoneAway = Phase == MatchPhase.Playing && _dungeon?.ClockStopped == true;
+            var held = everyoneAway ? sinceLastTick : opening;
+            if (held > TimeSpan.Zero)
+            {
+                PhaseEndsAt += held;
+                ClockHeldFor += held;
+            }
+            var stopped = everyoneAway || InOpening(now);
+            if (stopped != (ClockStoppedAt != null))
+            {
+                ClockStoppedAt = stopped ? PhaseEndsAt - now : null;
+                changed = true;
+            }
         }
-        if (stopped == (ClockStoppedAt != null))
-            return;
-        ClockStoppedAt = stopped ? PhaseEndsAt - now : null;
+        if (!changed)
+            return NothingHappened;
         Version++;
+        return [new ClockHeld()];
+    }
+
+    /// <summary>
+    /// With a clock per side, the room's screens (main screen, kiosk) show the side's that ends last (Playing lasts until
+    /// then): it stands still while that side's does, and its held time is that side's, so a hold there doesn't look like
+    /// time earned. True if the room's clock just stopped or started.
+    /// </summary>
+    private bool ShowLastSideClock()
+    {
+        var last = _partyClocks.Values.Where(c => !c.IsDone).MaxBy(c => c.EndsAt);
+        if (last == null)
+            return false;
+        var wasStopped = ClockStoppedAt != null;
+        ClockHeldFor = last.HeldFor;
+        ClockStoppedAt = last.StoppedLeft;
+        return wasStopped != (ClockStoppedAt != null);
     }
 
     /// <summary>A party cleared a floor: whoever in it answered enough of the floor right is offered rewards.</summary>
@@ -449,7 +511,7 @@ public sealed class MatchEngine
         if (_dungeon!.ChooseReward(ownerId, choice, now) is not { } pick)
             return NothingHappened;
 
-        AddTime(PartyOf(ownerId), pick.ClockSeconds);
+        AddTime(PartyOf(ownerId), pick.ClockSeconds, now);
         Version++;
         return [new RewardChosen(ownerId, pick.Taken)];
     }
@@ -461,7 +523,7 @@ public sealed class MatchEngine
             return NothingHappened;
 
         if (use.PowerUp == PowerUp.TimeCrystal)
-            AddTime(PartyOf(ownerId), use.Amount);
+            AddTime(PartyOf(ownerId), use.Amount, now);
 
         Version++;
         List<MatchEvent> events = [new PowerUpUsed(ownerId, use)];
@@ -515,7 +577,7 @@ public sealed class MatchEngine
 
         var ownerId = Mode.GetAnswerOwnerId(player);
         var (taken, seconds) = _dungeon.GiveReward(ownerId, reward, now);
-        AddTime(PartyOf(ownerId), seconds);
+        AddTime(PartyOf(ownerId), seconds, now);
         Version++;
         return [new RewardChosen(ownerId, taken)];
     }
@@ -593,17 +655,21 @@ public sealed class MatchEngine
     /// The arcade clock: pushes the end of Playing back. There's no cap: as long as they keep earning time,
     /// they keep playing.
     /// </summary>
-    private void AddTime(string partyId, double seconds)
+    private void AddTime(string partyId, double seconds, DateTimeOffset now)
     {
         if (!EarnsTime || seconds <= 0)
             return;
         if (_partyClocks.GetValueOrDefault(partyId) is { } clock)
         {
-            clock.Add(seconds); // a clock per side: only theirs
+            clock.Add(seconds, now); // a clock per side: only theirs
             PhaseEndsAt = LastSideEndsAt(clock.EndsAt);
+            ShowLastSideClock();
             return;
         }
         PhaseEndsAt += TimeSpan.FromSeconds(seconds);
+        // Held still (someone's away), the clock shows the time earned now, not when it runs again.
+        if (ClockStoppedAt is { } left)
+            ClockStoppedAt = left + TimeSpan.FromSeconds(seconds);
     }
 
     /// <summary>With a clock per side: when the last side still playing runs out (<paramref name="fallback"/> if none is).</summary>
@@ -622,7 +688,7 @@ public sealed class MatchEngine
         var events = new List<MatchEvent>();
         foreach (var clock in _partyClocks.Values.Where(c => !c.IsDone && (now >= c.EndsAt || _dungeon!.PartyOut(c.PartyId))))
         {
-            clock.Finish();
+            clock.Finish(now);
             _dungeon!.EndParty(clock.PartyId);
             Version++;
             events.Add(new SideFinished(clock.PartyId));
@@ -647,6 +713,7 @@ public sealed class MatchEngine
         ContinuesUsed++;
         EnterPhase(MatchPhase.Playing, now, Settings.Dungeon.ContinueSeconds);
         _dungeon!.RestoreLives(); // a new paid session: everyone's lives back
+        _dungeon.ResumePoison(now);
         foreach (var stream in _streams.Values)
         {
             stream.Start(now); // the question they were on shows again, with a fresh hourglass
@@ -701,14 +768,31 @@ public sealed class MatchEngine
         switch (Phase)
         {
             case MatchPhase.Intro:
+                // Dungeon: the opening first (the hero runs into the first room), with the clock held; then the questions.
+                var opening = _dungeon != null ? Settings.Dungeon.OpeningBeatSeconds : 0;
+                if (opening > 0)
+                {
+                    OpeningFrom = now;
+                    OpeningEndsAt = now + TimeSpan.FromSeconds(opening);
+                }
                 foreach (var stream in _streams.Values)
-                    stream.Start(now);
+                    stream.Start(OpeningEndsAt ?? now);
                 _dungeon?.Start(now);
                 EnterPhase(MatchPhase.Playing, now, RoundSeconds);
                 // Several sides (a race, a team battle): each gets its own clock, starting the same.
                 if (EarnsTime && _dungeon!.PartyIds.Count > 1)
                     foreach (var partyId in _dungeon.PartyIds)
                         _partyClocks[partyId] = new PartyClock(partyId, PhaseEndsAt);
+                // The clock stands still through the opening: the first Playing snapshot already says so.
+                if (OpeningEndsAt != null)
+                {
+                    foreach (var clock in _partyClocks.Values)
+                        clock.Hold(stopped: true, held: TimeSpan.Zero, now);
+                    if (_partyClocks.Count > 0)
+                        ShowLastSideClock();
+                    else
+                        ClockStoppedAt = PhaseEndsAt - now;
+                }
                 return [new PhaseChanged(Phase)];
 
             case MatchPhase.Playing:

@@ -42,6 +42,11 @@ export class Pack {
      * moved up); new ones are loaded, and ones no longer wanted leave. dropIn false: new ones are just there
      * (the next room's pack, walking in with the corridor: battle3d.js slides them in).
      */
+    /** A new game: its first monsters are just there again (they don't drop in), like the very first game's. */
+    reset() {
+        this.synced = false;
+    }
+
     sync(wanted, now, { dropIn = true } = {}) {
         const unused = [...this.members];
         const next = wanted.slice(0, PACK_MAX).map((want, slot) => {
@@ -72,7 +77,9 @@ export class Pack {
             this.scene.add(actor.root);
             member.actor = actor;
             member.arrivedAt = dropIn ? this.clock() : null;
-        });
+        }, () => setTimeout(() => {
+            this.members = this.members.filter(m => m !== member); // didn't load: a later sync asks for it again
+        }, 2000));
         return member;
     }
 

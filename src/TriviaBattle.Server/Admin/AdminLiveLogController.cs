@@ -30,6 +30,10 @@ public class AdminLiveLogController(LiveLog liveLog, ScreenRegistry screens, Sta
                     connections = connected[screen.Item1].Select(c => new { c.Address, c.ConnectedAt }),
                 }));
 
-        return Ok(new { serverId = ServerInstance.Id, lastId = liveLog.LastId, entries = liveLog.After(after), screens = expected });
+        // The entries first, then the id to ask after next time from them: a line logged in between comes next time,
+        // once (reading LastId first could hand it out now and again then).
+        var entries = liveLog.After(after);
+        var lastId = entries.Count > 0 ? entries[^1].Id : Math.Max(after, 0);
+        return Ok(new { serverId = ServerInstance.Id, lastId, entries, screens = expected });
     }
 }

@@ -36,6 +36,13 @@ public sealed record AdventurerGotUp(string OwnerId) : MatchEvent;
 public sealed record SideFinished(string PartyId) : MatchEvent;
 
 /// <summary>
+/// Dungeon format: an arcade clock just stopped (someone's away: a mini game, a reward pick; or the opening) or started
+/// again. Raised by Tick, often with nothing else happening, so the screens redraw it rather than count on (or stay
+/// frozen) until some other event comes.
+/// </summary>
+public sealed record ClockHeld : MatchEvent;
+
+/// <summary>
 /// Dungeon format: a battle beat ended and the owner's next question is showing, so their buttons count
 /// again (the button LEDs come back on). Raised by Tick; nothing in the snapshot changes.
 /// </summary>

@@ -363,6 +363,7 @@
     "peekLabel": ["Ranger's eye: next up!", "You spot it first!"],
     "peekWait": "Press in {seconds}",
     "stampWarning": "WARNING!",
+    "stampFight": ["FIGHT!", "BEGIN!", "TO BATTLE!"],
     "chargeWeak": "Winding up",
     "charging": "Charging...",
     "chargeFull": "FULL POWER!",
@@ -445,7 +446,17 @@
     "highScore": "New high score! {names} is #{rank} {when}",
     "playerHighScore": "You made the leaderboard: #{rank} {when}!",
     "today": "today",
-    "allTime": "of all time"
+    "allTime": "of all time",
+    "_aboutEnd": "The moment a game ends on a station (the clock ran out, or everyone's out of lives), before Continue? or the results.",
+    "timeUp": ["Time's up!", "Time!", "Out of time!"],
+    "allDown": ["Wiped out!", "Everyone's down!"],
+    "_aboutRun": "A Dungeon game's results on a station: the run's card. soloRun is the headline with nobody to beat (solo, or one party); {floor} = the floor reached.",
+    "soloRun": ["What a run!", "Floor\u00a0{floor}! Not bad at all.", "The dungeon wins this time."],
+    "runFloor": "Floor reached",
+    "runSlain": "Monsters slain",
+    "runRight": "Right answers",
+    "runMinigames": "Mini games won",
+    "runScore": "Score"
   },
 
   "kiosk": {
@@ -476,12 +487,15 @@
     "stationsFull": "All stations are full.",
     "seatInGame": "In a game · free in {seconds}s",
     "seatInGameSoon": "In a game · free soon",
+    "seatPlaying": "In a game",
+    "seatInLobby": "Someone's choosing a game here",
     "started": "You're on! Head to your stations.",
     "busyTitle": "Battle in progress",
     "busyIntro": "Head into the room. The battle is starting!",
     "busyResults": "Final results are in!",
     "busyContinue": "One more go? Waiting for a swipe.",
     "busyWait": "The next group can set up as soon as a station is free.",
-    "busyPlaying": "{seconds} seconds left"
+    "busyPlaying": "{seconds} seconds left",
+    "busyDelving": ["Deep in the game", "Still going strong"]
   }
 }

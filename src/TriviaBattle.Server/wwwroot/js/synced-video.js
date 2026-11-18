@@ -34,7 +34,8 @@ class SyncedVideo {
             this.video.hidden = true;
             return;
         }
-        if (this.cue?.id === cue.id) return;
+        // Already playing it, or it has played to its end (stop() clears this.cue): a later redraw mustn't replay it.
+        if (this.cue?.id === cue.id || this.finishedId === cue.id) return;
 
         this.video.hidden = false;
         this.play(cue, {
@@ -52,8 +53,8 @@ class SyncedVideo {
         this.video.muted = muted;
         this.video.src = cue.url;
         this.video.preload = 'auto';
-        this.video.onended = () => { this.stop(); onEnded(); };
-        this.video.onerror = () => { this.stop(); onError(); };
+        this.video.onended = () => { this.finishedId = cue.id; this.stop(); onEnded(); };
+        this.video.onerror = () => { this.finishedId = cue.id; this.stop(); onError(); };
         this.video.load();
         this.timer = setInterval(() => this.keepInSync(), 50);
     }

@@ -64,6 +64,9 @@ public abstract class Minigame
 
     public MinigameKind Kind { get; }
 
+    /// <summary>The action button plays a part in this game (the chest shuffle's fifth chest, the ring puzzle's next ring), so its light is on.</summary>
+    public virtual bool UsesActionButton => false;
+
     /// <summary>The intro starts (after the kill beat that emptied the room before it).</summary>
     public DateTimeOffset IntroAt { get; }
 

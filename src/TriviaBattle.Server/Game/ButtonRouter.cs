@@ -34,9 +34,18 @@ public sealed class ButtonRouter(
             return;
         }
 
-        if (host.IsPlaying(press.StationId))
-            host.HandlePress(press);
-        else
-            lobby.HandlePress(press);
+        // A press that breaks something mustn't reach the input that raised it: the PLC's loop would take it for a lost
+        // connection (reconnecting, and dropping every station's presses meanwhile).
+        try
+        {
+            if (host.IsPlaying(press.StationId))
+                host.HandlePress(press);
+            else
+                lobby.HandlePress(press);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "A press at {Station} ({Answer}) failed", press.StationId, press.AnswerIndex);
+        }
     }
 }

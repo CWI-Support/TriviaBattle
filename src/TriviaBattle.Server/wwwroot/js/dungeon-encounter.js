@@ -36,8 +36,9 @@ const DungeonEncounter = {
         // teammate phoned you (Phone a Friend): their question, which your buttons answer (yours waits meanwhile).
         const helping = downed || you.helping?.phoned ? you.helping : null;
         const shown = helping ? helping.question : you.question;
-        // A race or a team battle: their side's own time ran out, and they wait for the others (buttons dead).
-        const timeUp = !!delve.timeUp;
+        // A race or a team battle: their side's own time ran out, and they wait for the others (buttons dead). A side
+        // that's done because it's all out of lives says that instead (below), not TIME'S UP.
+        const timeUp = !!delve.timeUp && !delve.out;
         const dimmed = (downed && !helping) || stunned || timeUp;
 
         const overlaySeed = `${seed}:${delve.lastTaken?.number}`;
@@ -84,7 +85,9 @@ const DungeonEncounter = {
         const arrival = !beat ? '' : `is-after-beat ${newFoe ? 'is-new-foe' : ''}`;
         // A boss at full charge: the whole screen warns (the plate and the room pulse red, on the shared idle
         // beat so redraws don't jolt it). Downed, you can't answer, so the warning isn't yours to heed.
-        const charge = DungeonEncounter.chargeOf(delve);
+        // Answering a teammate's call: the charge that counts is theirs (each adventurer's is their own), not shown here.
+        const phoned = !!you.helping?.phoned;
+        const charge = phoned ? null : DungeonEncounter.chargeOf(delve);
         const fullCharge = charge?.full && !downed;
         // The hourglass's last seconds (delve.countdownFromMs, the room hears them counted down): the sand goes red and
         // pulses, the glass shakes and the screen's edges close in red, all timed from --danger so no redraw is needed.
@@ -98,7 +101,7 @@ const DungeonEncounter = {
                 <div class="dg-world">
                     <div class="dg-stage" data-stage="portrait">${DungeonBattle.room()}${counting ? '<i class="dg-danger"></i>' : ''}</div>
                     <div class="dg-hud">
-                        ${DungeonEncounter.foePlate(match, delve, clockKey)}
+                        ${DungeonEncounter.foePlate(match, delve, clockKey, phoned)}
                         <div class="dg-scroll ${helping?.phoned ? 'is-call' : helping ? 'is-helping' : ''}">${tag}${UI.questionMedia(shown.mediaUrl)}<div>${UI.escape(shown.text)}</div></div>
                         <div class="dg-window" data-focus>
                             ${DungeonView.packSprites(delve.foes?.slice(1) || [])}
@@ -126,10 +129,10 @@ const DungeonEncounter = {
      * The monster's nameplate: floor and time at the corners, its name (and a Healer's poison on it), its HP
      * bar between two gems (green while poisoned), and in a pack the ones waiting their turn underneath.
      */
-    foePlate(match, delve, clockKey) {
+    foePlate(match, delve, clockKey, hideCharge = false) {
         const m = delve.monster;
         const percent = m.maxHp > 0 ? Math.max(0, Math.min(100, (m.hp / m.maxHp) * 100)) : 0;
-        const charge = DungeonEncounter.chargeOf(delve);
+        const charge = hideCharge ? null : DungeonEncounter.chargeOf(delve);
         return `
             <div class="dg-foe-plate ${m.isBoss ? 'is-boss' : ''} ${m.poisonStacks ? 'is-poisoned' : ''}">
                 <div class="dg-foe-corners">

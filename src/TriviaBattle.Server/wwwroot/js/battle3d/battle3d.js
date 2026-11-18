@@ -19,7 +19,7 @@ import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
-import { showBeat, showIdle, showWalkIn, showBossEntrance, entranceLength, walkAt, mix, easeInOut, BOSS_LEAPS, BOSS_LANDS } from './beats.js';
+import { showBeat, showIdle, showOpening, showWalkIn, showBossEntrance, bossEntersAt, entranceLength, walkAt, mix, easeInOut, BOSS_LANDS } from './beats.js';
 import { ROOM_LENGTH } from './models.js';
 import { heroPortrait } from './portrait.js';
 import { Others } from './others.js';
@@ -48,6 +48,8 @@ const FRESH_MS = 3000;      // the first monster makes an entrance if the first 
 // Facing the way it's going as it comes in from the right (a monster's entrance): left, turned a little to the camera.
 const TRAVEL_YAW = -1.2;
 const POISON_DEATH_MS = 900;
+const NUMBER_POP = 1.45;    // the damage number's biggest moment, as it lands (css/dungeon-battle.css, dg-bignum: 1.35, overshooting)
+const LOAD_RETRY_MS = 2000; // a model that didn't load (a network blip) is asked for again after this long
 
 class Battle {
     constructor(container, clock, { still = false } = {}) {
@@ -72,12 +74,19 @@ class Battle {
         this.foeStep = null;   // the monster in front stepping up from the pack between beats: { from: { x, z, scale }, at }
         this.poisonDeath = null; // the one the poison killed between beats, going up in smoke: { at, chest }
         this.arrival = null;   // a kill beat that emptied the room: the next room's monster, dropping in before it ends: { beat, key, actor }
+        this.matchId = null;   // the game being shown (newMatch)
         this.lastFrame = performance.now();
         requestAnimationFrame(time => this.frame(time));
     }
 
+    /**
+     * view: the fight to show ({ match, you, color, colors }), or null once there's none (the game's over): then nothing
+     * reads the old match any more (its hero photos are gone from the server: asking for them again would only fail).
+     */
     show(view) {
         this.view = view;
+        if (!view) return;
+        if (view.match?.matchId !== this.matchId) this.newMatch(view.match?.matchId);
         const key = view.match?.players?.find(p => p.stationId === view.you?.stationId)?.hero || 'tank';
         if (key === this.heroKey) return;
         this.heroKey = key;
@@ -85,7 +94,25 @@ class Battle {
             if (this.heroKey !== key) return hero.dispose(this.stage.scene); // another hero was picked meanwhile
             this.hero?.dispose(this.stage.scene);
             this.hero = this.place(hero, HERO_HOME);
-        });
+        }, () => setTimeout(() => {
+            if (this.heroKey === key) this.heroKey = null; // it didn't load: the next redraw tries again
+        }, LOAD_RETRY_MS));
+    }
+
+    /**
+     * A new game on this station (the page stays open for days of them): forget what the last one was in the middle
+     * of, so none of it plays here (an entrance it never got to show, a death it was waiting for, its room).
+     */
+    newMatch(matchId) {
+        this.matchId = matchId;
+        this.foeEntrance = null;
+        this.foeStep = null;
+        this.poisonDeath = null;
+        this.roomSeen = null;
+        this.deathsSeen = null;
+        this.foesMet = 0;
+        this.dropArrival();
+        this.pack.reset();
     }
 
     place(actor, home) {
@@ -117,8 +144,10 @@ class Battle {
         if (next) return this.promote(next, key, now);
 
         // It makes its entrance the first time you see it (frame: once the question's shot is up). The first monster
-        // too when the game has just started; opening the screen mid-fight, it's simply there.
-        const enters = !this.still && (!!this.foe || (you.question?.shownAtMs ?? 0) > now - FRESH_MS);
+        // too when the game has just started; opening the screen mid-fight, it's simply there. The game's opening
+        // (beat 'enter') plays the first one's entrance itself.
+        const opening = you.beat?.kind === 'enter';
+        const enters = !this.still && !opening && (!!this.foe || (you.question?.shownAtMs ?? 0) > now - FRESH_MS);
         this.foeLoadingKey = key;
         Actor.create(key, FOE_FACING).then(foe => {
             if (this.foeLoadingKey !== key) return foe.dispose(this.stage.scene);  // something newer was asked for
@@ -128,7 +157,9 @@ class Battle {
             this.foe.rivalTurn = this.foesMet++;
             this.foeKey = key;
             this.foeLoadingKey = null;
-        });
+        }, () => setTimeout(() => {
+            if (this.foeLoadingKey === key) this.foeLoadingKey = null; // it didn't load: a later frame tries again
+        }, LOAD_RETRY_MS));
     }
 
     /**
@@ -154,7 +185,7 @@ class Battle {
             if (this.arrival !== arrival) return actor.dispose(this.stage.scene); // that beat's gone
             actor.zAt = zAt;
             arrival.actor = actor;
-        });
+        }, () => {}); // didn't load: once the beat's over it's asked for as the monster in front (wantFoe)
     }
 
     dropArrival() {
@@ -270,12 +301,22 @@ class Battle {
             if (this.arrival && !(playing && this.arrival.beat === beat.startedAtMs)) this.dropArrival(); // its beat ended without it
             this.pack.sync(wanted, now, { dropIn: !arriving }); // the next room's pack walks in with it, it doesn't fall in
             this.stage.scrollRoom(-ROOM_LENGTH * walk);
+            // The opening while one of the two is still loading (the first game after the page opened): neither shows
+            // yet, rather than one standing at home and then jumping to where its run-in starts.
+            if (playing && beat.kind === 'enter' && !(this.hero && this.foe)) {
+                if (this.hero) this.hero.root.visible = false;
+                if (this.foe) this.foe.root.visible = false;
+            }
             if (this.hero && this.foe) {
                 const cast = {
                     hero: this.hero, foe: this.foe, fx: this.fx, stage: this.stage, homes: HOMES, seconds: now / 1000,
                     front: FOE_HOME, pack: this.pack.standing(now), foePoison: this.foePoison(you, playing),
                 };
-                if (playing) {
+                if (playing && beat.kind === 'enter') {
+                    // The game's opening: the hero runs in and the first monster makes its entrance.
+                    lean = showOpening(now - beat.startedAtMs, cast);
+                    this.foeTravel = !!lean.travel;
+                } else if (playing) {
                     lean = showBeat(beatInfo(beat, you, stepUp), now - beat.startedAtMs, cast);
                     if (this.arrival?.boss) lean = this.showBoss(now - beat.startedAtMs, cast, lean);
                     this.foeTravel = false;
@@ -330,14 +371,18 @@ class Battle {
         if (!at) return;
         const box = arena.getBoundingClientRect();
         const margin = box.width * 0.03;
-        // Its middle as near the fighter as it can be with all of it on the screen (offsetWidth ignores its pop-in scale).
-        const keepIn = el => Math.max(el.offsetWidth / 2 + margin, Math.min(box.width - el.offsetWidth / 2 - margin, at.x - box.left));
+        // Its middle as near the fighter as it can be with all of it on the screen, even at the top of its pop-in
+        // (offsetWidth is its width unscaled; the number swells to NUMBER_POP of that as it lands: css/dungeon-battle.css).
+        const keepIn = (el, pop = 1) => {
+            const half = Math.min(box.width / 2 - margin, (el.offsetWidth * pop) / 2 + margin);
+            return Math.max(half, Math.min(box.width - half, at.x - box.left));
+        };
         const y = Math.max(box.height * 0.1, Math.min(box.height * 0.75, at.y - box.top));
-        const pin = (el, top) => {
-            el.style.setProperty('--pin-x', `${Math.round(keepIn(el))}px`);
+        const pin = (el, top, pop) => {
+            el.style.setProperty('--pin-x', `${Math.round(keepIn(el, pop))}px`);
             el.style.setProperty('--pin-y', `${Math.round(top)}px`);
         };
-        if (number) pin(number, y);
+        if (number) pin(number, y, NUMBER_POP);
         if (notes) pin(notes, y + (number ? number.offsetHeight / 2 : 0) + box.height * 0.02 + notes.offsetHeight / 2);
     }
 
@@ -365,7 +410,7 @@ class Battle {
      */
     showBoss(ms, cast, lean) {
         const boss = this.arrival.actor;
-        const leaping = !!boss && ms >= BOSS_LEAPS;
+        const leaping = !!boss && ms >= bossEntersAt(boss); // its entrance has begun (timed to land at BOSS_LANDS)
         if (boss) {
             if (leaping && !boss.root.parent) this.place(boss, FOE_HOME);
             boss.root.visible = leaping;
@@ -442,7 +487,7 @@ class Battle {
     turnFoe(dt) {
         if (!this.foe) return;
         // Coming in from the right (its entrance), it faces the way it's going until it's nearly there.
-        const wanted = this.foeTravel && this.stage.mode() === 'portrait' ? TRAVEL_YAW : this.stage.mode() === 'portrait' ? 0.25 : FOE_FACING;
+        const wanted = this.foeTravel ? TRAVEL_YAW : this.stage.mode() === 'portrait' ? 0.25 : FOE_FACING;
         this.foeYaw += (wanted - this.foeYaw) * (1 - Math.exp(-dt / 0.15));
         this.foe.face(this.foeYaw);
         this.pack.face(this.foeYaw);  // the waiting ones turn with it

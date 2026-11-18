@@ -14,14 +14,23 @@ public sealed class MatchTicker(MatchHost host, LobbyHost lobby, ILogger<MatchTi
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
+            // Each on its own: a failing lobby mustn't stop the games, nor the other way round (MatchHost.Tick keeps one
+            // broken game from stopping the rest).
             try
             {
                 host.Tick();
-                lobby.Tick();
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Match tick failed");
+            }
+            try
+            {
+                lobby.Tick();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Lobby tick failed");
             }
         }
     }

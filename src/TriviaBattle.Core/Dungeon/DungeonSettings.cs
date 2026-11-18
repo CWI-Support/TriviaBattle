@@ -54,6 +54,12 @@ public sealed class DungeonSettings
     // monster's hourglass waits meanwhile. The clocks keep running: time per kill and the round length
     // allow for it. 0 = no beat (the next question at once).
 
+    /// <summary>
+    /// The opening, after the intro's countdown: the dungeon fades in, the hero runs into the first room and the first
+    /// monster makes its entrance, then the first question comes up. The clock waits for it (it's not paid time).
+    /// </summary>
+    public double OpeningBeatSeconds { get; set; } = 3.5;
+
     public double HitBeatSeconds { get; set; } = 1.5;
     public double HurtBeatSeconds { get; set; } = 1.7;
     public double KillBeatSeconds { get; set; } = 2;

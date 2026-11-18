@@ -13,12 +13,17 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/matches")]
-public class MatchesController(MatchHost host, IWordFilterService wordFilter, ILogger<MatchesController> logger) : ControllerBase
+public class MatchesController(MatchHost host, Lobbies lobbies, IWordFilterService wordFilter, ILogger<MatchesController> logger) : ControllerBase
 {
     /// <summary>Starts a match. Returns 400 with a list of plain-English problems if the setup isn't valid.</summary>
     [HttpPost]
     public async Task<IActionResult> Start(MatchSetup setup)
     {
+        // A player choosing a game at a station's buttons has it already (the kiosk shows it busy too).
+        var seated = lobbies.SeatedAmong(setup.Seats.Select(s => s.StationId));
+        if (seated.Count > 0)
+            return BadRequest(new { problems = new[] { $"Someone is choosing a game at {string.Join(", ", seated)}: pick another station, or wait for them." } });
+
         foreach (var seat in setup.Seats)
         {
             if (await wordFilter.CheckAsync(seat.PlayerName) != null)

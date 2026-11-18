@@ -183,6 +183,23 @@ public class CoopAndRivalPowerUpTests
     }
 
     [Fact]
+    public void When_the_call_ends_the_friend_s_own_question_shows_again_from_then()
+    {
+        var match = Battle();
+        UsePowerUp(match, "A1", PowerUp.PhoneAFriend);
+        var friendQuestion = match.StreamOf("A3").CurrentNumber;
+
+        // The caller answers first; the friend's press for the same question lands a moment later.
+        match.Press("A1", Right(match, "A1"), afterSeconds: 1);
+        var hungUpAt = match.Now;
+        var late = match.Press("A3", 1, afterSeconds: 0.05);
+
+        Assert.Equal(hungUpAt, match.StreamOf("A3").CurrentShownAt); // shown again from the hang-up...
+        Assert.Empty(late.OfType<AnswerGiven>()); // ...so the late press (inside the new-question grace) answers nothing
+        Assert.Equal(friendQuestion, match.StreamOf("A3").CurrentNumber);
+    }
+
+    [Fact]
     public void The_call_ends_when_the_caller_s_hourglass_runs_out()
     {
         var match = Battle();

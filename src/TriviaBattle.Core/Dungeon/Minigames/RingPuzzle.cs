@@ -16,6 +16,9 @@ public sealed class RingPuzzle : Minigame
     /// <summary>The buttons that turn the ring: A anticlockwise, D clockwise (the action button changes ring).</summary>
     public const int TurnLeft = 0, TurnRight = 3;
 
+    /// <summary>It picks the next ring.</summary>
+    public override bool UsesActionButton => true;
+
     private readonly RingPuzzleSettings _settings;
     private readonly Random _random;
     private int[] _offsets = [];

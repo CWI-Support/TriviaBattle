@@ -301,11 +301,12 @@ const DungeonMinigames = {
         const tuner = game.tuner;
         const over = !!game.finishedAtMs;
         const at = ms => Math.round(ms - serverNow);
-        // When a bar is in its zone, sinking from its last press: [from, until] in server ms, or null (below it).
+        // When a bar is in its zone, sinking from its last press: [from, until] in server ms, or null (below it). Tapped
+        // while in its zone and still in, it's been in since inSinceMs (Tuner.cs: TunerBar.InZone).
         const inZone = bar => {
             if (bar.level < bar.zoneLow) return null;
-            if (bar.rate <= 0) return bar.level <= bar.zoneHigh ? [bar.atMs, Infinity] : null;
-            const from = bar.level > bar.zoneHigh ? bar.atMs + ((bar.level - bar.zoneHigh) / bar.rate) * 1000 : bar.atMs;
+            if (bar.rate <= 0) return bar.level <= bar.zoneHigh ? [bar.inSinceMs ?? bar.atMs, Infinity] : null;
+            const from = bar.level > bar.zoneHigh ? bar.atMs + ((bar.level - bar.zoneHigh) / bar.rate) * 1000 : bar.inSinceMs ?? bar.atMs;
             return [from, bar.atMs + ((bar.level - bar.zoneLow) / bar.rate) * 1000];
         };
         const bars = tuner.bars.map((bar, i) => {
@@ -342,7 +343,7 @@ const DungeonMinigames = {
                 hold = `<span class="dg-tu-hold" style="--in0: ${at(from)}ms; --in-for: ${Math.min(3.6e9, Math.round(until - from))}ms; --hold: ${tuner.holdMs}ms">${Theme.text('dungeon.minigameTunerHold', {}, `${seed}:${tuner.presses}`)}</span>`;
         }
         return `
-            <div class="dg-tu ${over ? 'is-over' : ''}">
+            <div class="dg-tu ${over ? 'is-over' : ''} ${over && game.won ? 'is-won' : ''}">
                 <div class="dg-tu-status">
                     ${over ? '' : `<span class="dg-tu-goal">${Theme.text('dungeon.minigameTunerGoal', {}, seed)}</span>`}
                     ${hold}

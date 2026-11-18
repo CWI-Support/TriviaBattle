@@ -13,7 +13,7 @@ public class CategoriesController(TriviaDbContext db) : ControllerBase
     public async Task<IActionResult> GetActive()
     {
         var categories = await db.Categories
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive && c.Questions.Any(q => q.IsActive)) // one with none couldn't start a game
             .OrderBy(c => c.Name)
             .Select(c => new
             {

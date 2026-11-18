@@ -23,25 +23,33 @@ public sealed class PartyClock(string partyId, DateTimeOffset endsAt)
     /// <summary>Out of time, or out of lives: this side's done for the match.</summary>
     public bool IsDone { get; private set; }
 
-    /// <summary>Time earned (a kill, a Time reward).</summary>
-    public void Add(double seconds)
+    /// <summary>
+    /// Time earned (a kill, a Time reward). Not once its time has run out (<paramref name="now"/>): a kill landing in that
+    /// moment, before the tick that finishes the side, mustn't bring it back. While it's held still, the time it shows
+    /// goes up too (it's earned now, not when the clock runs again).
+    /// </summary>
+    public void Add(double seconds, DateTimeOffset now)
     {
-        if (!IsDone && seconds > 0)
-            EndsAt += TimeSpan.FromSeconds(seconds);
+        if (IsDone || seconds <= 0 || now >= EndsAt)
+            return;
+        EndsAt += TimeSpan.FromSeconds(seconds);
+        if (StoppedLeft is { } left)
+            StoppedLeft = left + TimeSpan.FromSeconds(seconds);
     }
 
     /// <summary>
-    /// A tick: while <paramref name="stopped"/> (one of the side is in a mini game or picking a reward) the end is
-    /// pushed back by the time since the last tick, so it stands still. Returns true if it just stopped or started.
+    /// A tick: the end is pushed back by <paramref name="held"/> (the time since the last tick while one of the side is in
+    /// a mini game or picking a reward, or the opening's part of it), so it stands still for that long; screens show it
+    /// stopped while <paramref name="stopped"/>. Returns true if it just stopped or started.
     /// </summary>
-    public bool Hold(bool stopped, TimeSpan sinceLastTick, DateTimeOffset now)
+    public bool Hold(bool stopped, TimeSpan held, DateTimeOffset now)
     {
         if (IsDone)
             return false;
-        if (stopped)
+        if (held > TimeSpan.Zero)
         {
-            EndsAt += sinceLastTick;
-            HeldFor += sinceLastTick;
+            EndsAt += held;
+            HeldFor += held;
         }
         if (stopped == (StoppedLeft != null))
             return false;
@@ -49,9 +57,13 @@ public sealed class PartyClock(string partyId, DateTimeOffset endsAt)
         return true;
     }
 
-    public void Finish()
+    /// <summary>
+    /// The side's done: its clock stops where it is (out of lives with time left, it shows that time standing still, not
+    /// counting on while the side waits for the others).
+    /// </summary>
+    public void Finish(DateTimeOffset now)
     {
         IsDone = true;
-        StoppedLeft = null;
+        StoppedLeft = EndsAt > now ? EndsAt - now : TimeSpan.Zero;
     }
 }

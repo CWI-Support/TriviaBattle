@@ -57,19 +57,19 @@ const DungeonPowerUps = {
      * If a power-up was used since this key was last drawn, starts its pop (an effect under the key, so
      * a redraw carries it on). Teammates' uses show too when they're aimed at you (a Potion).
      */
-    noticeUse(key, delve, nameOf) {
+    noticeUse(key, delve, nameOf, delay = 0) {
         const use = delve.lastPowerUp;
         const before = DungeonView.seen[key];
         DungeonView.seen[key] = use?.number || 0;
         if (before === undefined || !use || use.number === before) return;
-        DungeonView.effect(key, DungeonPowerUps.pop(use, nameOf), 1800);
+        DungeonView.effect(key, DungeonPowerUps.pop(use, nameOf), 1800, delay);
     },
 
     /**
      * A rival's Fog Bomb or Tiny Hourglass that came at you (delve.lastSabotage), once: "FOGGED! Ann threw a Fog
      * Bomb", or "BLOCKED!" when your Shield soaked it. The fog itself is drawn on the answers (DungeonEncounter).
      */
-    noticeSabotage(key, delve) {
+    noticeSabotage(key, delve, delay = 0) {
         const sabotage = delve.lastSabotage;
         const before = DungeonView.seen[`${key}:sabotage`];
         DungeonView.seen[`${key}:sabotage`] = sabotage?.number || 0;
@@ -83,7 +83,7 @@ const DungeonPowerUps = {
                 ${DungeonPowerUps.icon(sabotage.blocked ? 'Shield' : sabotage.powerUp, 'dg-pu-pop-icon')}
                 <div class="dg-pu-pop-name">${title}</div>
                 <div class="dg-pu-pop-detail">${Theme.text('dungeon.sabotageFrom', values)}</div>
-            </div>`, 1800);
+            </div>`, 1800, delay);
     },
 
     /** "POTION!" with what it did underneath. */

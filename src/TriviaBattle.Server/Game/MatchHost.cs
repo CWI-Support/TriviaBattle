@@ -66,7 +66,7 @@ public sealed class MatchHost(
                 return new StartMatchResult(null, [$"Station(s) {string.Join(", ", busy)} are already in a match."]);
 
             var match = new MatchEngine(
-                matchId: Guid.NewGuid().ToString("N")[..8],
+                matchId: Guid.NewGuid().ToString("N")[..16], // it's the history's key for good: 64 bits never repeat in practice
                 setup,
                 questions,
                 GameModes.Create(setup.Mode),
@@ -116,11 +116,20 @@ public sealed class MatchHost(
 
             foreach (var match in _matches.Values.ToList())
             {
-                var events = match.Tick(now);
-                Publish(match, events);
+                try
+                {
+                    var events = match.Tick(now);
+                    Publish(match, events);
 
-                if (match.IsFinished)
-                    RemoveFinishedMatch(match);
+                    if (match.IsFinished)
+                        RemoveFinishedMatch(match);
+                }
+                catch (Exception ex)
+                {
+                    // One broken game must never stop the others (nor fail again every tick): it's ended, and the log says why.
+                    logger.LogError(ex, "Match {Id} failed on a tick: ending it", match.MatchId);
+                    EndBrokenMatch(match, now);
+                }
             }
         }
     }
@@ -273,6 +282,20 @@ public sealed class MatchHost(
     }
 
     private bool IsStationInMatch(string stationId) => _matches.Values.Any(m => m.HasStation(stationId));
+
+    /// <summary>A match that threw: aborted if it still can be (its screens go back to the lobby), and dropped either way.</summary>
+    private void EndBrokenMatch(MatchEngine match, DateTimeOffset now)
+    {
+        try
+        {
+            Publish(match, match.Abort(now));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Match {Id} couldn't be aborted", match.MatchId);
+        }
+        RemoveFinishedMatch(match);
+    }
 
     private void RemoveFinishedMatch(MatchEngine match)
     {

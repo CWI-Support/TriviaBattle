@@ -212,6 +212,25 @@ public class HeroClassTests
     }
 
     [Fact]
+    public void After_a_continue_the_poison_carries_on_from_then_rather_than_biting_for_the_whole_wait()
+    {
+        var match = Solo("healer", dungeon: OgreDungeon);
+        match.Press("A1", 0, afterSeconds: 1); // a stack of poison
+        match.FinishPhase();                    // the clock runs out: Continue?
+        Assert.Equal(MatchPhase.Continue, match.Engine.Phase);
+        var hp = match.DelveOf("A1").MonsterHp;
+
+        match.Wait(10);                         // a long think about swiping
+        match.Engine.Continue(match.Now);
+        var firstTick = match.Wait(0.05);
+
+        Assert.Empty(firstTick.OfType<MonsterPoisoned>()); // not ten seconds of bites at once
+        Assert.Equal(hp, match.DelveOf("A1").MonsterHp);
+        match.Wait(2);
+        Assert.Equal(hp - 1, match.DelveOf("A1").MonsterHp); // then a bite a tick, as before
+    }
+
+    [Fact]
     public void Poison_can_kill_and_scores_nothing()
     {
         var match = Solo("healer", s => s.Dungeon.Classes.PoisonDamage = 10); // one tick finishes the rat

@@ -68,7 +68,9 @@ public class RoomOutputCoordinator(
             .ToList();
         var phases = inRoom.Select(m => m.Phase).ToList();
 
-        var bossFight = inRoom.Any(m => m.Phase == MatchPhase.Playing && m.Dungeon?.Delves.Any(d => d.Encounter.Monster.IsBoss) == true);
+        // A side whose time is up is done with its boss (a race, a battle): only the ones still playing count.
+        var bossFight = inRoom.Any(m => m.Phase == MatchPhase.Playing
+            && m.Dungeon?.Delves.Any(d => !m.Dungeon.IsDone(d.PartyId) && d.Encounter.Monster.IsBoss) == true);
         if (bossFight) return LightingCue.Boss;
         if (phases.Contains(MatchPhase.Playing) || phases.Contains(MatchPhase.Continue)) return LightingCue.Question; // "Continue?" is still the game
         if (phases.Contains(MatchPhase.Results)) return LightingCue.Results;
@@ -76,12 +78,19 @@ public class RoomOutputCoordinator(
         return LightingCue.Idle;
     }
 
-    /// <summary>On while they could use a power-up (PowerUpFound / PowerUpUsed events bring fresh updates).</summary>
+    /// <summary>
+    /// On while they could use a power-up (PowerUpFound / PowerUpUsed events bring fresh updates), or while their mini
+    /// game uses it (the chest shuffle's fifth chest, the ring puzzle's next ring). Off once their side's done.
+    /// </summary>
     private static LedState ActionLedFor(MatchEngine match, Player player)
     {
-        var adventurer = match.Dungeon?.FindAdventurer(match.Mode.GetAnswerOwnerId(player));
-        var canUse = match.Phase == MatchPhase.Playing && adventurer is { Held: not null, IsDowned: false };
-        return canUse ? LedState.On : LedState.Off;
+        var ownerId = match.Mode.GetAnswerOwnerId(player);
+        var adventurer = match.Dungeon?.FindAdventurer(ownerId);
+        if (match.Phase != MatchPhase.Playing || adventurer == null || match.ClockOf(ownerId) is { IsDone: true })
+            return LedState.Off;
+        if (adventurer.Minigame is { } game)
+            return game.UsesActionButton && game.FinishedAt == null ? LedState.On : LedState.Off;
+        return adventurer is { Held: not null, IsDowned: false } ? LedState.On : LedState.Off;
     }
 
     private static LedState LedFor(MatchEngine match, Player player, DateTimeOffset now)
@@ -91,6 +100,8 @@ public class RoomOutputCoordinator(
             case MatchPhase.Playing:
                 // LockoutEnded and QuestionShown (from the engine's tick) bring fresh updates when they end.
                 var stream = match.StreamFor(player);
+                if (match.ClockOf(stream.OwnerId) is { IsDone: true })
+                    return LedState.Off; // their side's time is up (a race, a battle): the buttons do nothing now
                 var beatPlaying = stream.CurrentShownAt > now;
                 return stream.LockedOutUntil == null && !beatPlaying ? LedState.On : LedState.Off;
 

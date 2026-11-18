@@ -424,5 +424,5 @@
 .dg-tu-glow { position: absolute; inset: 0; opacity: 0; animation: dg-tu-in var(--in-for) linear var(--in0); }
 @keyframes dg-tu-in { 0%, 100% { opacity: 1; background: rgba(255, 210, 63, 0.35); box-shadow: 0 0 3vmin var(--dg-mg-gold); } }
 .dg-tu-letter { font-family: var(--dg-font-pixel); font-size: 5vmin; font-weight: normal; color: #000; background: var(--answer-color); width: 100%; text-align: center; padding: 0.6vh 0; }
-/* Won: every zone gold. */
-.dg-minigame .dg-tu.is-over .dg-tu-zone { background: rgba(255, 210, 63, 0.4); box-shadow: 0 0 3vmin var(--dg-mg-gold); }
+/* Won: every zone gold (lost, they stay as they were). */
+.dg-minigame .dg-tu.is-won .dg-tu-zone { background: rgba(255, 210, 63, 0.4); box-shadow: 0 0 3vmin var(--dg-mg-gold); }

@@ -63,6 +63,10 @@ function receiveState(state) {
     busy = {};
     for (const match of state.matches)
         for (const player of match.players) busy[player.stationId] = match;
+    // Someone choosing a game at a station's own buttons (the arcade lobby) has it too: a kiosk game there would take it
+    // from them (the server refuses it).
+    for (const seat of state.lobby?.seats || [])
+        if (seat.step !== 'Idle' && !busy[seat.stationId]) busy[seat.stationId] = { inLobby: true, matchId: 'lobby', phase: seat.step };
 
     // States arrive with every answer in every running game; only redraw when the busy stations change.
     const key = Object.entries(busy).map(([id, m]) => `${id}:${m.matchId}:${m.phase}`).sort().join(',');
@@ -242,11 +246,15 @@ function playersStep() {
     return `<h2>${Theme.text('kiosk.playersTitle')}</h2><div class="choice-grid">${cards}</div>${devHelper}`;
 }
 
-/** A station another group is playing on: shown, but it can't be picked until their game ends. */
+/**
+ * A station another group is playing on (or someone's choosing a game at): shown, but it can't be picked until it's
+ * free. A Dungeon game's end keeps moving (kills earn time, mini games stop the clock), so it has no countdown.
+ */
 function busyStationCard(station, match) {
-    const freeAt = match.phase === 'Playing' ? match.phaseEndsAtMs : null;
-    const detail = freeAt
-        ? Theme.text('kiosk.seatInGame', { seconds: Theme.raw(`<span data-ends-at="${freeAt}"></span>`) })
+    const freeAt = match.phase === 'Playing' && !match.earnsTime ? match.phaseEndsAtMs : null;
+    const detail = match.inLobby ? Theme.text('kiosk.seatInLobby')
+        : freeAt ? Theme.text('kiosk.seatInGame', { seconds: Theme.raw(`<span data-ends-at="${freeAt}"></span>`) })
+        : match.phase === 'Playing' ? Theme.text('kiosk.seatPlaying')
         : Theme.text('kiosk.seatInGameSoon');
     return `
         <div class="choice seat-card is-busy" style="--chip-color: ${station.color}">
@@ -310,6 +318,8 @@ function renderAllBusy(matches) {
                 ? Theme.text('kiosk.busyResults', {}, match.matchId)
             : match.phase === 'Continue'
                 ? Theme.text('kiosk.busyContinue', {}, match.matchId)
+            : match.earnsTime
+                ? Theme.text('kiosk.busyDelving', {}, match.matchId) // its end keeps moving: no countdown
                 : Theme.text('kiosk.busyPlaying', { seconds: Theme.raw(`<span data-ends-at="${match.phaseEndsAtMs}"></span>`) });
         return `<p class="subtitle"><b>${who}</b> &middot; ${progress}</p>`;
     }).join('');

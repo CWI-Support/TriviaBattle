@@ -23,7 +23,9 @@ public class AdminPlayersController(TriviaDbContext db, IWordFilterService wordF
             query = query.Where(p => EF.Functions.Like(p.DisplayName, $"%{search.Trim()}%") || p.RfidTag == search.Trim());
 
         var players = await query.OrderByDescending(p => p.LastSeenAt).Take(500).ToListAsync();
-        return Ok(players.Select(p => new { p.Id, p.RfidTag, p.DisplayName, p.CreatedAt, p.LastSeenAt }));
+        // Stored in UTC, but SQLite hands them back unmarked: say so, or the page reads them as local time (hours off).
+        static DateTime Utc(DateTime time) => DateTime.SpecifyKind(time, DateTimeKind.Utc);
+        return Ok(players.Select(p => new { p.Id, p.RfidTag, p.DisplayName, CreatedAt = Utc(p.CreatedAt), LastSeenAt = Utc(p.LastSeenAt) }));
     }
 
     [HttpPut("{id:int}")]

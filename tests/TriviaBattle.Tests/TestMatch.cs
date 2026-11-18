@@ -28,6 +28,8 @@ public sealed class TestMatch
     /// Dungeon format: keep the battle beats (the pause after each answer). Off by default, so a test's
     /// "press, wait a second, press" timings read simply; DungeonBeatTests turn them on.
     /// </param>
+    /// <param name="opening">Dungeon format: keep the opening after the intro (the hero running in). Off by default, so
+    /// the first question is up the moment Playing starts.</param>
     /// <param name="lobbyPhotos">Players whose hero photo was settled in the arcade lobby: true brought one, false chose none.</param>
     /// <param name="heroes">
     /// Dungeon format: each station's hero ("tank", "wizard"...). Everyone else plays <see cref="PlainHero"/>.
@@ -40,7 +42,7 @@ public sealed class TestMatch
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
         IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false,
         IReadOnlyDictionary<string, bool>? lobbyPhotos = null, IReadOnlyDictionary<string, string>? heroes = null,
-        DungeonMap? dungeon = null, bool rewards = false, int? hitDamage = 20)
+        DungeonMap? dungeon = null, bool rewards = false, int? hitDamage = 20, bool opening = false)
     {
         Settings = settings ?? new MatchSettings();
         if (!battleBeats)
@@ -52,6 +54,8 @@ public sealed class TestMatch
             Settings.Dungeon.FloorBeatSeconds = 0;
             Settings.Dungeon.BossBeatSeconds = 0;
         }
+        if (!opening)
+            Settings.Dungeon.OpeningBeatSeconds = 0;
         // Right answers do 20 here (the arithmetic in the tests: one hit kills a rat), unless a test wants the real number.
         if (hitDamage is { } damage)
             Settings.Dungeon.HitDamage = damage;

@@ -75,7 +75,16 @@ public sealed class LobbyHost(
             logger.LogInformation("New card {Card} at {Station}: {Name}", tag, stationId, player.DisplayName);
         }
         player.LastSeenAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException) when (db.Entry(player).State == EntityState.Added)
+        {
+            // The same new card twice in quick succession: the other swipe registered it first. Use that one.
+            db.Entry(player).State = EntityState.Detached;
+            player = await db.PlayerProfiles.FirstAsync(p => p.RfidTag == tag);
+        }
 
         Apply(roomId, Change(roomId, lobby => lobby.Swipe(stationId, player.DisplayName, player.Id, clock.GetUtcNow())));
     }

@@ -126,7 +126,9 @@ The rules:
   adds a poison stack to the monster in front (`Delve.Poison`; `DungeonRun.TickPoison` does its damage every
   tick, raising `MonsterPoisoned`, and a poison kill is a kill but scores nothing: `DungeonRun.PartyKilled` gives the party its kill
   beat, as for a teammate's kill (`Adventurer.WatchedKill`; the snapshot's `BeatView.ByPoison`, with the killing `BeatView.Hit`),
-  and their question comes back after it); the Wizard's fast answer splashes
+  and their question comes back after it). The poison waits while play does: with the whole party away (a mini game, a
+  reward pick: `Delve.HoldPoison`), and after a continue (`DungeonRun.ResumePoison`), so no burst of missed bites lands at
+  once; the Wizard's fast answer splashes
   every other monster in the room (`DealtHit.Splashes`); the Pugilist is the only class with a combo
   (`DealtHit.Combo`, `ComboCount`); the Warlock's patron decides once per question (`PlanReveal`, when the hourglass
   turns over) whether to show the answer when the hourglass is down to `WarlockRevealSecondsLeft`
@@ -165,8 +167,11 @@ The rules:
   `MatchEngine.PartyClocks`, made when Playing starts): a side's kills and Time rewards add to its own clock and its
   mini games and reward picks hold only its own; a side whose time runs out, or that's all out of lives, is done
   (`SideFinished`, `DungeonRun.EndParty`: its hourglasses stop, its presses are ignored), with no continue; Playing ends
-  when the last side is done, and `PhaseEndsAt` follows the last side still playing. Each station's snapshot carries its
-  own side's clock in the match-clock fields, and each lane's `DelveView.ClockEndsAtMs`/`TimeUp` (the main screen's lanes).
+  when the last side is done, and `PhaseEndsAt` follows the last side still playing; a press after its own side's time
+  ran out counts for nothing even before the tick that finishes it, and a finished side's clock stands still where it was
+  (`PartyClock.Finish`). Each station's snapshot carries its own side's clock in the match-clock fields, and each lane's
+  `DelveView.ClockEndsAtMs`/`TimeUp` (the main screen's lanes); room screens get the last side's, held time and all
+  (`MatchEngine.ShowLastSideClock`), and pop no "+10s" on the big clock (each lane has its own).
   The defaults aim at 3-4
   minutes for an average player, about two bosses; `DungeonPacingTests` plays simulated games on the shipped
   `config/dungeon.json` to keep it there (run it after changing the content or the clock). `MatchEngine.RoundSeconds`
@@ -176,7 +181,10 @@ The rules:
   instead of Results. `MatchEngine.Continue(now)` (a card swipe at any station in the match: a second paid
   session) goes back to Playing for everyone on a fresh `ContinueSeconds` clock, same floor, same HP, the same
   question shown again; no swipe and the countdown runs into Results. Each continue is a session of its own, so
-  there's no limit on how many. `MatchHost.ContinueAtStation` is what the station
+  there's no limit on how many. On the station, the clock running out is a moment of its own: TIME'S UP! (WIPED OUT! with
+  everyone out of lives) covers the screen for 2.4 s as Continue? or the results come up (`player-screen.js`,
+  `endOverlay`, in its own layer outside the fitted body), and a Dungeon game's results are the run's card: the hero,
+  the floor reached, monsters slain, right answers, mini games won and score (`dungeonResults`). `MatchHost.ContinueAtStation` is what the station
   card readers call (`POST /api/stations/{id}/swipe`), as does `POST /api/dev/continue/{stationId}` (the dev buttons
   page) and the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and continue
   numbers are Operator-screen rules (`GameRulesService`).
@@ -233,7 +241,9 @@ The rules:
   others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone
   (with a clock per side, anyone on that side: `DungeonRun.ClockStoppedFor`, `PartyClock.Hold`),
   `DungeonRun.ClockStopped` is true and `MatchEngine.HoldTheClock` pushes `PhaseEndsAt` back every tick, so everything
-  that checks the clock works as normal; `ClockHeldFor` adds it up. Snapshots: `YouView.Minigame` (`MinigameView` with
+  that checks the clock works as normal; `ClockHeldFor` adds it up. Each time a clock stops or starts again the tick
+  raises `ClockHeld`: often nothing else happens on that tick, and without an event the screens wouldn't be sent the
+  change (a clock left counting on, or frozen). Time earned while it's stopped shows on it at once. Snapshots: `YouView.Minigame` (`MinigameView` with
   each game's part, `RuneLockView`), `DelveView.Minigame`/`MinigamesWon` for the main screen, and
   `MatchSnapshot.ClockStoppedLeftMs`/`ClockHeldMs` (`UI.matchClock` shows a stopped clock; the "+10s" pop leaves the held
   time out). Screens: `js/dungeon-minigames.js`, `css/dungeon-minigames.css`; sounds in `RoomSoundService`.
@@ -389,6 +399,11 @@ The rules:
   That kill (`DealtHit.RoomCleared`, with no boss or mini game ahead) gets the longer `RoomBeatSeconds` (3 s): the
   walk (`DungeonBattle.walks`), where the hero runs on and the dungeon scrolls past until the next room's monsters
   are in front, so the question comes back with the new fight already there.
+  The game opens with one too (`OpeningBeatSeconds`, 3.5 s; beat `enter`): when Playing starts every first question
+  waits for it (`MatchEngine.OpeningFrom`/`OpeningEndsAt`) while the station comes up out of the countdown's dark, the
+  hero runs into the first room and the first monster makes its entrance (`DungeonBattle.opening`, 3D:
+  `showOpening` in `js/battle3d/beats.js`), then FIGHT!. Unlike the other beats the clock waits for it (exactly its
+  share of each tick: `MatchEngine.OpeningShare`), so it costs no paid time. Tests have it off unless they pass `opening: true`.
 
 New dungeon rules (time, power-ups, revives) belong in `DungeonRun`, not in `MatchEngine`.
 
@@ -487,7 +502,9 @@ To add another synced moment (e.g. a results fanfare), return a cue for that pha
 
 **Starting a match is plain HTTP** (`POST /api/matches`), not a hub call. The kiosk then gets
 validation problems back as an ordinary 400 response. Registering an RFID card is also HTTP
-(`GET /api/players/rfid/{tag}`, `POST /api/players`).
+(`GET /api/players/rfid/{tag}`, `POST /api/players`). A station where someone is choosing a game at its own buttons
+(the arcade lobby) is taken too: the kiosk shows it busy and the start is refused (`Lobbies.SeatedAmong`), or that
+player would lose their place and their forming game couldn't start.
 
 ## Screens (`Server/wwwroot`)
 

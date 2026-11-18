@@ -133,4 +133,26 @@ public class TunerTests
         Assert.Equal(TunerOf(match).BarList[1].ZoneLow, view.Bars[1].ZoneLow);
         Assert.Equal(500, view.HoldMs);
     }
+
+    [Fact]
+    public void A_tap_that_keeps_a_bar_in_its_zone_doesn_t_start_the_hold_over()
+    {
+        // Held 2 s: longer than a sinking bar stays in its 0.15 zone untouched (1.5 s), so it can only be won by tapping
+        // bars that are in their zones to keep them there.
+        var match = Match(sink: 0.1, hold: 2);
+        var tuner = TunerOf(match);
+
+        for (var step = 0; step < 300 && tuner.FinishedAt == null; step++)
+        {
+            // Tap whichever bar is about to sink out of (or is below) its zone: from just inside, it stays inside.
+            var low = Enumerable.Range(0, Tuner.Bars).FirstOrDefault(b => tuner.LevelOf(b, match.Now) < tuner.BarList[b].ZoneLow + 0.03, -1);
+            if (low >= 0)
+                match.Press("A1", low, afterSeconds: 0.05);
+            else
+                match.Wait(0.05);
+        }
+
+        Assert.True(tuner.Won);
+        Assert.Contains(tuner.BarList, bar => bar.InSince != null); // the in-zone taps kept their start
+    }
 }

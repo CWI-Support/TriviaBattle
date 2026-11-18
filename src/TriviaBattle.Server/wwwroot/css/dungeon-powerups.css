@@ -39,7 +39,10 @@
     padding: 1vh 3vw;
     background: rgba(12, 8, 16, 0.92);
     border: 0.6vmin solid #ffd23f;
-    white-space: nowrap;
+    /* As wide as its words, but never wider than the screen: a long one ("WHO TURNED OFF THE LIGHTS?") wraps. */
+    width: max-content;
+    max-width: 90vmin;
+    text-wrap: balance;
     pointer-events: none;
     animation: dg-pu-pop 1800ms ease-out var(--t0) both;
 }

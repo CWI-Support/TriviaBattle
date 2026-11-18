@@ -48,7 +48,12 @@ public sealed class Tuner : Minigame
             return MinigamePress.Won; // it was all held in tune already (between two ticks): this press doesn't spoil it
 
         var bar = _bars[answerIndex];
-        _bars[answerIndex] = bar with { Level = Math.Min(1, bar.LevelAt(at) + _settings.Step), At = at };
+        var before = bar.LevelAt(at);
+        var level = Math.Min(1, before + _settings.Step);
+        // A tap that keeps a bar in its zone (it was in, and still isn't over the top) doesn't start its hold over: it's
+        // been in since it got there.
+        var stillIn = before >= bar.ZoneLow && before <= bar.ZoneHigh && level <= bar.ZoneHigh;
+        _bars[answerIndex] = bar with { Level = level, At = at, InSince = stillIn ? bar.InZone()!.Value.From : null };
         Presses++;
         return WonAt(at) is { } now && now <= at ? MinigamePress.Won : MinigamePress.Nudge;
     }
@@ -78,22 +83,24 @@ public sealed class Tuner : Minigame
 /// <summary>
 /// One tuner bar: its <see cref="Level"/> (0-1) when last pressed (<see cref="At"/>), how fast it sinks
 /// (<see cref="Rate"/>, of the bar a second), and its target zone (<see cref="ZoneLow"/> to <see cref="ZoneHigh"/>).
+/// <see cref="InSince"/>: pressed while in its zone and still in it, since when it's been in (else null).
 /// </summary>
-public sealed record TunerBar(double Level, DateTimeOffset At, double Rate, double ZoneLow, double ZoneHigh)
+public sealed record TunerBar(double Level, DateTimeOffset At, double Rate, double ZoneLow, double ZoneHigh, DateTimeOffset? InSince = null)
 {
     public double LevelAt(DateTimeOffset at) => Math.Max(0, Level - Rate * Math.Max(0, (at - At).TotalSeconds));
 
     /// <summary>
     /// The stretch of time it's in its zone, sinking from its last press: from when it sinks to the top of the zone (or
-    /// from the press, if it's in already) until it sinks out of the bottom. Null if it's below the zone.
+    /// from the press, if it's in already: from <see cref="InSince"/> if it was in before that press too) until it sinks
+    /// out of the bottom. Null if it's below the zone.
     /// </summary>
     public (DateTimeOffset From, DateTimeOffset Until)? InZone()
     {
         if (Level < ZoneLow)
             return null;
         if (Rate <= 0)
-            return Level <= ZoneHigh ? (At, DateTimeOffset.MaxValue) : null;
-        var from = Level > ZoneHigh ? At + TimeSpan.FromSeconds((Level - ZoneHigh) / Rate) : At;
+            return Level <= ZoneHigh ? (InSince ?? At, DateTimeOffset.MaxValue) : null;
+        var from = Level > ZoneHigh ? At + TimeSpan.FromSeconds((Level - ZoneHigh) / Rate) : InSince ?? At;
         return (from, At + TimeSpan.FromSeconds((Level - ZoneLow) / Rate));
     }
 }

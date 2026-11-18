@@ -178,7 +178,7 @@ public sealed record YouView(
 /// <see cref="EndsAtMs"/>, when the next question appears. What exactly happened is in the delve's
 /// LastDealt (your hit) or LastTaken (the monster's).
 /// </summary>
-/// <param name="Kind">"hit", "kill", "floor" (a floor cleared: its boss died), "boss" (the room before a boss's cleared: the boss steps up), "hurt", "downed", or "reward" (a reward just picked: what it gives).</param>
+/// <param name="Kind">"hit", "kill", "floor" (a floor cleared: its boss died), "boss" (the room before a boss's cleared: the boss steps up), "hurt", "downed", "reward" (a reward just picked: what it gives), or "enter" (the opening after the intro: the hero runs into the first room, before the first question).</param>
 /// <param name="ByPoison">The party's poison killed the monster (a "kill", "floor" or "boss" beat nobody answered for).</param>
 /// <param name="Hit">A kill they watched rather than landed (by poison, or <paramref name="By"/>): the killing hit. Null on
 /// their own beats, whose hit is <see cref="DelveView.LastDealt"/>.</param>
@@ -226,7 +226,8 @@ public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs,
 /// </summary>
 public sealed record TunerView(IReadOnlyList<TunerBarView> Bars, long HoldMs, int Presses);
 
-public sealed record TunerBarView(double Level, long AtMs, double Rate, double ZoneLow, double ZoneHigh);
+/// <param name="InSinceMs">Tapped while in its zone and still in it: since when it's been in (the hold counts from then).</param>
+public sealed record TunerBarView(double Level, long AtMs, double Rate, double ZoneLow, double ZoneHigh, long? InSinceMs = null);
 
 /// <summary>
 /// The ring puzzle. This round's picture is cut into <see cref="Rings"/> rings (0 = the middle disc), ring i turned

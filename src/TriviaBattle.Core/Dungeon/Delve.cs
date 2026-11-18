@@ -114,6 +114,13 @@ public sealed class Foe(Encounter encounter, int maxHp)
 
     public void PoisonTicked(double tickSeconds) => NextPoisonAt += TimeSpan.FromSeconds(tickSeconds);
 
+    /// <summary>The poison's next bite comes no sooner than this (it waits while play does: see Delve.HoldPoison).</summary>
+    public void PoisonNotBefore(DateTimeOffset at)
+    {
+        if (NextPoisonAt < at)
+            NextPoisonAt = at;
+    }
+
     /// <summary>Back to full health, and the poison wears off (the whole party went down).</summary>
     public void Recover()
     {
@@ -230,6 +237,16 @@ public sealed class Delve
     /// The poison does its damage: every stack, every tick that's due (one per <paramref name="tickSeconds"/>).
     /// Returns the damage done (0 = nothing changed), and the hit if it killed the monster in front.
     /// </summary>
+    /// <summary>
+    /// The poison waits: no monster here takes its next bite before <paramref name="nextBiteAt"/> (while play's paused,
+    /// or the whole party is away from the room).
+    /// </summary>
+    public void HoldPoison(DateTimeOffset nextBiteAt)
+    {
+        foreach (var foe in _foes)
+            foe.PoisonNotBefore(nextBiteAt);
+    }
+
     public (int Damage, DealtHit? Kill) PoisonTick(DateTimeOffset now, int damagePerStack, double tickSeconds)
     {
         var total = 0;

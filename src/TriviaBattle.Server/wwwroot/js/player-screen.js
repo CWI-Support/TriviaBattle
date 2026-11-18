@@ -17,6 +17,8 @@ let beatTimer = null;       // redraws when a battle beat ends (no update comes 
 let peekTimer = null;       // a Ranger: redraws when the next question starts to show during the beat (nor then)
 let sharedChecked = false;  // asked once whether another screen is open as this station
 let cameraToldAt = 0;       // the join the server last heard about this screen's camera on
+let endMoment = null;       // the game just ended on this screen: { matchId, at, allDown } (endOverlay)
+const END_MOMENT_MS = 2400; // how long TIME'S UP! covers the screen (css/screens.css, .end-moment)
 
 const connection = new ScreenConnection({ role: 'player', stationNumber, onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
@@ -95,6 +97,14 @@ function render(state) {
         DungeonView.reset();
         DungeonFeed.reset();
     }
+    // The clock just ran out (or everyone's down): TIME'S UP! over the start of what comes next, rather than the fight
+    // simply vanishing. Not for a side whose time was already up (a race): its screen said so when it happened.
+    const before = lastState?.match;
+    if (state.match && before?.matchId === state.match.matchId && before.phase === 'Playing' && !before.you?.delve?.timeUp
+        && (state.match.phase === 'Continue' || state.match.phase === 'Results')) {
+        const party = state.match.you?.delve?.party || [];
+        endMoment = { matchId: state.match.matchId, at: state.match.phaseStartedAtMs, allDown: party.length > 0 && party.every(m => m.out) };
+    }
     lastState = state;
     introVideo.follow(state.cue, { muted: true }); // sound comes from the main screen only
 
@@ -123,6 +133,9 @@ function render(state) {
             case 'Finished': body.innerHTML = results(match, you); break;
         }
     }
+    // TIME'S UP! over the whole screen as the game ends: in its own layer, as the body is fitted to the screen below.
+    const ended = match && you && ['Continue', 'Results', 'Finished'].includes(match.phase);
+    document.getElementById('end-moment-layer').innerHTML = ended ? endOverlay(match) : '';
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
     // The dungeon's room clips what overflows it, so the screen as a whole always "fits": fit the question,
     // the room and the answers inside it too (a long question or answer shrinks them, never pushes them off).
@@ -131,7 +144,9 @@ function render(state) {
     const seat = match ? null : state.lobby.seats.find(s => s.stationId === state.station.id);
     HeroCamera.followLobby(seat, () => connection.serverNow(), state.station.color);
     if (match && you) HeroCamera.follow(match, you, () => connection.serverNow(), state.station.color); // a kiosk game's intro photo
-    if (fighting) window.Battle3D?.show({ match, you, color: state.station.color, colors: stationColors(state) }); // once the 3D has loaded
+    // The 3D fight, once it has loaded; none outside the fight (after a game its photos are gone from the server).
+    if (fighting) window.Battle3D?.show({ match, you, color: state.station.color, colors: stationColors(state) });
+    else window.Battle3D?.show(null);
 
     // A battle beat is playing: the next question appears when it ends, so redraw then.
     clearTimeout(beatTimer);
@@ -284,6 +299,20 @@ function continueOffer(match, you) {
         </div>`;
 }
 
+/**
+ * The moment the game ended on this screen (endMoment, set in render): the screen goes dark and TIME'S UP! (or, with
+ * everyone out of lives, WIPED OUT!) slams in, then it all lifts off the Continue? or results screen underneath. Timed
+ * from the phase's start, so a redraw meanwhile carries on; nothing once it's over.
+ */
+function endOverlay(match) {
+    if (endMoment?.matchId !== match.matchId || connection.serverNow() > endMoment.at + END_MOMENT_MS) return '';
+    const words = Theme.text(endMoment.allDown ? 'results.allDown' : 'results.timeUp', {}, `${match.matchId}:end`);
+    return `
+        <div class="end-moment" style="${UI.animateAt(endMoment.at)}">
+            <div class="end-moment-word" style="${UI.animateAt(endMoment.at + 150)}">${words}</div>
+        </div>`;
+}
+
 function results(match, you) {
     const mine = myStanding(match, you);
     const won = mine.rank === 1;
@@ -305,11 +334,57 @@ function results(match, you) {
           }, seed)}</div>`
         : '';
 
+    if (match.format === 'Dungeon' && you.delve)
+        return dungeonResults(match, you, { mine, won, seed, highScore, detail });
+
     return `
         <div class="center-stack">
             <h1 class="big-title">${headline}</h1>
             <p class="subtitle">${detail}</p>
             <p class="subtitle">${Theme.text('playing.right', { n: mine.correctAnswers })}</p>
+            ${highScore}
+            ${podium(match)}
+        </div>`;
+}
+
+/**
+ * A Dungeon game's end: how far the run got, on a card with the player's hero (their face, or the hero's picture):
+ * the floor reached, monsters slain, right answers, mini games won, score; then any leaderboard place and, in a
+ * group game, everyone's places. With nobody to beat (solo, or one party) the headline is about the run, not a win.
+ */
+function dungeonResults(match, you, { mine, won, seed, highScore, detail }) {
+    const delve = you.delve;
+    const me = match.players.find(p => p.stationId === you.stationId);
+    const right = me?.correctAnswers ?? mine.correctAnswers;
+    const headline = match.standings.length < 2
+        ? Theme.text('results.soloRun', { floor: delve.floor }, seed)
+        : won
+            ? Theme.text('results.playerWon', { who: you.teamName || Theme.raw(Theme.text('results.you')) }, seed)
+            : Theme.text('results.place', { place: UI.ordinal(mine.rank) }, seed);
+    // The card rises in as TIME'S UP! lifts (at once after Continue?), its stats one by one: timed from the phase's start.
+    const lifts = endMoment?.matchId === match.matchId && endMoment.at === match.phaseStartedAtMs ? END_MOMENT_MS - 450 : 0;
+    const at = ms => `style="${UI.animateAt(match.phaseStartedAtMs + lifts + ms)}"`;
+    let shown = 0;
+    const stat = (label, value, note = '') =>
+        `<div class="run-stat" ${at(250 + 110 * shown++)}><dt>${label}</dt><dd>${value}${note ? `<small>${note}</small>` : ''}</dd></div>`;
+
+    return `
+        <div class="center-stack run-end">
+            <h1 class="big-title">${headline}</h1>
+            <div class="run-card" ${at(0)}>
+                <div class="run-hero">
+                    ${HeroPhoto.portrait(match, you.stationId, 'run-face', lastState.station.color)}
+                    <div class="run-who"><b>${UI.escape(you.name)}</b>${DungeonView.classBadge(delve.heroClass)}</div>
+                </div>
+                <dl class="run-stats">
+                    ${stat(Theme.text('results.runFloor'), delve.floor, UI.escape(delve.depthName))}
+                    ${stat(Theme.text('results.runSlain'), delve.kills)}
+                    ${stat(Theme.text('results.runRight'), right)}
+                    ${delve.minigamesWon ? stat(Theme.text('results.runMinigames'), delve.minigamesWon) : ''}
+                    ${stat(Theme.text('results.runScore'), you.score.toLocaleString())}
+                </dl>
+            </div>
+            ${you.teamName ? `<p class="subtitle">${detail}</p>` : ''}
             ${highScore}
             ${podium(match)}
         </div>`;

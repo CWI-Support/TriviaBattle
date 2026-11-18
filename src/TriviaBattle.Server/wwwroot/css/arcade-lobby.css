@@ -8,6 +8,8 @@
 }
 .lb-title { margin: 0; font-family: var(--font-display); font-size: calc(7vmin * var(--fit)); color: var(--title-color); text-shadow: var(--title-shadow); }
 .lb-keys { font-size: 3.4vmin; color: var(--text-dim); }
+/* Even line breaks for the short lines (see screens.css). */
+.lb-title, .lb-hello, .lb-press, .lb-call, .lb-swipe { text-wrap: balance; }
 
 /* ---------- Idle: press any button ---------- */
 .lb-logo { font-size: 12vmin; }

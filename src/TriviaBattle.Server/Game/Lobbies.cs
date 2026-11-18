@@ -32,6 +32,19 @@ public sealed class Lobbies
             return work(_byRoom[roomId]);
     }
 
+    /// <summary>
+    /// Which of these stations have a player in the arcade lobby (choosing a hero or a game, or in one that's forming).
+    /// A kiosk game mustn't take those: the player there would lose their place, and their forming game couldn't start.
+    /// </summary>
+    public IReadOnlyList<string> SeatedAmong(IEnumerable<string> stationIds)
+    {
+        lock (_lock)
+            return stationIds
+                .Where(id => _stations.Find(id) is { } station && _byRoom.TryGetValue(station.RoomId, out var lobby)
+                             && lobby.Seat(id) is { Step: not LobbyStep.Idle })
+                .ToList();
+    }
+
     /// <summary>The room's lobby as its screens see it.</summary>
     public LobbyView View(string roomId) =>
         Use(roomId, lobby => LobbyView.From(lobby, _stations.InRoom(roomId).Select(s => s.Id)));

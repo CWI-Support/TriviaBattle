@@ -91,6 +91,7 @@ export class Actor {
         const plane = new THREE.Mesh(new THREE.PlaneGeometry(height * aspect, height), material);
         plane.position.y = height / 2;
         this.holder.add(plane);
+        this.picture = plane;
         this.materials.push(material);
         this.width = this.poseWidth = height * aspect;
     }
@@ -106,7 +107,7 @@ export class Actor {
 
     /**
      * Shows one moment. pose = { x, lift, tilt, squash, scale, visible, clip, time, from, fade, flash, flashColor, glow, glowColor }:
-     *   clip/time    the animation and how far into it (seconds; loops for idle, holds the last frame otherwise)
+     *   clip/time    the animation and how far into it (seconds; loops for the idle and the run, holds the last frame otherwise)
      *   from/fade    the clip it's blending out of ({ clip, time }) and how far the blend has got (0..1)
      *   flash        0..1, how strongly it glows flashColor (hit, or hurt)
      *   glow         0..1, a tint in glowColor under any flash (poison, the Warlock's patron)
@@ -143,10 +144,10 @@ export class Actor {
         if (!main) return;
         const old = from && fade < 1 ? this.action(from.clip, model) : null;
         main.setEffectiveWeight(old ? fade : 1);
-        main.time = clipTime(main, time, clip === this.spec.idle);
+        main.time = clipTime(main, time, this.loops(clip));
         if (old) {
             old.setEffectiveWeight(1 - fade);
-            old.time = clipTime(old, from.time, from.clip === this.spec.idle);
+            old.time = clipTime(old, from.time, this.loops(from.clip));
         }
         this.mixer.update(0);
     }
@@ -245,8 +246,33 @@ export class Actor {
         return new THREE.Vector3(this.root.position.x, (this.spec.hover || 0) + height * 0.55, this.root.position.z + 0.3);
     }
 
+    /** The clips that go round and round: the idle, and the run (a walk or a run-in lasts longer than one stride). */
+    loops(clip) {
+        return clip === this.spec.idle || clip === this.spec.run;
+    }
+
+    /**
+     * Takes it out of the scene and frees what it made for itself (a station page stays open for days of games): its
+     * materials, a painted face, a rival's mask, its shadow, a picture stand-in. Not the model's own geometry: that's
+     * shared with every other copy of the model (stage.js's cache).
+     */
     dispose(scene) {
         scene.remove(this.root);
+        this.painted?.takeOff();
+        this.painted = null;
+        if (this.mask) {
+            this.mask.material.map.dispose();
+            this.mask.material.dispose();
+            this.mask = null;
+        }
+        if (this.shadow) {
+            this.shadow.geometry.dispose();
+            this.shadow.material.dispose(); // its blob texture is shared (shadowTexture): kept
+        }
+        if (this.picture) {
+            this.picture.geometry.dispose();
+            this.picture.material.map?.dispose();
+        }
         for (const material of this.materials) material.dispose();
     }
 }

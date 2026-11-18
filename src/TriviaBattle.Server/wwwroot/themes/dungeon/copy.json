@@ -62,7 +62,10 @@
       "{name} delved deepest!",
       "{name} wins! The dungeon weeps."
     ],
-    "playerWon": "{who} delved deepest!"
+    "playerWon": "{who} delved deepest!",
+    "timeUp": ["Time's up!", "The sand's run out!", "Out of time!"],
+    "allDown": ["Wiped out!", "The dungeon wins!"],
+    "soloRun": ["What a delve!", "Floor\u00a0{floor}! The goblins are impressed.", "The dungeon wins... this time."]
   },
   "continue": {
     "title": [
@@ -88,6 +91,9 @@
     "teamsTitle": "Form your parties: tap a hero to switch sides",
     "categoryTitle": "Choose your realms",
     "busyTitle": "A quest is under way",
+    "busyDelving": ["Deep in the dungeon", "Still delving"],
+    "seatPlaying": "In the dungeon",
+    "seatInLobby": "A hero is choosing a quest here",
     "busyIntro": "Into the dungeon. The quest is starting!",
     "busyContinue": "An adventurer is deciding whether to go on...",
     "started": "Your quest begins! Head to your stations."

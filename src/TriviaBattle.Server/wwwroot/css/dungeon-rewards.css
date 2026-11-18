@@ -100,7 +100,7 @@
 
 /* ---------- The floor curtain's line, and the main screen's banner ---------- */
 
-.dg-curtain-reward { margin-top: 2vh; text-align: center; white-space: nowrap; font-family: var(--dg-font-pixel); font-size: 3vmin; animation: dg-line-in 500ms ease-out calc(var(--t0) + 2150ms) both; }
+.dg-curtain-reward { margin-top: 2vh; padding: 0 4vw; text-align: center; text-wrap: balance; line-height: 1.4; font-family: var(--dg-font-pixel); font-size: 3vmin; animation: dg-line-in 500ms ease-out calc(var(--t0) + 2150ms) both; }
 .dg-curtain-reward.is-earned { color: var(--dg-reward, #ffd23f); }
 .dg-curtain-reward.is-missed { color: var(--text-dim); }
 .dg-curtain-chest { display: inline-block; width: 5vmin; height: auto; vertical-align: middle; margin-right: 1.5vmin; }

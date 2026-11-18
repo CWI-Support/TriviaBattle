@@ -70,6 +70,10 @@ html, body {
 }
 
 h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em; font-weight: normal; margin: 0; }
+/* Titles and short lines break evenly instead of leaving one word alone on the last line ("We've been expecting / you.");
+   longer text only avoids a lone last word. Browsers without it just wrap as before. */
+h1, h2, h3, .display, .big-title, .subtitle, .banner { text-wrap: balance; }
+p { text-wrap: pretty; }
 
 .view { height: 100%; }
 .view[hidden], [hidden] { display: none !important; }
@@ -489,3 +493,41 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: 0.04em;
 
 /* UI.fitToScreen measures with animations off, so a title mid-slam doesn't count as too big. */
 .is-measuring, .is-measuring * { animation: none !important; }
+
+/* ---------- The moment a game ends on a station (js/player-screen.js, endOverlay) ----------
+   The clock ran out (or everyone's down): the screen goes dark and TIME'S UP! slams in, then it all lifts off the
+   Continue? or results screen underneath. 2.4 s from the phase's start (END_MOMENT_MS); the word 150 ms in. */
+.end-moment {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(24, 10, 14, 0.94), #000 78%);
+    animation: end-moment 2400ms linear both;
+}
+@keyframes end-moment {
+    0% { opacity: 0; }
+    6%, 82% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+.end-moment-word {
+    padding: 0 6vw;
+    font-family: var(--font-display);
+    font-size: 13vmin;
+    line-height: 1.15;
+    text-align: center;
+    text-wrap: balance;
+    text-transform: uppercase;
+    color: var(--title-color);
+    text-shadow: var(--title-shadow);
+    animation: end-moment-word 2250ms ease-out both;
+}
+@keyframes end-moment-word {
+    0% { opacity: 0; transform: scale(2.6) rotate(-6deg); }
+    12% { opacity: 1; transform: scale(0.94) rotate(-3deg); }
+    20% { transform: scale(1) rotate(-3deg); }
+    82% { opacity: 1; transform: scale(1.05) rotate(-3deg); }
+    100% { opacity: 0; transform: scale(1.12) rotate(-3deg); }
+}

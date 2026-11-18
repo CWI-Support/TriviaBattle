@@ -280,9 +280,9 @@ public sealed class RoomSoundService(
                 room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Hurt);
                 break;
 
-            case RewardOffered { OwnerId: var ownerId }:
-                // The loot chime as the reward cards come up (after the boss's death beat).
-                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot, match.Settings.Dungeon.FloorBeatSeconds);
+            case RewardOffered { OwnerId: var ownerId, Offer: var offer }:
+                // The loot chime as the reward cards come up: after the boss's death beat, or at once for a mini game's prize.
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot, offer.ForMinigame ? 0 : match.Settings.Dungeon.FloorBeatSeconds);
                 break;
 
             case RewardChosen { OwnerId: var ownerId }:
@@ -376,9 +376,9 @@ public sealed class RoomSoundService(
             room.SetRoomMusic(null); // an intro is playing
     }
 
-    /// <summary>A Dungeon game where some party is facing a boss.</summary>
+    /// <summary>A Dungeon game where some party still playing is facing a boss (a side whose time is up is done with its).</summary>
     private static bool FightingABoss(MatchEngine match) =>
-        match.Dungeon?.Delves.Any(d => d.Encounter.Monster.IsBoss) == true;
+        match.Dungeon?.Delves.Any(d => !match.Dungeon.IsDone(d.PartyId) && d.Encounter.Monster.IsBoss) == true;
 
     private bool IsInRoom(MatchEngine match, string roomId) =>
         match.Roster.Players.Any(p => stations.Find(p.StationId)?.RoomId == roomId);

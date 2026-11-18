@@ -150,7 +150,7 @@ public static class SnapshotBuilder
             game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle,
             ringPuzzle, ToUnixMs(game.ResultFrom),
             game is Dungeon.Minigames.Tuner t
-                ? new TunerView(t.BarList.Select(b => new TunerBarView(b.Level, b.At.ToUnixTimeMilliseconds(), b.Rate, b.ZoneLow, b.ZoneHigh)).ToList(),
+                ? new TunerView(t.BarList.Select(b => new TunerBarView(b.Level, b.At.ToUnixTimeMilliseconds(), b.Rate, b.ZoneLow, b.ZoneHigh, b.InSince?.ToUnixTimeMilliseconds())).ToList(),
                     Ms(t.HoldSeconds), t.Presses)
                 : null);
     }
@@ -206,6 +206,10 @@ public static class SnapshotBuilder
             return new BeatView(killKind, watched.At.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds(),
                 ByPoison: watched.ByOwnerId == null, Hit: kill, By: watched.ByOwnerId is { } by ? NameOf(match, by) : null);
         }
+
+        // The opening, before their first question (the hero runs into the first room): the same for everyone.
+        if (stream.LastAnswer == null && match.OpeningFrom is { } from && match.OpeningEndsAt is { } until && shownAt == until)
+            return new BeatView("enter", from.ToUnixTimeMilliseconds(), until.ToUnixTimeMilliseconds());
 
         if (stream.LastAnswer is not { } answer || shownAt <= answer.PressedAt)
             return null;

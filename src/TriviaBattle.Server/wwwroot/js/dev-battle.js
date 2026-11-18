@@ -48,11 +48,13 @@
 // ringpuzzle-solved (round 1's picture whole, then round 2 starts), ringpuzzle-won (the last one whole).
 // tuner (the intro, then the four bars sinking: A and C already in their zones), tuner-won (all four held in).
 // out: downed on the last life (OUT!; the plate's hearts all dark).
+// opening: the game's opening after the intro (out of the dark, the hero runs into the first room, FIGHT!); ?next=skeleton
+// (rat, slime, bat, goblin) for another first monster's entrance.
 //   /dev/battle?kind=hit&charge=2&at=1600   any kind against the boss, and the question after it with the
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', 'teamkill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'out'];
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'out', 'opening'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
 // ?long: a long question and long answers (the admin editor allows 250 and 80 letters), to check they shrink to fit.
@@ -60,7 +62,7 @@ const LONG_QUESTION = {
     text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
     answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
 };
-const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, opening: 3500, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -168,7 +170,8 @@ function fakeState(kind, startedAt, question) {
     const striking = !['hurt', 'slow', 'downed', 'out', 'blocked', 'armour', 'charged'].includes(kind);
     // Against the boss (a boss kind, or any kind with ?charge=): it's the one fought, and its charge shows.
     const vsBoss = BOSS_KINDS.includes(kind) || params.has('charge');
-    const boss = { name: 'Goblin Quizmaster', sprite: 'goblin-boss', maxHp: 300, isBoss: true };
+    // ?boss=skeleton: another model as the boss (its entrance in the boss beat: a skeleton climbs out of the ground).
+    const boss = { name: 'Goblin Quizmaster', sprite: params.get('boss') || 'goblin-boss', maxHp: 300, isBoss: true };
     const killed = ['kill', 'roomclear', 'teamkill', 'loot', 'floor', 'boss', 'poisonkill'].includes(kind);
     const length = BEAT_MS[kind] || 1500;
     const party = kind === 'party' || kind === 'revive' || kind === 'heal' || kind === 'teamkill';
@@ -309,6 +312,14 @@ function fakeState(kind, startedAt, question) {
         delve.room = 2;
         delve.path = delve.path.filter(s => !(s.floor === 1 && s.room === 2))
             .concat({ floor: 1, room: 2, slot: 1, name: current.sprite, sprite: current.sprite, isBoss: false });
+    }
+    if (kind === 'opening') { // the game's first moments: nothing has happened yet
+        Object.assign(delve, { lastHit: null, lastDealt: null, lastTaken: null, kills: 0, hp: 100 });
+        delve.party.forEach(m => { m.hp = 100; });
+        if (params.has('next')) delve.monster = delve.foes[0] = { name: params.get('next'), sprite: params.get('next'), hp: 100, maxHp: 100, isBoss: false, poisonStacks: 0 };
+        you.lastAnswer = null;
+        you.question.number = 1;
+        you.beat.kind = 'enter';
     }
     if (kind === 'out') { // downed on the last life
         you.beat.kind = 'downed';

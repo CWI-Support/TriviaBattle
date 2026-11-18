@@ -67,4 +67,5 @@
     translate: -50% -50%;
     white-space: nowrap;
 }
-.is-3d .dg-battle .dg-beat-notes { align-items: center; }
+/* Its own width (pinned by its middle, it would otherwise only get the room right of the pin): a long note wraps at 88vmin. */
+.is-3d .dg-battle .dg-beat-notes { align-items: center; width: max-content; max-width: 88vmin; }

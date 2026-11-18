@@ -449,8 +449,13 @@ export class HealSparkle {
         this.ring.visible = false;
     }
 
+    /** Out of the scene, its buffers freed (one per teammate: they come and go with every group game). */
     dispose() {
         this.scene.remove(this.sparks.points, this.ring);
+        this.sparks.points.geometry.dispose();
+        this.sparks.points.material.dispose();
+        this.ring.geometry.dispose();
+        this.ring.material.dispose();
     }
 }
 

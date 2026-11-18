@@ -95,8 +95,9 @@ const DungeonRewards = {
 
     /** True while this screen should show the pick or the moment after it, instead of the fight. */
     showing(you, serverNow) {
-        if (you.beat?.kind === 'reward') return DungeonBattle.isPlaying(you, serverNow);
-        return !!you.reward && !DungeonBattle.isPlaying(you, serverNow);
+        const beatPlaying = DungeonBattle.isPlaying(you, serverNow);
+        if (you.beat?.kind === 'reward' && beatPlaying) return true; // the moment after a pick
+        return !!you.reward && !beatPlaying; // the cards (a mini game's prize can come right after a pick's moment)
     },
 
     /** The station screen while choosing, or just after: the top line and the player plate stay. */

@@ -62,7 +62,8 @@ public sealed class RuneLock : Minigame
 
     protected override MinigamePress Play(int answerIndex, DateTimeOffset at)
     {
-        if (LockedUntil > at)
+        // Any answer button stops the needle; the action button isn't one (it's lit for a power-up held meanwhile).
+        if (LockedUntil > at || answerIndex is < 0 or > 3)
             return MinigamePress.Ignored;
 
         var needle = NeedleAt(at);
