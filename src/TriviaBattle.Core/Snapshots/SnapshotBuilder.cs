@@ -155,7 +155,20 @@ public static class SnapshotBuilder
             game is Dungeon.Minigames.Tuner t
                 ? new TunerView(t.BarList.Select(b => new TunerBarView(b.Level, b.At.ToUnixTimeMilliseconds(), b.Rate, b.ZoneLow, b.ZoneHigh, b.InSince?.ToUnixTimeMilliseconds())).ToList(),
                     Ms(t.HoldSeconds), t.Presses)
-                : null);
+                : null,
+            game is Dungeon.Minigames.PopQuiz q ? ToPopQuiz(q) : null);
+    }
+
+    /// <summary>The pop quiz. The question up goes without its right answer; the last one answered goes with it.</summary>
+    private static PopQuizView ToPopQuiz(Dungeon.Minigames.PopQuiz quiz)
+    {
+        var answered = quiz.Right + quiz.Wrong;
+        var last = quiz.Last is { } a
+            ? new PopQuizAnswerView(answered, quiz.Questions[a.Question].Topic, quiz.Questions[a.Question].Answers, a.Chosen,
+                quiz.Questions[a.Question].CorrectIndex, a.WasRight, a.At.ToUnixTimeMilliseconds())
+            : null;
+        return new PopQuizView(quiz.RightNeeded, quiz.Strikes, quiz.Right, quiz.Wrong, quiz.FinishedAt != null ? answered : answered + 1,
+            quiz.Current.Topic, quiz.Current.Answers, quiz.AskedAt.ToUnixTimeMilliseconds(), last);
     }
 
     private static long Ms(double seconds) => (long)Math.Round(seconds * 1000);

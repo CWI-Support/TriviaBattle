@@ -190,7 +190,19 @@ public class RuneEchoAndChestShuffleTests
 
         var counts = Enumerable.Range(0, 3000).Select(_ => MinigameCatalog.Pick(random)).GroupBy(k => k).ToDictionary(g => g.Key, g => g.Count());
 
+        Assert.Equal(6, counts.Count);
+        Assert.All(counts.Values, n => Assert.InRange(n, 420, 580));
+    }
+
+    [Fact]
+    public void A_match_s_first_is_any_but_the_pop_quiz_each_as_likely()
+    {
+        var random = new Random(7);
+
+        var counts = Enumerable.Range(0, 3000).Select(_ => MinigameCatalog.Pick(random, first: true)).GroupBy(k => k).ToDictionary(g => g.Key, g => g.Count());
+
         Assert.Equal(5, counts.Count);
+        Assert.DoesNotContain(MinigameKind.PopQuiz, counts.Keys);
         Assert.All(counts.Values, n => Assert.InRange(n, 500, 700));
     }
 }

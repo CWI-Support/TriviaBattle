@@ -1,4 +1,5 @@
 using TriviaBattle.Core.Dungeon;
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
 using TriviaBattle.Core.Snapshots;
@@ -188,6 +189,129 @@ public class QuerieTests
         Assert.Equal((QuerieMoment.OddOneOut, false), (quip!.Moment, quip.PartyWide));
         Assert.Same(callout, match.AdventurerOf("A1").LastQuip);
         Assert.Same(quip, match.AdventurerOf("A2").LastQuip);
+    }
+
+    // ---------- In the mini games ----------
+
+    /// <summary>
+    /// A solo match whose floor has a mini game after its first room (a rat, 20 HP: one right answer kills it). He only
+    /// talks in the mini game here unless a test says so: no chance for ordinary moments, none for openings.
+    /// </summary>
+    private static TestMatch MinigameMatch(MinigameKind kind, double chance = 0, double startChance = 0,
+        Action<MinigameSettings>? tune = null, QuerieLines? lines = null)
+    {
+        var map = new DungeonMap(
+            [new DepthDef("d", "Depth", [new FloorDef(Rooms: [["rat"], ["rat"]], Minigame: kind, MinigameAfterRoom: 1)])],
+            [
+                new MonsterDef("rat", "Cellar Rat", "rat", Hp: 20, Damage: 10, AttackSeconds: 10),
+                new MonsterDef("slime", "Damp Slime", "slime", Hp: 20, Damage: 10, AttackSeconds: 10),
+                new MonsterDef("bat", "Bat Swarm", "bat", Hp: 20, Damage: 10, AttackSeconds: 10),
+                new MonsterDef("goblin", "Goblin Bandit", "goblin", Hp: 20, Damage: 10, AttackSeconds: 10),
+            ]);
+        var settings = new MatchSettings
+        {
+            Format = GameFormat.Dungeon,
+            LockoutSeconds = 1,
+            Dungeon = { Querie = { Chance = chance, SafeChance = 0, MinigameStartChance = startChance, QuipEverySeconds = 0, BigGapSeconds = 0 } },
+        };
+        tune?.Invoke(settings.Dungeon.Minigames);
+        var match = new TestMatch(GameModeKind.FreeForAll, settings, stations: ["A1"], dungeon: map, querie: lines ?? Lines);
+        match.StartPlaying();
+        return match;
+    }
+
+    /// <summary><see cref="Lines"/>, with some moments' lines replaced.</summary>
+    private static QuerieLines LinesWith(params (QuerieMoment Moment, string Text)[] replaced) => new(Enum.GetValues<QuerieMoment>()
+        .ToDictionary(m => m, m => (IReadOnlyList<QuerieLine>)[new QuerieLine(replaced.Where(r => r.Moment == m).Select(r => r.Text).FirstOrDefault() ?? $"{m}: {{name}}")]));
+
+    /// <summary>Kills the rat (the mini game starts) and waits out the intro.</summary>
+    private static Minigame IntoTheMinigame(TestMatch match)
+    {
+        match.Press("A1", 0, afterSeconds: 4);
+        var game = match.AdventurerOf("A1").Minigame!;
+        match.Wait((game.PlaysFrom - match.Now).TotalSeconds);
+        return game;
+    }
+
+    /// <summary>Answers the pop quiz's question up, once the last answer's reveal is over.</summary>
+    private static IReadOnlyList<MatchEvent> AnswerQuiz(TestMatch match, PopQuiz quiz, bool right)
+    {
+        var correct = quiz.Current.CorrectIndex;
+        return match.Press("A1", right ? correct : (correct + 1) % 4, afterSeconds: Math.Max(0.5, (quiz.AskedAt - match.Now).TotalSeconds + 0.5));
+    }
+
+    [Fact]
+    public void A_mini_game_s_opening_gets_a_remark_said_as_its_intro_starts()
+    {
+        var match = MinigameMatch(MinigameKind.RuneLock, startChance: 1);
+
+        var quip = QuipIn(match.Press("A1", 0, afterSeconds: 4))!;
+
+        Assert.Equal(QuerieMoment.MinigameStart, quip.Moment);
+        Assert.Equal(match.AdventurerOf("A1").Minigame!.IntroAt, quip.At);
+        Assert.Same(quip, match.AdventurerOf("A1").LastQuip);
+    }
+
+    [Fact]
+    public void The_pop_quiz_opens_with_his_own_kind_of_remark()
+    {
+        var match = MinigameMatch(MinigameKind.PopQuiz, startChance: 1);
+
+        Assert.Equal(QuerieMoment.PopQuizStart, QuipIn(match.Press("A1", 0, afterSeconds: 4))!.Moment);
+    }
+
+    [Fact]
+    public void Running_out_of_time_always_gets_a_remark()
+    {
+        var match = MinigameMatch(MinigameKind.RuneLock);
+        var game = IntoTheMinigame(match);
+
+        var quip = QuipIn(match.Wait((game.EndsAt - match.Now).TotalSeconds + 0.1))!;
+
+        Assert.Equal((QuerieMoment.MinigameLost, game.EndsAt), (quip.Moment, quip.At));
+    }
+
+    [Fact]
+    public void A_win_always_gets_a_remark_as_the_win_shows()
+    {
+        var match = MinigameMatch(MinigameKind.PopQuiz, tune: m => m.PopQuiz.RightNeeded = 1);
+        var quiz = (PopQuiz)IntoTheMinigame(match);
+
+        var quip = QuipIn(AnswerQuiz(match, quiz, right: true))!;
+
+        Assert.Equal(QuerieMoment.MinigameWon, quip.Moment);
+        Assert.Equal(match.Now + TimeSpan.FromSeconds(quiz.WinPauseSeconds), quip.At); // the right answer shows a moment first
+    }
+
+    [Fact]
+    public void A_miss_in_a_mini_game_gets_a_remark_now_and_then()
+    {
+        var match = MinigameMatch(MinigameKind.RuneEcho, chance: 1);
+        var echo = (RuneEcho)IntoTheMinigame(match);
+        match.Wait((echo.InputFrom - match.Now).TotalSeconds + 0.1); // the runes have been shown
+
+        var quip = QuipIn(match.Press("A1", (echo.Expected + 1) % 4, afterSeconds: 0.1));
+
+        Assert.Equal(QuerieMoment.MinigameMiss, quip!.Moment);
+    }
+
+    [Fact]
+    public void A_wrong_pop_quiz_answer_always_gets_the_right_one_rubbed_in_and_forgetting_your_name_gets_its_own()
+    {
+        var match = MinigameMatch(MinigameKind.PopQuiz, lines: LinesWith((QuerieMoment.PopQuizWrong, "It was {answer}."), (QuerieMoment.PopQuizForgotName, "You're {answer}.")),
+            tune: m => { m.PopQuiz.RightNeeded = 10; m.PopQuiz.Strikes = 10; });
+        var quiz = (PopQuiz)IntoTheMinigame(match);
+        while (quiz.Current.Topic == PopQuizTopic.Name)
+            AnswerQuiz(match, quiz, right: true); // the name last, for this test
+
+        var asked = quiz.Current;
+        var wrong = QuipIn(AnswerQuiz(match, quiz, right: false))!;
+        while (quiz.Current.Topic != PopQuizTopic.Name)
+            Assert.Null(QuipIn(AnswerQuiz(match, quiz, right: true))); // right ones: now and then (never, here)
+        var forgot = QuipIn(AnswerQuiz(match, quiz, right: false))!;
+
+        Assert.Equal((QuerieMoment.PopQuizWrong, $"It was {asked.Answers[asked.CorrectIndex]}."), (wrong.Moment, wrong.Text));
+        Assert.Equal((QuerieMoment.PopQuizForgotName, "You're Ann."), (forgot.Moment, forgot.Text));
     }
 
     [Fact]

@@ -17,6 +17,8 @@
 //     you're on, the action button moves out a ring. Each round has a ring more (and another hero).
 //   - the tuner (tuner): four sinking bars, one per answer button; press them up into their zones and hold all four
 //     there together. Each bar sinks as a CSS animation from its last press, so it moves without a redraw.
+//   - the pop quiz (popQuiz): questions about your own run (your floor, the last monster, your name...); 3 right wins,
+//     3 wrong loses. The right answer shows a moment after each, then the next question comes in by itself.
 // On the main screen a lane shows when its player is in one, and a win gets a banner.
 // Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js and dungeon-battle.js. Styles: css/dungeon-minigames.css.
 
@@ -29,6 +31,7 @@ const DungeonMinigames = {
             case 'ChestShuffle': return Theme.text('dungeon.minigameChestShuffle');
             case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzle');
             case 'Tuner': return Theme.text('dungeon.minigameTuner');
+            case 'PopQuiz': return Theme.text('dungeon.minigamePopQuiz');
             case 'Minigame': return Theme.text('dungeon.minigameGeneric'); // which one isn't known
             default: return UI.escape(kind);
         }
@@ -42,6 +45,7 @@ const DungeonMinigames = {
             case 'ChestShuffle': return Theme.text('dungeon.minigameChestShuffleHow', { rounds: minigame.chestShuffle.rounds });
             case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzleHow', { rounds: minigame.ringPuzzle.rounds });
             case 'Tuner': return Theme.text('dungeon.minigameTunerHow');
+            case 'PopQuiz': return Theme.text('dungeon.minigamePopQuizHow', { right: minigame.popQuiz.rightNeeded, strikes: minigame.popQuiz.strikes });
             default: return '';
         }
     },
@@ -54,6 +58,7 @@ const DungeonMinigames = {
             case 'ChestShuffle': return DungeonMinigames.chestShuffle(game, you, serverNow, seed);
             case 'RingPuzzle': return DungeonMinigames.ringPuzzle(game, you, serverNow, seed);
             case 'Tuner': return DungeonMinigames.tuner(game, serverNow, seed);
+            case 'PopQuiz': return DungeonMinigames.popQuiz(game, serverNow, seed);
             default: return '';
         }
     },
@@ -71,6 +76,10 @@ const DungeonMinigames = {
         const body = DungeonMinigames.body(game, you, serverNow, seed);
         // The result from resultFromMs: when it finished, or a moment later for a win that holds its picture (the ring puzzle).
         const result = game.finishedAtMs ? DungeonMinigames.result(game, seed, Math.round((game.resultFromMs ?? game.finishedAtMs) - serverNow)) : '';
+        // Q.U.E.R.I.E.'s remark, in its own slot (always there, so the game doesn't move when he speaks), over the intro and
+        // result too. One due shortly (the opening's, said as the intro starts) is drawn now and shows itself then (--said0).
+        const querie = DungeonView.querie(you, serverNow, '', true);
+        const said0 = querie ? Math.round(you.quip.atMs - serverNow) : 0;
         return `
             <div class="dg-station is-minigame">
                 <div class="dg-world">
@@ -83,6 +92,7 @@ const DungeonMinigames = {
                                 <b>${Theme.text('dungeon.time')} <span ${UI.matchClock(match)}></span></b></span>
                         </div>
                         ${body}
+                        <div class="dg-mg-querie">${querie ? `<div class="dg-feedback is-querie" style="--said0: ${said0}ms">${querie.html}</div>` : ''}</div>
                         <div class="dg-minigame-limit">
                             <span>${Theme.text('dungeon.minigameTimeLeft')} <b data-ends-at="${game.endsAtMs}" data-hurry-at="5"></b></span>
                             <div class="timer-bar" data-starts-at="${game.playsFromMs}" data-ends-at="${game.endsAtMs}"><div class="timer-bar-fill"></div></div>
@@ -365,6 +375,66 @@ const DungeonMinigames = {
      * solved round the snapshot is already the next one, starting at roundStartsAtMs: until then the solved picture lies
      * over it, and lifts by itself when the next starts (no redraw comes then).
      */
+    /**
+     * The pop quiz: a question about your own run on a scroll, its four answers as rows in their buttons' colours, the
+     * right ones so far as gold pips and the wrong ones as strikes. After each answer the snapshot already holds the next
+     * question, asked a moment later (askedAtMs): until then the last one shows with its right answer lit (and the one
+     * picked, if that was another), then it gives way to the next by itself (CSS animations from --ask), because nothing
+     * comes from the server when it does. Over on an answer, that answer stays up; out of time, the question it was on.
+     */
+    popQuiz(game, serverNow, seed) {
+        const quiz = game.popQuiz;
+        const last = quiz.last;
+        const over = !!game.finishedAtMs;
+        const endedOnAnswer = over && !!last && last.atMs === game.finishedAtMs;
+        const revealing = !!last && (endedOnAnswer || (!over && quiz.askedAtMs > serverNow));
+        const page = (number, topic, answers, mark) => `
+            <div class="dg-scroll dg-pq-card">
+                <div class="dg-scroll-tag">${Theme.text('dungeon.minigamePopQuizQuestion', { number })}</div>
+                <div>${DungeonMinigames.popQuizAsk(topic)}</div>
+            </div>
+            <div class="dg-pq-answers">${answers.map((text, i) => `
+                <div class="dg-pq-answer ${mark ? mark(i) : ''}" data-letter="${UI.ANSWER_LETTERS[i]}">
+                    <b>${UI.ANSWER_LETTERS[i]}</b><span>${DungeonMinigames.popQuizAnswer(topic, text)}</span>
+                </div>`).join('')}
+            </div>`;
+        const reveal = revealing ? `
+            <div class="dg-pq-page is-reveal ${endedOnAnswer ? 'is-final' : ''}">
+                ${page(last.number, last.topic, last.answers, i => i === last.correct ? 'is-right' : i === last.chosen ? 'is-picked' : 'is-out')}
+                <div class="dg-pq-verdict ${last.wasRight ? 'is-right' : 'is-wrong'}" style="--said: ${Math.round(last.atMs - serverNow)}ms">${
+                    last.wasRight ? Theme.text('dungeon.minigamePopQuizRight', {}, `${seed}:${last.number}`)
+                                  : Theme.text('dungeon.minigamePopQuizWrong', {}, `${seed}:${last.number}`)}</div>
+            </div>` : '';
+        const next = endedOnAnswer ? '' : `<div class="dg-pq-page ${revealing ? 'is-next' : ''}">${page(quiz.number, quiz.topic, quiz.answers)}</div>`;
+        const pips = Array.from({ length: quiz.rightNeeded }, (_, i) => `<i class="dg-rl-pip ${i < quiz.right ? 'is-lit' : ''}"></i>`).join('');
+        const strikes = Array.from({ length: quiz.strikes }, (_, i) => `<i class="dg-pq-strike ${i < quiz.wrong ? 'is-struck' : ''}">X</i>`).join('');
+        return `
+            <div class="dg-pq ${over ? (game.won ? 'is-won' : 'is-lost') : ''}" style="--ask: ${Math.round(quiz.askedAtMs - serverNow)}ms">
+                <div class="dg-pq-score"><div class="dg-rl-pips">${pips}</div><div class="dg-pq-strikes">${strikes}</div></div>
+                <div class="dg-pq-stage">${reveal}${next}</div>
+            </div>`;
+    },
+
+    /** A pop quiz answer: as it comes, except heroes (class names, "Ranger"), shown in the theme's words as in the lobby. */
+    popQuizAnswer(topic, text) {
+        return topic === 'Hero' && window.ArcadeLobby ? ArcadeLobby.heroName(text.toLowerCase()) : UI.escape(text);
+    },
+
+    /** A pop quiz question, in the theme's words. Literal keys, so ThemeFilesTests can check them. */
+    popQuizAsk(topic) {
+        switch (topic) {
+            case 'Floor': return Theme.text('dungeon.minigamePopQuizAskFloor');
+            case 'LastMonster': return Theme.text('dungeon.minigamePopQuizAskLastMonster');
+            case 'Name': return Theme.text('dungeon.minigamePopQuizAskName');
+            case 'Hero': return Theme.text('dungeon.minigamePopQuizAskHero');
+            case 'Kills': return Theme.text('dungeon.minigamePopQuizAskKills');
+            case 'Lives': return Theme.text('dungeon.minigamePopQuizAskLives');
+            case 'LastAnswer': return Theme.text('dungeon.minigamePopQuizAskLastAnswer');
+            case 'LastBoss': return Theme.text('dungeon.minigamePopQuizAskLastBoss');
+            default: return UI.escape(topic);
+        }
+    },
+
     ringPuzzle(game, you, serverNow, seed) {
         const puzzle = game.ringPuzzle;
         const over = !!game.finishedAtMs;

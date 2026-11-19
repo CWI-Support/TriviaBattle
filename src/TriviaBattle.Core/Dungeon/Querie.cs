@@ -9,7 +9,9 @@ namespace TriviaBattle.Core.Dungeon;
 /// as death gets closer) only get a remark now and then, with a gap between remarks to the same player; big moments (a
 /// third miss in a row, down to the last life, the one who got it wrong while the rest of the party got theirs right) get
 /// one whenever they happen, a moment apart. A party hears the big ones about any of its members, but not too often.
-/// Numbers: <see cref="QuerieSettings"/>. <see cref="DungeonRun.Commentate"/> asks him and passes his remark on.
+/// He talks in the mini games too (<see cref="ReactToMinigame"/>), and most in the pop quiz.
+/// Numbers: <see cref="QuerieSettings"/>. <see cref="DungeonRun.Commentate"/> and <see cref="DungeonRun.CommentateMinigame"/>
+/// ask him and pass his remark on.
 /// </summary>
 public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random random)
 {
@@ -38,12 +40,59 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
         if (partyWide && now - _lastCalloutAt.GetValueOrDefault(scene.PartyId, DateTimeOffset.MinValue) < TimeSpan.FromSeconds(settings.PartyCalloutEverySeconds))
             partyWide = false;
 
-        if (NextLine(said) is not { } line)
-            return null;
-        _lastQuipAt[scene.OwnerId] = now;
-        if (partyWide)
+        var quip = Say(said, scene.OwnerId, partyWide, now, scene.Name, scene.Monster, scene.Floor.ToString(), scene.RivalAhead ?? "");
+        if (quip != null && partyWide)
             _lastCalloutAt[scene.PartyId] = now;
-        return new Quip(++_number, said, FillIn(line.Text, scene), line.Audio, scene.OwnerId, partyWide, now);
+        return quip;
+    }
+
+    /// <summary>
+    /// His remark on a moment in someone's mini game (its opening, what a press did, or the time running out), or null when
+    /// he keeps quiet. Just for them: everyone plays their own go. Openings now and then; wins and losses always (one
+    /// each per game); a miss now and then, with the same gap as an ordinary moment. The pop quiz is his own kind of game:
+    /// every wrong answer gets a remark (a moment apart), and a right one now and then.
+    /// </summary>
+    public Quip? ReactToMinigame(MinigameScene scene)
+    {
+        if (!settings.Enabled)
+            return null;
+        var quiz = scene.Kind == Minigames.MinigameKind.PopQuiz;
+        var forgotName = scene.Asked?.Topic == Minigames.PopQuizTopic.Name;
+        (QuerieMoment Moment, double Chance, double Gap)? what = scene.Beat switch
+        {
+            MinigameBeat.Start => (quiz ? QuerieMoment.PopQuizStart : QuerieMoment.MinigameStart, settings.MinigameStartChance, 0),
+            MinigameBeat.Won => (QuerieMoment.MinigameWon, 1, 0),
+            MinigameBeat.Lost => (quiz && forgotName ? QuerieMoment.PopQuizForgotName : QuerieMoment.MinigameLost, 1, 0),
+            MinigameBeat.Miss when quiz => (forgotName ? QuerieMoment.PopQuizForgotName : QuerieMoment.PopQuizWrong, 1, forgotName ? 0 : settings.BigGapSeconds),
+            MinigameBeat.Miss => (QuerieMoment.MinigameMiss, settings.Chance, settings.QuipEverySeconds),
+            MinigameBeat.Hit when quiz => (QuerieMoment.PopQuizRight, settings.Chance, settings.QuipEverySeconds),
+            _ => null, // a hit in any other game: the game says it
+        };
+        if (what is not { } said)
+            return null;
+        var (moment, chance, gap) = said;
+        if (scene.At - _lastQuipAt.GetValueOrDefault(scene.OwnerId, DateTimeOffset.MinValue) < TimeSpan.FromSeconds(gap))
+            return null;
+        if (chance < 1 && random.NextDouble() >= chance)
+            return null;
+        var answer = scene.Asked is { } asked ? asked.Answers[asked.CorrectIndex] : "";
+        return Say(moment, scene.OwnerId, partyWide: false, scene.At, scene.Name, answer: answer);
+    }
+
+    /// <summary>The moment's next line, filled in and counted as their latest remark (null with no lines for it).</summary>
+    private Quip? Say(QuerieMoment moment, string ownerId, bool partyWide, DateTimeOffset at,
+        string name, string monster = "", string floor = "", string rival = "", string answer = "")
+    {
+        if (NextLine(moment) is not { } line)
+            return null;
+        _lastQuipAt[ownerId] = at;
+        var text = line.Text
+            .Replace("{name}", name)
+            .Replace("{monster}", monster)
+            .Replace("{floor}", floor)
+            .Replace("{rival}", rival)
+            .Replace("{answer}", answer);
+        return new Quip(++_number, moment, text, line.Audio, ownerId, partyWide, at);
     }
 
     /// <summary>What kind of moment this answer is (null: nothing he'd remark on), whether it's a big one, and whether the party hears it.</summary>
@@ -110,12 +159,16 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
         return choices[index];
     }
 
-    private static string FillIn(string text, QuerieScene s) => text
-        .Replace("{name}", s.Name)
-        .Replace("{monster}", s.Monster)
-        .Replace("{floor}", s.Floor.ToString())
-        .Replace("{rival}", s.RivalAhead ?? "");
 }
+
+/// <summary>What happened in a mini game, for Q.U.E.R.I.E.: it opened, a press hit or missed, or it was won or lost.</summary>
+public enum MinigameBeat { Start, Hit, Miss, Won, Lost }
+
+/// <summary>
+/// A moment in someone's mini game (<see cref="DungeonRun.CommentateMinigame"/> works it out), at <paramref name="At"/>
+/// (an opening: when its intro starts). <paramref name="Asked"/>: in the pop quiz, the question the press just answered.
+/// </summary>
+public sealed record MinigameScene(string OwnerId, string Name, Minigames.MinigameKind Kind, MinigameBeat Beat, Minigames.PopQuizQuestion? Asked, DateTimeOffset At);
 
 /// <summary>
 /// What Q.U.E.R.I.E. knows about an answer when deciding whether to say something (<see cref="DungeonRun.Commentate"/>

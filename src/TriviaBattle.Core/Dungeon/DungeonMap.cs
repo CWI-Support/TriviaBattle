@@ -113,6 +113,9 @@ public sealed class DungeonMap
 
     public IReadOnlyList<DepthDef> Depths { get; }
 
+    /// <summary>Every monster the dungeon can hold (the pop quiz mixes their names into its answers).</summary>
+    public IEnumerable<MonsterDef> Monsters => _monsters.Values;
+
     /// <summary>Extra HP per loop through the dungeon: 0.5 = monsters have 150% HP on the second loop.</summary>
     public double LoopHpBonus { get; }
 
@@ -185,19 +188,25 @@ public sealed class DungeonMap
     /// </summary>
     public (MinigameKind Kind, int AfterRoom)? MinigameOn(int floor)
     {
-        // Floor by floor from the top, counting the floors in a row without one, so the promise knows when it's due.
+        // Floor by floor from the top, counting the floors in a row without one, so the promise knows when it's due,
+        // and whether there's been one yet (the first can't be one of MinigameCatalog.NeverFirst).
         (MinigameKind Kind, int AfterRoom)? minigame = null;
         var without = 0;
+        var any = false;
         for (var f = 1; f <= floor; f++)
         {
-            minigame = RollMinigame(f, promised: MinigameEvery > 0 && without >= MinigameEvery - 1);
+            minigame = RollMinigame(f, promised: MinigameEvery > 0 && without >= MinigameEvery - 1, first: !any);
             without = minigame == null ? without + 1 : 0;
+            any |= minigame != null;
         }
         return minigame;
     }
 
-    /// <summary>One floor's mini game: as written, or its roll (promised: it has one even if the roll says not).</summary>
-    private (MinigameKind Kind, int AfterRoom)? RollMinigame(int floor, bool promised)
+    /// <summary>
+    /// One floor's mini game: as written, or its roll (promised: it has one even if the roll says not; first: no floor
+    /// above had one, so it's the match's first).
+    /// </summary>
+    private (MinigameKind Kind, int AfterRoom)? RollMinigame(int floor, bool promised, bool first)
     {
         var (_, def, rooms) = _floors[(floor - 1) % _floors.Count];
         if (def.Minigame is { } written)
@@ -211,7 +220,7 @@ public sealed class DungeonMap
         var roll = new Random(unchecked(_minigameSeed * 7919 + floor)); // this floor's own roll, whoever gets there first
         if (roll.NextDouble() >= MinigameChance && !promised)
             return null;
-        return (MinigameCatalog.Pick(roll), roll.Next(1, lastAfter + 1));
+        return (MinigameCatalog.Pick(roll, first), roll.Next(1, lastAfter + 1));
     }
 
     /// <summary>The monsters in a given room of a given floor (both 1-based), the one in front first.</summary>

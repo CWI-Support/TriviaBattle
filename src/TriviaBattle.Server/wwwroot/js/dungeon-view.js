@@ -365,9 +365,11 @@ const DungeonView = {
      * when it's about you; a smaller aside when it's a callout about a teammate. detail: what goes under it (the right
      * answer, after a wrong one). Null when he has nothing to say: the plain line shows.
      */
-    querie(you, serverNow, detail = '') {
+    querie(you, serverNow, detail = '', ahead = false) {
         const quip = you.quip;
-        if (!quip || serverNow - quip.atMs >= DungeonView.QUIP_MS) return null;
+        // Not said yet (a mini game's opening remark waits for its intro: ahead, the caller shows it when it comes, by a
+        // CSS delay), or said and gone.
+        if (!quip || (!ahead && serverNow < quip.atMs) || serverNow - quip.atMs >= DungeonView.QUIP_MS) return null;
         // Something newer of theirs has happened since (their next answer's fight): that's the line now, not this remark.
         if (you.beat && you.beat.startedAtMs > quip.atMs) return null;
         return {

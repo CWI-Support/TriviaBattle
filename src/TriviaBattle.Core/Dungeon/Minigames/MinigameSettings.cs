@@ -23,6 +23,7 @@ public sealed class MinigameSettings
     public ChestShuffleSettings ChestShuffle { get; set; } = new();
     public RingPuzzleSettings RingPuzzle { get; set; } = new();
     public TunerSettings Tuner { get; set; } = new();
+    public PopQuizSettings PopQuiz { get; set; } = new();
 
     public MinigameSettings Copy()
     {
@@ -32,8 +33,27 @@ public sealed class MinigameSettings
         copy.ChestShuffle = ChestShuffle.Copy();
         copy.RingPuzzle = RingPuzzle.Copy();
         copy.Tuner = Tuner.Copy();
+        copy.PopQuiz = PopQuiz.Copy();
         return copy;
     }
+}
+
+/// <summary>The pop quiz: questions about their own run (<see cref="PopQuiz"/>).</summary>
+public sealed class PopQuizSettings
+{
+    /// <summary>Right answers that win it.</summary>
+    public int RightNeeded { get; set; } = 3;
+
+    /// <summary>Wrong answers that lose it.</summary>
+    public int Strikes { get; set; } = 3;
+
+    /// <summary>How long the right answer shows after each answer, before the next question (presses wait for it).</summary>
+    public double RevealSeconds { get; set; } = 1.4;
+
+    /// <summary>The time limit.</summary>
+    public double Seconds { get; set; } = 40;
+
+    public PopQuizSettings Copy() => (PopQuizSettings)MemberwiseClone();
 }
 
 /// <summary>The tuner: four sinking bars, pressed up into their zones (<see cref="Tuner"/>). Levels are shares of the bar (0-1).</summary>

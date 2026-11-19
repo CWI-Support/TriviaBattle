@@ -20,6 +20,9 @@ public enum MinigameKind
 
     /// <summary>Four sinking bars, one per answer button: press them up into their zones, all four at once (<see cref="Tuner"/>).</summary>
     Tuner,
+
+    /// <summary>A quiz about their own run (their floor, the last monster, their name...): 3 right wins (<see cref="PopQuiz"/>). Never the first.</summary>
+    PopQuiz,
 }
 
 /// <summary>What a press did in a mini game.</summary>

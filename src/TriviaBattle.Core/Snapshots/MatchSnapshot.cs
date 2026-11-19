@@ -225,7 +225,21 @@ public sealed record RewardTakenView(int Number, Reward Reward, double Amount, i
 public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs, long EndsAtMs, long? FinishedAtMs, bool Won, long? ResultEndsAtMs,
     RuneLockView? RuneLock, RuneEchoView? RuneEcho = null, ChestShuffleView? ChestShuffle = null, RingPuzzleView? RingPuzzle = null,
     long? ResultFromMs = null,
-    TunerView? Tuner = null);
+    TunerView? Tuner = null,
+    PopQuizView? PopQuiz = null);
+
+/// <summary>
+/// The pop quiz: questions about their own run. The one up is <see cref="Topic"/> with its four <see cref="Answers"/>
+/// (never which is right), from <see cref="AskedAtMs"/> (until then, the last answer's reveal); it's question
+/// <see cref="Number"/>. <see cref="RightNeeded"/> right wins, <see cref="Strikes"/> wrong loses. Once it's over, the one
+/// up is the last one answered.
+/// </summary>
+/// <param name="Last">The last answer, with which was right (it's been answered); null before the first.</param>
+public sealed record PopQuizView(int RightNeeded, int Strikes, int Right, int Wrong, int Number, Dungeon.Minigames.PopQuizTopic Topic,
+    IReadOnlyList<string> Answers, long AskedAtMs, PopQuizAnswerView? Last);
+
+/// <summary>A pop quiz answer: the question (its topic and answers), the button pressed, and the right one.</summary>
+public sealed record PopQuizAnswerView(int Number, Dungeon.Minigames.PopQuizTopic Topic, IReadOnlyList<string> Answers, int Chosen, int Correct, bool WasRight, long AtMs);
 
 /// <summary>
 /// The tuner: four bars (A-D). Bar i was at <see cref="TunerBarView.Level"/> (0-1) at <see cref="TunerBarView.AtMs"/> and

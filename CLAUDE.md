@@ -24,7 +24,7 @@ when it clears (`DungeonRun.OpenRewards`) you pick one of `Choices` with the ans
 holds your question and hourglass; rewards stack and are read live where the numbers are used (`DamageShare`, `FastSecondsOf`...).
 Tests have rewards off unless they pass `rewards: true` (like battle beats).
 Mini games (`Core/Dungeon/Minigames`: a `Minigame` base for the shared timing, one class per game, `MinigameCatalog`):
-every floor reached may have one between two rooms, loops included (`MinigameChance` in `config/dungeon.json`, at least one every `MinigameEvery` floors, `DungeonMap.MinigameOn`);
+every floor reached may have one between two rooms (the pop quiz, questions about your own run, never as the match's first), loops included (`MinigameChance` in `config/dungeon.json`, at least one every `MinigameEvery` floors, `DungeonMap.MinigameOn`);
 the kill that empties the room before it is `DealtHit.MinigameAhead` and the party plays (`DungeonRun.StartMinigames`). Rules
 stay on the server (the rune lock's needle angle comes from the press time; the chest shuffle's action button is its
 fifth chest, so mini games get the action button before power-ups do). While anyone `IsAway` (a mini game or a reward
@@ -51,7 +51,8 @@ hero's head (only its skin: hair, hoods and beards stay; check every hero at `/d
 `/api/photos` hold them. Photos live in server memory until the player drops it, leaves the lobby or the match ends: never write one
 to disk, the database or a log.
 Q.U.E.R.I.E. (the host) talks at the stations: after an answer `DungeonRun.Commentate` asks `Querie` (`Core/Dungeon/Querie.cs`)
-whether he has a remark (now and then for ordinary moments, always for big ones, party-wide callouts in a party); it's
+whether he has a remark (now and then for ordinary moments, always for big ones, party-wide callouts in a party; in the mini
+games `DungeonRun.CommentateMinigame`, most of all in the pop quiz); it's
 `YouView.Quip`, shown by `DungeonView.querie` in place of the feedback line. Lines are `config/querie.json` (`{text, audio}`,
 audio for later recordings), his numbers `Game:Dungeon:Querie`; tests hear him only when they pass `querie:`. Keep the station's
 plain feedback lines (`dungeon.*` in the copy) factual: the jokes are his.

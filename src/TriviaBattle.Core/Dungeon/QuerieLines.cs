@@ -38,6 +38,32 @@ public enum QuerieMoment
 
     /// <summary>A race or a team battle: a rival is a floor (or more) ahead.</summary>
     BehindRival,
+
+    // Mini games (Querie.ReactToMinigame): just for the player, as everyone plays their own go.
+
+    /// <summary>A mini game opens (its intro): now and then.</summary>
+    MinigameStart,
+
+    /// <summary>A miss in a mini game (the needle off the mark, a wrong rune): now and then.</summary>
+    MinigameMiss,
+
+    /// <summary>A mini game won: always.</summary>
+    MinigameWon,
+
+    /// <summary>A mini game lost (out of time, the wrong chest, the last strike): always.</summary>
+    MinigameLost,
+
+    /// <summary>The pop quiz opens: his own kind of game. Now and then, like any other.</summary>
+    PopQuizStart,
+
+    /// <summary>A right answer in the pop quiz: now and then.</summary>
+    PopQuizRight,
+
+    /// <summary>A wrong answer in the pop quiz ({answer}: the right one): always.</summary>
+    PopQuizWrong,
+
+    /// <summary>The pop quiz asked their name and they got it wrong ({answer}: their name): always.</summary>
+    PopQuizForgotName,
 }
 
 /// <summary>
@@ -52,8 +78,11 @@ public sealed record QuerieLine(string Text, string? Audio = null);
 /// </summary>
 public sealed class QuerieLines(IReadOnlyDictionary<QuerieMoment, IReadOnlyList<QuerieLine>> lines)
 {
-    /// <summary>{name}: who it's said about; {monster}: the monster they're fighting; {floor}: their floor; {rival}: the rival ahead.</summary>
-    public static readonly IReadOnlyList<string> Placeholders = ["name", "monster", "floor", "rival"];
+    /// <summary>
+    /// {name}: who it's said about; {monster}: the monster they're fighting; {floor}: their floor; {rival}: the rival ahead;
+    /// {answer}: in the pop quiz, the right answer they missed.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Placeholders = ["name", "monster", "floor", "rival", "answer"];
 
     /// <summary>No lines at all: Q.U.E.R.I.E. stays quiet at the stations (the tests' default).</summary>
     public static readonly QuerieLines None = new(new Dictionary<QuerieMoment, IReadOnlyList<QuerieLine>>());

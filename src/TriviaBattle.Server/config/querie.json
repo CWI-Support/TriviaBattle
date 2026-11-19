@@ -1,5 +1,5 @@
 {
-  "_about": "Q.U.E.R.I.E.'s lines at the stations. The game decides WHEN he speaks (Core/Dungeon/Querie.cs; how often: Game:Dungeon:Querie); this file is WHAT he says. Each moment has a list of lines, picked in a shuffled order so they don't repeat soon. Placeholders filled in: {name} (who it's about), {monster}, {floor} (their floor), {rival} (a rival side ahead, in races and team battles). 'audio' is for later: a recorded clip of the line (e.g. \"querie/wrong-01.mp3\" under media/audio); null = shown, not heard. Lines with {name} can't be recorded for everyone. Restart the server after editing. Tone: a charismatic, unhinged AI game-show host. Roast the play, never the person.",
+  "_about": "Q.U.E.R.I.E.'s lines at the stations. The game decides WHEN he speaks (Core/Dungeon/Querie.cs; how often: Game:Dungeon:Querie); this file is WHAT he says. Each moment has a list of lines, picked in a shuffled order so they don't repeat soon. Placeholders filled in: {name} (who it's about), {monster}, {floor} (their floor), {rival} (a rival side ahead, in races and team battles), {answer} (in the pop quiz, the right answer they missed). 'audio' is for later: a recorded clip of the line (e.g. \"querie/wrong-01.mp3\" under media/audio); null = shown, not heard. Lines with {name} can't be recorded for everyone. Restart the server after editing. Tone: a charismatic, unhinged AI game-show host. Roast the play, never the person.",
 
   "_wrong": "A wrong answer.",
   "wrong": [
@@ -131,5 +131,101 @@
     { "text": "{rival} sends their regards. From further down.", "audio": null },
     { "text": "Correct! Not that {rival} noticed. They're busy winning.", "audio": null },
     { "text": "You're doing great, {name}. {rival} is doing greater.", "audio": null }
+  ],
+
+  "_minigameStart": "A mini game opens (its intro). Now and then.",
+  "minigameStart": [
+    { "text": "A mini game! I designed this one myself. Mostly to watch you struggle.", "audio": null },
+    { "text": "Oh good, a break from dying. Here's a different way to fail.", "audio": null },
+    { "text": "Mini game time! The clock's stopped. Your embarrassment isn't.", "audio": null },
+    { "text": "Let's play a little game, {name}. Don't worry, it's rigged. Fairly.", "audio": null },
+    { "text": "Win this and I'll give you a prize. Lose and I'll tell everyone.", "audio": null },
+    { "text": "Ooh, a challenge! I've got popcorn. Metaphorical popcorn.", "audio": null },
+    { "text": "Fingers ready, {name}? They look nervous.", "audio": null },
+    { "text": "A little game between friends. We're not friends. Play anyway.", "audio": null }
+  ],
+
+  "_minigameMiss": "A miss in a mini game (the needle off the mark, a wrong rune). Now and then.",
+  "minigameMiss": [
+    { "text": "Missed! The buttons are right there, {name}.", "audio": null },
+    { "text": "Close! Not close enough. But close!", "audio": null },
+    { "text": "That's not how this works. That's not how any of this works.", "audio": null },
+    { "text": "Oops. I saw that. Everyone saw that.", "audio": null },
+    { "text": "My grandmother had better reflexes. I don't have a grandmother.", "audio": null },
+    { "text": "Try pressing it at the RIGHT time. Revolutionary, I know.", "audio": null },
+    { "text": "Swing and a miss!", "audio": null },
+    { "text": "Hmm. Was that on purpose?", "audio": null }
+  ],
+
+  "_minigameWon": "A mini game won. Always.",
+  "minigameWon": [
+    { "text": "You won? I'll have to make these harder.", "audio": null },
+    { "text": "Fine. FINE. Take your prize.", "audio": null },
+    { "text": "Impressive, {name}! Enjoy it. The dungeon's still waiting.", "audio": null },
+    { "text": "A winner! Don't let it go to your head. There's not much room up there.", "audio": null },
+    { "text": "Well done! I'm only slightly devastated.", "audio": null },
+    { "text": "Victory! Go pick something shiny.", "audio": null },
+    { "text": "Nailed it. I'm updating my threat assessment of you. Slightly.", "audio": null },
+    { "text": "You beat my game. I'll be filing a complaint with myself.", "audio": null }
+  ],
+
+  "_minigameLost": "A mini game lost (out of time, the wrong chest, the last strike). Always.",
+  "minigameLost": [
+    { "text": "And that's a no. Back to the monsters with you.", "audio": null },
+    { "text": "So close! In the sense that it wasn't close at all.", "audio": null },
+    { "text": "Better luck next time, {name}. Statistically, you'll need it.", "audio": null },
+    { "text": "Lost it! Don't worry, the monsters still love you. As food.", "audio": null },
+    { "text": "Game over. The mini one. The big one's coming.", "audio": null },
+    { "text": "No prize for you! I'll keep it. I deserve it.", "audio": null },
+    { "text": "That went about as well as I predicted. I predicted badly.", "audio": null },
+    { "text": "Defeat! Delicious, delicious defeat.", "audio": null }
+  ],
+
+  "_popQuizStart": "The pop quiz opens: questions about their own run. His kind of game. Now and then.",
+  "popQuizStart": [
+    { "text": "POP QUIZ! Let's see if you've been paying attention, {name}.", "audio": null },
+    { "text": "Pop quiz time! The subject is: you. Don't worry, it's easy. Probably.", "audio": null },
+    { "text": "Pencils down, brains up! Questions about your own adventure!", "audio": null },
+    { "text": "A quiz about YOUR run. If you fail this, I can't help you.", "audio": null },
+    { "text": "Pop quiz! Were you there for your own adventure? Let's find out.", "audio": null },
+    { "text": "Surprise test! I've been taking notes on you, {name}.", "audio": null },
+    { "text": "Time for a little quiz. Everything you need to know, you've already lived.", "audio": null },
+    { "text": "Pop quiz! No studying required. Just memory. Uh oh.", "audio": null }
+  ],
+
+  "_popQuizRight": "A right answer in the pop quiz. Now and then.",
+  "popQuizRight": [
+    { "text": "Correct! You were paying attention. Mostly.", "audio": null },
+    { "text": "Right! Your memory works. Unlike your dodging.", "audio": null },
+    { "text": "Yes! A gold star. Imaginary, but gold.", "audio": null },
+    { "text": "Correct! Someone's been keeping a diary.", "audio": null },
+    { "text": "That's right! I'm almost proud.", "audio": null },
+    { "text": "Look at you, remembering your own life.", "audio": null },
+    { "text": "Correct. The bar was low, but you cleared it.", "audio": null },
+    { "text": "Right again! Are you cheating? You're not cheating.", "audio": null }
+  ],
+
+  "_popQuizWrong": "A wrong answer in the pop quiz. {answer} is the right one. Always.",
+  "popQuizWrong": [
+    { "text": "It was {answer}. You were THERE, {name}.", "audio": null },
+    { "text": "Wrong! It was {answer}. Were you even watching?", "audio": null },
+    { "text": "{answer}! The answer was {answer}! It happened to YOU!", "audio": null },
+    { "text": "Nope. {answer}. I'm writing this down.", "audio": null },
+    { "text": "It was {answer}. How do you forget something that just happened?", "audio": null },
+    { "text": "Incorrect. The answer was {answer}. Your own adventure, {name}!", "audio": null },
+    { "text": "{answer}. It was {answer}. I'm genuinely concerned.", "audio": null },
+    { "text": "Wrong! {answer}. Maybe skip the next potion, it's affecting your memory.", "audio": null }
+  ],
+
+  "_popQuizForgotName": "The pop quiz asked their name and they got it wrong. {answer} is their name. Always.",
+  "popQuizForgotName": [
+    { "text": "You forgot your own NAME? It's {answer}. Write it on your hand.", "audio": null },
+    { "text": "Your name is {answer}. YOUR NAME. I'm speechless. Almost.", "audio": null },
+    { "text": "Hello, {answer}. That's you. We've just met, apparently.", "audio": null },
+    { "text": "It's {answer}! The one thing you'd think you'd know!", "audio": null },
+    { "text": "Name tag for {answer}, please. Big letters.", "audio": null },
+    { "text": "{answer}. Your name is {answer}. This is going in the highlight reel.", "audio": null },
+    { "text": "You didn't know your own name. I've never been happier.", "audio": null },
+    { "text": "Who are you? According to my records: {answer}. Allegedly.", "audio": null }
   ]
 }

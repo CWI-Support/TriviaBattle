@@ -37,5 +37,8 @@ public sealed class QuerieSettings
     /// <summary>From this floor down, every right answer is a little closer to death (it counts towards doomed).</summary>
     public int DeepFloor { get; set; } = 4;
 
+    /// <summary>How likely a mini game's opening is to get a remark (its win or loss always does).</summary>
+    public double MinigameStartChance { get; set; } = 0.6;
+
     public QuerieSettings Copy() => (QuerieSettings)MemberwiseClone();
 }

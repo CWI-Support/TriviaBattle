@@ -504,10 +504,41 @@ public sealed class DungeonRun
         var players = PartyOf(partyId).Where(a => !a.IsAway && !a.IsOut).ToList();
         foreach (var player in players)
         {
-            player.StartMinigame(MinigameCatalog.Create(kind, introAt, MinigameRules, _random));
+            var facts = kind == MinigameKind.PopQuiz ? PopQuizFactsFor(player, kill) : null;
+            player.StartMinigame(MinigameCatalog.Create(kind, introAt, MinigameRules, _random, facts));
             player.StopHourglass();
         }
         return players;
+    }
+
+    /// <summary>What the pop quiz can ask an adventurer about their run, just after <paramref name="kill"/> emptied the room.</summary>
+    private PopQuizFacts PopQuizFactsFor(Adventurer adventurer, DealtHit kill)
+    {
+        var delve = DelveOf(adventurer);
+        var name = _names.GetValueOrDefault(adventurer.OwnerId, adventurer.OwnerId);
+        var others = _names.Values.Where(n => n != name).ToList();
+        var madeUp = new List<string>();
+        for (var i = 0; i < 3; i++)
+            madeUp.Add(Arcade.HeroNames.Make(_random, [name, .. others, .. madeUp]));
+        var floor = delve.Floor;
+        var lastBoss = floor > 1
+            ? _map.RoomAt(floor - 1, _map.RoomsOn(floor - 1)).FirstOrDefault(e => e.Monster.IsBoss)?.Monster.Name
+            : null;
+        return new PopQuizFacts(
+            name,
+            others,
+            madeUp,
+            floor,
+            kill.MonsterName,
+            _map.Monsters.Where(m => !m.IsBoss).Select(m => m.Name).ToList(),
+            adventurer.Class.ToString(),
+            Enum.GetNames<HeroClass>(),
+            delve.Kills,
+            _settings.Lives > 0 ? adventurer.Lives : null,
+            adventurer.MaxLives,
+            _streams[adventurer.OwnerId].LastAnswer?.Question,
+            lastBoss,
+            _map.Monsters.Where(m => m.IsBoss).Select(m => m.Name).ToList());
     }
 
     /// <summary>An answer button in a mini game (pressed at <paramref name="at"/>). What it did; nothing outside one.</summary>
@@ -994,6 +1025,25 @@ public sealed class DungeonRun
             return null;
         foreach (var listener in quip.PartyWide ? party : [adventurer])
             listener.Hear(quip);
+        return quip;
+    }
+
+    /// <summary>
+    /// Q.U.E.R.I.E. on a moment in someone's mini game (<paramref name="beat"/>: it opened, a press hit or missed, it was
+    /// won or lost), at <paramref name="at"/>: his remark, if he has one, for them alone. Null when he keeps quiet.
+    /// </summary>
+    public Quip? CommentateMinigame(string ownerId, MinigameBeat beat, DateTimeOffset at)
+    {
+        var adventurer = _adventurers[ownerId];
+        if (_querie == null || adventurer.Minigame is not { } game)
+            return null;
+        // The pop quiz: the question a press just answered (not an older one, when the time runs out).
+        var asked = beat != MinigameBeat.Start && game is PopQuiz quiz && quiz.Last is { } last && last.At == at
+            ? quiz.Questions[last.Question]
+            : null;
+        var quip = _querie.ReactToMinigame(new MinigameScene(ownerId, _names.GetValueOrDefault(ownerId, ownerId), game.Kind, beat, asked, at));
+        if (quip != null)
+            adventurer.Hear(quip);
         return quip;
     }
 

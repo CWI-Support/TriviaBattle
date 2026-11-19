@@ -222,7 +222,7 @@ The rules:
 - **Mini games** (`Core/Dungeon/Minigames`, numbers in `MinigameSettings`, `"Game:Dungeon:Minigames"`). `DungeonMap.MinigameOn`
   rolls every floor reached for one by `MinigameChance` (config/dungeon.json), loops included (a loop repeats a floor's
   rooms, not its mini game): its own `Random` from the match's seed and the floor number, so every party meets the same
-  ones; after `MinigameEvery` (3) less one floors without one, the next floor that can hold one has one whatever its roll. The kind comes from `MinigameCatalog.Pick` (every kind as likely) and it follows a random room, never the one
+  ones; after `MinigameEvery` (3) less one floors without one, the next floor that can hold one has one whatever its roll. The kind comes from `MinigameCatalog.Pick` (every kind as likely, except that the match's first, the first floor with one, is never one of `MinigameCatalog.NeverFirst`) and it follows a random room, never the one
   before the boss's. A floor written with `FloorDef.Minigame`/`MinigameAfterRoom` always has that one (tests use it). When that room empties,
   `Delve.ClearTheDead` marks the kill `DealtHit.MinigameAhead`, and `MatchEngine` calls `DungeonRun.StartMinigames`: each
   party member not already away gets their own `Minigame` (`MinigameStarted`), its intro once the kill beat ends. A
@@ -237,7 +237,12 @@ The rules:
   one, a ring more, starts at `RoundStartsAt`) and `Tuner` (four sinking bars, one per answer button: a press raises one
   by `Step` (`MinigamePress.Nudge`, silent); each `TunerBar` sinks steadily from its last press, so when all four were in
   their zones together for `HoldSeconds` is worked out exactly (`Tuner.WonAt`), and the tick can win it with no press:
-  `Minigame.WinDue`, before the time limit, raised as a winning `MinigamePlayed`). `HandlePress` sends
+  `Minigame.WinDue`, before the time limit, raised as a winning `MinigamePlayed`) and `PopQuiz` (questions about the
+  player's own run, written when it starts from the `PopQuizFacts` that `DungeonRun.PopQuizFactsFor` gathers: their
+  floor, the monster whose death led to it, their name, hero, kills, lives, their last question's answer, the boss of the
+  floor above, each with three of the same kind to mix it up with; `RightNeeded` right wins, `Strikes` wrong loses, and
+  presses wait out each answer's reveal until `AskedAt`. The snapshot's `PopQuizView` never carries the right answer to
+  the question up, only to the last one answered). `HandlePress` sends
   answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
   and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
   others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone
@@ -430,7 +435,12 @@ he speaks (`QuerieMoment`; ordinary moments by chance with a gap per player, big
 gap per party) and picks the line, from its own `Random` so his chatter never changes the fight's dice. The `Quip` goes
 on `Adventurer.LastQuip` for the player (and every teammate when it's party-wide) and out as a `QuerieSpoke` event;
 snapshots carry it as `YouView.Quip` (`AboutYou` false for a remark about a teammate), and `DungeonView.querie` shows
-it in place of the feedback line for `QUIP_MS`. Lines are content in `config/querie.json`, loaded at startup by
+it in place of the feedback line for `QUIP_MS`. In the mini games `MatchEngine` asks `DungeonRun.CommentateMinigame` at
+each moment (its opening, said as the intro starts; a press's `MinigameBeat`; the time running out), and
+`Querie.ReactToMinigame` decides (openings by `MinigameStartChance`, wins and losses always, misses like ordinary
+moments; in the pop quiz every wrong answer, with `{answer}` the right one, and a name forgotten its own moment). The
+station shows it in the mini game's own slot (`.dg-mg-querie`, a fixed height so the game never moves), over the intro
+and result veils. Lines are content in `config/querie.json`, loaded at startup by
 `Server/Game/QuerieContent.cs` as `QuerieLines` (a missing file: he keeps quiet; tests pass `querie:` to hear him).
 
 ### Adding a game mode

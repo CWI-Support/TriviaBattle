@@ -130,6 +130,14 @@ public class DungeonPacingTests(ITestOutputHelper output)
                     match.Wait(0.1);
                 break;
             }
+            case PopQuiz quiz when quiz.AskedAt > match.Now:
+                match.Wait((quiz.AskedAt - match.Now).TotalSeconds + 0.05); // the last answer's reveal
+                break;
+            case PopQuiz quiz:
+                // Two seconds to read it; they remember their own run about as well as they hit the lock's mark.
+                var correct = quiz.Current.CorrectIndex;
+                match.Press("A1", player.NextDouble() < how.OnTheMark ? correct : (correct + 1) % 4, afterSeconds: 2);
+                break;
             case RingPuzzle puzzle when puzzle.RoundStartsAt > match.Now:
                 match.Wait((puzzle.RoundStartsAt - match.Now).TotalSeconds + 0.05); // the solved picture
                 break;

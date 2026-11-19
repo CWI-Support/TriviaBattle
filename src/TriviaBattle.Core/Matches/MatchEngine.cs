@@ -241,9 +241,15 @@ public sealed class MatchEngine
             // Mini games: lost when their time runs out; over once their result has been shown.
             _dungeon.MinigamesDue(now, out var wonNow, out var lost, out var over);
             foreach (var winner in wonNow)
+            {
                 events.Add(new MinigamePlayed(winner.OwnerId, MinigamePress.Won)); // won by how things stand (the tuner), heard like a winning press
+                events.AddRange(QuerieOnMinigame(winner.OwnerId, MinigameBeat.Won, winner.Minigame?.FinishedAt ?? now));
+            }
             foreach (var loser in lost)
+            {
                 events.Add(new MinigameLost(loser.OwnerId));
+                events.AddRange(QuerieOnMinigame(loser.OwnerId, MinigameBeat.Lost, loser.Minigame?.FinishedAt ?? now));
+            }
             foreach (var done in over)
             {
                 Version++;
@@ -390,8 +396,20 @@ public sealed class MatchEngine
     }
 
     /// <summary>A kill emptied the room before the floor's mini game: everyone in the party starts their go at it.</summary>
-    private IEnumerable<MatchEvent> StartMinigames(string partyId, DealtHit kill, DateTimeOffset now) =>
-        _dungeon!.StartMinigames(partyId, kill, now).Select(a => new MinigameStarted(a.OwnerId, a.Minigame!.Kind)).ToList();
+    private IEnumerable<MatchEvent> StartMinigames(string partyId, DealtHit kill, DateTimeOffset now)
+    {
+        var events = new List<MatchEvent>();
+        foreach (var player in _dungeon!.StartMinigames(partyId, kill, now))
+        {
+            events.Add(new MinigameStarted(player.OwnerId, player.Minigame!.Kind));
+            events.AddRange(QuerieOnMinigame(player.OwnerId, MinigameBeat.Start, player.Minigame.IntroAt)); // said as its intro comes up
+        }
+        return events;
+    }
+
+    /// <summary>Q.U.E.R.I.E.'s remark on a moment in someone's mini game, if he has one (see <see cref="DungeonRun.CommentateMinigame"/>).</summary>
+    private IEnumerable<MatchEvent> QuerieOnMinigame(string ownerId, MinigameBeat beat, DateTimeOffset at) =>
+        _dungeon!.CommentateMinigame(ownerId, beat, at) is { } quip ? [new QuerieSpoke(quip)] : [];
 
     /// <summary>An answer button in a mini game, timed by when it was pressed (the needle's where it was then).</summary>
     private IReadOnlyList<MatchEvent> PlayMinigame(string ownerId, ButtonPress press)
@@ -401,7 +419,17 @@ public sealed class MatchEngine
             return NothingHappened;
         Version++;
         var showsIn = result is MinigamePress.Won or MinigamePress.Cleared ? _dungeon.FindAdventurer(ownerId)?.Minigame?.WinPauseSeconds ?? 0 : 0;
-        return [new MinigamePlayed(ownerId, result, showsIn)];
+        MinigameBeat? beat = result switch
+        {
+            MinigamePress.Won => MinigameBeat.Won,
+            MinigamePress.Lost => MinigameBeat.Lost,
+            MinigamePress.Hit or MinigamePress.Cleared => MinigameBeat.Hit,
+            MinigamePress.Miss => MinigameBeat.Miss,
+            _ => null, // a nudge (a tuner bar): nothing to say
+        };
+        // A win's remark lands with the win showing (a moment after the press, for some games).
+        var at = beat == MinigameBeat.Won ? press.PressedAt + TimeSpan.FromSeconds(showsIn) : press.PressedAt;
+        return [new MinigamePlayed(ownerId, result, showsIn), .. beat is { } said ? QuerieOnMinigame(ownerId, said, at) : []];
     }
 
     /// <summary>
