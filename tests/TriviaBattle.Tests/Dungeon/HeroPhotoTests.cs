@@ -204,4 +204,21 @@ public class HeroPhotoTests
         Assert.True(PhotoStore.IsPng(png));
         Assert.False(PhotoStore.IsPng("GIF89a..."u8.ToArray()));
     }
+
+    [Fact]
+    public void The_animated_sheet_is_kept_with_the_photo_and_served_as_what_it_is()
+    {
+        var store = new PhotoStore();
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0];
+        var webp = "RIFF\0\0\0\0WEBPVP8 "u8.ToArray();
+        store.Keep("test-match", "A1", new HeroPicture(png, png, webp));
+        store.Keep("test-match", "A2", new HeroPicture(png, png)); // a station that can't draw in 3D: no sheet
+
+        Assert.Same(webp, store.Find("test-match", "A1")!.Sheet);
+        Assert.Null(store.Find("test-match", "A2")!.Sheet);
+        Assert.True(PhotoStore.IsWebP(webp));
+        Assert.False(PhotoStore.IsWebP(png));
+        Assert.False(PhotoStore.IsWebP("RIFF\0\0\0\0WAVEfmt "u8.ToArray())); // a RIFF that isn't a picture
+        Assert.Equal(("image/webp", "image/png"), (PhotoStore.ContentTypeOf(webp), PhotoStore.ContentTypeOf(png)));
+    }
 }

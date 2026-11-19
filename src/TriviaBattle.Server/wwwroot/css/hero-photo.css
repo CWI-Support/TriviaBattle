@@ -99,3 +99,29 @@
 .photo-skip { margin-top: -2vmin; font-family: var(--font-display); font-size: 4.5vmin; color: var(--text-dim); }
 .photo-camera.is-failed .photo-line { margin-top: 30vmin; }
 .photo-camera.is-failed .photo-window { display: none; }
+
+/* ---------- Animated portraits (js/hero-photo.js's sheet) ----------
+   A sheet is 16 frames across and 3 rows down (idle, cheer, hurt: SHEET in js/battle3d/portrait.js and
+   HeroPhoto.SHEET; keep them in step), shown a frame at a time as a background. The idle loops, timed from the
+   clock (--idle0) so a redraw carries on where it was; a reaction (is-cheer, is-hurt) plays once from --react0, then
+   the idle again. Steps of 16 with jump-none land on each frame in turn: 0%, 1/15 ... 100% across. Rows sit at 0%,
+   50% and 100% down. Two classes, so a frame's own "background" (its colour) doesn't undo the size. */
+.hero-photo.hero-sheet {
+    display: inline-block;
+    background-repeat: no-repeat;
+    background-size: 1600% 300%;
+    background-position: 0% 0%;
+    animation: hero-sheet-idle 3.2s steps(16, jump-none) var(--idle0, 0ms) infinite;
+}
+.hero-photo.hero-sheet.is-cheer {
+    animation: hero-sheet-cheer 1.3s steps(16, jump-none) var(--react0) both,
+               hero-sheet-idle 3.2s steps(16, jump-none) calc(var(--react0) + 1.3s) infinite;
+}
+.hero-photo.hero-sheet.is-hurt {
+    animation: hero-sheet-hurt 0.9s steps(16, jump-none) var(--react0) both,
+               hero-sheet-idle 3.2s steps(16, jump-none) calc(var(--react0) + 0.9s) infinite;
+}
+@keyframes hero-sheet-idle { from { background-position: 0% 0%; } to { background-position: 100% 0%; } }
+@keyframes hero-sheet-cheer { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@keyframes hero-sheet-hurt { from { background-position: 0% 100%; } to { background-position: 100% 100%; } }
+@media (prefers-reduced-motion: reduce) { .hero-photo.hero-sheet { animation: none !important; } }

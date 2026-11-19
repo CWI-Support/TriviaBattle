@@ -8,6 +8,8 @@
 //   /dev/battle?kind=boss&at=2100    frozen 2.1 s into it (for screenshots)
 //   /dev/battle?kind=kill&at=2100    past the beat's end: the next question coming in, frozen
 //   /dev/battle3d?kind=hit&glass=4&hold=5000   the hourglass running out: its last 3 s wind up for the attack
+//   /dev/battle3d?kind=hurt&face=drawn   a drawn face as your hero photo (js/dev-face.js): its expressions in the fight,
+//                                    its animated portrait on your plate
 //   /dev/battle?kind=hurt&querie     Q.U.E.R.I.E.'s remark in place of the feedback line (&querie=your own text; &aside:
 //                                    a remark about a teammate)
 //   /dev/battle?kind=hit&call=friend&hold=5000   Phone a Friend (call=caller: the one who phoned); ?sabotage=FogBomb (TinyHourglass,
@@ -96,7 +98,7 @@ if (frozenAt !== null)
     document.body.classList.add('is-frozen');
 
 Theme.load()
-    .then(() => params.has('photo') && usePhoto('A1', params.get('photo'), HERO))
+    .then(() => params.get('face') === 'drawn' ? useFace('A1', DevFace.drawn(), HERO) : params.has('photo') && usePhoto('A1', params.get('photo'), HERO))
     .then(() => params.has('rival') && usePhoto('A2', params.get('rival'), 'rogue'))
     .then(start);
 
@@ -107,9 +109,21 @@ async function usePhoto(stationId, source, hero) {
     await picture.decode();
     const face = await FaceCutout.cut(picture);
     if (!face) return console.warn('No face found in', source);
-    const faceUrl = face.toDataURL('image/png');
-    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR, { hero }) : face;
-    HeroPhoto.use('dev', stationId, 1, { face: faceUrl, portrait: portrait.toDataURL('image/png') });
+    await useFace(stationId, face.toDataURL('image/png'), hero);
+}
+
+/**
+ * A face (a URL of one laid out as FaceCutout lays them out) as this player's hero photo, with its portrait and, where
+ * the page draws in 3D, its animated sheet. ?face=drawn: js/dev-face.js's drawn face, to see the expressions without a photo.
+ */
+async function useFace(stationId, faceUrl, hero) {
+    const portrait = window.HeroPortrait ? await HeroPortrait.render(faceUrl, COLOR, { hero }) : null;
+    const sheet = window.HeroPortrait ? await HeroPortrait.sheet(faceUrl, COLOR, { hero }) : null;
+    HeroPhoto.use('dev', stationId, 1, {
+        face: faceUrl,
+        portrait: portrait ? portrait.toDataURL('image/png') : faceUrl,
+        ...(sheet ? { sheet: sheet.toDataURL('image/webp', 0.88) } : {}),
+    });
 }
 
 function start() {
@@ -429,7 +443,7 @@ function fakeState(kind, startedAt, question) {
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
                     clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') || kind.startsWith('tuner') || kind.startsWith('popquiz') ? 74000 : null,
                     players: [
-                        { stationId: 'A1', name: 'Ann', photo: params.has('photo') ? 1 : 0, hero },
+                        { stationId: 'A1', name: 'Ann', photo: params.has('photo') || params.get('face') === 'drawn' ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),
                         ...(params.has('rival') || params.has('cameo') ? [{ stationId: 'A2', name: 'Bob', photo: params.has('rival') ? 1 : 0, hero: 'rogue' }] : []),
                         ...TEAM.map((hero, i) => ({

@@ -336,11 +336,14 @@ The rules:
     a face looking straight at it (`FaceCutout.STRAIGHT`), since a turned one comes out stretched on every hero.
   - **portrait**: `js/battle3d/portrait.js` renders the knight's head wearing that face, for every screen
     that draws in 2D. No face found: nothing is sent.
+  - **sheet**: the same head animated (`heroSheet`): a WebP of 16 frames across, three rows (the idle with a
+    blink in its last frame, a cheer grinning, a hit reaction wincing; `SHEET`). Left out where the station
+    can't draw in 3D (`HeroPicture.Sheet` is null and the screens show the still portrait).
 
-  `PhotoStore` keeps both in memory only, never on disk or in the database, and forgets them when the player
+  `PhotoStore` keeps them in memory only, never on disk or in the database, and forgets them when the player
   says no or the match ends (it's an `IMatchBroadcaster` for that). `MatchHost.PhotoTaken` then `MatchEngine.PhotoTaken` count the
   photo (`Player.Photo`, sent as `PlayerView.Photo`, raising `PhotoTaken`). Every screen fetches what it needs
-  once per number (`GET /api/photos/{matchId}/{stationId}/{face|portrait}`, via `js/hero-photo.js`) and keeps it as
+  once per number (`GET /api/photos/{matchId}/{stationId}/{face|portrait|sheet}`, via `js/hero-photo.js`) and keeps it as
   an in-memory blob URL (the server sends it `no-store`). The portrait shows on the plate, the lanes, the party
   list and the intro line-up. The station's 3D knight wears the face (`Actor.wearFace`, `js/battle3d/face.js`):
   - the front of that knight's head (its own copy) is split off into a face mesh on the same skeleton, so it
@@ -356,11 +359,23 @@ The rules:
     the middle of the face, its chin squashed up where the helmet or beard hides it) and *open* (everyone else:
     the whole face, hairline to the bottom of the chin, curving back under it); `/dev/faces` shows where a face
     lands on each hero (a test card, `?photo=`, or `?camera` for the PC's camera).
+  - **Expressions.** `js/battle3d/expressions.js` redraws the face blinking, grinning, wincing, shocked and
+    knocked out (every face is laid out alike, so the eyes and mouth are where FaceCutout puts them: the eyes are
+    covered with the face's own skin and drawn shut, the mouth covered and drawn as a cartoon one: an open smile with
+    teeth, gritted teeth, an O; a real mouth bent into shape didn't show on a small head). `paintFace` makes a
+    texture of each, and `Actor.express` swaps the face's map every frame: `heroFaceIn` (beats.js) times them
+    to the beat (a grin as the blow lands, a wince as the monster's does, X X once downed), `blinking` adds a
+    blink every few seconds, each face on its own beat, and `Others.faceOf` does the same for teammates.
+    `/dev/faces?expressions` shows them (on `js/dev-face.js`'s drawn face without a photo), and
+    `/dev/battle3d?face=drawn` wears one in the fight.
 
   `RoomSoundService` plays the countdown's blips and the shutter on the station's speaker. A station names
   its camera with `?camera=` when one PC drives several.
-- **Faces on everyone's screens.** `HeroPhoto.portrait` (a player's hero photo, or their hero's picture)
-  is used wherever a player shows: party members, the main screen's lanes, banners
+- **Faces on everyone's screens.** `HeroPhoto.portrait` (a player's hero photo, or their hero's picture,
+  animated: their sheet, or their hero's own `media/heroes/{hero}-sheet.webp`, played by `css/hero-photo.css`
+  as a sprite animation timed from the clock so redraws carry it on; a still until a photo's sheet is in)
+  is used wherever a player shows. A reaction (`react`: a cheer or a wince) plays once, from when it began: a
+  lane's at a kill or a blow (`DungeonView.lane`), a banner's and a feed caption's from their own `--t0`. It's used party members, the main screen's lanes, banners
   (`DungeonView.noteMoments`), line-up and results, and the station's final places. `js/dungeon-feed.js`
   watches the other players in the snapshot (each one's `Delve.LastDealt`, `LastTaken`, floor, and the
   standings) and shows the moments that matter to you (a revive, a teammate down, a party combo, a boss
@@ -371,7 +386,8 @@ The rules:
 - Heroes in 3D: `HEROES` in `js/battle3d/models.js` (KayKit adventurers on one rig: their gear, the
   part dyed the station's colour, their attacks, where a face goes). The station's fight shows the
   player's own hero (`Battle.show`); `js/battle3d/portrait.js` draws heroes as pictures, and `/dev/heroes`
-  saves each hero's card and portrait to `media/heroes` for the screens that draw in 2D.
+  draws each hero's card, portrait and animated sheet for `media/heroes` for the screens that draw in 2D ("Save
+  all" writes them there through the dev-only `PUT /api/dev/heroes/{file}`).
 - The other players in your 3D fight (`js/battle3d/others.js`, `Others.update` every frame). Teammates with
   a delve of their own (`PlayerView.Delve`) stand in your room, in their heroes, faces and station
   colours (`Battle3D.show`'s `colors`). When a teammate's `lastDealt.Number` goes up they dash in and
@@ -571,7 +587,7 @@ framed page only counts as secure when the page around it is. Write station CSS 
 Dungeon screens: `js/dungeon-view.js` draws the main screen's lanes and hands the station's question view
 to `js/dungeon-encounter.js` (`css/dungeon-encounter.css`), laid out like the design lead's example
 (`docs/design/station-example.png`): the monster's nameplate and HP, the question scroll hanging from it,
-the monster big in its room, the hourglass standing beside the answers (a rune box with the button's
+the monster in its room with your hero beside it, the hourglass standing beside the answers (a rune box with the button's
 symbol, and a framed answer, each), then you. The main screen has the Host, Q.U.E.R.I.E. (`js/dungeon-host.js`, `css/dungeon-host.css`): a face and a
 speech bubble at the foot of the room screen, commenting on each big moment and filling the quiet with
 idle quips (`dungeon.host*` in the copy, so a theme or licensed IP can bring its own host).
@@ -602,11 +618,13 @@ The fight in 3D (the default; `?view=2d` on a station, or a PC without WebGL 2, 
 3D models that read like 2D paintings (Hearthstone-like). `js/battle3d/` draws the room, the fighters and
 the effects with three.js (vendored in `lib/three`, found through an import map) on a canvas behind the
 station's HTML. The HTML marks where it goes with `data-stage`: `fight` on the beat's `.dg-battle`,
-`portrait` on the encounter's `.dg-stage` while a question is up (the monster turns to face you). Both fill
+`portrait` on the encounter's `.dg-stage` while a question is up (the monster turns to face you, and the shot
+takes in your hero too, nearer on the left, so the player always sees it; it bobs, sways and hops now and then:
+`heroReady` in beats.js). Both fill
 the station's `.dg-world`, everything above the player plate, edge to edge, and the station's words float over
 the scene (the encounter's `.dg-hud`; the beat's top line). The element marked `data-focus` is the gap they leave
 (`.dg-window` between the question scroll and the answers; the beat's `.dg-arena`): `Stage.focus()` measures it and
-`aim()` shifts the camera so the monster, or the fight, lands there.
+`aim()` shifts the camera so the question's shot (the monster and your hero), or the fight, lands there.
 The words, damage number, flash, HP bar, the Host's line and the floor curtain stay HTML, so both versions
 share them; `css/battle3d.css` hides what the 3D replaces. One file per job: `models.js` (which model and
 clips each Sprite key uses; a key with no model stands in the room as its flat picture), `stage.js`

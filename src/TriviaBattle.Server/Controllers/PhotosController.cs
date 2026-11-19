@@ -15,17 +15,17 @@ namespace TriviaBattle.Server.Controllers;
 public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby, ScreenRegistry screens, ILogger<PhotosController> logger) : ControllerBase
 {
     /// <summary>
-    /// The photo taken in the lobby, right after choosing a hero: the same two PNGs, and takeAtMs, the take
+    /// The photo taken in the lobby, right after choosing a hero: the same pictures, and takeAtMs, the take
     /// it's for (the seat's photoTakeAtMs). Only while that station is on the Photo step for that take, with
     /// no photo yet. It goes into the player's game when it starts.
     /// </summary>
     [HttpPut("lobby/{stationId}")]
     [RequestSizeLimit(PhotoStore.MaxBytes)]
-    public async Task<IActionResult> PutLobby(string stationId, IFormFile face, IFormFile portrait, [FromForm] long takeAtMs)
+    public async Task<IActionResult> PutLobby(string stationId, IFormFile face, IFormFile portrait, [FromForm] long takeAtMs, IFormFile? sheet = null)
     {
-        var picture = new HeroPicture(await ReadAsync(face), await ReadAsync(portrait));
-        if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
-            return BadRequest(new { problems = new[] { "A hero photo is two PNGs: the face and the portrait." } });
+        var picture = await PictureFrom(face, portrait, sheet);
+        if (Problem(picture) is { } problem)
+            return BadRequest(new { problems = new[] { problem } });
 
         if (lobby.PhotoArrived(stationId, takeAtMs, picture))
             return NoContent();
@@ -50,21 +50,22 @@ public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby
         return NoContent();
     }
 
-    /// <param name="kind">"face" or "portrait".</param>
+    /// <param name="kind">"face", "portrait" or "sheet".</param>
     [HttpGet("lobby/{stationId}/{kind}")]
     public IActionResult GetLobby(string stationId, string kind) => Picture(photos.FindLobby(stationId), kind);
 
     /// <summary>
-    /// The station sends the photo it took: a form with two PNG files, "face" and "portrait". Only accepted
-    /// for a player in that match whose photo is coming (not said no to), once.
+    /// The station sends the photo it took: a form with two PNG files, "face" and "portrait", and its animated
+    /// "sheet" (a WebP or a PNG; left out by a station that can't draw in 3D). Only accepted for a player in that match
+    /// whose photo is coming (not said no to), once.
     /// </summary>
     [HttpPut("{matchId}/{stationId}")]
     [RequestSizeLimit(PhotoStore.MaxBytes)]
-    public async Task<IActionResult> Put(string matchId, string stationId, IFormFile face, IFormFile portrait)
+    public async Task<IActionResult> Put(string matchId, string stationId, IFormFile face, IFormFile portrait, IFormFile? sheet = null)
     {
-        var picture = new HeroPicture(await ReadAsync(face), await ReadAsync(portrait));
-        if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
-            return BadRequest(new { problems = new[] { "A hero photo is two PNGs: the face and the portrait." } });
+        var picture = await PictureFrom(face, portrait, sheet);
+        if (Problem(picture) is { } problem)
+            return BadRequest(new { problems = new[] { problem } });
 
         // Kept only once the match takes it (and before the screens hear about it and come to fetch it). A
         // refused one, say from a second screen open as the same station, never touches the one it has.
@@ -84,24 +85,38 @@ public class PhotosController(PhotoStore photos, MatchHost host, LobbyHost lobby
         return NoContent();
     }
 
-    /// <param name="kind">"face" or "portrait".</param>
+    /// <param name="kind">"face", "portrait" or "sheet".</param>
     [HttpGet("{matchId}/{stationId}/{kind}")]
     public IActionResult Get(string matchId, string stationId, string kind) => Picture(photos.Find(matchId, stationId), kind);
 
     private IActionResult Picture(HeroPicture? picture, string kind)
     {
-        var png = kind switch
+        var bytes = kind switch
         {
             "face" => picture?.Face,
             "portrait" => picture?.Portrait,
+            "sheet" => picture?.Sheet,
             _ => null,
         };
-        if (png == null)
+        if (bytes == null)
             return NotFound();
 
         // A face is never stored on a screen's disk: screens keep it in memory for the match.
         Response.Headers.CacheControl = "no-store";
-        return File(png, "image/png");
+        return File(bytes, PhotoStore.ContentTypeOf(bytes));
+    }
+
+    private static async Task<HeroPicture> PictureFrom(IFormFile face, IFormFile portrait, IFormFile? sheet) =>
+        new(await ReadAsync(face), await ReadAsync(portrait), sheet == null ? null : await ReadAsync(sheet));
+
+    /// <summary>What's wrong with the pictures a station sent, or null: the face and portrait are PNGs, the sheet a WebP or a PNG.</summary>
+    private static string? Problem(HeroPicture picture)
+    {
+        if (!PhotoStore.IsPng(picture.Face) || !PhotoStore.IsPng(picture.Portrait))
+            return "A hero photo's face and portrait are PNGs.";
+        if (picture.Sheet is { } sheet && !PhotoStore.IsWebP(sheet) && !PhotoStore.IsPng(sheet))
+            return "A hero photo's animated sheet is a WebP or a PNG.";
+        return null;
     }
 
     private static async Task<byte[]> ReadAsync(IFormFile file)

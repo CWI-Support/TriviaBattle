@@ -32,21 +32,27 @@ const FACE_REACH = 0.3;
 const CHIN_FADE = 0.045;
 
 /**
- * Paints the face (an image or canvas from FaceCutout) onto the model's head. Returns { mesh, takeOff }:
- * mesh is the painted face (its material flashes with the rest), takeOff() puts the knight's own face back.
+ * Paints the face (an image or canvas from FaceCutout) onto the model's head. Returns { mesh, textures, takeOff }:
+ * mesh is the painted face (its material flashes with the rest), textures each expression's picture of it
+ * (expressions: name -> image or canvas, from js/battle3d/expressions.js; always at least neutral, the face as
+ * given): swapping the material's map changes the face's expression. takeOff() puts the hero's own face back.
  */
-export function paintFace(model, spec, face) {
+export function paintFace(model, spec, face, expressions = {}) {
     const head = model.getObjectByName(spec.mesh);
     const ownHead = head.geometry;
     const all = ownHead.index ? ownHead.toNonIndexed() : ownHead.clone();
     const faceTriangles = smooth(all, spec, looksOf(all, head.material.map, spec));
     head.geometry = triangles(all, i => !faceTriangles.has(i));
 
-    const texture = new THREE.CanvasTexture(faceMap(face, spec));
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 4;
+    const textures = {};
+    for (const [name, picture] of Object.entries({ ...expressions, neutral: face })) {
+        const texture = new THREE.CanvasTexture(faceMap(picture, spec));
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 4;
+        textures[name] = texture;
+    }
     const material = head.material.clone(); // the head's own shading
-    material.map = texture;
+    material.map = textures.neutral;
     material.color.set(0xffffff);
 
     // Flat, the bumps' sides that faced away (under the nose, behind the eyes) are turned over and would
@@ -73,12 +79,12 @@ export function paintFace(model, spec, face) {
     const takeOff = () => {
         mesh.removeFromParent();
         geometry.dispose();
-        texture.dispose();
+        for (const texture of Object.values(textures)) texture.dispose();
         material.dispose();
         head.geometry.dispose();
         head.geometry = ownHead;
     };
-    return { mesh, takeOff };
+    return { mesh, textures, takeOff };
 }
 
 /**

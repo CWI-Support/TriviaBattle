@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
+using TriviaBattle.Core.Arcade;
 using TriviaBattle.Core.Dungeon;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Hardware.Input;
@@ -14,8 +16,37 @@ namespace TriviaBattle.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/dev")]
-public class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, MatchHost host, DevToolsSettings devTools) : ControllerBase
+public partial class DevController(KeyboardButtonInput keyboard, ButtonMap buttonMap, MatchHost host, DevToolsSettings devTools,
+    IWebHostEnvironment environment) : ControllerBase
 {
+    /// <summary>
+    /// /dev/heroes's "Save all": one of a hero's own pictures into wwwroot/media/heroes, so redrawing them after a hero's
+    /// model or look changes is one press. Only those files ({hero}.png, {hero}-head.png, {hero}-sheet.webp), only for
+    /// heroes there are, and only a PNG or WebP as named. The request body is the picture.
+    /// </summary>
+    [HttpPut("heroes/{file}")]
+    [RequestSizeLimit(4 * 1024 * 1024)]
+    public async Task<IActionResult> SaveHeroPicture(string file)
+    {
+        if (!devTools.Enabled)
+            return NotFound();
+        var name = HeroPictureName().Match(file);
+        if (!name.Success || !Heroes.All.Contains(name.Groups["hero"].Value))
+            return BadRequest(new { problems = new[] { "Only a hero's {hero}.png, {hero}-head.png or {hero}-sheet.webp." } });
+
+        using var body = new MemoryStream();
+        await Request.Body.CopyToAsync(body);
+        var picture = body.ToArray();
+        if (file.EndsWith(".webp") ? !PhotoStore.IsWebP(picture) : !PhotoStore.IsPng(picture))
+            return BadRequest(new { problems = new[] { "That isn't the kind of picture its name says." } });
+
+        await System.IO.File.WriteAllBytesAsync(Path.Combine(environment.WebRootPath, "media", "heroes", file), picture);
+        return NoContent();
+    }
+
+    [GeneratedRegex(@"^(?<hero>[a-z]+)(\.png|-head\.png|-sheet\.webp)$")]
+    private static partial Regex HeroPictureName();
+
     [HttpPost("buttons/{buttonId:int}")]
     public IActionResult PressButton(int buttonId)
     {

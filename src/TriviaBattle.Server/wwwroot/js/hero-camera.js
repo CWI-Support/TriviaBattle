@@ -151,7 +151,9 @@ const HeroCamera = {
             const portrait = await HeroCamera.portraitOf(face, { color, hero: seat.hero });
             if (run.cancelled) return;
             HeroCamera.reveal(box, portrait, Theme.text('dungeon.photoDone', {}, `${seat.stationId}:${run.takeAtMs}`));
-            await HeroCamera.send(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}`, face, portrait, { takeAtMs: run.takeAtMs });
+            const sheet = await HeroCamera.sheetOf(face, { color, hero: seat.hero });
+            if (run.cancelled) return;
+            await HeroCamera.send(`/api/photos/lobby/${encodeURIComponent(seat.stationId)}`, face, portrait, { takeAtMs: run.takeAtMs }, sheet);
             // What to press now, once the server has it (a keep pressed before it lands wouldn't count).
             if (!run.cancelled) box.querySelector('.photo-skip').innerHTML = Theme.text('arcade.photoKeysTaken');
         } catch (err) {
@@ -209,7 +211,9 @@ const HeroCamera = {
             const portrait = await HeroCamera.portraitOf(face, look);
             if (run.cancelled) return await HeroCamera.skipped(box);
             HeroCamera.reveal(box, portrait, Theme.text('dungeon.photoDone', {}, `${matchId}:${stationId}`));
-            await HeroCamera.send(`/api/photos/${encodeURIComponent(matchId)}/${encodeURIComponent(stationId)}`, face, portrait);
+            const sheet = await HeroCamera.sheetOf(face, look);
+            if (run.cancelled) return await HeroCamera.skipped(box);
+            await HeroCamera.send(`/api/photos/${encodeURIComponent(matchId)}/${encodeURIComponent(stationId)}`, face, portrait, {}, sheet);
             await HeroCamera.wait(1800);
         } catch (err) {
             if (!run.cancelled) HeroCamera.report(`failed at ${stationId}: ${err.name || 'Error'}: ${err.message || err}`);
@@ -266,6 +270,20 @@ const HeroCamera = {
     },
 
     /**
+     * The hero wearing the face, animated (js/battle3d/portrait.js's heroSheet: idle, cheer and hurt), or null where the
+     * station can't draw in 3D (screens then show the still portrait). A failure only costs the animation.
+     */
+    async sheetOf(face, look) {
+        if (!window.HeroPortrait?.sheet) return null;
+        try {
+            return await HeroPortrait.sheet(face.toDataURL('image/png'), look.color, { hero: look.hero });
+        } catch (err) {
+            HeroCamera.report(`no animated portrait: ${err.name || 'Error'}: ${err.message || err}`);
+            return null;
+        }
+    },
+
+    /**
      * Looks for the face in the camera picture until one looks straight at the camera, or SEARCH_MS has gone
      * by (someone looked away, or at the screen beside it): then the straightest one seen, or null if none.
      * A turned head would come out squashed on one side on every hero.
@@ -311,12 +329,17 @@ const HeroCamera = {
         });
     },
 
-    /** Both pictures, as a form (see PhotosController), with any other fields it wants (the lobby's takeAtMs). */
-    async send(url, face, portrait, fields = {}) {
+    /**
+     * The pictures, as a form (see PhotosController), with any other fields it wants (the lobby's takeAtMs): the face
+     * and the portrait as PNGs, and the animated sheet (if there is one) as a WebP, a fraction of a PNG's size.
+     */
+    async send(url, face, portrait, fields = {}, sheet = null) {
         const png = canvas => new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const webp = canvas => new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.88));
         const form = new FormData();
         form.append('face', await png(face), 'face.png');
         form.append('portrait', await png(portrait), 'portrait.png');
+        if (sheet) form.append('sheet', await webp(sheet), 'sheet.webp');
         for (const [name, value] of Object.entries(fields)) form.append(name, String(value));
         const response = await fetch(url, { method: 'PUT', body: form });
         if (!response.ok) throw new Error(`the server said ${response.status}`);

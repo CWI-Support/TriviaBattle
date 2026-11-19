@@ -16,6 +16,7 @@
 import { Actor } from './actor.js';
 import { HealSparkle } from './effects.js';
 import { mix, easeOut, easeInOut, pulse, kick, walkPose, openingPose, HEAL_AT } from './beats.js';
+import { blinking, blinkSeed } from './expressions.js';
 
 // Where teammates stand, in joining order: behind and beside your hero. x is along the floor; back is how
 // far behind the slanted line the fight is staged on (your hero and the monster stand on it); reach is how
@@ -72,6 +73,7 @@ export class Others {
             this.notice(ally, p, now);
             flinch = Math.max(flinch, this.pose(ally, p, now, foe));
             wearFaceOf(ally.actor, match, p.stationId);
+            ally.actor.express(this.faceOf(ally, p, now));
         });
         const youHealedAt = this.showHeals(you, now);
         this.showCameo(view, foe);
@@ -223,6 +225,19 @@ export class Others {
         return 0;
     }
 
+    /**
+     * A teammate's face (their hero photo's expressions, js/battle3d/expressions.js), with their moments: knocked out
+     * while down, a grin as their blow lands, a wince when hit, otherwise their usual face, blinking now and then.
+     */
+    faceOf(ally, player, now) {
+        if (player.delve.downedUntilMs > now) return 'ko';
+        const s = ally.struckAt === null ? Infinity : now - ally.struckAt;
+        if (s >= STRIKE_AT && s < STRIKE_ENDS + 300) return 'grin';
+        const h = ally.hurtAt === null ? Infinity : now - ally.hurtAt;
+        if (h < 900) return 'wince';
+        return blinking(now / 1000, blinkSeed(player.stationId)) ? 'blink' : null;
+    }
+
     /** A rival's moment in the caption: their hero pops up beside your monster and cheers until it ends. */
     showCameo(view, foe) {
         const moment = typeof DungeonFeed === 'undefined' ? null : DungeonFeed.showing; // a page's const, not on window
@@ -240,6 +255,7 @@ export class Others {
         const x = this.homes.foe + foe.width / 2 + RIVAL_SIDE;
         actor.apply({ x, scale, visible: scale > 0.01, clip: actor.spec.cheer || actor.spec.idle, time: age / 1000 });
         wearFaceOf(actor, view.match, wanted.stationId);
+        actor.express('grin'); // they're crowing about it
     }
 
     addCameo(key, moment, view) {

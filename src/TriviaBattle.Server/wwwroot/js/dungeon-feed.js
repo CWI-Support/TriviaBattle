@@ -34,18 +34,19 @@ const DungeonFeed = {
             const teammate = !!you.teamId && p.teamId === you.teamId;
             const hit = now.dealt > before.dealt ? p.delve.lastDealt : null;
             const taken = now.taken > before.taken ? p.delve.lastTaken : null;
-            const say = (lineKey, values = {}) => DungeonFeed.queue.push({
+            // Their face reacts as the caption shows (its --t0): a cheer, or a wince when they're down.
+            const say = (lineKey, values = {}, react = 'cheer') => DungeonFeed.queue.push({
                 at: Date.now(),
                 stationId: p.stationId,
                 rival: !teammate,
                 html: `
-                    ${HeroPhoto.portrait(match, p.stationId, 'dg-feed-face', '')}
+                    ${HeroPhoto.portrait(match, p.stationId, 'dg-feed-face', '', { kind: react, t0: 'var(--t0)' })}
                     <span class="${teammate ? 'is-teammate' : 'is-rival'}">${Theme.text(lineKey, { name: p.name, ...values }, `${key}:${now.dealt}:${now.taken}`)}</span>`,
             });
 
             if (hit?.revivedOwnerId === you.stationId) say('feed.revivedYou');
             if (hit?.healedOwnerId === you.stationId) say('feed.healedYou', { amount: hit.healed }); // a teammate's Healer
-            if (teammate && taken?.downed) say('feed.teammateDown');
+            if (teammate && taken?.downed) say('feed.teammateDown', {}, 'hurt');
             if (teammate && hit?.partyCombo) say('feed.partyCombo');
             if (hit?.killed && hit.isBoss) say('feed.bossSlain', { monster: hit.monsterName });
             if (!teammate && now.ahead && !before.ahead) say('feed.overtook');

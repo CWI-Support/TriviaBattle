@@ -94,10 +94,10 @@ export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, 
     fx.hideAll();
     stage.shake.set(0, 0);
 
-    // Downed: the knight stays on the floor until they're back up.
+    // Downed: the knight stays on the floor until they're back up. Standing, it's ready on its toes (heroReady).
     hero.apply(heroDown && hero.spec.death
         ? { x: homes.hero + DOWNED_SLIDE, clip: hero.spec.death, time: 99 }
-        : { x: homes.hero, clip: hero.spec.idle, time: seconds });
+        : { x: homes.hero, ...heroReady(hero, seconds) });
     if (heroHealMs !== null) fx.showHeal(hero.chest(), heroHealMs / 1000);
 
     // A new monster, the first time you see it: its entrance, the camera pushing in from a little wide meanwhile.
@@ -154,6 +154,24 @@ function showWindUp(foe, p, { fx, seconds, homes, foePoison }, charge) {
     fx.showPoison(0, foe, seconds, foePoison);
     if (charge) fx.showCharge(foe, seconds, charge.level, charge.full);
     return { zoom: 1 - 0.08 * easeInOut(p), focus: 0 };
+}
+
+/**
+ * The hero waiting for the question, never quite still: its idle, bobbing gently on its toes and swaying its weight
+ * from side to side (two slow loops that don't line up), with a little hop now and then (fidgetOf, on its own
+ * moment of the cycle). All from the clock, so a redraw carries straight on. Returns the pose.
+ */
+function heroReady(hero, seconds) {
+    const idle = { clip: hero.spec.idle, time: seconds };
+    const bob = 0.035 * (0.5 - 0.5 * Math.cos(seconds * Math.PI * 2 * 0.85));
+    const sway = 0.03 * Math.sin(seconds * Math.PI * 2 * 0.37);
+    const hop = fidgetOf(hero, seconds, idle);
+    return {
+        lift: bob + (hop?.lift || 0),
+        squash: (hop?.squash || 0) - 0.02 * bob / 0.035,
+        tilt: sway + (hop?.tilt || 0),
+        ...(hop?.pose || idle),
+    };
 }
 
 // ---------------------------------------------------------------- Fidgets
@@ -845,4 +863,29 @@ export function easeOut(p) {
 export function easeInOut(p) {
     p = Math.min(1, Math.max(0, p));
     return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+}
+
+/**
+ * The hero's face during a beat, ms into it (a hero photo's expressions: js/battle3d/expressions.js), or null for its
+ * usual face (blinking now and then). In step with the moments above:
+ *   hit / kill   a grin as the blow lands (HIT_IMPACT), held through a kill's fall and burst
+ *   watched      a teammate's kill: the grin from when the knight cheers (CHEER_FROM)
+ *   hurt         a wince as the monster's blow lands (HURT_IMPACT); shocked from the start at a boss's charged blow;
+ *                a smug grin when the shield takes it all (blocked)
+ *   downed       shocked as the blow lands, then knocked out (X X) once fallen (DOWNED_FALLS)
+ *   boss         the floor's kill, then shock as the boss lands (BOSS_LANDS)
+ */
+export function heroFaceIn(beat, ms) {
+    if (beat.kind === 'enter' || beat.byPoison) return null;
+    if (beat.hurt) {
+        if (ms < HURT_IMPACT) return beat.charged ? 'shock' : null;
+        if (beat.kind === 'downed') return ms < DOWNED_FALLS + 150 ? 'shock' : 'ko';
+        if (beat.blocked) return ms < HURT_IMPACT + 700 ? 'grin' : null;
+        return ms < HURT_IMPACT + (beat.charged ? 900 : 650) ? 'wince' : null;
+    }
+    if (beat.watching) return ms >= CHEER_FROM ? 'grin' : null;
+    if (beat.kind === 'boss' && ms >= BOSS_LANDS) return ms < BOSS_LANDS + 1100 ? 'shock' : null;
+    if (ms < HIT_IMPACT) return null;
+    const kill = beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss';
+    return ms < (kill ? KILL_BURSTS + 900 : HIT_IMPACT + (beat.crit || beat.combo || beat.partyCombo ? 900 : 550)) ? 'grin' : null;
 }

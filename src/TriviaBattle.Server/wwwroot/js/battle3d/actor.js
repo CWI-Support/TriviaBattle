@@ -9,6 +9,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { loadModel } from './stage.js';
 import { MODELS } from './models.js';
 import { paintFace } from './face.js';
+import { expressionsOf } from './expressions.js';
 
 export class Actor {
     /**
@@ -180,8 +181,22 @@ export class Actor {
         face.src = url;
         await face.decode();
         if (this.faceUrl !== url) return; // another face (or none) was asked for meanwhile
-        this.painted = paintFace(this.model, this.spec.face, face);
+        this.painted = paintFace(this.model, this.spec.face, face, expressionsOf(face));
         this.materials.push(this.painted.mesh.material); // it flashes with the rest when hit
+        this.expression = 'neutral';
+    }
+
+    /**
+     * The face's expression (a hero photo's: js/battle3d/expressions.js): 'blink', 'grin', 'wince', 'shock', 'ko', or
+     * null for its usual face. Called every frame with the moment's expression; nothing to do without a photo (the
+     * hero's own face is part of its model).
+     */
+    express(name) {
+        if (!this.painted) return;
+        const wanted = this.painted.textures[name] ? name : 'neutral';
+        if (wanted === this.expression) return;
+        this.painted.mesh.material.map = this.painted.textures[wanted];
+        this.expression = wanted;
     }
 
     /**

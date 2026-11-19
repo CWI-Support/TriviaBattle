@@ -19,9 +19,10 @@ import * as THREE from 'three';
 import { Stage } from './stage.js';
 import { Actor } from './actor.js';
 import { Effects } from './effects.js';
-import { showBeat, showIdle, showOpening, showWalkIn, showBossEntrance, bossEntersAt, entranceLength, walkAt, mix, easeInOut, BOSS_LANDS } from './beats.js';
+import { showBeat, showIdle, showOpening, showWalkIn, showBossEntrance, bossEntersAt, entranceLength, walkAt, mix, easeInOut, BOSS_LANDS, heroFaceIn } from './beats.js';
+import { blinking, blinkSeed } from './expressions.js';
 import { ROOM_LENGTH } from './models.js';
-import { heroPortrait } from './portrait.js';
+import { heroPortrait, heroSheet } from './portrait.js';
 import { Others } from './others.js';
 import { Pack, PACK_MAX } from './pack.js';
 
@@ -41,7 +42,7 @@ const FOE_FACING = Math.atan2(HERO_HOME.x - FOE_HOME.x, HERO_HOME.z - FOE_HOME.z
 
 const FOV = 32;
 const PORTRAIT_MAX_HEIGHT = 2.1; // a question's shot fits at most this much of the monster (the top of it): a boss looms
-const FIGHT_RIGHT_EDGE = 2.45;   // the right edge of the usual fight shot (span 5.2 round x -0.15)
+const FIGHT_RIGHT_EDGE = 2.75;   // the right edge of the usual fight shot (span 5.8 round x -0.15)
 const KILLS = ['kill', 'floor', 'boss'];
 const STEP_MS = 500;        // a waiting monster stepping up to the front between beats (the poison killed the one there)
 const FRESH_MS = 3000;      // the first monster makes an entrance if the first question came up this recently
@@ -287,6 +288,7 @@ class Battle {
         const you = this.view?.you;
 
         let lean = { zoom: 1, focus: 0 };
+        let heroFace = null; // a hero photo's expression this moment (null: its usual face, blinking now and then)
         const { flinch: foeFlinch, youHealedAt } = this.others.update(this.view, now, this.foe);
         // Off at a mini game (from the end of the kill beat that led to it): the screen shows the game, not the fight.
         // The next room's monsters aren't brought in meanwhile (they'd show for a moment before the game's screen takes
@@ -324,10 +326,13 @@ class Battle {
                     lean = showOpening(now - beat.startedAtMs, cast);
                     this.foeTravel = !!lean.travel;
                 } else if (playing) {
-                    lean = showBeat(beatInfo(beat, you, stepUp), now - beat.startedAtMs, cast);
+                    const info = beatInfo(beat, you, stepUp);
+                    lean = showBeat(info, now - beat.startedAtMs, cast);
+                    heroFace = heroFaceIn(info, now - beat.startedAtMs);
                     if (this.arrival?.boss) lean = this.showBoss(now - beat.startedAtMs, cast, lean);
                     this.foeTravel = false;
                 } else {
+                    heroFace = you.delve.downedUntilMs > now ? 'ko' : null;
                     lean = showIdle(cast, {
                         heroDown: you.delve.downedUntilMs > now,
                         foeEntranceMs: this.entranceMs(now),
@@ -352,6 +357,7 @@ class Battle {
             }
         }
         this.wearFace();
+        this.hero?.express(heroFace ?? (blinking(now / 1000, blinkSeed(you?.stationId)) ? 'blink' : null));
         this.maskFoe();
         this.turnFoe(dt);
         this.aim(lean, now / 1000);
@@ -521,25 +527,29 @@ class Battle {
         if (this.stage.mode() === 'portrait' && this.foe) {
             const spec = this.foe.spec;
             const height = spec.height || 2;
-            // The monster big in the gap, seen from straight on and a little below its eyes. A tall one (a boss) is
-            // framed from the knees up rather than all of it: fitting the whole of it backed the camera off so far
-            // the knight and the room's props came into the shot, and it looked smaller than the rest, not bigger.
+            // Both of you in the gap while the question's up, so the player always sees their hero: the monster at the
+            // back of the room, your hero nearer on the left, seen from nearly level. Wide enough for the hero's left
+            // side (it's nearer the camera, so it reaches further out) and the monster's right; tall enough for the
+            // taller of the two. A tall monster (a boss) counts only up to PORTRAIT_MAX_HEIGHT: framing all of it
+            // would back the camera off until both looked small.
             const framed = Math.min(height, PORTRAIT_MAX_HEIGHT);
-            const top = (spec.hover || 0) + height;
-            const target = new THREE.Vector3(FOE_HOME.x, top - framed * 0.48, FOE_HOME.z);
-            // zoom: above 1 while it makes its entrance (the camera pushing in from a little wide), below on a slam.
-            const distance = Math.max((framed * 0.62) / (tan * clearShare), (this.foe.width * 0.95) / (tan * aspect)) * zoom;
+            const top = Math.max((spec.hover || 0) + framed, this.hero?.spec.height ?? 2.3);
+            const left = HERO_HOME.x - 1.15;
+            const right = FOE_HOME.x + Math.min(this.foe.width, 2.4) / 2 + 0.2;
+            const target = new THREE.Vector3((left + right) / 2, top * 0.5, (HERO_HOME.z + FOE_HOME.z) / 2);
+            // zoom: above 1 while a monster makes its entrance (the camera pushing in from a little wide), below on a slam.
+            const distance = Math.max((top * 0.56) / (tan * clearShare), ((right - left) / 2) / (tan * aspect)) * zoom;
             const shift = intoGap(distance);
-            this.stage.frame(target.clone().add(new THREE.Vector3(-0.08 * distance, 0.12 * distance, distance)).add(shift).add(drift(distance)), target.clone().add(shift), FOV);
+            this.stage.frame(target.clone().add(new THREE.Vector3(0, 0.14 * distance, distance)).add(shift).add(drift(distance)), target.clone().add(shift), FOV);
             return;
         }
 
         // Both fighters across the box, seen a little from above, aimed a touch left of centre: the knight
         // is nearer the camera, so he looks further out than the monster. The HP bar and the Host's line go
-        // under them.
+        // under them. Wide enough that the hero stays in the shot when a blow knocks it back.
         // A monster whose pose reaches out past the usual shot's right edge (the orc's arms and club) widens it to fit.
         const reach = this.foe ? Math.max(0, FOE_HOME.x + this.foe.poseWidth / 2 + 0.3 - FIGHT_RIGHT_EDGE) : 0;
-        const span = 5.2 + reach;
+        const span = 5.8 + reach;
         const distance = ((span / 2) / (tan * Math.min(aspect, 1.2))) * zoom;
         const target = new THREE.Vector3(focus - 0.15 + reach / 2, 0.75, 0);
         const shift = intoGap(distance, 0.6); // a little low in the fight's space: the words go above them
@@ -603,7 +613,7 @@ function windUpOf(delve, now) {
 
 let battle = null;
 // The knight wearing a player's face, for the screens that draw in 2D (js/hero-camera.js makes it after a hero photo).
-window.HeroPortrait = { render: heroPortrait };
+window.HeroPortrait = { render: heroPortrait, sheet: heroSheet };
 
 window.Battle3D = {
     start(container, clock, options) {

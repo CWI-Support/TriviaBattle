@@ -74,7 +74,7 @@ Screen URLs and what they show:
 | `/dev/buttons` | Dev stand-in for the buttons (only when dev tools are on) |
 | `/dev/battle` | The station's battle animations on a loop, with made-up data (`?kind=boss&at=2100` freezes a moment) |
 | `/dev/battle3d` | The same, drawn in 3D (`js/battle3d`), with the same options (`?hero=wizard` for another hero, `?rival=/picture.jpg` for a rival's face on the monsters) |
-| `/dev/heroes` | Draws every hero's pictures for `media/heroes` (hero cards and portraits), to save after changing a hero |
+| `/dev/heroes` | Draws every hero's pictures for `media/heroes` (hero cards, portraits and animated portraits); "Save all" writes them there, after changing a hero |
 | `/dev/faces` | Where a hero photo lands on each hero's head: a test card, `?photo=/picture.jpg`, or `?camera` for this PC's camera (kept in the page only) |
 
 Add `?room=B` to any URL when there's more than one room. It doesn't matter which machine a screen
@@ -278,8 +278,13 @@ station shows the player's camera picture, with an outline to put their face in,
 (`Game:Arcade:PhotoSeconds`, 4, from the step starting to the photo), with the blips and the shutter
 from their station's speaker once its camera is on. The station then finds the face
 (MediaPipe's face finder, vendored in `lib/mediapipe`, runs in the browser), cuts out just the face and
-paints it onto their hero's own face. It moves with every swing and hit in the 3D fight. A portrait of
-that hero shows on their plate, in the lobby, on their lane and in the line-up on the main screen. If no
+paints it onto their hero's own face. It moves with every swing and hit in the 3D fight, and it reacts:
+it blinks now and then, grins when their blow lands, winces when they're hit, looks shocked at a boss's big
+blow or a boss landing, and goes X X when they're downed (teammates' faces in the room too). A portrait of
+that hero shows on their plate, in the lobby, on their lane and in the line-up on the main screen,
+animated: it breathes and blinks, and on the main screen's lanes, its banners and the station's feed it
+cheers at a kill or a big moment and winces at a blow. Players without a photo get their hero's own animated
+portrait. If no
 face can be found, nothing is kept, and B tries again. ACTION keeps the photo, B takes another, D goes
 on without one. The photo goes into their game when it starts; that game's intro takes no other.
 

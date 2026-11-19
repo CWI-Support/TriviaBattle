@@ -4,11 +4,15 @@ using TriviaBattle.Core.Matches;
 namespace TriviaBattle.Server.Game;
 
 /// <summary>
-/// One player's hero photo, as their station made it (both PNGs, with see-through backgrounds).
+/// One player's hero photo, as their station made it (pictures with see-through backgrounds).
 /// </summary>
-/// <param name="Face">Just their face, cut out and laid out the same way as every face (js/face-cutout.js): the station's 3D knight wears it.</param>
-/// <param name="Portrait">The knight's head wearing it, for the screens that draw in 2D (the plate, the main screen).</param>
-public sealed record HeroPicture(byte[] Face, byte[] Portrait);
+/// <param name="Face">Just their face (a PNG), cut out and laid out the same way as every face (js/face-cutout.js): the station's 3D hero wears it.</param>
+/// <param name="Portrait">The hero's head wearing it (a PNG), for the screens that draw in 2D (the plate, the main screen).</param>
+/// <param name="Sheet">
+/// The same, animated: a sheet of frames (a WebP, or a PNG; js/battle3d/portrait.js's heroSheet) that the 2D screens
+/// play. Null from a station that can't draw in 3D: the screens show the still portrait.
+/// </param>
+public sealed record HeroPicture(byte[] Face, byte[] Portrait, byte[]? Sheet = null);
 
 /// <summary>
 /// Hero photos: a player's face on their hero, taken by their station's camera, in the lobby after choosing
@@ -19,8 +23,8 @@ public sealed record HeroPicture(byte[] Face, byte[] Portrait);
 /// </summary>
 public sealed class PhotoStore : IMatchBroadcaster
 {
-    /// <summary>The most a station may send for one photo (both pictures; they're usually well under 100 KB each).</summary>
-    public const int MaxBytes = 512 * 1024;
+    /// <summary>The most a station may send for one photo (all its pictures: the face and portrait are usually well under 100 KB each, the animated sheet a few hundred).</summary>
+    public const int MaxBytes = 2 * 1024 * 1024;
 
     private readonly ConcurrentDictionary<(string MatchId, string StationId), HeroPicture> _photos = new();
     private readonly ConcurrentDictionary<string, HeroPicture> _lobby = new();
@@ -52,7 +56,14 @@ public sealed class PhotoStore : IMatchBroadcaster
             Forget(match.MatchId, player.StationId);
     }
 
-    /// <summary>True if these bytes start like a PNG file (stations always send PNG).</summary>
+    /// <summary>True if these bytes start like a PNG file (stations send the face and the portrait as PNGs).</summary>
     public static bool IsPng(byte[] bytes) =>
         bytes.Length > 8 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
+
+    /// <summary>True if these bytes start like a WebP file ("RIFF", its size, "WEBP"): the animated sheet's usual format.</summary>
+    public static bool IsWebP(byte[] bytes) =>
+        bytes.Length > 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8);
+
+    /// <summary>The picture's media type, from its first bytes (PNG, or WebP for an animated sheet).</summary>
+    public static string ContentTypeOf(byte[] bytes) => IsWebP(bytes) ? "image/webp" : "image/png";
 }

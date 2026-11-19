@@ -561,6 +561,8 @@ const DungeonView = {
         const news = DungeonView.news(`lane:${memo}`, delve);
         const downed = delve.downedUntilMs && delve.downedUntilMs > serverNow;
         const shake = DungeonView.lasting(`lane:${memo}:hurt`, news.taken ? 'is-hurt' : null, 450);
+        // The hero's animated portrait reacts too: a cheer at a kill, a wince at a blow.
+        const face = DungeonView.lasting(`lane:${memo}:face`, news.taken ? 'hurt' : news.dealt?.killed ? 'cheer' : null, 1400);
         const waiting = delve.foes?.slice(1) || []; // a pack: the monsters behind the one being fought
         return `
             <div class="dg-lane ${isLeader ? 'is-leader' : ''} ${shake.cls}" style="--lane-color: ${color}; --t0: ${shake.t0}ms">
@@ -583,7 +585,7 @@ const DungeonView = {
                 <div class="dg-lane-hero">
                     ${delve.party.length > 1
                         ? `<div class="dg-party is-lane">${delve.party.map(m => DungeonView.member(m, delve.reviveNeeded, match)).join('')}</div>`
-                        : `${HeroPhoto.portrait(match, delve.party[0]?.ownerId ?? key, 'dg-portrait small', color)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
+                        : `${HeroPhoto.portrait(match, delve.party[0]?.ownerId ?? key, 'dg-portrait small', color, face.cls ? { kind: face.cls, t0: face.t0 } : null)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
                 </div>
                 ${DungeonView.stats(score, delve.kills)}
             </div>`;
@@ -609,10 +611,12 @@ const DungeonView = {
         if (!hit && !picked && !lockWon && !sabotaged) return;
 
         const lanePlayers = match.players.filter(p => p.stationId === key || p.teamId === key);
-        const faces = `<div class="dg-moment-faces">${lanePlayers.map(p => HeroPhoto.portrait(match, p.stationId, 'dg-moment-face', color)).join('')}</div>`;
+        // The lane's faces cheer with the banner (wince at a rival's sabotage), timed from it (its wrapper's --t0).
+        const faces = kind => `<div class="dg-moment-faces">${lanePlayers.map(p => HeroPhoto.portrait(match, p.stationId, 'dg-moment-face', color,
+            { kind: kind === 'sabotage' ? 'hurt' : 'cheer', t0: 'var(--t0)' })).join('')}</div>`;
         const banner = (kind, text, sprite = null) => DungeonView.effect('moments', `
             <div class="dg-moment is-${kind}" style="--lane-color: ${color}">
-                ${faces}
+                ${faces(kind)}
                 ${sprite ? PixelSprites.html(sprite, 'dg-moment-sprite') : ''}
                 <div class="dg-moment-text">${text}</div>
             </div>`, 2600);

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trivia Battle - Hero Pictures</title>
     <link rel="icon" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/hero-photo.css">
     <style>
         body { margin: 0; padding: 16px; background: #2a2630; color: #eee; font: 14px sans-serif; }
         .hero { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 12px 16px 0; vertical-align: top; }
@@ -20,33 +21,58 @@
 </head>
 <body>
     <!-- Dev page: draws every hero's pictures for media/heroes (the lobby's hero cards, and the portrait of a
-         player without a hero photo). Save each with its link into wwwroot/media/heroes/ after changing a
-         hero's model or look. The page title says "done" when they're all drawn. -->
-    <p>Each hero, full body (<code>{hero}.png</code>) and head (<code>{hero}-head.png</code>). Save them into <code>wwwroot/media/heroes/</code>.</p>
+         player without a hero photo, still and animated). After changing a hero's model or look, "Save all" writes
+         them into wwwroot/media/heroes/ (a dev tool: PUT /api/dev/heroes/{file}), or save each with its link. The
+         page title says "done" when they're all drawn, "saved" once saved. -->
+    <p>Each hero, full body (<code>{hero}.png</code>), head (<code>{hero}-head.png</code>) and the head animated
+        (<code>{hero}-sheet.webp</code>: idle, cheer, hurt). <button id="save" disabled>Save all into <code>wwwroot/media/heroes/</code></button>
+        <span id="saved"></span></p>
     <div id="heroes"></div>
     <script src="/js/face-cutout.js"></script>
     <script type="module">
-        import { heroPortrait } from '/js/battle3d/portrait.js';
+        import { heroPortrait, heroSheet } from '/js/battle3d/portrait.js';
         import { HEROES } from '/js/battle3d/models.js';
 
         // A neutral colour for the parts each station dyes in its own (capes).
         const COLOR = '#8a6e4b';
         const list = document.getElementById('heroes');
+        const files = []; // [name, blob]: everything drawn, for Save all
+        const blobOf = (canvas, type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
         for (const hero of Object.keys(HEROES)) {
             const body = await heroPortrait(null, COLOR, { hero, framing: 'body', size: 480 });
             const head = await heroPortrait(null, COLOR, { hero, framing: 'head', size: 256 });
+            const sheet = await heroSheet(null, COLOR, { hero });
             body.className = 'body';
             head.className = 'head';
+            sheet.className = 'sheet';
             const card = document.createElement('div');
             card.className = 'hero';
             card.dataset.hero = hero;
             card.append(body, head);
-            card.insertAdjacentHTML('beforeend', `
-                <a download="${hero}.png" href="${body.toDataURL('image/png')}">${hero}.png</a>
-                <a download="${hero}-head.png" href="${head.toDataURL('image/png')}">${hero}-head.png</a>`);
+            const pictures = [[`${hero}.png`, await blobOf(body, 'image/png')], [`${hero}-head.png`, await blobOf(head, 'image/png')],
+                              [`${hero}-sheet.webp`, await blobOf(sheet, 'image/webp', 0.88)]];
+            files.push(...pictures);
+            card.insertAdjacentHTML('beforeend', pictures.map(([name, blob]) =>
+                `<a download="${name}" href="${URL.createObjectURL(blob)}">${name}</a>`).join(''));
+            // The sheet, playing as the screens play it (css/hero-photo.css).
+            card.insertAdjacentHTML('beforeend', `<span class="hero-photo hero-sheet" style="width: 128px; height: 128px; background-image: url('${URL.createObjectURL(pictures[2][1])}')"></span>`);
             list.appendChild(card);
         }
         document.title = 'done';
+
+        const save = document.getElementById('save');
+        save.disabled = false;
+        save.onclick = async () => {
+            save.disabled = true;
+            const failed = [];
+            for (const [name, blob] of files) {
+                const response = await fetch(`/api/dev/heroes/${name}`, { method: 'PUT', body: blob });
+                if (!response.ok) failed.push(`${name} (${response.status})`);
+            }
+            document.getElementById('saved').textContent = failed.length ? `Not saved: ${failed.join(', ')}` : `Saved ${files.length} pictures.`;
+            document.title = failed.length ? 'save failed' : 'saved';
+            save.disabled = false;
+        };
     </script>
 </body>
 </html>

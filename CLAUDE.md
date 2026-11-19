@@ -47,7 +47,9 @@ Hero photos: the station puts the player's face on their hero right after they p
 `PhotoStore` keeps it by station until their game starts, then under the match), or in a kiosk game's intro (by
 default; the action button says no, or with `PhotoByDefault` off it says yes). `js/hero-camera.js` takes it,
 `js/face-cutout.js` cuts out the face (MediaPipe, vendored in `lib/mediapipe`), `js/battle3d/face.js` paints it on the
-hero's head (only its skin: hair, hoods and beards stay; check every hero at `/dev/faces`), `js/battle3d/portrait.js` renders the 2D portrait, `js/hero-photo.js` fetches them, and `PhotoStore` +
+hero's head (only its skin: hair, hoods and beards stay; check every hero at `/dev/faces`) with an expression each
+(`js/battle3d/expressions.js`: blink, grin, wince, shock, ko, swapped by `Actor.express`, timed by `heroFaceIn`),
+`js/battle3d/portrait.js` renders the 2D portrait and its animated sheet (idle, cheer, hurt; heroes' own in `media/heroes`), `js/hero-photo.js` fetches them, and `PhotoStore` +
 `/api/photos` hold them. Photos live in server memory until the player drops it, leaves the lobby or the match ends: never write one
 to disk, the database or a log.
 Q.U.E.R.I.E. (the host) talks at the stations: after an answer `DungeonRun.Commentate` asks `Querie` (`Core/Dungeon/Querie.cs`)

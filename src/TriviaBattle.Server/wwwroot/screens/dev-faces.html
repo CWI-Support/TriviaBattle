@@ -24,14 +24,18 @@
          face: red pupils, a blue mouth line, a green chin line, a yellow forehead line); and with ?photo=/path/picture.jpg,
          a real face cut from that picture the way a station's camera does (?camera: from this PC's camera; kept in
          the page only, like every hero photo). The test card's dots should sit where the
-         hero's own eyes are, its mouth line on the hero's mouth. The page title says "done" when they're all drawn. -->
-    <p>Left: the hero's own face. Middle: the test card. Right (with <code>?photo=/path/picture.jpg</code>, or <code>?camera</code> for this PC's camera): a real face.</p>
+         hero's own eyes are, its mouth line on the hero's mouth. The page title says "done" when they're all drawn.
+         ?expressions: each hero's expressions instead (js/battle3d/expressions.js: neutral, blink, grin, wince, shock,
+         ko) on a drawn face (eyes, brows, lips), and on the real face too with ?photo or ?camera. -->
+    <p>Left: the hero's own face. Middle: the test card. Right (with <code>?photo=/path/picture.jpg</code>, or <code>?camera</code> for this PC's camera): a real face.
+        <code>?expressions</code>: each face's expressions.</p>
     <div id="camera-panel" hidden>
         <video id="camera" muted playsinline style="width: 240px; transform: scaleX(-1); background: #000"></video>
         <div><span id="camera-status"></span> <button id="take">Take again</button></div>
     </div>
     <div id="heroes"></div>
     <script src="/js/face-cutout.js"></script>
+    <script src="/js/dev-face.js"></script>
     <script type="module">
         import { heroPortrait } from '/js/battle3d/portrait.js';
         import { HEROES } from '/js/battle3d/models.js';
@@ -105,11 +109,27 @@
             return best?.face.toDataURL('image/png') ?? null;
         }
 
+        const EXPRESSIONS = [null, 'blink', 'grin', 'wince', 'shock', 'ko'];
+
         async function draw(photo) {
             document.title = 'drawing';
             const list = document.getElementById('heroes');
             list.innerHTML = '';
             const only = params.get('hero');
+            if (params.has('expressions')) {
+                for (const hero of Object.keys(HEROES).filter(h => !only || h === only)) {
+                    for (const face of [DevFace.drawn(), ...(photo ? [photo] : [])]) {
+                        const box = document.createElement('div');
+                        box.className = 'hero';
+                        box.innerHTML = `<b>${hero}: ${EXPRESSIONS.map(e => e ?? 'neutral').join(', ')}</b><div class="row"></div>`;
+                        for (const expression of EXPRESSIONS)
+                            box.querySelector('.row').appendChild(await heroPortrait(face, COLOR, { hero, framing: 'head', size: 200, expression }));
+                        list.appendChild(box);
+                    }
+                }
+                document.title = 'done';
+                return;
+            }
             for (const hero of Object.keys(HEROES).filter(h => !only || h === only)) {
                 const box = document.createElement('div');
                 box.className = 'hero';
