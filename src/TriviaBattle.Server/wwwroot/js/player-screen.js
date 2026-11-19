@@ -374,7 +374,7 @@ function dungeonResults(match, you, { mine, won, seed, highScore, detail }) {
             <div class="run-card" ${at(0)}>
                 <div class="run-hero">
                     ${HeroPhoto.portrait(match, you.stationId, 'run-face', lastState.station.color)}
-                    <div class="run-who"><b>${UI.escape(you.name)}</b>${DungeonView.classBadge(delve.heroClass)}</div>
+                    <div class="run-who" style="--word: ${UI.longestWord(you.name)}"><b>${UI.escape(you.name)}</b>${DungeonView.classBadge(delve.heroClass)}</div>
                 </div>
                 <dl class="run-stats">
                     ${stat(Theme.text('results.runFloor'), delve.floor, UI.escape(delve.depthName))}

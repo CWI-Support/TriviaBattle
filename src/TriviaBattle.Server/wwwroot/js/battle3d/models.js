@@ -199,6 +199,20 @@ export const MODELS = {
         entrance: { style: 'rise', clip: 'Spawn_Ground' }, fidget: 'Taunt',
         attack: { clip: 'Unarmed_Melee_Attack_Punch_A', contact: 0.55 },
     },
+    // The skeleton bosses (the Bone Registrar, the Dean of Darkness): the minion's rig and clips (KayKit Skeletons), in a
+    // warrior's horned helmet and cloak and a mage's hat, and a head taller than it.
+    'skeleton-warrior': {
+        file: '/media/models/characters/skeleton-warrior.glb',
+        height: 2.7, idle: 'Idle', hurt: 'Hit_A', death: 'Death_C_Skeletons',
+        entrance: { style: 'rise', clip: 'Spawn_Ground' }, fidget: 'Taunt',
+        attack: { clip: 'Unarmed_Melee_Attack_Punch_A', contact: 0.55 },
+    },
+    'skeleton-mage': {
+        file: '/media/models/characters/skeleton-mage.glb',
+        height: 2.8, idle: 'Idle', hurt: 'Hit_A', death: 'Death_C_Skeletons',
+        entrance: { style: 'rise', clip: 'Spawn_Ground' }, fidget: 'Cheer', // it gloats
+        attack: { clip: 'Unarmed_Melee_Attack_Punch_A', contact: 0.55 },
+    },
     'goblin-boss': {
         file: '/media/models/characters/orc.glb',
         // A head taller than the knight. Its idle pose holds its arms and club wide (it measures as wide as it is

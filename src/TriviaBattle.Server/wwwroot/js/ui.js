@@ -100,6 +100,11 @@ const UI = {
         return `<div class="intro-count">${digits}</div>`;
     },
 
+    /** The length of the longest word in a name: a pixel font can't break inside one, so it sizes the name to fit. */
+    longestWord(text) {
+        return Math.max(1, ...String(text ?? '').split(/\s+/).map(word => word.length));
+    },
+
     /** "1st", "2nd", "3rd", "4th"... */
     ordinal(n) {
         const suffix = (n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');

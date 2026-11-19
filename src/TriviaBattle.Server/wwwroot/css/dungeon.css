@@ -683,7 +683,17 @@
     box-shadow: 0 0 2.4vmin var(--station-color, var(--accent));
 }
 .run-who { display: flex; flex-direction: column; align-items: flex-start; gap: 1.2vmin; min-width: 0; text-align: left; }
-.run-who b { font-family: var(--dg-font-pixel); font-size: calc(4.6vmin * var(--fit)); line-height: 1.25; color: var(--text); text-wrap: balance; }
+/* The name wraps between words; its longest word (--word letters, each a whole em wide) sets the size so it fits. */
+.run-who b { font-family: var(--dg-font-pixel); font-size: calc(min(4.6vmin, 30vmin / var(--word, 8)) * var(--fit)); line-height: 1.25; color: var(--text); text-wrap: balance; }
+/* Side by side the cards are narrower: the faces on top, the name under them across the card, the place in a corner. */
+.run-cards .run-card { position: relative; }
+.run-cards .run-hero { flex-direction: column; gap: 1.6vmin; }
+.run-cards .run-who { align-items: center; text-align: center; width: 100%; }
+.run-cards .run-who b { font-size: calc(min(4.6vmin, 34vmin / var(--word, 8)) * var(--fit)); }
+.run-cards .run-rank {
+    position: absolute; top: -2.4vmin; left: -1.6vmin; padding: 0.4vmin 1.4vmin;
+    background: var(--dg-frame); border: 0.5vmin solid var(--dg-hourglass); font-size: calc(4.4vmin * var(--fit));
+}
 .run-stats { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.6vmin * var(--fit)) 2.4vmin; }
 .run-stat {
     display: flex;
@@ -700,3 +710,13 @@
 .run-stat dt { font-size: calc(3vmin * var(--fit)); color: var(--text-dim); }
 .run-stat dd { margin: 0; font-family: var(--dg-font-pixel); font-size: calc(6vmin * var(--fit)); line-height: 1.1; color: var(--dg-hourglass); }
 .run-stat dd small { display: block; margin-top: 0.8vmin; font-family: var(--font-body); font-size: calc(2.8vmin * var(--fit)); line-height: 1.2; color: var(--text-dim); text-wrap: balance; }
+
+/* The room's screen at a Dungeon game's end (js/main-screen.js, dungeonResults): a run card per side, side by side, in
+   their places; the winner's glows. Each card carries its own start (a redraw doesn't restart it); its stats come with it. */
+.run-cards { display: flex; justify-content: center; align-items: stretch; gap: 2vw; width: 100%; }
+.run-cards .run-card { width: auto; flex: 1 1 0; max-width: 60vmin; }
+.run-cards .run-stat { animation: none; }
+.run-cards .run-face { width: calc(13vmin * var(--fit)); height: calc(13vmin * var(--fit)); }
+.run-card.is-winner { border-color: var(--dg-hourglass); box-shadow: inset 0 0 0 0.4vmin #000, 0 0 4vmin rgba(240, 180, 41, 0.55); }
+.run-rank { font-family: var(--dg-font-pixel); color: var(--dg-hourglass); }
+.run-faces { display: flex; gap: 1vmin; }

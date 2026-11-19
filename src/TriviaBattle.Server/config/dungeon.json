@@ -47,8 +47,8 @@
     { "Id": "skeleton-intern", "Name": "Skeleton Intern", "Sprite": "skeleton", "Hp": 70, "Damage": 34, "AttackSeconds": 8 },
 
     { "Id": "goblin-quizmaster", "Name": "Goblin Quizmaster", "Sprite": "goblin-boss", "Hp": 70, "Damage": 15, "AttackSeconds": 8, "IsBoss": true },
-    { "Id": "bone-registrar", "Name": "Bone Registrar", "Sprite": "skeleton", "Hp": 80, "Damage": 24, "AttackSeconds": 8, "IsBoss": true },
+    { "Id": "bone-registrar", "Name": "Bone Registrar", "Sprite": "skeleton-warrior", "Hp": 80, "Damage": 24, "AttackSeconds": 8, "IsBoss": true },
     { "Id": "goblin-warlord", "Name": "Goblin Warlord", "Sprite": "goblin-boss", "Hp": 200, "Damage": 48, "AttackSeconds": 8, "IsBoss": true },
-    { "Id": "dean-of-darkness", "Name": "Dean of Darkness", "Sprite": "skeleton", "Hp": 270, "Damage": 60, "AttackSeconds": 8, "IsBoss": true }
+    { "Id": "dean-of-darkness", "Name": "Dean of Darkness", "Sprite": "skeleton-mage", "Hp": 270, "Damage": 60, "AttackSeconds": 8, "IsBoss": true }
   ]
 }

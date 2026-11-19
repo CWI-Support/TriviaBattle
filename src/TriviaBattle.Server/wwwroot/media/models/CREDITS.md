@@ -6,7 +6,7 @@ domain): free for commercial use, no credit required. Credit is still nice, so h
 | Files | Pack | Author | Source |
 |---|---|---|---|
 | `characters/knight.glb`, `barbarian.glb`, `mage.glb`, `rogue.glb`, `ranger.glb` (Rogue_Hooded) | KayKit Adventurers Character Pack 1.0 | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 |
-| `characters/skeleton-minion.glb` | KayKit Skeletons Character Pack 1.0 (Skeleton Minion) | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0 |
+| `characters/skeleton-minion.glb`, `skeleton-warrior.glb` (the Bone Registrar), `skeleton-mage.glb` (the Dean of Darkness) | KayKit Skeletons Character Pack 1.0 (Skeleton Minion, Warrior, Mage) | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0 |
 | `room/*.glb` | KayKit Dungeon Remastered 1.0 | Kay Lousberg | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 |
 | `characters/slime.glb` | Slime | Quaternius | https://poly.pizza/m/LyjSUKHKnh |
 | `characters/rat.glb` | Rat | Quaternius | https://poly.pizza/m/iltq5bVNaV |

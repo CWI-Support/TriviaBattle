@@ -184,7 +184,9 @@ The rules:
   there's no limit on how many. On the station, the clock running out is a moment of its own: TIME'S UP! (WIPED OUT! with
   everyone out of lives) covers the screen for 2.4 s as Continue? or the results come up (`player-screen.js`,
   `endOverlay`, in its own layer outside the fitted body), and a Dungeon game's results are the run's card: the hero,
-  the floor reached, monsters slain, right answers, mini games won and score (`dungeonResults`). `MatchHost.ContinueAtStation` is what the station
+  the floor reached, monsters slain, right answers, mini games won and score (`dungeonResults`). The main screen does
+  the same for a game shown on its own (`main-screen.js`: `endOverlay`, and `dungeonResults` with a card per side, in
+  their places, the winner's glowing). `MatchHost.ContinueAtStation` is what the station
   card readers call (`POST /api/stations/{id}/swipe`), as does `POST /api/dev/continue/{stationId}` (the dev buttons
   page) and the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and continue
   numbers are Operator-screen rules (`GameRulesService`).
