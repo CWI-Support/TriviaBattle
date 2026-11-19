@@ -383,6 +383,17 @@
 .dg-feedback.pop { animation: pop 0.4s ease-out; }
 .dg-feedback-detail { font-size: 0.8em; color: var(--text); }
 
+/* Q.U.E.R.I.E. on a station (DungeonView.querie): his face and his remark, in the plain line's place, in his own colours.
+   About you: big; a callout about a teammate (the whole party sees it): a smaller aside. His face bobs as he talks,
+   timed from when he spoke (--said0), so a redraw doesn't start it over. */
+.dg-feedback.is-querie { --tone: #2ef2ff; border-color: #ff3df2; }
+.dg-querie { display: inline-flex; align-items: center; gap: 1.6vmin; vertical-align: middle; text-align: left; }
+.dg-querie-face { flex: 0 0 auto; width: 7vmin; height: auto; animation: dg-querie-talk 0.45s steps(2) var(--said0, 0ms) 4; }
+.dg-querie-line { color: #e9fdff; text-wrap: balance; }
+.dg-querie.is-aside { font-size: 0.85em; opacity: 0.9; }
+.dg-querie.is-aside .dg-querie-face { width: 5vmin; }
+@keyframes dg-querie-talk { 50% { transform: translateY(-0.5vmin) rotate(-4deg); } }
+
 .dg-answers { display: grid; grid-template-columns: minmax(0, 1fr); gap: calc(1.1vh * var(--fit)); }
 @media (orientation: landscape) {
     .dg-answers { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -34,7 +34,9 @@ the stations' default, preview at `/dev/battle3d`); the knight's gear comes as s
 for loot and power-ups to show on the hero. The station's question screen now follows the design lead's
 example (`docs/design/station-example.png`), and the Host has a name and a face on the main screen:
 **Q.U.E.R.I.E.** (Quantum Universal Engine for Research, Innovation, and Experimentation), placeholder
-art and first lines in `copy.json`. Still open from the full doc: character classes (Rogue, Tank, Healer,
+art and first lines in `copy.json`. As the room moves to arcade style he talks at each station too: remarks on
+misses, slow answers and right answers as death gets closer, and party callouts, as text for now
+(`config/querie.json`, each line ready for a recording). Still open from the full doc: character classes (Rogue, Tank, Healer,
 Wizard, Warlock, Pugilist, Ranger), whether damage should decay smoothly with answer speed instead of the
 3-second crit, the four-button mini-games, operator-programmable events ("Trivia Night"), and how the
 doc's four-button cabinet squares with the fifth action button.

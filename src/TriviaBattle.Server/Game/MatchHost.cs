@@ -31,6 +31,7 @@ public sealed class MatchHost(
     MatchHistory history,
     LeaderboardService leaderboards,
     DungeonPlan dungeon,
+    QuerieLines querie,
     ILogger<MatchHost> logger)
 {
     private readonly object _lock = new();
@@ -73,7 +74,8 @@ public sealed class MatchHost(
                 matchSettings,
                 clock.GetUtcNow(),
                 Random.Shared,
-                dungeon.Build(Random.Shared)); // this match's own layout of the made-up floors, the same for every party in it
+                dungeon.Build(Random.Shared), // this match's own layout of the made-up floors, the same for every party in it
+                querie);                      // Q.U.E.R.I.E.'s lines for the stations
 
             _matches.Add(match.MatchId, match);
             logger.LogInformation("Match {Id} started: {Format} {Mode}, {Players} players, {Seconds}s{Clock}, {Questions} questions in the pool, wrong answers: {Penalty}",

@@ -1,0 +1,135 @@
+{
+  "_about": "Q.U.E.R.I.E.'s lines at the stations. The game decides WHEN he speaks (Core/Dungeon/Querie.cs; how often: Game:Dungeon:Querie); this file is WHAT he says. Each moment has a list of lines, picked in a shuffled order so they don't repeat soon. Placeholders filled in: {name} (who it's about), {monster}, {floor} (their floor), {rival} (a rival side ahead, in races and team battles). 'audio' is for later: a recorded clip of the line (e.g. \"querie/wrong-01.mp3\" under media/audio); null = shown, not heard. Lines with {name} can't be recorded for everyone. Restart the server after editing. Tone: a charismatic, unhinged AI game-show host. Roast the play, never the person.",
+
+  "_wrong": "A wrong answer.",
+  "wrong": [
+    { "text": "Bold choice, {name}. Wrong, but bold.", "audio": null },
+    { "text": "That was an answer. Not THE answer, but an answer.", "audio": null },
+    { "text": "So close! Well, no. Not close at all.", "audio": null },
+    { "text": "The {monster} thanks you for your generous donation of HP.", "audio": null },
+    { "text": "I'd give you partial credit, but I'm a monster.", "audio": null },
+    { "text": "Interesting theory, {name}. Incorrect, but interesting.", "audio": null },
+    { "text": "My sensors detect a sudden lack of knowledge.", "audio": null },
+    { "text": "You pressed a button! Just... the wrong one.", "audio": null }
+  ],
+
+  "_slow": "The hourglass ran out, or they answered (right or wrong) in its last seconds.",
+  "slow": [
+    { "text": "Take your time, {name}. The {monster} certainly isn't.", "audio": null },
+    { "text": "I've seen glaciers make faster decisions.", "audio": null },
+    { "text": "Tick. Tock. That was the sound of your HP leaving.", "audio": null },
+    { "text": "Waiting for a lifeline? There is no lifeline.", "audio": null },
+    { "text": "The {monster} got bored. Can you blame it?", "audio": null },
+    { "text": "Speed is a skill, {name}. Ask anyone who has it.", "audio": null },
+    { "text": "I aged three firmware versions waiting for that.", "audio": null },
+    { "text": "Fun fact: the hourglass doesn't pause for thinking.", "audio": null }
+  ],
+
+  "_wrongStreak": "Wrong (or too slow) several times in a row: a big moment.",
+  "wrongStreak": [
+    { "text": "That's a few in a row now, {name}. Is this a strategy?", "audio": null },
+    { "text": "At this point the {monster} feels bad for you. I don't.", "audio": null },
+    { "text": "Wrong again! You're consistent, I'll give you that.", "audio": null },
+    { "text": "I'm starting to think you're doing this on purpose.", "audio": null },
+    { "text": "{name}, the right answer is one of the OTHER buttons.", "audio": null },
+    { "text": "A streak! The wrong kind, but a streak.", "audio": null },
+    { "text": "Remarkable. Nobody's been this wrong this fast. Ever.", "audio": null },
+    { "text": "Keep going, {name}. The {monster} is having a lovely time.", "audio": null }
+  ],
+
+  "_rightSafe": "A right answer while they're safe: he rarely bothers.",
+  "rightSafe": [
+    { "text": "Correct. Don't let it go to your head.", "audio": null },
+    { "text": "Right! Enjoy it. It won't last.", "audio": null },
+    { "text": "Look at you, knowing things.", "audio": null },
+    { "text": "Fine. That one counts.", "audio": null },
+    { "text": "Correct, {name}. I'll allow it.", "audio": null },
+    { "text": "Even I'm a little impressed. A little.", "audio": null },
+    { "text": "Right again? Somebody's been reading.", "audio": null },
+    { "text": "Nice hit. The dungeon is taking notes.", "audio": null }
+  ],
+
+  "_rightUneasy": "A right answer with death getting closer (hurt, a boss, deep down): sarcastic enthusiasm.",
+  "rightUneasy": [
+    { "text": "Right! And only slightly bleeding. Wonderful.", "audio": null },
+    { "text": "Great answer! Shame about your health bar.", "audio": null },
+    { "text": "Correct! The {monster} looks worried. You should be too.", "audio": null },
+    { "text": "Keep that up and you might survive another minute!", "audio": null },
+    { "text": "Still answering. How brave. How doomed.", "audio": null },
+    { "text": "Excellent! Your gravestone will say 'knew stuff'.", "audio": null },
+    { "text": "Right! I'm so proud. I've already picked out your coffin.", "audio": null },
+    { "text": "Correct! Such momentum! Right up until the end.", "audio": null }
+  ],
+
+  "_rightDoomed": "A right answer with death close (badly hurt, the last life, a boss): sarcastic enthusiasm, laid on thick.",
+  "rightDoomed": [
+    { "text": "YES! Brilliant! You'll die SO well informed!", "audio": null },
+    { "text": "Correct! Hanging by a thread and STILL showing off!", "audio": null },
+    { "text": "Amazing! I'll read that answer at your funeral!", "audio": null },
+    { "text": "Right! The {monster} is impressed. And hungry.", "audio": null },
+    { "text": "Look at you go! Straight toward certain doom!", "audio": null },
+    { "text": "Bravo, {name}! The light at the end of the tunnel is SO close now!", "audio": null },
+    { "text": "Spectacular! Someone get this hero a tombstone!", "audio": null },
+    { "text": "Correct! Inspiring, really. Pointless, but inspiring.", "audio": null }
+  ],
+
+  "_lastLife": "Downed to their last life: a big moment.",
+  "lastLife": [
+    { "text": "Last life, {name}. No pressure. Well, ALL the pressure.", "audio": null },
+    { "text": "One life left. I've started writing your eulogy.", "audio": null },
+    { "text": "Last life! Make it count. Or don't. I'm entertained either way.", "audio": null },
+    { "text": "Down to one! The dungeon can smell it.", "audio": null },
+    { "text": "Last life! This is where heroes rise. Or, more often, don't.", "audio": null },
+    { "text": "One more slip, {name}, and you're decoration.", "audio": null },
+    { "text": "Final life. I'd say good luck, but I've seen your answers.", "audio": null },
+    { "text": "Last life. The {monster} is licking its lips.", "audio": null }
+  ],
+
+  "_oddOneOut": "In a party: the others got theirs right and this one didn't. A big moment the whole party sees.",
+  "oddOneOut": [
+    { "text": "Everyone else got that one, {name}. Everyone.", "audio": null },
+    { "text": "The whole party knew it. {name} had other plans.", "audio": null },
+    { "text": "Team, meet {name}: the reason we can't have nice things.", "audio": null },
+    { "text": "A party of heroes. Plus {name}.", "audio": null },
+    { "text": "Your team is carrying you, {name}. I can see the strain.", "audio": null },
+    { "text": "{name}, the group project called. You're the one who didn't help.", "audio": null },
+    { "text": "Everybody point at {name}. Go on, I'll wait.", "audio": null },
+    { "text": "The party nailed it. {name} nailed something else.", "audio": null }
+  ],
+
+  "_carrying": "In a party: right while the others flounder. The whole party sees it.",
+  "carrying": [
+    { "text": "{name} is carrying this party. Somebody get them a snack.", "audio": null },
+    { "text": "Right, {name}! Someone has to be.", "audio": null },
+    { "text": "{name}: the only one here who's read a book.", "audio": null },
+    { "text": "Look at {name}, doing all the work. Typical.", "audio": null },
+    { "text": "{name} knew it. The rest of you, take notes.", "audio": null },
+    { "text": "Carry them, {name}! Carry them all the way to their doom!", "audio": null },
+    { "text": "One brain cell in this party, and {name} has custody.", "audio": null },
+    { "text": "{name} is single-handedly keeping this party alive. For now.", "audio": null }
+  ],
+
+  "_downedInParty": "Downed in a party (not on their last life): the whole party sees it.",
+  "downedInParty": [
+    { "text": "{name} is down! Your friends will avenge you. Probably.", "audio": null },
+    { "text": "And {name} hits the floor. Teammates, any thoughts?", "audio": null },
+    { "text": "{name} is taking a little nap. Right answers wake them up.", "audio": null },
+    { "text": "Down goes {name}! Somebody answer something, quick.", "audio": null },
+    { "text": "{name} has fallen. Thoughts and prayers. Mostly thoughts.", "audio": null },
+    { "text": "Hero down! {name} needs right answers, not sympathy.", "audio": null },
+    { "text": "{name} is out cold. Who's next? Don't all volunteer.", "audio": null },
+    { "text": "The {monster} got {name}. Revenge is one right answer away.", "audio": null }
+  ],
+
+  "_behindRival": "A race or a team battle: a rival side is a floor (or more) deeper. On a right answer, now and then.",
+  "behindRival": [
+    { "text": "{rival} is a floor ahead of you. Just saying.", "audio": null },
+    { "text": "Nice! {rival} is still deeper down, though.", "audio": null },
+    { "text": "Right! Meanwhile, {rival} is lapping you.", "audio": null },
+    { "text": "Good answer. {rival} has had better ones. Deeper ones.", "audio": null },
+    { "text": "Keep going, {name}. {rival} isn't waiting.", "audio": null },
+    { "text": "{rival} sends their regards. From further down.", "audio": null },
+    { "text": "Correct! Not that {rival} noticed. They're busy winning.", "audio": null },
+    { "text": "You're doing great, {name}. {rival} is doing greater.", "audio": null }
+  ]
+}

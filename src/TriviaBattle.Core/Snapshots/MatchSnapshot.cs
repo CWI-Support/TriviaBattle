@@ -171,7 +171,15 @@ public sealed record YouView(
     long? PhotoAtMs,
     RewardOfferView? Reward = null,
     MinigameView? Minigame = null,
-    string? CallingName = null);
+    string? CallingName = null,
+    QuipView? Quip = null);
+
+/// <summary>
+/// Dungeon format: Q.U.E.R.I.E.'s latest remark on this station (Core/Dungeon/Querie.cs picks them), from
+/// <paramref name="AtMs"/>: about them (<paramref name="AboutYou"/>), or a callout about a teammate the whole party
+/// hears. <paramref name="Number"/> changes with each. <paramref name="Moment"/>: what kind ("Wrong", "OddOneOut"...).
+/// </summary>
+public sealed record QuipView(int Number, string Moment, string Text, long AtMs, bool AboutYou);
 
 /// <summary>
 /// The fight shown between two questions. The screen plays it from <see cref="StartedAtMs"/> to

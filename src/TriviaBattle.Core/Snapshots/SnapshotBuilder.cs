@@ -122,7 +122,10 @@ public static class SnapshotBuilder
             ToUnixMs(player.PhotoAt),
             ToRewardOffer(match, adventurer),
             match.Phase == MatchPhase.Playing ? ToMinigame(adventurer?.Minigame) : null,
-            adventurer?.CalledFriend is { } friend ? NameOf(match, friend) : null);
+            adventurer?.CalledFriend is { } friend ? NameOf(match, friend) : null,
+            adventurer?.LastQuip is { } quip
+                ? new QuipView(quip.Number, quip.Moment.ToString(), quip.Text, quip.At.ToUnixTimeMilliseconds(), quip.AboutOwnerId == stream.OwnerId)
+                : null);
     }
 
     /// <summary>Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one.</summary>

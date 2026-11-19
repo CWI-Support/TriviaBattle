@@ -40,29 +40,4 @@ const DungeonHost = {
     },
 };
 
-// Q.U.E.R.I.E.: an old CRT monitor with a face, antennae and a glitchy grin. A placeholder until the art exists.
-Object.assign(PixelSprites.SPRITES, {
-    'host-querie': {
-        palette: { k: '#0b0710', c: '#2ef2ff', m: '#ff3df2', g: '#3a3346', G: '#5a5068', w: '#ffffff', y: '#ffe04a' },
-        rows: [
-            '...m..........m...',
-            '....m........m....',
-            '.....m......m.....',
-            '..GGGGGGGGGGGGGG..',
-            '.GgggggggggggggG..',
-            '.Ggkkkkkkkkkkkgg..',
-            '.Ggkkwwkkkkwwkkg..',
-            '.GgkwcckkkkwcckgGG',
-            '.GgkwcckkkkwcckgGy',
-            '.Ggkkkkkkkkkkkkgg.',
-            '.Ggkmkkkkkkkkmkgg.',
-            '.Ggkkmmmmmmmmkkgg.',
-            '.Ggkkkcwcwcwkkkgg.',
-            '.Ggkkkkkkkkkkkkgg.',
-            '.GgggggggggggggGG.',
-            '..GGGGGGGGGGGGGG..',
-            '.....GGGGGGGG.....',
-            '...GGGGGGGGGGGG...',
-        ],
-    },
-});
+// His face (the host-querie pixel sprite) is in js/pixel-sprites.js: the stations show him too.

@@ -50,6 +50,11 @@ default; the action button says no, or with `PhotoByDefault` off it says yes). `
 hero's head (only its skin: hair, hoods and beards stay; check every hero at `/dev/faces`), `js/battle3d/portrait.js` renders the 2D portrait, `js/hero-photo.js` fetches them, and `PhotoStore` +
 `/api/photos` hold them. Photos live in server memory until the player drops it, leaves the lobby or the match ends: never write one
 to disk, the database or a log.
+Q.U.E.R.I.E. (the host) talks at the stations: after an answer `DungeonRun.Commentate` asks `Querie` (`Core/Dungeon/Querie.cs`)
+whether he has a remark (now and then for ordinary moments, always for big ones, party-wide callouts in a party); it's
+`YouView.Quip`, shown by `DungeonView.querie` in place of the feedback line. Lines are `config/querie.json` (`{text, audio}`,
+audio for later recordings), his numbers `Game:Dungeon:Querie`; tests hear him only when they pass `querie:`. Keep the station's
+plain feedback lines (`dungeon.*` in the copy) factual: the jokes are his.
 After each answer a battle beat holds the next question back while the station plays the fight full screen
 (`js/dungeon-battle.js`, `css/dungeon-battle.css`, preview at `/dev/battle`). Beat animations are timed from the
 beat's server start (`--t0`) so redraws don't restart them; keep their offsets in step with the beat lengths.

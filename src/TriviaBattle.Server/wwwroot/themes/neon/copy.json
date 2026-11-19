@@ -139,51 +139,15 @@
     "score": "Score",
     "time": "Time",
     "timeAdded": "+{seconds}s",
-    "go": [
-      "Answer to attack!",
-      "Hit it with the right answer!",
-      "Go on. Hurt it with facts."
-    ],
-    "hit": [
-      "Hit! {damage} damage.",
-      "You bonk the {monster} for {damage}.",
-      "{damage} damage. The {monster} is mildly inconvenienced."
-    ],
-    "crit": [
-      "CRITICAL HIT! {damage}!",
-      "CRIT! The {monster} felt that one. {damage}!",
-      "Fast AND right? {damage} damage. Show-off."
-    ],
-    "combo": [
-      "COMBO x{streak}! {damage} damage!",
-      "{streak} in a row! {damage}! The ratings are spiking!",
-      "COMBO! {damage}! Okay, I'm a little impressed."
-    ],
-    "kill": [
-      "The {monster} is dead. Next!",
-      "{monster}: slain. Somebody mop that up.",
-      "You killed the {monster}. It had a family. Probably."
-    ],
-    "floorClearedLine": [
-      "Floor cleared! Down you go.",
-      "Floor cleared. The stairs only go down from here.",
-      "Floor cleared! Don't get cocky."
-    ],
-    "bossAheadLine": [
-      "Room cleared. The boss's door creaks open...",
-      "That was the last of them. Except the big one.",
-      "Room cleared! Something large is clearing its throat."
-    ],
-    "staggered": [
-      "STAGGERED! {damage} damage, and its big blow fizzles.",
-      "You broke its charge! {damage} damage. It looks dizzy.",
-      "Right at full power: {damage}! {monster} reels."
-    ],
-    "lastStand": [
-      "LAST STAND! {monster}'s blow should have dropped you. 1 HP!",
-      "Not today! You hang on with 1 HP.",
-      "{damage} damage, and you're still standing. Barely."
-    ],
+    "go": "Answer to attack!",
+    "hit": "Hit! {damage} damage.",
+    "crit": "CRITICAL HIT! {damage}!",
+    "combo": "COMBO x{streak}! {damage} damage!",
+    "kill": "The {monster} is dead. Next!",
+    "floorClearedLine": "Floor cleared! Down you go.",
+    "bossAheadLine": "Room cleared. The boss's door creaks open...",
+    "staggered": "STAGGERED! {damage} damage, and its big blow fizzles.",
+    "lastStand": "LAST STAND! {monster}'s blow should have dropped you. 1 HP!",
     "minigameStamp": ["MINI GAME!", "A CHALLENGE!", "HOLD UP!"],
     "minigameRuneLock": "Rune Lock",
     "minigameRuneLockHow": "Stop the needle on the glowing mark {hits} times in a row. Miss and you start over!",
@@ -251,21 +215,9 @@
     "rewardMasteryPugilist": "Your combo builds {amount}% per hit",
     "rewardMasteryWarlock": "Your patron reveals {amount}% of the time",
     "rewardMasteryRanger": "See questions {amount}s early",
-    "chargedHit": [
-      "CRUSHING BLOW! {monster} hits you for {damage}.",
-      "Full power, wrong answer. {damage} damage. Ouch.",
-      "{monster} was saving that one. {damage} damage!"
-    ],
-    "wrong": [
-      "WRONG! The {monster} hits you for {damage}.",
-      "Nope. The {monster} hits you for {damage}. Deserved.",
-      "Wrong! {damage} damage, and the audience groans."
-    ],
-    "tooSlow": [
-      "TOO SLOW! The {monster} hits you for {damage}.",
-      "The {monster} got bored waiting. {damage} damage.",
-      "Time's up! {damage} damage for the indecisive."
-    ],
+    "chargedHit": "CRUSHING BLOW! {monster} hits you for {damage}.",
+    "wrong": "WRONG! The {monster} hits you for {damage}.",
+    "tooSlow": "TOO SLOW! The {monster} hits you for {damage}.",
     "stunned": [
       "STUNNED!",
       "Seeing stars...",
@@ -279,16 +231,9 @@
     "downedShort": "DOWNED!",
     "slain": "SLAIN!",
     "floorCleared": "FLOOR CLEARED!",
-    "partyCombo": [
-      "PARTY COMBO! {damage} damage, all together now!",
-      "PARTY COMBO! Teamwork hits for {damage}!",
-      "The whole party lands it: {damage} damage!"
-    ],
+    "partyCombo": "PARTY COMBO! {damage} damage, all together now!",
     "partyComboShort": "PARTY COMBO!",
-    "revived": [
-      "You got {name} back on their feet!",
-      "{name} is back in the fight, thanks to you!"
-    ],
+    "revived": "You got {name} back on their feet!",
     "downedParty": [
       "DOWN! {left} more right answers from your party bring you back.",
       "DOWN! Your party needs {left} more right answers to save you."
@@ -322,7 +267,7 @@
     "stampLoot": ["LOOT!", "FINDERS KEEPERS!", "OOH, SHINY!"],
     "stampFireball": ["FIREBALL!", "KA-BOOM!", "TOASTY!"],
     "stampBlocked": ["BLOCKED!", "NOT TODAY!", "BOING!"],
-    "blocked": ["Your shield ate that one. Not a scratch.", "Blocked! Rude of it to try, honestly."],
+    "blocked": "Your shield ate that one. Not a scratch.",
     "armedFireball": "FIREBALL READY",
     "armedShield": "SHIELD UP",
     "attackFrozen": "Hourglass frozen!",
@@ -351,7 +296,7 @@
     "poisonBadge": "x{stacks}",
     "poisoned": ["POISONED x{stacks}", "TOXIC x{stacks}"],
     "slainByPoison": "POISON GOT IT!",
-    "slainByTeammate": ["{name} finished it!", "{name} took it down!", "Nice one, {name}!"],
+    "slainByTeammate": "{name} finished it!",
     "nextUp": "Next up",
     "nextRoom": "Room {room} of {rooms}",
     "splash": "SPLASH",

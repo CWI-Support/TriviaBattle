@@ -352,7 +352,30 @@ const DungeonView = {
             : lastAnswer.timedOut ? Theme.text('dungeon.tooSlow', values, s)
             : Theme.text('dungeon.wrong', values, s);
         const itWas = Theme.text('player.itWas', { letter: UI.ANSWER_LETTERS[lastAnswer.correctIndex], answer: lastAnswer.correctAnswer });
-        return { html: `${headline}<div class="dg-feedback-detail">${itWas}</div>`, tone: 'is-bad' };
+        const detail = `<div class="dg-feedback-detail">${itWas}</div>`;
+        return { html: `${headline}${detail}`, tone: 'is-bad', detail };
+    },
+
+    /** How long a remark of Q.U.E.R.I.E.'s stays on a station before the plain line comes back. */
+    QUIP_MS: 6000,
+
+    /**
+     * Q.U.E.R.I.E.'s latest remark on this station (you.quip: the server decides when he speaks, Core/Dungeon/Querie.cs),
+     * while it's fresh: his face and the line, in the one-line feedback's place (the fight's line, the question's). Big
+     * when it's about you; a smaller aside when it's a callout about a teammate. detail: what goes under it (the right
+     * answer, after a wrong one). Null when he has nothing to say: the plain line shows.
+     */
+    querie(you, serverNow, detail = '') {
+        const quip = you.quip;
+        if (!quip || serverNow - quip.atMs >= DungeonView.QUIP_MS) return null;
+        // Something newer of theirs has happened since (their next answer's fight): that's the line now, not this remark.
+        if (you.beat && you.beat.startedAtMs > quip.atMs) return null;
+        return {
+            html: `<span class="dg-querie ${quip.aboutYou ? 'is-big' : 'is-aside'}" style="--said0: ${Math.round(quip.atMs - serverNow)}ms">`
+                + PixelSprites.html('host-querie', 'dg-querie-face')
+                + `<span class="dg-querie-line">${UI.escape(quip.text)}</span></span>${detail}`,
+            tone: 'is-querie',
+        };
     },
 
     /**

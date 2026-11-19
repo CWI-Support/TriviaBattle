@@ -36,6 +36,9 @@ public sealed class DungeonSettings
     /// <summary>The mini games a floor may have between two rooms. Bound from "Game:Dungeon:Minigames".</summary>
     public MinigameSettings Minigames { get; set; } = new();
 
+    /// <summary>How chatty Q.U.E.R.I.E. is at the stations (his lines: config/querie.json). Bound from "Game:Dungeon:Querie".</summary>
+    public QuerieSettings Querie { get; set; } = new();
+
     /// <summary>
     /// At 0 HP an adventurer is downed: their buttons are dead this long, then they get back up at
     /// full HP. When the whole party is down the monster heals. Each downing costs a life (<see cref="Lives"/>).
@@ -192,6 +195,7 @@ public sealed class DungeonSettings
         copy.Classes = Classes.Copy(); // its own, so changing one match's numbers never changes another's
         copy.Rewards = Rewards.Copy();
         copy.Minigames = Minigames.Copy();
+        copy.Querie = Querie.Copy();
         return copy;
     }
 }

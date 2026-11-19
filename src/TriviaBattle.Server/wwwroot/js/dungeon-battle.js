@@ -113,11 +113,12 @@ const DungeonBattle = {
         const foePoison = hit && !hit.killed ? delve.monster.poisonStacks || hit.poisonStacks || 0 : 0;
         const pack = DungeonBattle.pack(delve, hit);
 
-        const feedback = byPoison
+        // Q.U.E.R.I.E.'s remark when he has one (the hurt beat turns the right answer over on its own card), else the plain line.
+        const feedback = DungeonView.querie(you, serverNow) ?? (byPoison
             ? { html: Theme.text('dungeon.slainByPoison', { monster: hit?.monsterName || '' }, seed), tone: 'is-great' }
             : byTeammate
             ? { html: Theme.text('dungeon.slainByTeammate', { name: beat.by, monster: hit?.monsterName || '' }, seed), tone: 'is-great' }
-            : DungeonView.feedback(delve, you.lastAnswer, `${match.matchId}:${you.stationId}`);
+            : DungeonView.feedback(delve, you.lastAnswer, `${match.matchId}:${you.stationId}`));
 
         return `
             <div class="${classes}" data-stage="fight" style="--t0: ${Math.round(beat.startedAtMs - serverNow)}ms; --t1: ${Math.round(beat.endsAtMs - serverNow)}ms">

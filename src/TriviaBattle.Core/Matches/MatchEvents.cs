@@ -43,6 +43,12 @@ public sealed record SideFinished(string PartyId) : MatchEvent;
 public sealed record ClockHeld : MatchEvent;
 
 /// <summary>
+/// Dungeon format: Q.U.E.R.I.E. remarked on an answer (<see cref="Querie"/>). The screens show it from the
+/// snapshot (YouView.Quip); once his lines are recorded, the room plays <see cref="Quip.Audio"/> from this.
+/// </summary>
+public sealed record QuerieSpoke(Quip Quip) : MatchEvent;
+
+/// <summary>
 /// Dungeon format: a battle beat ended and the owner's next question is showing, so their buttons count
 /// again (the button LEDs come back on). Raised by Tick; nothing in the snapshot changes.
 /// </summary>

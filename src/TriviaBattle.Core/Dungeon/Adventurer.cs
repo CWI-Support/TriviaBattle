@@ -144,6 +144,11 @@ public sealed class Adventurer
 
     public RewardTaken? LastReward => _rewards.Count > 0 ? _rewards[^1] : null;
 
+    /// <summary>Q.U.E.R.I.E.'s latest remark on their screen: about them, or (a party callout) about a teammate.</summary>
+    public Quip? LastQuip { get; private set; }
+
+    public void Hear(Quip quip) => LastQuip = quip;
+
     /// <summary>How many times they've picked this reward (they stack).</summary>
     public int Has(Reward reward) => _rewards.Count(r => r.Reward == reward);
 

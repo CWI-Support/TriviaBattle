@@ -211,6 +211,31 @@ const PixelSprites = {
                 '....kkkkkkkk....',
             ],
         },
+        // Q.U.E.R.I.E., the host: an old CRT monitor with a face, antennae and a glitchy grin (the main screen and the
+        // stations). A placeholder until the art exists.
+        'host-querie': {
+            palette: { k: '#0b0710', c: '#2ef2ff', m: '#ff3df2', g: '#3a3346', G: '#5a5068', w: '#ffffff', y: '#ffe04a' },
+            rows: [
+                '...m..........m...',
+                '....m........m....',
+                '.....m......m.....',
+                '..GGGGGGGGGGGGGG..',
+                '.GgggggggggggggG..',
+                '.Ggkkkkkkkkkkkgg..',
+                '.Ggkkwwkkkkwwkkg..',
+                '.GgkwcckkkkwcckgGG',
+                '.GgkwcckkkkwcckgGy',
+                '.Ggkkkkkkkkkkkkgg.',
+                '.Ggkmkkkkkkkkmkgg.',
+                '.Ggkkmmmmmmmmkkgg.',
+                '.Ggkkkcwcwcwkkkgg.',
+                '.Ggkkkkkkkkkkkkgg.',
+                '.GgggggggggggggGG.',
+                '..GGGGGGGGGGGGGG..',
+                '.....GGGGGGGG.....',
+                '...GGGGGGGGGGGG...',
+            ],
+        },
         // A hero portrait (the player plate). r = the plume, recoloured per station.
         knight: {
             palette: { k: '#111111', s: '#b8c0c8', S: '#7d858d', r: '#d62828', v: '#1a1a1a', e: '#ffd23f' },

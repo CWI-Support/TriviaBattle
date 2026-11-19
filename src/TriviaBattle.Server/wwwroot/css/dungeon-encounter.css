@@ -207,6 +207,8 @@
     text-overflow: ellipsis;
 }
 .dg-window .dg-feedback-detail { display: none; }
+/* Q.U.E.R.I.E.'s remark may take two lines here (the plain line is cut to one). */
+.dg-window .dg-feedback.is-querie { white-space: normal; text-overflow: clip; }
 
 /* The other players' moments that matter to you (js/dungeon-feed.js): a caption across the top of the
    monster's room, one at a time, with their face over its left end. It slides in, stays, and goes (--t0). */

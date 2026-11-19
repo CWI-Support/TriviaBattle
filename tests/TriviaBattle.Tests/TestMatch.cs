@@ -39,10 +39,13 @@ public sealed class TestMatch
     /// Dungeon format: keep floor rewards on. Off by default, so a test that clears a floor isn't stopped by a
     /// reward to pick; DungeonRewardTests turn them on.
     /// </param>
+    /// <param name="teams">Team modes: the teams, instead of Red = A1 + A3 and Blue = A2 + A4 (e.g. one party of four).</param>
+    /// <param name="querie">Dungeon format: Q.U.E.R.I.E.'s lines at the stations. None by default, so he stays quiet.</param>
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
         IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false,
         IReadOnlyDictionary<string, bool>? lobbyPhotos = null, IReadOnlyDictionary<string, string>? heroes = null,
-        DungeonMap? dungeon = null, bool rewards = false, int? hitDamage = 20, bool opening = false)
+        DungeonMap? dungeon = null, bool rewards = false, int? hitDamage = 20, bool opening = false,
+        IReadOnlyList<TeamSetup>? teams = null, QuerieLines? querie = null)
     {
         Settings = settings ?? new MatchSettings();
         if (!battleBeats)
@@ -63,8 +66,8 @@ public sealed class TestMatch
             Settings.Dungeon.Rewards.Enabled = false;
         Now = Start;
 
-        var teams = mode == GameModeKind.FreeForAll
-            ? new List<TeamSetup>()
+        teams ??= mode == GameModeKind.FreeForAll
+            ? []
             : [new TeamSetup("red", "Red", ["A1", "A3"]), new TeamSetup("blue", "Blue", ["A2", "A4"])];
 
         string[] names = ["Ann", "Bob", "Cat", "Dan"];
@@ -89,7 +92,8 @@ public sealed class TestMatch
             Settings,
             Now,
             new Random(1), // seeded, so question orders are the same every run
-            Settings.Format == GameFormat.Dungeon ? dungeon ?? Dungeon : null);
+            Settings.Format == GameFormat.Dungeon ? dungeon ?? Dungeon : null,
+            querie);
     }
 
     /// <summary>

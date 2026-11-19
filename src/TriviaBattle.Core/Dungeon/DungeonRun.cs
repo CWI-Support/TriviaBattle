@@ -56,17 +56,24 @@ public sealed class DungeonRun
     private readonly Dictionary<string, Adventurer> _adventurers = new();
     private readonly DungeonMap _map;
     private readonly Random _random;
+    private readonly Querie? _querie; // null with no lines: he says nothing at the stations
+    private readonly Dictionary<string, string> _names = new();       // by answer owner: the player's (or 2v2 team's) name
+    private readonly Dictionary<string, string> _partyNames = new();  // by party: the team's name, or the solo player's
 
     /// <param name="streams">The match's question streams, by answer owner. Downed adventurers' buttons are
     /// dead through their stream's lockout, so reviving someone ends it. Their first questions are picked here,
     /// from the first floor's mix.</param>
     /// <param name="random">Power-up drops and picks, and question difficulties. Tests pass a seeded one.</param>
-    public DungeonRun(MatchRoster roster, IGameMode mode, IReadOnlyDictionary<string, QuestionStream> streams, DungeonMap map, DungeonSettings settings, Random random)
+    /// <param name="querie">Q.U.E.R.I.E.'s lines for the stations (config/querie.json); none, and he keeps quiet there.</param>
+    public DungeonRun(MatchRoster roster, IGameMode mode, IReadOnlyDictionary<string, QuestionStream> streams, DungeonMap map, DungeonSettings settings, Random random,
+        QuerieLines? querie = null)
     {
         _settings = settings;
         _streams = streams;
         _map = map;
         _random = random;
+        // His own dice, so how much he says never changes the fight's (drops, questions).
+        _querie = querie is { IsEmpty: false } ? new Querie(querie, settings.Querie, new Random(random.Next())) : null;
         IsSolo = roster.Players.Count == 1;
 
         foreach (var player in roster.Players)
@@ -74,6 +81,9 @@ public sealed class DungeonRun
             // In 2v2 Group teammates answer as one adventurer: it fights as the first teammate's hero.
             var ownerId = mode.GetAnswerOwnerId(player);
             var partyId = player.TeamId ?? player.StationId;
+            var teamName = player.TeamId is { } teamId ? roster.FindTeam(teamId)?.Name : null;
+            _partyNames.TryAdd(partyId, teamName ?? player.Name);
+            _names.TryAdd(ownerId, ownerId == player.TeamId ? teamName ?? player.Name : player.Name);
             if (_adventurers.ContainsKey(ownerId))
                 continue;
             var heroClass = Arcade.Heroes.ClassOf(player.Hero);
@@ -938,6 +948,53 @@ public sealed class DungeonRun
         }
 
         return hit;
+    }
+
+    /// <summary>
+    /// Q.U.E.R.I.E. after an answer (or the hourglass running out, a timed-out <paramref name="answer"/>): whether he has
+    /// something to say about it, and what (<see cref="Querie"/>). Null when he keeps quiet. His remark goes on their
+    /// screen, and on the whole party's when it's a callout they should all hear (the odd one out, a teammate downed).
+    /// </summary>
+    public Quip? Commentate(string ownerId, GivenAnswer answer, DealtHit? dealt, TakenHit? taken, DateTimeOffset now)
+    {
+        if (_querie == null)
+            return null;
+        var adventurer = _adventurers[ownerId];
+        var delve = DelveOf(adventurer);
+        var party = PartyOf(adventurer.PartyId);
+        // The rest of the party's answers just now: each one's last, if it was recent (and they're still in the game).
+        var window = TimeSpan.FromSeconds(_settings.Querie.PartyWindowSeconds);
+        var teammates = party
+            .Where(m => m != adventurer && !m.IsOut)
+            .Select(m => _streams[m.OwnerId].LastAnswer)
+            .Where(last => last != null && now - last.PressedAt <= window)
+            .ToList();
+        // A race or a team battle: the rival side furthest ahead, if any is on a deeper floor.
+        var rivalAhead = _delves.Values
+            .Where(d => d.PartyId != adventurer.PartyId && d.Floor > delve.Floor)
+            .MaxBy(d => d.Floor);
+
+        var quip = _querie.React(new QuerieScene(
+            ownerId,
+            adventurer.PartyId,
+            _names.GetValueOrDefault(ownerId, ownerId),
+            answer,
+            taken,
+            dealt?.MonsterName ?? taken?.MonsterName ?? delve.Encounter.Monster.Name,
+            delve.Floor,
+            dealt?.IsBoss ?? delve.Encounter.Monster.IsBoss,
+            adventurer.MaxHp > 0 ? (double)adventurer.Hp / adventurer.MaxHp : 1,
+            adventurer.MaxLives > 0 ? adventurer.Lives : 0,
+            Enumerable.Reverse(_streams[ownerId].Answers).TakeWhile(a => !a.IsCorrect).Count(),
+            party.Count > 1,
+            teammates.Count(a => a!.IsCorrect),
+            teammates.Count(a => !a!.IsCorrect),
+            rivalAhead == null ? null : _partyNames.GetValueOrDefault(rivalAhead.PartyId)), now);
+        if (quip == null)
+            return null;
+        foreach (var listener in quip.PartyWide ? party : [adventurer])
+            listener.Hear(quip);
+        return quip;
     }
 
     /// <summary>

@@ -44,6 +44,7 @@ public sealed class MatchEngine
     /// <param name="questions">The question pool. Every answer owner gets their own order of it.</param>
     /// <param name="random">Shuffles each owner's question order. Tests pass a seeded one.</param>
     /// <param name="dungeon">The floors and monsters. Required when <see cref="MatchSettings.Format"/> is Dungeon.</param>
+    /// <param name="querie">Dungeon format: Q.U.E.R.I.E.'s lines for the stations (config/querie.json); none, and he's quiet there.</param>
     public MatchEngine(
         string matchId,
         MatchSetup setup,
@@ -52,7 +53,8 @@ public sealed class MatchEngine
         MatchSettings settings,
         DateTimeOffset now,
         Random random,
-        DungeonMap? dungeon = null)
+        DungeonMap? dungeon = null,
+        QuerieLines? querie = null)
     {
         if (questions.Count == 0)
             throw new ArgumentException("A match needs at least one question.", nameof(questions));
@@ -79,7 +81,7 @@ public sealed class MatchEngine
         {
             if (dungeon == null)
                 throw new ArgumentException("Dungeon format needs the dungeon map.", nameof(dungeon));
-            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon, random);
+            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon, random, querie);
         }
 
         EarnsTime = _dungeon != null;
@@ -374,10 +376,14 @@ public sealed class MatchEngine
                 events.AddRange(OfferRewards(partyId, now));
             events.AddRange(StartMinigames(partyId, dealt, now));
         }
-        else
+        TakenHit? taken = null;
+        if (dealt == null)
         {
-            events.Add(new AdventurerHit(stream.OwnerId, _dungeon.TakeHit(stream.OwnerId, HitReason.WrongAnswer, now, answer.ResponseTime)));
+            taken = _dungeon.TakeHit(stream.OwnerId, HitReason.WrongAnswer, now, answer.ResponseTime);
+            events.Add(new AdventurerHit(stream.OwnerId, taken));
         }
+        if (_dungeon.Commentate(stream.OwnerId, answer, dealt, taken, now) is { } quip)
+            events.Add(new QuerieSpoke(quip));
 
         _dungeon.AfterTurn(stream, now);
         return events;
@@ -743,9 +749,12 @@ public sealed class MatchEngine
         stream.Record(lost, now + TimeSpan.FromSeconds(_dungeon!.BeatSecondsAfter(dealt: null)), _dungeon.NextDifficulty(ownerId));
 
         var hit = _dungeon.TakeHit(ownerId, HitReason.TooSlow, now);
+        var quip = _dungeon.Commentate(ownerId, lost, dealt: null, hit, now);
         _dungeon.AfterTurn(stream, now);
         Version++;
-        return [new AnswerGiven(lost), new AdventurerHit(ownerId, hit)];
+        return quip == null
+            ? [new AnswerGiven(lost), new AdventurerHit(ownerId, hit)]
+            : [new AnswerGiven(lost), new AdventurerHit(ownerId, hit), new QuerieSpoke(quip)];
     }
 
     /// <summary>Ends the match immediately (operator abort from the admin page).</summary>

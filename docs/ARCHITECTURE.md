@@ -422,6 +422,17 @@ every monster of the current Depth down to its boss (the screens' icon trail);
 `js/pixel-sprites.js` draws placeholder pixel monsters until real art is dropped in (a monster's
 `Sprite` can be a picture path).
 
+Q.U.E.R.I.E.'s remarks at the stations are picked on the server, so recorded lines can later play on the room
+speakers from the same choice. After each answer (and each hourglass running out) `MatchEngine` asks
+`DungeonRun.Commentate`, which describes the moment (`QuerieScene`: right or wrong, slow, HP, lives, the misses in a
+row, the boss, the floor, the teammates' answers just now, a rival side ahead) to `Querie`. `Querie` decides whether
+he speaks (`QuerieMoment`; ordinary moments by chance with a gap per player, big ones always, party-wide ones with a
+gap per party) and picks the line, from its own `Random` so his chatter never changes the fight's dice. The `Quip` goes
+on `Adventurer.LastQuip` for the player (and every teammate when it's party-wide) and out as a `QuerieSpoke` event;
+snapshots carry it as `YouView.Quip` (`AboutYou` false for a remark about a teammate), and `DungeonView.querie` shows
+it in place of the feedback line for `QUIP_MS`. Lines are content in `config/querie.json`, loaded at startup by
+`Server/Game/QuerieContent.cs` as `QuerieLines` (a missing file: he keeps quiet; tests pass `querie:` to hear him).
+
 ### Adding a game mode
 
 1. Add a value to `GameModeKind` (`Core/Modes/IGameMode.cs`).

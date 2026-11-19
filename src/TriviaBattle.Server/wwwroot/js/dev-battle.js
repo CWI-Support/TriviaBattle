@@ -8,6 +8,8 @@
 //   /dev/battle?kind=boss&at=2100    frozen 2.1 s into it (for screenshots)
 //   /dev/battle?kind=kill&at=2100    past the beat's end: the next question coming in, frozen
 //   /dev/battle3d?kind=hit&glass=4&hold=5000   the hourglass running out: its last 3 s wind up for the attack
+//   /dev/battle?kind=hurt&querie     Q.U.E.R.I.E.'s remark in place of the feedback line (&querie=your own text; &aside:
+//                                    a remark about a teammate)
 //   /dev/battle?kind=hit&call=friend&hold=5000   Phone a Friend (call=caller: the one who phoned); ?sabotage=FogBomb (TinyHourglass,
 //                                    Blocked): a rival's power-up landing on you
 //   /dev/battle3d?kind=floor&next=goblin   after the beat, that monster's entrance as the question comes in (goblin, rat,
@@ -412,5 +414,10 @@ function fakeState(kind, startedAt, question) {
                             delve: { lastDealt: { number: teamHits }, lastTaken: null, downedUntilMs: kind === 'downed' && i === 1 ? Date.now() + 5000 : null },
                         })),
                     ] };
+    // ?querie: Q.U.E.R.I.E. has a remark about this answer (?querie=some text for your own line); ?aside: about a
+    // teammate, the smaller look. It shows over the beat and the question after it, for DungeonView.QUIP_MS.
+    if (params.has('querie'))
+        you.quip = { number: 1, moment: striking ? 'RightUneasy' : 'Wrong', atMs: startedAt, aboutYou: !params.has('aside'),
+                     text: params.get('querie') || (striking ? 'Correct! The Goblin Bandit is SO impressed. Briefly.' : 'Bold choice, Ann. Wrong, but bold.') };
     return { match, you };
 }

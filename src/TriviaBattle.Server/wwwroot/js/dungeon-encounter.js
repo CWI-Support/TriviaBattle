@@ -55,10 +55,12 @@ const DungeonEncounter = {
         // A Warlock's patron showing the answer (their own question only): that answer glows, and the
         // Host's line gives way to the patron's whisper, which slides in once (since).
         const revealed = helping ? null : shown.revealed ?? null;
+        // Otherwise Q.U.E.R.I.E.'s remark, while he has one (the right answer still under it, after a wrong one), or the plain line.
+        const plain = DungeonView.feedback(delve, you.lastAnswer, seed);
         const feedback = revealed !== null
             ? { html: Theme.text('dungeon.patronWhispers', {}, `${seed}:${shown.number}`), tone: 'is-patron',
                 style: `--t0: ${DungeonView.since(`patron:${match.matchId}:${you.stationId}:${shown.number}`)}ms` }
-            : DungeonView.feedback(delve, you.lastAnswer, seed);
+            : DungeonView.querie(you, serverNow, plain.detail) ?? plain;
         // Phone a Friend: the call's on both screens (the one answering for a teammate, and the teammate who called).
         const callSeed = `${seed}:call:${shown.number}`;
         const tag = helping?.phoned

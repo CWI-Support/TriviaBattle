@@ -235,6 +235,23 @@ its part of the snapshot (`MinigameView`) and its drawing in `js/dungeon-minigam
 others. Preview: `/dev/battle?kind=runelock` (also `runelock-won`, `runelock-lost`), `runeecho`, `chestshuffle`, `chestshuffle-found`,
 `chestshuffle-lost`, `ringpuzzle` (also `ringpuzzle-solved`, `ringpuzzle-won`), `tuner` (also `tuner-won`).
 
+**Q.U.E.R.I.E. talks at the stations.** After an answer (or the hourglass running out) the dungeon's host may have
+something to say to that player: he chirps at a miss or a slow answer, and greets right answers with more and more
+sarcastic enthusiasm the closer the player gets to death (hurt, badly hurt, last life, a boss, deep down). His face
+and the line take the place of the station's feedback line for six seconds; the rest of the time that line is plain
+fact ("Hit! 19 damage."). He doesn't talk after every answer: an ordinary moment gets a remark about one time in
+three, never within 11 seconds of the last one to that player. Big moments always get one (a third miss in a row,
+down to the last life). Party games add their own: the one who gets it wrong when two or more teammates just got
+theirs right is called out on every teammate's screen ("Everyone else got that one, Dan."), and so is the one right
+answer after two misses, or a teammate going down (no more than one party-wide remark every 15 seconds).
+
+His lines are in `src/TriviaBattle.Server/config/querie.json`, about eight per moment, picked in a shuffled order
+so they don't repeat soon. Each line is `{ "text": "...", "audio": null }`: `{name}`, `{monster}`, `{floor}` and
+`{rival}` are filled in, and `audio` is for later, a recorded clip of the line. The file is read at startup
+(restart after editing); a line with an unknown `{placeholder}` stops the server with the problem spelled out. The
+rules' numbers are `"Game:Dungeon:Querie"` (`QuerieSettings`: `Chance`, `SafeChance`, `QuipEverySeconds`,
+`BigGapSeconds`, `PartyCalloutEverySeconds`, `SlowSeconds`, `WrongStreakAt`, `DeepFloor`; `Enabled` turns him off).
+
 A kiosk game has no hero choice: everyone plays the Tank. In 2v2 Group, where teammates share one question,
 the team fights as the first teammate's hero.
 
@@ -350,6 +367,7 @@ to add a game mode, station or button mapping.
 | Dungeon clock (solo and group, no cap): starting time, time per monster and per boss, a continue's clock, continue countdown | Operator screen (defaults: `"Game:Dungeon"`: `ClockStartSeconds`, `SecondsPerKill`, ...) |
 | Floors: how many rooms, each room's HP budget and monster pool, the boss, each floor's question mix | `config/dungeon.json` (made up fresh for each match) |
 | How much tougher monsters are for a party | `"Game:Dungeon:PartyHpPerMember"` |
+| Q.U.E.R.I.E.'s lines at the stations (and, later, their recordings) | `src/TriviaBattle.Server/config/querie.json` (read at startup); how often he talks: `"Game:Dungeon:Querie"` |
 | Button id -> station + answer | `src/TriviaBattle.Server/config/buttons.json` |
 | Keyboard key -> button id (dev stand-in for buttons) | `src/TriviaBattle.Server/config/keyboard.json` |
 | PLC on/off, address, register map, button codes, LED registers | `src/TriviaBattle.Server/config/plc.json` (see docs/PLC-PROTOCOL.md) |
