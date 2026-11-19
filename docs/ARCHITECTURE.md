@@ -182,11 +182,11 @@ The rules:
   session) goes back to Playing for everyone on a fresh `ContinueSeconds` clock, same floor, same HP, the same
   question shown again; no swipe and the countdown runs into Results. Each continue is a session of its own, so
   there's no limit on how many. On the station, the clock running out is a moment of its own: TIME'S UP! (WIPED OUT! with
-  everyone out of lives) covers the screen for 2.4 s as Continue? or the results come up (`player-screen.js`,
-  `endOverlay`, in its own layer outside the fitted body), and a Dungeon game's results are the run's card: the hero,
-  the floor reached, monsters slain, right answers, mini games won and score (`dungeonResults`). The main screen does
-  the same for a game shown on its own (`main-screen.js`: `endOverlay`, and `dungeonResults` with a card per side, in
-  their places, the winner's glowing). `MatchHost.ContinueAtStation` is what the station
+  everyone out of lives) covers the screen for 2.4 s as Continue? or the results come up (`UI.showEndMoment`, in its
+  own layer outside the fitted body), and a Dungeon game's results are the run's card: the hero, the floor reached,
+  monsters slain, right answers, mini games won and score (`DungeonView.runCard`, rising in as the moment lifts:
+  `UI.afterEndMoment`). The main screen does the same for a game shown on its own, with a card per side in their
+  places, the winner's glowing (`main-screen.js` and `player-screen.js`, `dungeonResults`, share both helpers). `MatchHost.ContinueAtStation` is what the station
   card readers call (`POST /api/stations/{id}/swipe`), as does `POST /api/dev/continue/{stationId}` (the dev buttons
   page) and the Operator screen's "Give a continue" (`POST /api/matches/{id}/continue`). The clock and continue
   numbers are Operator-screen rules (`GameRulesService`).

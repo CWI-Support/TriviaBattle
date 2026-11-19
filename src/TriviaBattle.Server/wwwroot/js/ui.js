@@ -100,6 +100,33 @@ const UI = {
         return `<div class="intro-count">${digits}</div>`;
     },
 
+    /** How long TIME'S UP! covers a screen as a game ends (css/screens.css plays .end-moment as long). */
+    END_MOMENT_MS: 2400,
+
+    /**
+     * TIME'S UP! (WIPED OUT! with everyone out of lives) over the whole screen as a game ends, in its own layer (outside
+     * the fitted body): moment = { matchId, at, allDown } for the game that just ended, or null. The layer is written only
+     * when what it shows changes, so a redraw in the middle doesn't rebuild it (its animations run on undisturbed).
+     */
+    showEndMoment(layer, moment, matchId, now) {
+        // Not "moment?.matchId === matchId": with no game (no moment, no matchId) that's undefined === undefined.
+        const showing = !!moment && moment.matchId === matchId && now <= moment.at + UI.END_MOMENT_MS;
+        const key = showing ? `${matchId}:${moment.at}` : '';
+        if (layer.dataset.shown === key) return;
+        layer.dataset.shown = key;
+        layer.innerHTML = !showing ? '' : `
+            <div class="end-moment" style="${UI.animateAt(moment.at)}">
+                <div class="end-moment-word" style="${UI.animateAt(moment.at + 150)}">${
+                    Theme.text(moment.allDown ? 'results.allDown' : 'results.timeUp', {}, `${matchId}:end`)}</div>
+            </div>`;
+    },
+
+    /** When what comes after TIME'S UP! rises in: as it lifts, or at once when there was none (results after Continue?). */
+    afterEndMoment(moment, match) {
+        const lifts = !!moment && moment.matchId === match.matchId && moment.at === match.phaseStartedAtMs;
+        return match.phaseStartedAtMs + (lifts ? UI.END_MOMENT_MS - 450 : 0);
+    },
+
     /** The length of the longest word in a name: a pixel font can't break inside one, so it sizes the name to fit. */
     longestWord(text) {
         return Math.max(1, ...String(text ?? '').split(/\s+/).map(word => word.length));

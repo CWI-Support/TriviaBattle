@@ -13,8 +13,8 @@ let placements = {};   // matchId -> leaderboard placements announced for that m
 let answerCounts = {}; // "matchId:id" -> { correct, wrong } as last drawn, to flash a row when it changes
 let roomAudioPlaysIntro = false; // true when the server plays the room audio, intro sound included
 let phasesSeen = {};   // matchId -> its phase as last drawn, to tell the moment Playing ends
-let endMoment = null;  // the game shown just ended: { matchId, at, allDown } (endOverlay)
-const END_MOMENT_MS = 2400; // as on the stations (css/screens.css, .end-moment)
+let endMoment = null;  // the game shown just ended: { matchId, at, allDown } (UI.showEndMoment)
+const endMomentLayer = document.getElementById('end-moment-layer');
 
 const connection = new ScreenConnection({ role: 'main', onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
@@ -40,7 +40,7 @@ function render(state) {
     Object.keys(placements).filter(id => !live.has(id)).forEach(id => delete placements[id]);
     HeroPhoto.keepOnly([...live]);
 
-    if (state.matches.length !== 1) document.getElementById('end-moment-layer').innerHTML = ''; // only over a game shown on its own
+    if (state.matches.length !== 1) UI.showEndMoment(endMomentLayer, null, null, 0); // only over a game shown on its own
     if (state.matches.length === 0) {
         DungeonView.reset();
         DungeonHost.reset();
@@ -59,7 +59,7 @@ function render(state) {
     const match = state.matches[0];
     // The clock just ran out (or everyone's down): TIME'S UP! over the start of what comes next, as on the stations.
     if (phasesSeen[match.matchId] === 'Playing' && (match.phase === 'Continue' || match.phase === 'Results')) {
-        const delves = [...match.players.map(p => p.delve), ...(match.teams || []).map(t => t.delve)].filter(Boolean);
+        const delves = delvesOf(match);
         endMoment = { matchId: match.matchId, at: match.phaseStartedAtMs, allDown: delves.length > 0 && delves.every(d => d.out) };
     }
     phasesSeen = { [match.matchId]: match.phase };
@@ -71,17 +71,20 @@ function render(state) {
         case 'Results':
         case 'Finished': renderResults(match); break;
     }
-    document.getElementById('end-moment-layer').innerHTML = match.phase === 'Playing' || match.phase === 'Intro' ? '' : endOverlay(match);
+    const ended = match.phase !== 'Playing' && match.phase !== 'Intro';
+    UI.showEndMoment(endMomentLayer, ended ? endMoment : null, match.matchId, connection.serverNow());
 }
 
-/** The moment the game shown ended (endMoment): the room goes dark and TIME'S UP! slams in, then lifts. */
-function endOverlay(match) {
-    if (endMoment?.matchId !== match.matchId || connection.serverNow() > endMoment.at + END_MOMENT_MS) return '';
-    const words = Theme.text(endMoment.allDown ? 'results.allDown' : 'results.timeUp', {}, `${match.matchId}:end`);
-    return `
-        <div class="end-moment" style="${UI.animateAt(endMoment.at)}">
-            <div class="end-moment-word" style="${UI.animateAt(endMoment.at + 150)}">${words}</div>
-        </div>`;
+/** Every delve in a Dungeon game: a player's, or a team's in 2v2 Group (a party's members share one). */
+function delvesOf(match) {
+    return [...match.players.map(p => p.delve), ...(match.teams || []).map(t => t.delve)].filter(Boolean);
+}
+
+/** A standing's side: its team (or none), its players, and its colour. */
+function sideOf(match, standing) {
+    const team = standing.isTeam ? match.teams.find(t => t.id === standing.id) : null;
+    const players = team ? membersOf(match, team) : [match.players.find(p => p.stationId === standing.id)].filter(Boolean);
+    return { team, players, color: team ? teamColor(match, team.id) : colorOf(standing.id) };
 }
 
 /** One-off moments. Leaderboard placements arrive shortly after Results appears. */
@@ -279,10 +282,8 @@ function renderDungeonPlaying(match) {
 
 /** One leaderboard line. Flashes green/red when this player/team has just answered. */
 function raceRow(match, standing) {
-    const team = standing.isTeam ? match.teams.find(t => t.id === standing.id) : null;
-    const members = team ? membersOf(match, team) : [match.players.find(p => p.stationId === standing.id)];
+    const { team, players: members, color } = sideOf(match, standing);
     const counts = team ?? members[0];
-    const color = team ? teamColor(match, team.id) : colorOf(standing.id);
 
     const flash = flashFor(`${match.matchId}:${standing.id}`, counts);
     const now = connection.serverNow();
@@ -345,7 +346,7 @@ function renderResults(match) {
         when: Theme.raw(Theme.text(p.board === 'today' ? 'results.today' : 'results.allTime')),
     }, match.matchId + p.ownerId)}</div>`).join('');
 
-    if (match.format === 'Dungeon' && (match.players.some(p => p.delve) || match.teams?.some(t => t.delve))) {
+    if (match.format === 'Dungeon' && delvesOf(match).length > 0) {
         document.getElementById('view-results').innerHTML = dungeonResults(match, highScores);
         showFitted('view-results');
         return;
@@ -368,41 +369,26 @@ function renderResults(match) {
  */
 function dungeonResults(match, highScores) {
     const solo = match.standings.length < 2;
-    const lifts = endMoment?.matchId === match.matchId && endMoment.at === match.phaseStartedAtMs ? END_MOMENT_MS - 450 : 0;
-    const at = ms => `style="${UI.animateAt(match.phaseStartedAtMs + lifts + ms)}"`;
+    const startsAt = UI.afterEndMoment(endMoment, match); // as TIME'S UP! lifts (at once after Continue?)
 
     const cards = match.standings.map((standing, i) => {
-        const team = standing.isTeam ? match.teams.find(t => t.id === standing.id) : null;
-        const players = team ? membersOf(match, team) : [match.players.find(p => p.stationId === standing.id)].filter(Boolean);
+        const { team, players, color } = sideOf(match, standing);
         const delve = team?.delve ?? players.find(p => p.delve)?.delve; // a party shares one delve
         if (!delve) return '';
-        const color = team ? teamColor(match, team.id) : colorOf(standing.id);
-        const faces = players.map(p => HeroPhoto.portrait(match, p.stationId, 'run-face', color)).join('');
-        const stat = (label, value, note = '') =>
-            `<div class="run-stat"><dt>${label}</dt><dd>${value}${note ? `<small>${note}</small>` : ''}</dd></div>`;
-        return `
-            <div class="run-card ${!solo && standing.rank === 1 ? 'is-winner' : ''}" style="--station-color: ${color}; ${UI.animateAt(match.phaseStartedAtMs + lifts + 150 * i)}">
-                <div class="run-hero">
-                    ${solo ? '' : `<span class="run-rank">${UI.ordinal(standing.rank)}</span>`}
-                    <span class="run-faces">${faces}</span>
-                    <div class="run-who" style="--word: ${UI.longestWord(standing.name)}"><b>${UI.escape(standing.name)}</b></div>
-                </div>
-                <dl class="run-stats">
-                    ${stat(Theme.text('results.runFloor'), delve.floor, UI.escape(delve.depthName))}
-                    ${stat(Theme.text('results.runSlain'), delve.kills)}
-                    ${stat(Theme.text('results.runRight'), standing.correctAnswers)}
-                    ${stat(Theme.text('results.runScore'), standing.score.toLocaleString())}
-                </dl>
-            </div>`;
+        return DungeonView.runCard({
+            faces: players.map(p => HeroPhoto.portrait(match, p.stationId, 'run-face', color)).join(''),
+            name: standing.name, delve, right: standing.correctAnswers, score: standing.score, color,
+            heroClass: team ? null : delve.heroClass, rank: solo ? null : standing.rank, winner: !solo && standing.rank === 1,
+            startsAt: startsAt + 150 * i, // one after the other
+        });
     }).join('');
 
-    const firstDelve = match.players.find(p => p.delve)?.delve ?? match.teams?.find(t => t.delve)?.delve;
-    const headline = solo ? Theme.text('results.soloRun', { floor: firstDelve?.floor ?? 1 }, match.matchId) : winnerHeadline(match);
+    const headline = solo ? Theme.text('results.soloRun', { floor: delvesOf(match)[0]?.floor ?? 1 }, match.matchId) : winnerHeadline(match);
     return `
         <div class="center-stack run-end">
             <h1 class="big-title">${headline}</h1>
             <p class="subtitle">${modeName(match)} &middot; ${UI.escape(match.category)}</p>
-            <div class="run-cards" ${at(0)}>${cards}</div>
+            <div class="run-cards">${cards}</div>
             ${highScores}
         </div>`;
 }
@@ -410,20 +396,9 @@ function dungeonResults(match, highScores) {
 /** Ranked rows. Team rows also list each teammate's points (their contribution). */
 function scoreboard(match) {
     const rows = match.standings.map(standing => {
-        let color, members = '';
-        let players = [match.players.find(p => p.stationId === standing.id)];
-
-        if (standing.isTeam) {
-            const team = match.teams.find(t => t.id === standing.id);
-            color = teamColor(match, team.id);
-            players = membersOf(match, team);
-            members = players
-                .map(p => `${UI.escape(p.name)} ${p.score.toLocaleString()}`)
-                .join(' &middot; ');
-        } else {
-            color = colorOf(standing.id);
-        }
-        const faces = players.filter(Boolean).map(p => HeroPhoto.portrait(match, p.stationId, 'row-face', color)).join('');
+        const { team, players, color } = sideOf(match, standing);
+        const members = team ? players.map(p => `${UI.escape(p.name)} ${p.score.toLocaleString()}`).join(' &middot; ') : '';
+        const faces = players.map(p => HeroPhoto.portrait(match, p.stationId, 'row-face', color)).join('');
 
         return `
             <div class="score-row race-row" style="--row-color: ${color}">

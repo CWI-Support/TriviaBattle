@@ -490,6 +490,34 @@ const DungeonView = {
         return `<span class="dg-lives">${hearts}</span>`;
     },
 
+    /**
+     * A Dungeon run's card at a game's end, on a station (its player's) and on the room's screen (one per side, side by
+     * side): the faces, the name (sized by its longest word), a place and a class if given, then the floor reached,
+     * monsters slain, right answers, mini games won and score. It rises in at startsAt (server ms), its stats one by one,
+     * each with its own start so a redraw doesn't restart them.
+     */
+    runCard({ faces, name, delve, right, score, startsAt, color = null, rank = null, heroClass = null, winner = false }) {
+        const at = ms => UI.animateAt(startsAt + ms);
+        let shown = 0;
+        const stat = (label, value, note = '') =>
+            `<div class="run-stat" style="${at(250 + 110 * shown++)}"><dt>${label}</dt><dd>${value}${note ? `<small>${note}</small>` : ''}</dd></div>`;
+        return `
+            <div class="run-card ${winner ? 'is-winner' : ''}" style="${color ? `--station-color: ${color}; ` : ''}${at(0)}">
+                <div class="run-hero">
+                    ${rank ? `<span class="run-rank">${UI.ordinal(rank)}</span>` : ''}
+                    <span class="run-faces">${faces}</span>
+                    <div class="run-who" style="--word: ${UI.longestWord(name)}"><b>${UI.escape(name)}</b>${heroClass ? DungeonView.classBadge(heroClass) : ''}</div>
+                </div>
+                <dl class="run-stats">
+                    ${stat(Theme.text('results.runFloor'), delve.floor, UI.escape(delve.depthName))}
+                    ${stat(Theme.text('results.runSlain'), delve.kills)}
+                    ${stat(Theme.text('results.runRight'), right)}
+                    ${delve.minigamesWon ? stat(Theme.text('results.runMinigames'), delve.minigamesWon) : ''}
+                    ${stat(Theme.text('results.runScore'), score.toLocaleString())}
+                </dl>
+            </div>`;
+    },
+
     /** The player's hero class on their plate ("WIZARD"), in that class's colour. */
     classBadge(heroClass) {
         if (!heroClass) return '';
@@ -524,6 +552,7 @@ const DungeonView = {
                     ${downed ? `<div class="dg-overlay is-downed small">${Theme.text('dungeon.downedShort')}</div>` : ''}
                     ${delve.minigame ? `<div class="dg-overlay is-minigame small">${Theme.text('dungeon.laneMinigame', { game: Theme.raw(DungeonMinigames.name(delve.minigame)) })}</div>` : ''}
                     ${DungeonView.packStrip(waiting, 'is-lane')}
+                    ${DungeonRewards.badges(delve, 'is-lane')}
                 </div>
                 ${DungeonView.enemy(delve)}
                 <div class="dg-lane-hero">
@@ -532,7 +561,6 @@ const DungeonView = {
                         : `${HeroPhoto.portrait(match, delve.party[0]?.ownerId ?? key, 'dg-portrait small', color)}${DungeonView.hp(delve.hp, delve.maxHp, 'is-hero')}`}
                 </div>
                 ${DungeonView.stats(score, delve.kills)}
-                ${DungeonRewards.badges(delve, 'is-lane')}
             </div>`;
     },
 

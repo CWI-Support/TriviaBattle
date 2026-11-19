@@ -20,7 +20,10 @@
     align-items: center;
     gap: 2vh;
     padding: 1.4vh 3vw 1.6vh;
+    /* In from the kill beat that led to it (--t0: the intro starts as that beat ends), not cut in. */
+    animation: dg-mg-in 350ms ease-out var(--t0) both;
 }
+@keyframes dg-mg-in { from { opacity: 0; transform: scale(1.04); } }
 /* Over: once its result has shown, the game shrinks and fades into the room (--out: just before it ends), and the
    question (or the reward cards) comes in after it, instead of it vanishing in a frame. */
 .dg-minigame.is-leaving { animation: dg-mg-leave 450ms ease-in var(--out) forwards; }

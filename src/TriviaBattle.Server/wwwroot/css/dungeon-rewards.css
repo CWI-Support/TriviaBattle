@@ -26,7 +26,9 @@
 .dg-boon { display: inline-flex; align-items: center; gap: 0.3vmin; padding: 0.2vmin 0.5vmin; background: rgba(0, 0, 0, 0.5); border: 0.25vmin solid var(--dg-reward); }
 .dg-boon-icon { width: 2.6vmin; height: auto; }
 .dg-boon b { font-family: var(--dg-font-pixel); font-size: 1.6vmin; color: var(--dg-reward); }
-.dg-boons.is-lane { justify-content: center; }
+/* A lane has no height to spare above the Host: its rewards sit over the stage's bottom-right corner, like the pack strip
+   in the top one (the waiting monsters stand bottom-left). */
+.dg-boons.is-lane { position: absolute; right: 0; bottom: 0; z-index: 2; margin: 0; max-width: 40%; justify-content: flex-end; }
 
 /* ---------- The pick: one card per answer button ---------- */
 

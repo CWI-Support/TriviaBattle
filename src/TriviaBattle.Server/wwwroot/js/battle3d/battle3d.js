@@ -288,7 +288,14 @@ class Battle {
 
         let lean = { zoom: 1, focus: 0 };
         const { flinch: foeFlinch, youHealedAt } = this.others.update(this.view, now, this.foe);
-        if (you?.delve) {
+        // Off at a mini game (from the end of the kill beat that led to it): the screen shows the game, not the fight.
+        // The next room's monsters aren't brought in meanwhile (they'd show for a moment before the game's screen takes
+        // over); once the question's back they make their entrance.
+        const atMinigame = !!you?.minigame && !(you.beat && now < you.beat.endsAtMs);
+        if (you?.delve && atMinigame) {
+            if (this.foe) this.foe.root.visible = false;
+            this.pack.sync([], now);
+        } else if (you?.delve) {
             const beat = you.beat;
             const playing = !!beat && now >= beat.startedAtMs && now < beat.endsAtMs;
             // The walk to the next room (a kill that emptied this one): how far along it is, 0 to 1.

@@ -23,6 +23,12 @@ public class SignalRMatchBroadcaster(
 {
     public void MatchChanged(MatchEngine match, IReadOnlyList<MatchEvent> events, IReadOnlyList<MatchEngine> runningMatches)
     {
+        // The countdown ticks (an hourglass's last seconds, a hero photo's 3-2-1) are for the room to hear: nothing on
+        // screen changes with them (screens draw those moments from the snapshot). A fresh state would only make every
+        // screen in the room rebuild what it shows once a second: a glitch on the main screen each tick.
+        if (events.Count > 0 && events.All(e => e is HourglassCountdown or PhotoCountdown))
+            return;
+
         // When a match ends, its screens go back to the lobby (no match).
         var finished = events.Any(e => e is MatchFinished);
         var screenEvents = events.Select(e => ToScreenEvent(e, match.MatchId)).ToList();

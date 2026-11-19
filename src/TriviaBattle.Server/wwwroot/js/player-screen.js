@@ -17,8 +17,7 @@ let beatTimer = null;       // redraws when a battle beat ends (no update comes 
 let peekTimer = null;       // a Ranger: redraws when the next question starts to show during the beat (nor then)
 let sharedChecked = false;  // asked once whether another screen is open as this station
 let cameraToldAt = 0;       // the join the server last heard about this screen's camera on
-let endMoment = null;       // the game just ended on this screen: { matchId, at, allDown } (endOverlay)
-const END_MOMENT_MS = 2400; // how long TIME'S UP! covers the screen (css/screens.css, .end-moment)
+let endMoment = null;       // the game just ended on this screen: { matchId, at, allDown } (UI.showEndMoment)
 
 const connection = new ScreenConnection({ role: 'player', stationNumber, onState: render, onEvent: handleEvent });
 const introVideo = new SyncedVideo(document.getElementById('intro-video'), () => connection.serverNow());
@@ -135,7 +134,7 @@ function render(state) {
     }
     // TIME'S UP! over the whole screen as the game ends: in its own layer, as the body is fitted to the screen below.
     const ended = match && you && ['Continue', 'Results', 'Finished'].includes(match.phase);
-    document.getElementById('end-moment-layer').innerHTML = ended ? endOverlay(match) : '';
+    UI.showEndMoment(document.getElementById('end-moment-layer'), ended ? endMoment : null, match?.matchId, connection.serverNow());
     UI.fitToScreen(body.querySelector('.intro-stage') || body); // long questions shrink rather than run off the bottom
     // The dungeon's room clips what overflows it, so the screen as a whole always "fits": fit the question,
     // the room and the answers inside it too (a long question or answer shrinks them, never pushes them off).
@@ -299,20 +298,6 @@ function continueOffer(match, you) {
         </div>`;
 }
 
-/**
- * The moment the game ended on this screen (endMoment, set in render): the screen goes dark and TIME'S UP! (or, with
- * everyone out of lives, WIPED OUT!) slams in, then it all lifts off the Continue? or results screen underneath. Timed
- * from the phase's start, so a redraw meanwhile carries on; nothing once it's over.
- */
-function endOverlay(match) {
-    if (endMoment?.matchId !== match.matchId || connection.serverNow() > endMoment.at + END_MOMENT_MS) return '';
-    const words = Theme.text(endMoment.allDown ? 'results.allDown' : 'results.timeUp', {}, `${match.matchId}:end`);
-    return `
-        <div class="end-moment" style="${UI.animateAt(endMoment.at)}">
-            <div class="end-moment-word" style="${UI.animateAt(endMoment.at + 150)}">${words}</div>
-        </div>`;
-}
-
 function results(match, you) {
     const mine = myStanding(match, you);
     const won = mine.rank === 1;
@@ -361,29 +346,16 @@ function dungeonResults(match, you, { mine, won, seed, highScore, detail }) {
         : won
             ? Theme.text('results.playerWon', { who: you.teamName || Theme.raw(Theme.text('results.you')) }, seed)
             : Theme.text('results.place', { place: UI.ordinal(mine.rank) }, seed);
-    // The card rises in as TIME'S UP! lifts (at once after Continue?), its stats one by one: timed from the phase's start.
-    const lifts = endMoment?.matchId === match.matchId && endMoment.at === match.phaseStartedAtMs ? END_MOMENT_MS - 450 : 0;
-    const at = ms => `style="${UI.animateAt(match.phaseStartedAtMs + lifts + ms)}"`;
-    let shown = 0;
-    const stat = (label, value, note = '') =>
-        `<div class="run-stat" ${at(250 + 110 * shown++)}><dt>${label}</dt><dd>${value}${note ? `<small>${note}</small>` : ''}</dd></div>`;
+    const card = DungeonView.runCard({
+        faces: HeroPhoto.portrait(match, you.stationId, 'run-face', lastState.station.color),
+        name: you.name, heroClass: delve.heroClass, delve, right, score: you.score,
+        startsAt: UI.afterEndMoment(endMoment, match), // as TIME'S UP! lifts (at once after Continue?)
+    });
 
     return `
         <div class="center-stack run-end">
             <h1 class="big-title">${headline}</h1>
-            <div class="run-card" ${at(0)}>
-                <div class="run-hero">
-                    ${HeroPhoto.portrait(match, you.stationId, 'run-face', lastState.station.color)}
-                    <div class="run-who" style="--word: ${UI.longestWord(you.name)}"><b>${UI.escape(you.name)}</b>${DungeonView.classBadge(delve.heroClass)}</div>
-                </div>
-                <dl class="run-stats">
-                    ${stat(Theme.text('results.runFloor'), delve.floor, UI.escape(delve.depthName))}
-                    ${stat(Theme.text('results.runSlain'), delve.kills)}
-                    ${stat(Theme.text('results.runRight'), right)}
-                    ${delve.minigamesWon ? stat(Theme.text('results.runMinigames'), delve.minigamesWon) : ''}
-                    ${stat(Theme.text('results.runScore'), you.score.toLocaleString())}
-                </dl>
-            </div>
+            ${card}
             ${you.teamName ? `<p class="subtitle">${detail}</p>` : ''}
             ${highScore}
             ${podium(match)}
