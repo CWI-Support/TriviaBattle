@@ -186,6 +186,20 @@ time) takes that big blow, and a right answer **staggers** it instead (50% more 
 The station shows the charge, and warns at full power. Set in `"Game:Dungeon"`: `BossChargeSteps` (3; 0 = no
 cycle), `BossWeakHit` (0.5), `BossChargedHit` (2.5), `StaggerBonus` (0.5).
 
+**Affixes** make the deeper floors stranger. From floor 4 on (loops back to the top included), about a third of the
+monsters that aren't bosses carry a twist, shown as a badge beside the monster's name and a line under its HP:
+
+| Affix | What it does |
+| --- | --- |
+| **Speedy** | Its hourglass is 60% as long (8 seconds become 4.8) |
+| **Armored** | Only fast answers get through its armour in full: a slow right answer does half |
+| **Vampiric** | When it hits you it heals by what the hit took |
+
+Which floors and how many are content: `AffixFromFloor` (4), `AffixChance` (0.35) and optionally `Affixes` (the ones
+in play) in `config/dungeon.json`. Every party in a match meets the same ones. The numbers are `"Game:Dungeon:Affixes"`
+(`SpeedyHourglass`, `ArmoredShare`, `VampiricShare`). Preview: `/dev/battle?kind=armored`, `?kind=vampire`, or any
+kind with `&affix=Speedy`.
+
 **Floor rewards** are for playing well. Answer at least **80%** of a floor's questions right (wrong answers and
 running out of time count against you; the station's top line shows a chest and your count so far) and, when
 the floor's boss dies, choose one of **three rewards** with the answer buttons (A, B, C). You have 12 seconds,
@@ -222,6 +236,7 @@ side has its own clock, so only that player's (or team's) clock stops. Winning e
 | **Chest Shuffle** | A shell game: a coin drops into one of five chests, the lids close and the chests swap places. Press the button under the chest it's in: A, B, C, D, and the **action button** for the fifth. 3 rounds of 5, 7 and 9 swaps, faster each time, and at least half of them move the coin's own chest; a right pick pops the coin out of its chest, the wrong chest loses it (and shows where the coin was). 30 seconds. |
 | **Ring Puzzle** | A hero's picture cut into rings round a middle disc, each ring turned out of line. **A** turns the ring you're on anticlockwise, **D** clockwise, and the **action button** moves out to the next ring (from the outside one, back to the middle); the ring you're on is lit gold. Every ring in line solves the round: the last ring settles, and a second later the picture shows whole with the win sound. 3 rounds of 3, 4 and 5 rings, a different hero each time. Only the time limit loses it. 60 seconds. |
 | **Tuner** | Four bars, one per answer button (A-D, in their colours), each sinking at its own speed. Press a button to lift its bar; each bar has a glowing target zone. Get all four into their zones and hold them there together for half a second. The action button does nothing; only the time limit loses it. 40 seconds. |
+| **Hot Potato** | **Party games only** (a party or a team battle): everyone plays it together. A lit bomb goes round the party, each face in a row on every station. Holding it, your station shows 3 runes (A-D): press them in order to throw it to the next player (a wrong one fumbles it: your buttons go dead for a moment and it's back to the first rune). The fuse is a secret, somewhere between 14 and 24 seconds; past 14 the screen warns it could go any second. Whoever holds it when it goes off takes the blast (a quarter of their max HP, never their last HP); everyone else wins. A solo player or a racer who'd get it gets another game instead (the same one for every racer). |
 | **Pop Quiz** | A quiz inside the quiz, about your own run: what floor you're on, what you just fought, your own name, your hero, how many monsters have fallen, your lives, the answer to your last question, the boss of the floor above. Four answers each, one per answer button (the wrong ones are the same kind of thing: other floors, other monsters, your teammates' names and made-up ones). 3 right wins, 3 wrong loses; after each answer the right one shows for a moment before the next question. **Never a match's first mini game** (there'd be too little to ask about), fair game after that. 40 seconds. |
 
 Set in `"Game:Dungeon:Minigames"` (`MinigameSettings`): `IntroSeconds`, `ResultSeconds`, `WinEarnsReward`, and each
@@ -231,11 +246,14 @@ game's numbers (`RuneLock`: `Hits`, `Seconds`, `LockoutSeconds`, `MarkDegrees`, 
 `MinigameSettings.cs`: a list in appsettings is added to the defaults, not put in their place); `RingPuzzle`: `StartRings`,
 `Rounds`, `Steps` (to a full turn), `SolvedPauseSeconds`, `BetweenSeconds`, `Seconds`; `Tuner`: `Step`, `SinkSlowest`,
 `SinkFastest`, `ZoneSize`, `ZoneLowest`, `ZoneHighest`, `HoldSeconds`, `Seconds`; `PopQuiz`: `RightNeeded`, `Strikes`,
-`RevealSeconds`, `Seconds`).
+`RevealSeconds`, `Seconds`; `HotPotato`: `FuseShortest`, `FuseLongest`, `PassPresses`, `CatchSeconds`, `FumbleSeconds`,
+`BlastShare`).
 To add one: a class in `Core/Dungeon/Minigames` (from `Minigame`), a `MinigameKind`, a case in `MinigameCatalog.Create`,
 its part of the snapshot (`MinigameView`) and its drawing in `js/dungeon-minigames.js`. Every kind is as likely as the
-others, except that a match's first is never one of `MinigameCatalog.NeverFirst` (the pop quiz). Preview: `/dev/battle?kind=runelock` (also `runelock-won`, `runelock-lost`), `runeecho`, `chestshuffle`, `chestshuffle-found`,
-`chestshuffle-lost`, `ringpuzzle` (also `ringpuzzle-solved`, `ringpuzzle-won`), `tuner` (also `tuner-won`), `popquiz` (also `popquiz-wrong`, `popquiz-won`).
+others, except that a match's first is never one of `MinigameCatalog.NeverFirst` (the pop quiz), and a party with fewer than
+two to play one of `MinigameCatalog.GroupOnly` (the hot potato) gets a stand-in. Preview: `/dev/battle?kind=runelock` (also `runelock-won`, `runelock-lost`), `runeecho`, `chestshuffle`, `chestshuffle-found`,
+`chestshuffle-lost`, `ringpuzzle` (also `ringpuzzle-solved`, `ringpuzzle-won`), `tuner` (also `tuner-won`), `popquiz` (also `popquiz-wrong`, `popquiz-won`),
+`hotpotato` (also `hotpotato-wait`, `hotpotato-boom`, `hotpotato-blasted`).
 
 **Q.U.E.R.I.E. talks at the stations.** After an answer (or the hourglass running out) the dungeon's host may have
 something to say to that player: he chirps at a miss or a slow answer, and greets right answers with more and more
@@ -248,13 +266,14 @@ theirs right is called out on every teammate's screen ("Everyone else got that o
 answer after two misses, or a teammate going down (no more than one party-wide remark every 15 seconds).
 He's in the mini games too, in a slot above their time limit: often as one opens, always when it's won or lost, now
 and then on a miss. The Pop Quiz is his own game: every wrong answer gets the right one rubbed in ("It was Cellar Rat.
-You were THERE."), and forgetting your own name gets a moment of its own.
+You were THERE."), and forgetting your own name gets a moment of its own. The Hot Potato gets its own lines too: as it
+opens, for whoever it goes off on, and for everyone who got away with it.
 
 His lines are in `src/TriviaBattle.Server/config/querie.json`, about eight per moment, picked in a shuffled order
 so they don't repeat soon. Each line is `{ "text": "...", "audio": null }`: `{name}`, `{monster}`, `{floor}` and
 `{rival}` are filled in, and `audio` is for later, a recorded clip of the line. The file is read at startup
 (restart after editing); a line with an unknown `{placeholder}` stops the server with the problem spelled out
-(`{answer}` is the Pop Quiz's right answer). The
+(`{answer}` is the Pop Quiz's right answer, `{holder}` whoever the Hot Potato went off on). The
 rules' numbers are `"Game:Dungeon:Querie"` (`QuerieSettings`: `Chance`, `SafeChance`, `QuipEverySeconds`,
 `BigGapSeconds`, `PartyCalloutEverySeconds`, `SlowSeconds`, `WrongStreakAt`, `DeepFloor`, `MinigameStartChance`; `Enabled`
 turns him off). Preview a remark in a mini game with `/dev/battle?kind=tuner&querie`.

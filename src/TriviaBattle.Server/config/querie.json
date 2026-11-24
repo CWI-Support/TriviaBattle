@@ -227,5 +227,35 @@
     { "text": "{answer}. Your name is {answer}. This is going in the highlight reel.", "audio": null },
     { "text": "You didn't know your own name. I've never been happier.", "audio": null },
     { "text": "Who are you? According to my records: {answer}. Allegedly.", "audio": null }
+  ],
+
+  "_hotPotatoStart": "The hot potato opens: a lit bomb goes round the party. Now and then.",
+  "hotPotatoStart": [
+    { "text": "Hot potato! It's a bomb. I'm legally required to call it a potato.", "audio": null },
+    { "text": "Pass the bomb, {name}! Teamwork! Until it isn't.", "audio": null },
+    { "text": "A lit bomb and a group of friends. What could go wrong?", "audio": null },
+    { "text": "Don't be holding it when it goes off. That's the whole game. Good luck!", "audio": null },
+    { "text": "Friendship is passing a bomb quickly. Look it up.", "audio": null },
+    { "text": "The fuse is a secret. Even from me. Especially from me.", "audio": null }
+  ],
+
+  "_hotPotatoBlast": "The hot potato went off in their hands. Always.",
+  "hotPotatoBlast": [
+    { "text": "BOOM! Well held, {name}. Truly. Nobody held it better.", "audio": null },
+    { "text": "KA-BOOM! {name}, the idea was to pass it.", "audio": null },
+    { "text": "And it goes off on {name}! I'm not saying I rigged it. I'm not saying I didn't.", "audio": null },
+    { "text": "Crispy! Your eyebrows will grow back, {name}. Probably.", "audio": null },
+    { "text": "{name} takes the blast! Your team salutes your sacrifice. From a safe distance.", "audio": null },
+    { "text": "BOOM. That's what we in the business call a hot potato.", "audio": null }
+  ],
+
+  "_hotPotatoSafe": "The hot potato went off in someone else's hands. {holder} is who it went off on. Always.",
+  "hotPotatoSafe": [
+    { "text": "BOOM! Poor {holder}. Not your problem, {name}!", "audio": null },
+    { "text": "{holder} got toasted. You didn't. Take your prize and don't look back.", "audio": null },
+    { "text": "Safe! {holder} wasn't. Teamwork!", "audio": null },
+    { "text": "You passed it just in time. Or {holder} was just slow. Either way: prize!", "audio": null },
+    { "text": "It went off on {holder}! Someone get {holder} a bucket of water.", "audio": null },
+    { "text": "Not a scratch on you, {name}. {holder}, on the other hand...", "audio": null }
   ]
 }

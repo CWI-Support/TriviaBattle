@@ -280,6 +280,13 @@ class Battle {
         return delve.monster.poisonStacks || 0;
     }
 
+    /** The affix on the monster drawn in front (during a kill's beat, the one in it: its tint goes as it dies). */
+    foeAffix(you, playing) {
+        const hurt = you.beat?.kind === 'hurt' || you.beat?.kind === 'downed';
+        if (playing && !hurt && DungeonBattle.beatHit(you)?.killed) return null;
+        return you.delve.monster.affix || null;
+    }
+
     frame(time) {
         requestAnimationFrame(next => this.frame(next));
         const dt = Math.min(0.1, (time - this.lastFrame) / 1000);
@@ -320,6 +327,7 @@ class Battle {
                 const cast = {
                     hero: this.hero, foe: this.foe, fx: this.fx, stage: this.stage, homes: HOMES, seconds: now / 1000,
                     front: FOE_HOME, pack: this.pack.standing(now), foePoison: this.foePoison(you, playing),
+                    foeAffix: this.foeAffix(you, playing),
                 };
                 if (playing && beat.kind === 'enter') {
                     // The game's opening: the hero runs in and the first monster makes its entrance.
@@ -586,6 +594,10 @@ function beatInfo(beat, you, stepUp) {
         healedYou: isYou(hit?.healedOwnerId),                 // a teammate healed by it: js/battle3d/others.js
         charged: !!taken?.charged && !taken.blocked,          // a boss's full-charge blow
         staggered: !!hit?.staggered,                          // a right answer at a boss's full charge
+        mirrored: !!taken?.mirrored,                          // a Mirror Shield: the blow bounces back into the monster
+        drained: (taken?.drained || 0) > 0,                   // a Vampiric monster drank what its blow took
+        dice: hit?.dice ?? null,                              // Lucky Dice: true doubled it, false came to nothing
+        armored: !!hit?.armored,                              // an Armored monster took half (a slow answer)
         seed: Math.abs(Math.floor(beat.startedAtMs / 7)),
     };
 }

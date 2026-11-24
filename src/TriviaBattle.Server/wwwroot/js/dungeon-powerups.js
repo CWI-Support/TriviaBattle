@@ -2,10 +2,11 @@
 // draws what the snapshot's delve says:
 //   - the slot: a row across the bottom of the player plate with the power-up you hold, lit like the
 //     action button that uses it (nothing at all with empty pockets),
-//     and what's armed (a Fireball ready, a Shield up). A Freeze shows on the hourglass instead
-//     (DungeonView.enemy), which thaws by itself: a mark here would need a redraw to go away.
+//     and what's armed (a Fireball ready, a Shield or Mirror Shield up, Lucky Dice ready). A Freeze shows on the
+//     hourglass instead (DungeonView.enemy), which thaws by itself: a mark here would need a redraw to go away.
 //   - a pop over the monster strip when one is used ("POTION! Ann +50 HP"), once per use, and on the screen of a
-//     rival a Fog Bomb or Tiny Hourglass came at (noticeSabotage: "FOGGED!", or "BLOCKED!" when their Shield soaked it)
+//     rival a Fog Bomb or Tiny Hourglass came at (noticeSabotage: "FOGGED!", "BLOCKED!" when their Shield soaked it,
+//     "REFLECTED!" when their Mirror Shield sent it back: the thrower's own pop then says it came back at them)
 // Finding one is part of the battle beat (DungeonBattle.stamps: LOOT!). The 50/50's hidden answers are
 // drawn by DungeonView.station (is-eliminated); the Time Crystal's seconds show as the clock's "+20s".
 // Needs ui.js, theme.js, pixel-sprites.js and dungeon-view.js on the page. Styles: css/dungeon-powerups.css.
@@ -23,6 +24,8 @@ const DungeonPowerUps = {
             case 'PhoneAFriend': return Theme.text('dungeon.powerUpPhoneAFriend');
             case 'FogBomb': return Theme.text('dungeon.powerUpFogBomb');
             case 'TinyHourglass': return Theme.text('dungeon.powerUpTinyHourglass');
+            case 'MirrorShield': return Theme.text('dungeon.powerUpMirrorShield');
+            case 'LuckyDice': return Theme.text('dungeon.powerUpLuckyDice');
             default: return UI.escape(kind);
         }
     },
@@ -37,6 +40,8 @@ const DungeonPowerUps = {
         const armed = [
             delve.fireballReady ? `<span class="dg-armed is-fireball">${DungeonPowerUps.icon('Fireball')}${Theme.text('dungeon.armedFireball')}</span>` : '',
             delve.shielded ? `<span class="dg-armed is-shield">${DungeonPowerUps.icon('Shield')}${Theme.text('dungeon.armedShield')}</span>` : '',
+            delve.mirrored ? `<span class="dg-armed is-mirror">${DungeonPowerUps.icon('MirrorShield')}${Theme.text('dungeon.armedMirror')}</span>` : '',
+            delve.diceReady ? `<span class="dg-armed is-dice">${DungeonPowerUps.icon('LuckyDice')}${Theme.text('dungeon.armedDice')}</span>` : '',
         ].join('');
         if (!held && !armed) return '';
         const inHand = held
@@ -67,22 +72,27 @@ const DungeonPowerUps = {
 
     /**
      * A rival's Fog Bomb or Tiny Hourglass that came at you (delve.lastSabotage), once: "FOGGED! Ann threw a Fog
-     * Bomb", or "BLOCKED!" when your Shield soaked it. The fog itself is drawn on the answers (DungeonEncounter).
+     * Bomb", "BLOCKED!" when your Shield soaked it, or "REFLECTED!" when your Mirror Shield sent it back at them. The
+     * fog itself is drawn on the answers (DungeonEncounter). Your own, bounced back at you (sabotage.bounced), is your
+     * use's pop instead ("Bob's Mirror Shield sent it back at you!"), which comes up at the same moment.
      */
     noticeSabotage(key, delve, delay = 0) {
         const sabotage = delve.lastSabotage;
         const before = DungeonView.seen[`${key}:sabotage`];
         DungeonView.seen[`${key}:sabotage`] = sabotage?.number || 0;
-        if (before === undefined || !sabotage || sabotage.number === before) return;
+        if (before === undefined || !sabotage || sabotage.number === before || sabotage.bounced) return;
         const values = { name: sabotage.fromName, powerUp: Theme.raw(DungeonPowerUps.name(sabotage.powerUp)) };
-        const title = sabotage.blocked ? Theme.text('dungeon.sabotageBlocked', values)
+        const title = sabotage.reflected ? Theme.text('dungeon.sabotageReflected', values)
+            : sabotage.blocked ? Theme.text('dungeon.sabotageBlocked', values)
             : sabotage.powerUp === 'FogBomb' ? Theme.text('dungeon.sabotageFog', values)
             : Theme.text('dungeon.sabotageTiny', values);
+        const icon = sabotage.reflected ? 'MirrorShield' : sabotage.blocked ? 'Shield' : sabotage.powerUp;
+        const detail = sabotage.reflected ? Theme.text('dungeon.sabotageReflectedFrom', values) : Theme.text('dungeon.sabotageFrom', values);
         DungeonView.effect(key, `
-            <div class="dg-pu-pop is-sabotage ${sabotage.blocked ? 'is-blocked' : ''} is-${sabotage.powerUp}">
-                ${DungeonPowerUps.icon(sabotage.blocked ? 'Shield' : sabotage.powerUp, 'dg-pu-pop-icon')}
+            <div class="dg-pu-pop is-sabotage ${sabotage.blocked || sabotage.reflected ? 'is-blocked' : ''} is-${sabotage.powerUp}">
+                ${DungeonPowerUps.icon(icon, 'dg-pu-pop-icon')}
                 <div class="dg-pu-pop-name">${title}</div>
-                <div class="dg-pu-pop-detail">${Theme.text('dungeon.sabotageFrom', values)}</div>
+                <div class="dg-pu-pop-detail">${detail}</div>
             </div>`, 1800, delay);
     },
 
@@ -98,8 +108,15 @@ const DungeonPowerUps = {
             case 'Shield': detail = Theme.text('dungeon.usedShield', values); break;
             case 'TimeCrystal': detail = Theme.text('dungeon.usedTimeCrystal', values); break;
             case 'PhoneAFriend': detail = Theme.text('dungeon.usedPhoneAFriend', values); break;
-            case 'FogBomb': detail = use.blocked ? Theme.text('dungeon.usedBlocked', values) : Theme.text('dungeon.usedFogBomb', values); break;
-            case 'TinyHourglass': detail = use.blocked ? Theme.text('dungeon.usedBlocked', values) : Theme.text('dungeon.usedTinyHourglass', values); break;
+            case 'FogBomb':
+            case 'TinyHourglass':
+                detail = use.reflected ? Theme.text('dungeon.usedReflected', values)
+                    : use.blocked ? Theme.text('dungeon.usedBlocked', values)
+                    : use.powerUp === 'FogBomb' ? Theme.text('dungeon.usedFogBomb', values)
+                    : Theme.text('dungeon.usedTinyHourglass', values);
+                break;
+            case 'MirrorShield': detail = Theme.text('dungeon.usedMirrorShield', values); break;
+            case 'LuckyDice': detail = Theme.text('dungeon.usedLuckyDice', values); break;
             default: detail = '';
         }
         return `
@@ -144,6 +161,14 @@ Object.assign(PixelSprites.SPRITES, {
     'icon-pu-TinyHourglass': {
         palette: { k: '#000000', w: '#c9b38a', s: '#ffd23f', r: '#ff3b3b' },
         rows: ['..kkkkk..', '..kssskr.', '...ksk.r.', '....k..r.', '...kwk.r.', '..kwwwk..', '..kkkkk..'],
+    },
+    'icon-pu-MirrorShield': {
+        palette: { k: '#000000', y: '#ffd23f', s: '#b8e6ff', S: '#5fa8d8', w: '#ffffff' },
+        rows: ['kkkkkkkkk', 'kyyyyyyyk', 'kywsssSyk', 'kyswssSyk', 'kysswsSyk', '.kysswyk.', '..kysyk..', '...kyk...', '....k....'],
+    },
+    'icon-pu-LuckyDice': {
+        palette: { k: '#000000', w: '#fff6e0', g: '#d8cbb0', r: '#e02a3a' },
+        rows: ['kkkkkkkkk', 'kwwwwwwgk', 'kwrwwwrgk', 'kwwwwwwgk', 'kwwwrwwgk', 'kwwwwwwgk', 'kwrwwwrgk', 'kgggggggk', 'kkkkkkkkk'],
     },
     'icon-pu-TimeCrystal': {
         palette: { k: '#000000', c: '#b56bff', C: '#7a3fd0', w: '#f3e3ff' },

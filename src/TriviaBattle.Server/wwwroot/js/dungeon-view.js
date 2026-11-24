@@ -161,6 +161,39 @@ const DungeonView = {
         return `<span class="dg-poison">${PixelSprites.html('icon-skull', 'dg-poison-icon', { w: '#9be35a' })}${Theme.text('dungeon.poisonBadge', { stacks })}</span>`;
     },
 
+    /** An affix's name in the theme's words ("Speedy"). Literal keys, so ThemeFilesTests can check them. */
+    affixName(affix) {
+        switch (affix) {
+            case 'Speedy': return Theme.text('dungeon.affixSpeedy');
+            case 'Armored': return Theme.text('dungeon.affixArmored');
+            case 'Vampiric': return Theme.text('dungeon.affixVampiric');
+            default: return UI.escape(affix);
+        }
+    },
+
+    /** What an affix does, in a few words, for the monster's plate ("Short hourglass!"). */
+    affixHint(affix) {
+        switch (affix) {
+            case 'Speedy': return Theme.text('dungeon.affixSpeedyHint');
+            case 'Armored': return Theme.text('dungeon.affixArmoredHint');
+            case 'Vampiric': return Theme.text('dungeon.affixVampiricHint');
+            default: return '';
+        }
+    },
+
+    affixIcon(affix, cssClass = 'dg-icon') {
+        return PixelSprites.html(`icon-affix-${affix}`, cssClass);
+    },
+
+    /**
+     * A monster's affix beside its name (deeper down: see Core/Dungeon/Affix.cs): its icon and name, coloured by kind.
+     * Its size follows the text it sits by (em), like the poison badge. short: the icon alone (a pack's mini strip).
+     */
+    affixBadge(affix, short = false) {
+        if (!affix) return '';
+        return `<span class="dg-affix is-${affix.toLowerCase()} ${short ? 'is-short' : ''}">${DungeonView.affixIcon(affix, 'dg-affix-icon')}${short ? '' : DungeonView.affixName(affix)}</span>`;
+    },
+
     /**
      * A hero class's name in the theme's words ("tank" -> "Tank"). Literal keys, so ThemeFilesTests can check
      * them. (ArcadeLobby.heroName says the same, but not every page that draws the fight loads the lobby.)
@@ -254,7 +287,7 @@ const DungeonView = {
                             ${PixelSprites.html(f.sprite, 'dg-pack-foe-sprite')}
                             <div class="dg-pack-foe-info">
                                 <div class="dg-bar">${fill}<span class="dg-bar-text">${f.hp}</span></div>
-                                ${DungeonView.poisonBadge(f.poisonStacks)}
+                                ${DungeonView.affixBadge(f.affix, true)}${DungeonView.poisonBadge(f.poisonStacks)}
                             </div>
                         </div>`;
                 }).join('')}
@@ -306,7 +339,7 @@ const DungeonView = {
             : `<div class="dg-hourglass is-stopped"></div>`;
         return `
             <div class="dg-enemy ${m.isBoss ? 'is-boss' : ''}">
-                <div class="dg-enemy-name">${UI.escape(m.name)}${DungeonView.poisonBadge(m.poisonStacks)}</div>
+                <div class="dg-enemy-name">${UI.escape(m.name)}${DungeonView.affixBadge(m.affix)}${DungeonView.poisonBadge(m.poisonStacks)}</div>
                 ${DungeonView.hp(m.hp, m.maxHp, `is-enemy ${m.poisonStacks ? 'is-poisoned' : ''}`)}
                 <div class="dg-attack ${running ? '' : 'is-stopped'} ${frozenFor ? 'is-frozen' : ''}" style="--thaw: ${frozenFor}ms">
                     ${DungeonView.icon('sword')}
@@ -340,13 +373,15 @@ const DungeonView = {
             if (hit.killed) return { html: Theme.text('dungeon.kill', values, s), tone: 'is-great' };
             if (hit.staggered) return { html: Theme.text('dungeon.staggered', values, s), tone: 'is-great' }; // right at a boss's full charge
             if (hit.combo) return { html: Theme.text('dungeon.combo', values, s), tone: 'is-great' };
+            if (hit.dice === false) return { html: Theme.text('dungeon.hitSnakeEyes', values, s), tone: 'is-good' }; // Lucky Dice: nothing
             if (hit.crit) return { html: Theme.text('dungeon.crit', values, s), tone: 'is-great' };
             return { html: Theme.text('dungeon.hit', values, s), tone: 'is-good' };
         }
 
         const taken = delve.lastTaken;
         const values = { monster: taken?.monsterName || delve.monster.name, damage: taken?.damage || 0 };
-        const headline = taken?.blocked ? Theme.text('dungeon.blocked', values, s)
+        const headline = taken?.mirrored ? Theme.text('dungeon.mirrored', { ...values, amount: taken.reflected }, s) // a Mirror Shield's bounce
+            : taken?.blocked ? Theme.text('dungeon.blocked', values, s)
             : taken?.lastStand ? Theme.text('dungeon.lastStand', values, s)   // a Last Stand reward kept them up
             : taken?.charged ? Theme.text('dungeon.chargedHit', values, s)   // a boss's full-charge blow
             : lastAnswer.timedOut ? Theme.text('dungeon.tooSlow', values, s)
@@ -663,3 +698,19 @@ const DungeonView = {
         }
     },
 };
+
+// The affixes' pixel icons (placeholders, like every sprite in pixel-sprites.js): a bolt, an armour plate, a drop of blood.
+Object.assign(PixelSprites.SPRITES, {
+    'icon-affix-Speedy': {
+        palette: { k: '#000000', y: '#ffe23a', o: '#ff9a1f' },
+        rows: ['....kk', '...kyk', '..kyk.', '.kyyok', '..kok.', '.kok..', '.kk...'],
+    },
+    'icon-affix-Armored': {
+        palette: { k: '#000000', s: '#c9d6e3', S: '#7d8b9c' },
+        rows: ['.kkkkkkk.', 'kssssssSk', 'kskkkkkSk', 'kssssssSk', 'kskkkkkSk', 'kssssssSk', '.kSSSSSk.', '..kkkkk..'],
+    },
+    'icon-affix-Vampiric': {
+        palette: { k: '#000000', r: '#d0152f', R: '#7a0a1a', w: '#ffd0d6' },
+        rows: ['....k....', '...krk...', '..krrrk..', '.krwrrrk.', 'krwrrrrRk', 'krrrrrrRk', 'krrrrrRRk', '.kRRRRRk.', '..kkkkk..'],
+    },
+});

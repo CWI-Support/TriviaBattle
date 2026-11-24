@@ -221,12 +221,30 @@ public sealed record RewardTakenView(int Number, Reward Reward, double Amount, i
 /// went until <see cref="ResultEndsAtMs"/>. Each game's own state is in its own part (only one is set).
 /// </summary>
 /// <param name="Kind">Which game ("RuneLock").</param>
+/// <param name="EndsAtMs">The time limit. The hot potato's is its fuse, a secret: until it goes off, this is the longest it could be.</param>
 /// <param name="ResultFromMs">When the result shows: when it finished, or a moment later for a win that holds its picture first (the ring puzzle).</param>
 public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs, long EndsAtMs, long? FinishedAtMs, bool Won, long? ResultEndsAtMs,
     RuneLockView? RuneLock, RuneEchoView? RuneEcho = null, ChestShuffleView? ChestShuffle = null, RingPuzzleView? RingPuzzle = null,
     long? ResultFromMs = null,
     TunerView? Tuner = null,
-    PopQuizView? PopQuiz = null);
+    PopQuizView? PopQuiz = null,
+    HotPotatoView? HotPotato = null);
+
+/// <summary>
+/// The hot potato: the party round the table (<see cref="Seats"/>, in the order the bomb goes round; <see cref="You"/> is
+/// this screen's), who's holding it (<see cref="Holder"/>, since <see cref="CaughtAtMs"/>; their presses count from
+/// <see cref="ThrowFromMs"/>), and the runes they press to throw it (<see cref="Sequence"/>, 0-3 = A-D, <see cref="Entered"/>
+/// of them so far). The fuse was lit at PlaysFromMs and goes off somewhere between <see cref="FuseShortestMs"/> and
+/// <see cref="FuseLongestMs"/> after it: when isn't sent until it has (<see cref="BlastOwnerId"/>, <see cref="BlastDamage"/>).
+/// </summary>
+/// <param name="Passes">Throws so far, and <paramref name="Fumbles"/> wrong runes: each changes once per throw or fumble, so screens can show each once.</param>
+/// <param name="FumbledUntilMs">After a fumble the holder's buttons are dead until then.</param>
+public sealed record HotPotatoView(IReadOnlyList<HotPotatoSeatView> Seats, int You, int Holder, long CaughtAtMs, long ThrowFromMs,
+    IReadOnlyList<int> Sequence, int Entered, int Passes, int Fumbles, long? FumbledUntilMs, long FuseShortestMs, long FuseLongestMs,
+    string? BlastOwnerId = null, int BlastDamage = 0);
+
+/// <summary>One player at the hot potato: their answer owner id, name, and station (for their face: HeroPhoto).</summary>
+public sealed record HotPotatoSeatView(string OwnerId, string Name, string StationId);
 
 /// <summary>
 /// The pop quiz: questions about their own run. The one up is <see cref="Topic"/> with its four <see cref="Answers"/>
@@ -337,6 +355,8 @@ public sealed record HelpView(string Name, QuestionView Question, bool Phoned = 
 /// the station winds up for the attack from then. Null while it's stopped, or with the countdown off.</param>
 /// <param name="FogFromMs">A rival's Fog Bomb: their answers are blurred from then until <paramref name="FogUntilMs"/>.</param>
 /// <param name="LastSabotage">The last rival's Fog Bomb or Tiny Hourglass that came at them (null before the first).</param>
+/// <param name="Mirrored">A Mirror Shield is up: the next hit they take bounces back.</param>
+/// <param name="DiceReady">Lucky Dice are ready: their next right answer rolls them.</param>
 /// <param name="ClockEndsAtMs">A race or a team battle (a clock per side): when their side's time runs out (null with one clock for the match);
 /// <paramref name="ClockStoppedLeftMs"/> while it's held still. <paramref name="TimeUp"/>: their side's done, waiting for the others.</param>
 public sealed record DelveView(
@@ -385,10 +405,15 @@ public sealed record DelveView(
     SabotageView? LastSabotage = null,
     long? ClockEndsAtMs = null,
     long? ClockStoppedLeftMs = null,
-    bool TimeUp = false);
+    bool TimeUp = false,
+    bool Mirrored = false,
+    bool DiceReady = false);
 
-/// <summary>A rival's Fog Bomb or Tiny Hourglass that came at them (Number counts up: the screen shows each once), from FromName; Blocked: their Shield soaked it.</summary>
-public sealed record SabotageView(int Number, PowerUp PowerUp, string FromName, bool Blocked, long AtMs);
+/// <summary>
+/// A rival's Fog Bomb or Tiny Hourglass that came at them (Number counts up: the screen shows each once), from FromName; Blocked: their
+/// Shield soaked it; Reflected: their Mirror Shield sent it back at FromName; Bounced: it was their own, and FromName's Mirror Shield sent it back.
+/// </summary>
+public sealed record SabotageView(int Number, PowerUp PowerUp, string FromName, bool Blocked, long AtMs, bool Reflected = false, bool Bounced = false);
 
 /// <summary>One member of a party: a player, or a team in 2v2 Group.</summary>
 /// <param name="ReviveProgress">While downed: teammates' right answers so far towards reviving them.</param>
@@ -401,7 +426,8 @@ public sealed record PathStepView(int Floor, int Room, string Name, string Sprit
 
 /// <param name="Sprite">A built-in placeholder sprite key, or a picture path once real art exists.</param>
 /// <param name="PoisonStacks">A Healer's poison on it: each stack hurts it every tick.</param>
-public sealed record MonsterView(string Name, string Sprite, int Hp, int MaxHp, bool IsBoss, int PoisonStacks = 0);
+/// <param name="Affix">Its twist ("Speedy", "Armored", "Vampiric": see Core/Dungeon/Affix.cs), deeper down; null for most.</param>
+public sealed record MonsterView(string Name, string Sprite, int Hp, int MaxHp, bool IsBoss, int PoisonStacks = 0, Affix? Affix = null);
 
 /// <summary>Admin only: where one player/team is up to.</summary>
 public sealed record StreamView(string OwnerId, int Number, string QuestionText, string CorrectAnswer, int Answered, int Correct);

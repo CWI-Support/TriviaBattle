@@ -57,6 +57,43 @@ public class CoopAndRivalPowerUpTests
     // ---------------------------------------------------------------- Rivals
 
     [Fact]
+    public void A_mirror_shield_sends_a_rival_s_fog_bomb_back_at_whoever_threw_it()
+    {
+        var match = Battle();
+        match.Press("A2", Right(match, "A2"), afterSeconds: 1); // Bob leads blue
+        UsePowerUp(match, "A2", PowerUp.MirrorShield);
+
+        var use = Assert.Single(UsePowerUp(match, "A1", PowerUp.FogBomb).OfType<PowerUpUsed>()).Use;
+
+        Assert.Equal((true, false, "A2"), (use.Reflected, use.Blocked, use.TargetOwnerId));
+        var rival = match.AdventurerOf("A2");
+        Assert.Null(rival.FogUntil); // nothing happened to Bob
+        Assert.False(rival.Mirrored); // and his Mirror Shield's spent
+        Assert.Equal((true, "A1"), (rival.LastSabotage!.Reflected, rival.LastSabotage.FromOwnerId));
+        var thrower = match.AdventurerOf("A1");
+        Assert.NotNull(thrower.FogUntil); // Ann's in the fog instead
+        Assert.Equal((true, "A2"), (thrower.LastSabotage!.Bounced, thrower.LastSabotage.FromOwnerId));
+
+        var view = SnapshotBuilder.Build(match.Engine, Viewer.Player("A1")).You!.Delve!;
+        Assert.Equal((true, "Bob"), (view.LastSabotage!.Bounced, view.LastSabotage.FromName));
+    }
+
+    [Fact]
+    public void A_tiny_hourglass_off_a_mirror_shield_halves_the_thrower_s()
+    {
+        var match = Battle();
+        match.Press("A2", Right(match, "A2"), afterSeconds: 1);
+        UsePowerUp(match, "A2", PowerUp.MirrorShield);
+        var rivalAttackAt = match.AdventurerOf("A2").AttackAt;
+
+        UsePowerUp(match, "A1", PowerUp.TinyHourglass);
+
+        Assert.Equal(rivalAttackAt, match.AdventurerOf("A2").AttackAt);
+        var thrower = match.AdventurerOf("A1");
+        Assert.True(thrower.AttackAt - match.Now < TimeSpan.FromSeconds(5)); // half of what was left of 10
+    }
+
+    [Fact]
     public void A_fog_bomb_blurs_the_leading_rival_s_answers_for_three_seconds()
     {
         var match = Battle();

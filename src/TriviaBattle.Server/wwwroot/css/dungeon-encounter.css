@@ -52,7 +52,7 @@
 /* The name, with a Healer's poison badge beside it when there is one. */
 .dg-foe-name-line { display: flex; align-items: center; justify-content: center; gap: 1.6vw; margin-bottom: 0.8vh; min-width: 0; }
 .dg-foe-name-line .dg-foe-name { margin: 0; min-width: 0; }
-.dg-foe-name-line .dg-poison { margin: 0; font-size: 2.6vmin; }
+.dg-foe-name-line .dg-poison, .dg-foe-name-line .dg-affix { margin: 0; font-size: 2.6vmin; }
 .dg-foe-hp { display: flex; align-items: center; gap: 1.6vw; }
 .dg-foe-hp .dg-bar { flex: 1; height: 4vmin; }
 .dg-foe-hp .dg-bar-fill { background: var(--dg-enemy-hp); }

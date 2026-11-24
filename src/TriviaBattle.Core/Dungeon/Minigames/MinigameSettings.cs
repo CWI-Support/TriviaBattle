@@ -24,6 +24,7 @@ public sealed class MinigameSettings
     public RingPuzzleSettings RingPuzzle { get; set; } = new();
     public TunerSettings Tuner { get; set; } = new();
     public PopQuizSettings PopQuiz { get; set; } = new();
+    public HotPotatoSettings HotPotato { get; set; } = new();
 
     public MinigameSettings Copy()
     {
@@ -34,8 +35,31 @@ public sealed class MinigameSettings
         copy.RingPuzzle = RingPuzzle.Copy();
         copy.Tuner = Tuner.Copy();
         copy.PopQuiz = PopQuiz.Copy();
+        copy.HotPotato = HotPotato.Copy();
         return copy;
     }
+}
+
+/// <summary>The hot potato: a lit bomb passed round the party (<see cref="HotPotato"/>).</summary>
+public sealed class HotPotatoSettings
+{
+    /// <summary>The fuse: somewhere between these (a secret until it goes off). It's the game's time limit.</summary>
+    public double FuseShortest { get; set; } = 14;
+    public double FuseLongest { get; set; } = 24;
+
+    /// <summary>Runes the holder presses, in order, to throw it on.</summary>
+    public int PassPresses { get; set; } = 3;
+
+    /// <summary>After a catch, how long before the new holder's presses count (it flies over, and they see their runes).</summary>
+    public double CatchSeconds { get; set; } = 0.6;
+
+    /// <summary>A wrong rune fumbles it: the holder's buttons are dead this long, and it's back to the first rune.</summary>
+    public double FumbleSeconds { get; set; } = 0.8;
+
+    /// <summary>The blast takes this share of the holder's max HP (it never takes the last of it).</summary>
+    public double BlastShare { get; set; } = 0.25;
+
+    public HotPotatoSettings Copy() => (HotPotatoSettings)MemberwiseClone();
 }
 
 /// <summary>The pop quiz: questions about their own run (<see cref="PopQuiz"/>).</summary>

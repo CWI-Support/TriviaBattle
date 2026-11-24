@@ -45,6 +45,8 @@ namespace TriviaBattle.Core.Dungeon;
 ///     the match (<see cref="OpenRewards"/>, <see cref="ChooseReward"/>). Rewards raise the numbers below where they're used.</item>
 ///   <item>Power-ups: a kill may drop one (a boss always does) and a streak earns one; each adventurer
 ///     holds one at a time and uses it with the action button (<see cref="UsePowerUp"/>).</item>
+///   <item>Affixes: deeper down some monsters have a twist (<see cref="Affix"/>): a Speedy one's hourglass is shorter, an
+///     Armored one takes less from slow answers, a Vampiric one heals by what its hits take.</item>
 /// </list>
 /// Not thread-safe; the engine is only ever called by one thread at a time.
 /// </summary>
@@ -206,6 +208,8 @@ public sealed class DungeonRun
         adventurer.CountAnswer(delve.Floor, right: true);
 
         var fireball = adventurer.ThrowFireball();
+        // Lucky Dice: this answer rolls them (null: none were ready).
+        bool? dice = adventurer.TakeDice() ? _random.NextDouble() < _settings.LuckyDiceChance : null;
 
         var damage = _settings.HitDamage * DamageShare(adventurer);
         if (fast)
@@ -216,12 +220,19 @@ public sealed class DungeonRun
             damage *= 1 + _settings.PartyComboBonus;
         if (fireball)
             damage *= _settings.FireballMultiplier;
+        if (dice is { } lucky)
+            damage *= lucky ? _settings.LuckyDiceMultiplier : 0;
 
         // A right answer against a boss at full charge breaks its blow: a stagger, for extra damage.
         var boss = BossFacing(delve);
         var staggered = boss != null && IsFullCharge(adventurer.ChargeAgainst(boss));
         if (staggered)
             damage *= 1 + _settings.StaggerBonus;
+
+        // An Armored monster: only a fast answer gets through its armour in full.
+        var armored = delve.Foes[0].Affix == Affix.Armored && !fast && damage > 0;
+        if (armored)
+            damage *= _settings.Affixes.ArmoredShare;
 
         var hitDamage = (int)Math.Round(damage);
         var splash = adventurer.Class == HeroClass.Wizard && fast ? (int)Math.Round(hitDamage * SplashOf(adventurer)) : 0;
@@ -251,6 +262,8 @@ public sealed class DungeonRun
             PoisonStacks = poisonStacks,
             PatronPrice = patronPrice,
             Staggered = staggered,
+            Dice = dice,
+            Armored = armored,
         };
         delve.Complete(hit);
         adventurer.Landed(hit, now);
@@ -493,19 +506,24 @@ public sealed class DungeonRun
     /// <summary>
     /// A party has cleared the room before the floor's mini game (<paramref name="kill"/>'s <c>MinigameAhead</c>): everyone in
     /// it not already away starts their go, its intro once the kill beat that emptied the room has played. Their
-    /// question and hourglass wait. Returns who's playing.
+    /// question and hourglass wait. A group's game (the hot potato) they all play together, at one table; with fewer than
+    /// two to play it, they get the floor's stand-in instead (<see cref="DungeonMap.MinigameFor"/>). Returns who's playing.
     /// </summary>
     public IReadOnlyList<Adventurer> StartMinigames(string partyId, DealtHit kill, DateTimeOffset now)
     {
-        if (!MinigameRules.Enabled || kill.MinigameAhead is not { } kind)
+        if (!MinigameRules.Enabled || kill.MinigameAhead is not { } planned)
             return [];
 
         var introAt = now + TimeSpan.FromSeconds(BeatSecondsAfter(kill));
         var players = PartyOf(partyId).Where(a => !a.IsAway && !a.IsOut).ToList();
-        foreach (var player in players)
+        // The floor the room was on (a kill that emptied the room before a mini game never clears the floor).
+        var kind = _map.MinigameFor(_delves[partyId].Floor, planned, players.Count);
+        var seats = kind == MinigameKind.HotPotato ? HotPotato.Deal(introAt, MinigameRules, _random, players.Select(p => p.OwnerId).ToList()) : null;
+        for (var i = 0; i < players.Count; i++)
         {
+            var player = players[i];
             var facts = kind == MinigameKind.PopQuiz ? PopQuizFactsFor(player, kill) : null;
-            player.StartMinigame(MinigameCatalog.Create(kind, introAt, MinigameRules, _random, facts));
+            player.StartMinigame(seats?[i] ?? MinigameCatalog.Create(kind, introAt, MinigameRules, _random, facts));
             player.StopHourglass();
         }
         return players;
@@ -562,7 +580,12 @@ public sealed class DungeonRun
             if (game.WinDue(now))
                 wonNow.Add(adventurer);
             if (game.TimeUp(now))
+            {
                 timedOut.Add(adventurer);
+                // The hot potato went off in their hands: the blast takes a share of their HP (never the last of it).
+                if (game is HotPotato { Holding: true } potato)
+                    potato.Bomb.WentOff(adventurer.OwnerId, adventurer.Blast((int)Math.Round(adventurer.MaxHp * MinigameRules.HotPotato.BlastShare)));
+            }
             if (game.ResultEndsAt is not { } resultEnds || resultEnds > now)
                 continue;
 
@@ -795,25 +818,24 @@ public sealed class DungeonRun
                 friend.AnswerFor(ownerId);
                 friend.StopHourglass(); // their own question waits while they help
                 return adventurer.RecordPowerUp(powerUp, friend.OwnerId, 0, revived: false);
-            case PowerUp.FogBomb:
+            case PowerUp.FogBomb or PowerUp.TinyHourglass:
             {
-                var blocked = rival!.BlockSabotage(powerUp, ownerId, now);
-                if (!blocked)
-                {
-                    // From when their question is up: thrown during their battle beat, it waits for the next one.
-                    var shownAt = _streams[rival.OwnerId].CurrentShownAt ?? now;
-                    var from = shownAt > now ? shownAt : now;
-                    rival.Fog(from, from + TimeSpan.FromSeconds(_settings.FogBombSeconds));
-                }
-                return adventurer.RecordPowerUp(powerUp, rival.OwnerId, (int)_settings.FogBombSeconds, revived: false, blocked);
+                // The rival's Shield soaks it; their Mirror Shield sends it back to land on the thrower.
+                var outcome = rival!.MeetSabotage(powerUp, ownerId, now);
+                if (outcome == SabotageOutcome.Reflected)
+                    adventurer.BouncedBack(powerUp, rival.OwnerId, now);
+                if (outcome != SabotageOutcome.Blocked)
+                    LandSabotage(powerUp, outcome == SabotageOutcome.Reflected ? adventurer : rival, now);
+                var seconds = powerUp == PowerUp.FogBomb ? (int)_settings.FogBombSeconds : 0;
+                return adventurer.RecordPowerUp(powerUp, rival.OwnerId, seconds, revived: false,
+                    blocked: outcome == SabotageOutcome.Blocked, reflected: outcome == SabotageOutcome.Reflected);
             }
-            case PowerUp.TinyHourglass:
-            {
-                var blocked = rival!.BlockSabotage(powerUp, ownerId, now);
-                if (!blocked)
-                    rival.HalveHourglass(now);
-                return adventurer.RecordPowerUp(powerUp, rival.OwnerId, 0, revived: false, blocked);
-            }
+            case PowerUp.MirrorShield:
+                adventurer.RaiseMirror();
+                break;
+            case PowerUp.LuckyDice:
+                adventurer.ReadyDice();
+                break;
             case PowerUp.Potion:
                 var (target, healed, revived) = DrinkPotion(adventurer, now);
                 return adventurer.RecordPowerUp(powerUp, target.OwnerId, healed, revived);
@@ -835,6 +857,23 @@ public sealed class DungeonRun
                 return adventurer.RecordPowerUp(powerUp, ownerId, (int)_settings.TimeCrystalSeconds, revived: false);
         }
         return adventurer.RecordPowerUp(powerUp, ownerId, 0, revived: false);
+    }
+
+    /// <summary>
+    /// A Fog Bomb or Tiny Hourglass lands on <paramref name="victim"/> (the rival it was thrown at, or the thrower when a
+    /// Mirror Shield sent it back). A Fog Bomb blurs from when their question is up: thrown during their battle beat, it
+    /// waits for the next one.
+    /// </summary>
+    private void LandSabotage(PowerUp powerUp, Adventurer victim, DateTimeOffset now)
+    {
+        if (powerUp == PowerUp.TinyHourglass)
+        {
+            victim.HalveHourglass(now);
+            return;
+        }
+        var shownAt = _streams[victim.OwnerId].CurrentShownAt ?? now;
+        var from = shownAt > now ? shownAt : now;
+        victim.Fog(from, from + TimeSpan.FromSeconds(_settings.FogBombSeconds));
     }
 
     /// <summary>
@@ -963,6 +1002,17 @@ public sealed class DungeonRun
         var hit = adventurer.TakeHit(delve.Encounter, reason, now, downedSeconds, damageTaken, patronPrice, charged: boss != null && IsFullCharge(step));
         if (boss != null)
             adventurer.ChargeUp(boss, _settings.BossChargeSteps);
+
+        // A Mirror Shield bounces the blow back at the monster (it never finishes it); a Vampiric monster drinks what it took.
+        var front = delve.Foes[0];
+        var blow = delve.Encounter.Damage * (boss != null ? _settings.BossHitAt(step) : 1);
+        var reflected = hit.Mirrored ? delve.Reflect((int)Math.Round(blow * _settings.MirrorShare)) : 0;
+        var drained = front.Affix == Affix.Vampiric && hit.Damage > 0 ? front.Heal((int)Math.Round(hit.Damage * _settings.Affixes.VampiricShare)) : 0;
+        if (reflected > 0 || drained > 0)
+        {
+            hit = hit with { Reflected = reflected, Drained = drained };
+            adventurer.Complete(hit);
+        }
         delve.RecordTaken(hit);
 
         // While anyone in the party is still standing, the fight goes on. When nobody is, the room's
@@ -1041,7 +1091,9 @@ public sealed class DungeonRun
         var asked = beat != MinigameBeat.Start && game is PopQuiz quiz && quiz.Last is { } last && last.At == at
             ? quiz.Questions[last.Question]
             : null;
-        var quip = _querie.ReactToMinigame(new MinigameScene(ownerId, _names.GetValueOrDefault(ownerId, ownerId), game.Kind, beat, asked, at));
+        // The hot potato: who's holding the bomb (once it's gone off, who it went off on).
+        var holder = game is HotPotato potato ? _names.GetValueOrDefault(potato.Bomb.HolderOwnerId, potato.Bomb.HolderOwnerId) : null;
+        var quip = _querie.ReactToMinigame(new MinigameScene(ownerId, _names.GetValueOrDefault(ownerId, ownerId), game.Kind, beat, asked, at, holder));
         if (quip != null)
             adventurer.Hear(quip);
         return quip;
@@ -1142,9 +1194,13 @@ public sealed class DungeonRun
         var from = shownAt > now ? shownAt : now;
         if (adventurer.FrozenUntil > from)
             from = adventurer.FrozenUntil.Value;
-        adventurer.StartHourglass(from, DelveOf(adventurer).Encounter.Monster.AttackSeconds);
+        adventurer.StartHourglass(from, HourglassSecondsOf(DelveOf(adventurer).Foes[0]));
         PlanReveal(adventurer, from);
     }
+
+    /// <summary>How long a monster's hourglass runs: its own time, shorter for a Speedy one.</summary>
+    private double HourglassSecondsOf(Foe foe) =>
+        foe.Monster.AttackSeconds * (foe.Affix == Affix.Speedy ? _settings.Affixes.SpeedyHourglass : 1);
 
     /// <summary>
     /// A Warlock's patron decides once per question whether to show the answer

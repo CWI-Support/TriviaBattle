@@ -80,6 +80,12 @@ public sealed class Adventurer
     /// <summary>A Shield is up: the next hit they take does no damage.</summary>
     public bool Shielded { get; private set; }
 
+    /// <summary>A Mirror Shield is up: the next hit they take does no damage and bounces back (see DungeonRun).</summary>
+    public bool Mirrored { get; private set; }
+
+    /// <summary>Lucky Dice are ready: their next right answer rolls them (double damage, or none).</summary>
+    public bool DiceReady { get; private set; }
+
     /// <summary>A Freeze: their hourglass doesn't run until then.</summary>
     public DateTimeOffset? FrozenUntil { get; private set; }
 
@@ -300,7 +306,8 @@ public sealed class Adventurer
 
     /// <summary>
     /// The monster hits them, ending the streak. At 0 HP they're downed for <paramref name="downedSeconds"/>.
-    /// A Shield takes the whole hit instead (and the streak survives), then it's gone.
+    /// A Mirror Shield or a Shield takes the whole hit instead (and the streak survives), then it's gone: the Mirror
+    /// Shield first, when both are up (it's the hit's <see cref="TakenHit.Mirrored"/>: DungeonRun bounces it back).
     /// </summary>
     /// <param name="encounter">The monster hitting them, with its damage for that floor.</param>
     /// <param name="damageTaken">The share of the monster's damage they take (their class's DamageTaken), rounded.</param>
@@ -309,8 +316,12 @@ public sealed class Adventurer
     public TakenHit TakeHit(Encounter encounter, HitReason reason, DateTimeOffset now, double downedSeconds, double damageTaken = 1, int patronPrice = 0,
         bool charged = false)
     {
-        var blocked = Shielded;
-        Shielded = false;
+        var mirrored = Mirrored;
+        var blocked = mirrored || Shielded;
+        if (mirrored)
+            Mirrored = false;
+        else
+            Shielded = false;
         var damage = blocked ? 0 : (int)Math.Round(encounter.Damage * damageTaken);
         if (!blocked)
             Streak = 0;
@@ -336,9 +347,22 @@ public sealed class Adventurer
         }
 
         LastTaken = new TakenHit((LastTaken?.Number ?? 0) + 1, damage, reason, downed, encounter.Monster.Name, encounter.Monster.Sprite, Hp, blocked, patronPrice,
-            charged && !blocked, lastStand, downed && IsOut);
+            charged && !blocked, lastStand, downed && IsOut, mirrored);
         return LastTaken;
     }
+
+    /// <summary>The hit just taken, completed with what it did to the monster (a Mirror Shield's bounce, a Vampiric's drink).</summary>
+    public void Complete(TakenHit hit)
+    {
+        if (LastTaken?.Number == hit.Number)
+            LastTaken = hit;
+    }
+
+    /// <summary>
+    /// The hot potato blew up in their hands: it takes up to <paramref name="amount"/> HP, but never downs them (it
+    /// stops at 1 HP, like a Warlock's patron). Returns what it took.
+    /// </summary>
+    public int Blast(int amount) => PayPatron(amount);
 
     /// <summary>Picks up a power-up (or is handed one), replacing any they held.</summary>
     public void PickUp(PowerUp powerUp) => Held = powerUp;
@@ -358,6 +382,18 @@ public sealed class Adventurer
 
     public void RaiseShield() => Shielded = true;
 
+    public void RaiseMirror() => Mirrored = true;
+
+    public void ReadyDice() => DiceReady = true;
+
+    /// <summary>Their right answer rolls the dice. Returns true if they were ready (they're used up; DungeonRun rolls them).</summary>
+    public bool TakeDice()
+    {
+        var ready = DiceReady;
+        DiceReady = false;
+        return ready;
+    }
+
     public void Freeze(DateTimeOffset until) => FrozenUntil = until;
 
     public void HideAnswers(int questionNumber, IReadOnlyList<int> answers)
@@ -374,9 +410,9 @@ public sealed class Adventurer
         return healed;
     }
 
-    public PowerUpUse RecordPowerUp(PowerUp powerUp, string targetOwnerId, int amount, bool revived, bool blocked = false)
+    public PowerUpUse RecordPowerUp(PowerUp powerUp, string targetOwnerId, int amount, bool revived, bool blocked = false, bool reflected = false)
     {
-        LastPowerUp = new PowerUpUse((LastPowerUp?.Number ?? 0) + 1, powerUp, targetOwnerId, amount, revived, blocked);
+        LastPowerUp = new PowerUpUse((LastPowerUp?.Number ?? 0) + 1, powerUp, targetOwnerId, amount, revived, blocked, reflected);
         return LastPowerUp;
     }
 
@@ -400,14 +436,28 @@ public sealed class Adventurer
     /// <summary>Phone a Friend: the teammate whose question they're answering (their own waits meanwhile), or null.</summary>
     public string? AnsweringFor { get; private set; }
 
-    /// <summary>A rival's sabotage came at them: their Shield soaks it if it's up (and goes). Returns true if it did.</summary>
-    public bool BlockSabotage(PowerUp powerUp, string fromOwnerId, DateTimeOffset at)
+    /// <summary>
+    /// A rival's sabotage came at them: a Mirror Shield sends it back (and goes), or else a Shield soaks it (and goes),
+    /// or else it lands. Returns which. A Mirror Shield goes first when both are up, as with a monster's blow.
+    /// </summary>
+    public SabotageOutcome MeetSabotage(PowerUp powerUp, string fromOwnerId, DateTimeOffset at)
     {
-        var blocked = Shielded;
-        Shielded = false;
-        LastSabotage = new Sabotage((LastSabotage?.Number ?? 0) + 1, powerUp, fromOwnerId, blocked, at);
-        return blocked;
+        var outcome = Mirrored ? SabotageOutcome.Reflected : Shielded ? SabotageOutcome.Blocked : SabotageOutcome.Landed;
+        if (outcome == SabotageOutcome.Reflected)
+            Mirrored = false;
+        else if (outcome == SabotageOutcome.Blocked)
+            Shielded = false;
+        LastSabotage = new Sabotage((LastSabotage?.Number ?? 0) + 1, powerUp, fromOwnerId, outcome == SabotageOutcome.Blocked, at,
+            Reflected: outcome == SabotageOutcome.Reflected);
+        return outcome;
     }
+
+    /// <summary>
+    /// Their own sabotage came back at them off <paramref name="mirrorOwnerId"/>'s Mirror Shield: it lands, whatever they
+    /// have up (no bouncing it back and forth).
+    /// </summary>
+    public void BouncedBack(PowerUp powerUp, string mirrorOwnerId, DateTimeOffset at) =>
+        LastSabotage = new Sabotage((LastSabotage?.Number ?? 0) + 1, powerUp, mirrorOwnerId, Blocked: false, at, Bounced: true);
 
     public void Fog(DateTimeOffset from, DateTimeOffset until)
     {

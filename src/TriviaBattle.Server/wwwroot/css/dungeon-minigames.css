@@ -513,3 +513,181 @@
 /* A little smaller than on the question screen, so two lines fit the slot. */
 .dg-mg-querie .dg-feedback { font-size: 3.5vmin; padding: 0.3vh 2vw; }
 .dg-mg-querie .dg-querie-face { width: 6vmin; }
+
+/* ---------- The hot potato (the party's game): the table, the bomb, the fuse, your runes ---------- */
+
+/* No time limit along the bottom: the limit is the fuse, and when it goes is a secret. The fuse shows instead. */
+.dg-minigame.is-hotpotato .dg-minigame-limit { display: none; }
+.dg-potato { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.6vh; }
+
+/* The fuse: a cord burning down from the bomb's end over the longest it could take (--longest, from --lit). */
+.dg-potato-fuse { display: flex; align-items: center; width: 88%; gap: 1.6vw; }
+.dg-potato-fuse-bomb { width: 7vmin; height: auto; flex: none; }
+.dg-potato-fuse-cord { flex: 1; height: 1.6vmin; display: flex; }
+.dg-potato-fuse-burn {
+    position: relative;
+    height: 100%;
+    background: repeating-linear-gradient(90deg, #c98a12 0 1.4vmin, #8a5a12 1.4vmin 2.2vmin);
+    animation: dg-potato-burn var(--longest) linear var(--lit) both;
+}
+/* The spark at its burning end. */
+.dg-potato-fuse-burn::after {
+    content: "";
+    position: absolute;
+    right: -2vmin;
+    top: 50%;
+    width: 4vmin;
+    height: 4vmin;
+    margin-top: -2vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 18%, #ffd23f 35%, rgba(255, 90, 31, 0.85) 55%, transparent 70%);
+    animation: dg-potato-flicker 140ms steps(2) infinite;
+}
+.dg-potato-fuse.is-out .dg-potato-fuse-burn { animation: none; width: 0; }
+.dg-potato-fuse.is-out .dg-potato-fuse-burn::after { display: none; }
+@keyframes dg-potato-burn { from { width: 100%; } to { width: 0; } }
+@keyframes dg-potato-flicker { 50% { transform: scale(1.35) rotate(45deg); opacity: 0.8; } }
+/* Past the shortest fuse it could have: it could go any moment. */
+.dg-potato-any {
+    margin-top: -1.4vh;
+    font-family: var(--dg-font-pixel);
+    font-size: 3.4vmin;
+    color: #ff6a3a;
+    text-transform: uppercase;
+    text-shadow: 0 0.4vmin 0 #000, 0 0 2vmin rgba(255, 90, 31, 0.6);
+    opacity: 0;
+    animation: dg-potato-any-in 300ms ease-out var(--any) forwards, dg-potato-any-pulse 520ms ease-in-out calc(var(--any) + 300ms) infinite;
+}
+@keyframes dg-potato-any-in { to { opacity: 1; } }
+@keyframes dg-potato-any-pulse { 50% { transform: scale(1.08); } }
+
+/* The table: everyone's face in a row, in the order the bomb goes round (columns without gaps, so the bomb can find
+   each seat's middle: (i + 0.5) / n of the way across). The bomb sits over whoever holds it. */
+.dg-potato-table { position: relative; width: 94%; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); padding-top: 13vmin; }
+.dg-potato-seat {
+    margin: 0 1vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8vh;
+    padding: 1.2vh 0.6vw;
+    background: rgba(28, 25, 32, 0.82);
+    border: 0.6vmin solid var(--dg-frame-edge);
+    min-width: 0;
+}
+.dg-potato-face { width: 15vmin; height: 15vmin; }
+.dg-potato-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--dg-font-pixel); font-weight: normal; font-size: 2.6vmin; color: var(--text); text-transform: uppercase; }
+.dg-potato-seat.is-you .dg-potato-name { color: var(--dg-mg-gold); }
+.dg-potato-seat.is-holding { border-color: #ff6a3a; box-shadow: 0 0 3vmin rgba(255, 90, 31, 0.6); animation: dg-potato-hot 600ms ease-in-out infinite; }
+@keyframes dg-potato-hot { 50% { box-shadow: 0 0 1vmin rgba(255, 90, 31, 0.3); } }
+.dg-potato-seat.is-blasted { border-color: #3a3340; filter: grayscale(0.6) brightness(0.7); }
+
+.dg-potato-bomb {
+    position: absolute;
+    top: 0;
+    left: calc((var(--to) + 0.5) / var(--n) * 100%);
+    width: 12vmin;
+    transform: translateX(-50%);
+    z-index: 2;
+    animation: dg-potato-fly 450ms ease-in-out var(--catch) both;
+}
+.dg-potato-bomb.is-gone { display: none; }
+.dg-potato-bomb-arc { position: relative; animation: dg-potato-arc 450ms ease-out var(--catch) both; }
+.dg-potato-bomb-sprite { display: block; width: 100%; height: auto; animation: dg-potato-jiggle 300ms steps(2) infinite; }
+.dg-potato-spark {
+    position: absolute;
+    top: -1.6vmin;
+    right: 0;
+    width: 4.4vmin;
+    height: 4.4vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 18%, #ffd23f 35%, rgba(255, 90, 31, 0.85) 55%, transparent 70%);
+    animation: dg-potato-flicker 140ms steps(2) infinite;
+}
+@keyframes dg-potato-fly { from { left: calc((var(--from) + 0.5) / var(--n) * 100%); } }
+@keyframes dg-potato-arc { 50% { transform: translateY(-7vmin) rotate(200deg); } 100% { transform: rotate(360deg); } }
+@keyframes dg-potato-jiggle { 50% { transform: rotate(-8deg) translateY(-0.4vmin); } }
+
+/* It went off: a blast over whoever held it (--at), from --r0. */
+.dg-potato-boom {
+    position: absolute;
+    top: 6vmin;
+    left: calc((var(--at) + 0.5) / var(--n) * 100%);
+    z-index: 3;
+    width: 0;
+    height: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+}
+.dg-potato-boom-ring {
+    position: absolute;
+    width: 50vmin;
+    height: 50vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 10%, #ffd23f 22%, #ff6a1f 40%, rgba(120, 30, 10, 0.6) 58%, transparent 70%);
+    animation: dg-potato-ring 700ms ease-out var(--r0) both;
+}
+/* The word over the middle of the table (over the seat, one at the edge would run off the screen). */
+.dg-potato-boom-word {
+    position: absolute;
+    top: 2vmin;
+    left: 50%;
+    z-index: 4;
+    transform: translateX(-50%);
+    font-family: var(--dg-font-pixel);
+    font-weight: normal;
+    font-size: 11vmin;
+    color: #ffd23f;
+    white-space: nowrap;
+    text-shadow: 0 1vmin 0 #000, 0 0 4vmin #ff5a1f;
+    animation: dg-potato-boom-word 600ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--r0) both;
+}
+@keyframes dg-potato-ring {
+    0% { transform: scale(0.1); opacity: 1; }
+    60% { opacity: 1; }
+    100% { transform: scale(1.2); opacity: 0; }
+}
+@keyframes dg-potato-boom-word { from { opacity: 0; transform: translateX(-50%) scale(0.3); } }
+
+/* Your part: holding it, the runes to press to throw it on (dimmed until you've caught it: --ready); not, who's got it. */
+.dg-potato-panel {
+    width: 92%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.8vh;
+    padding: 1.8vh 2vw;
+    background: rgba(12, 8, 16, 0.86);
+    border: 0.6vmin solid var(--dg-frame-edge);
+}
+.dg-potato-panel.is-mine { border-color: #ff6a3a; }
+.dg-potato-panel.is-next { border-color: var(--dg-mg-gold); }
+.dg-potato-call { font-family: var(--dg-font-pixel); font-size: 4.4vmin; line-height: 1.2; color: var(--dg-mg-gold); text-align: center; text-transform: uppercase; text-wrap: balance; }
+.dg-potato-panel.is-mine .dg-potato-call { color: #ff8a5a; }
+.dg-potato-ready { font-family: var(--dg-font-pixel); font-size: 3.4vmin; color: #fff; text-align: center; text-transform: uppercase; animation: dg-potato-any-pulse 520ms ease-in-out infinite; }
+.dg-potato-runes { display: flex; gap: 3vw; animation: dg-potato-catching 1ms linear var(--ready) both; }
+@keyframes dg-potato-catching { from { opacity: 0.35; filter: grayscale(1); } to { opacity: 1; filter: none; } }
+.dg-potato-rune {
+    width: 17vmin;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    border-radius: 2vmin;
+    background: color-mix(in srgb, var(--answer-color) 22%, #15121a);
+    border: 0.9vmin solid color-mix(in srgb, var(--answer-color) 60%, #000);
+    font-family: var(--dg-font-pixel);
+    color: var(--answer-color);
+}
+.dg-potato-rune b { font-weight: normal; font-size: 9vmin; line-height: 1; text-shadow: 0 0.6vmin 0 #000; }
+.dg-potato-rune.is-next { transform: scale(1.12); box-shadow: 0 0 3.4vmin var(--answer-color); border-color: var(--answer-color); }
+.dg-potato-rune.is-done { opacity: 0.28; transform: scale(0.88); }
+.dg-potato-rune[data-letter="A"] { --answer-color: var(--answer-a); }
+.dg-potato-rune[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-potato-rune[data-letter="C"] { --answer-color: var(--answer-c); }
+.dg-potato-rune[data-letter="D"] { --answer-color: var(--answer-d); }
+/* A fumble: the panel shakes red, and FUMBLE! shows while the buttons are dead (to --unfumble). */
+.dg-potato-panel.is-fumble { animation: dg-potato-shake 420ms ease-out var(--flash0); border-color: var(--wrong); }
+@keyframes dg-potato-shake { 20% { transform: translateX(-2vw); } 40% { transform: translateX(2vw); } 60% { transform: translateX(-1vw); } 80% { transform: translateX(1vw); } }
+.dg-potato-fumble { font-family: var(--dg-font-pixel); font-size: 4vmin; color: var(--wrong); text-transform: uppercase; animation: dg-potato-unfumble 1ms linear var(--unfumble) forwards; }
+@keyframes dg-potato-unfumble { to { visibility: hidden; } }

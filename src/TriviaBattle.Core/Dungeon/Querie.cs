@@ -57,12 +57,13 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
         if (!settings.Enabled)
             return null;
         var quiz = scene.Kind == Minigames.MinigameKind.PopQuiz;
+        var potato = scene.Kind == Minigames.MinigameKind.HotPotato;
         var forgotName = scene.Asked?.Topic == Minigames.PopQuizTopic.Name;
         (QuerieMoment Moment, double Chance, double Gap)? what = scene.Beat switch
         {
-            MinigameBeat.Start => (quiz ? QuerieMoment.PopQuizStart : QuerieMoment.MinigameStart, settings.MinigameStartChance, 0),
-            MinigameBeat.Won => (QuerieMoment.MinigameWon, 1, 0),
-            MinigameBeat.Lost => (quiz && forgotName ? QuerieMoment.PopQuizForgotName : QuerieMoment.MinigameLost, 1, 0),
+            MinigameBeat.Start => (quiz ? QuerieMoment.PopQuizStart : potato ? QuerieMoment.HotPotatoStart : QuerieMoment.MinigameStart, settings.MinigameStartChance, 0),
+            MinigameBeat.Won => (potato ? QuerieMoment.HotPotatoSafe : QuerieMoment.MinigameWon, 1, 0),
+            MinigameBeat.Lost => (quiz && forgotName ? QuerieMoment.PopQuizForgotName : potato ? QuerieMoment.HotPotatoBlast : QuerieMoment.MinigameLost, 1, 0),
             MinigameBeat.Miss when quiz => (forgotName ? QuerieMoment.PopQuizForgotName : QuerieMoment.PopQuizWrong, 1, forgotName ? 0 : settings.BigGapSeconds),
             MinigameBeat.Miss => (QuerieMoment.MinigameMiss, settings.Chance, settings.QuipEverySeconds),
             MinigameBeat.Hit when quiz => (QuerieMoment.PopQuizRight, settings.Chance, settings.QuipEverySeconds),
@@ -76,12 +77,12 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
         if (chance < 1 && random.NextDouble() >= chance)
             return null;
         var answer = scene.Asked is { } asked ? asked.Answers[asked.CorrectIndex] : "";
-        return Say(moment, scene.OwnerId, partyWide: false, scene.At, scene.Name, answer: answer);
+        return Say(moment, scene.OwnerId, partyWide: false, scene.At, scene.Name, answer: answer, holder: scene.Holder ?? "");
     }
 
     /// <summary>The moment's next line, filled in and counted as their latest remark (null with no lines for it).</summary>
     private Quip? Say(QuerieMoment moment, string ownerId, bool partyWide, DateTimeOffset at,
-        string name, string monster = "", string floor = "", string rival = "", string answer = "")
+        string name, string monster = "", string floor = "", string rival = "", string answer = "", string holder = "")
     {
         if (NextLine(moment) is not { } line)
             return null;
@@ -91,7 +92,8 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
             .Replace("{monster}", monster)
             .Replace("{floor}", floor)
             .Replace("{rival}", rival)
-            .Replace("{answer}", answer);
+            .Replace("{answer}", answer)
+            .Replace("{holder}", holder);
         return new Quip(++_number, moment, text, line.Audio, ownerId, partyWide, at);
     }
 
@@ -167,8 +169,10 @@ public enum MinigameBeat { Start, Hit, Miss, Won, Lost }
 /// <summary>
 /// A moment in someone's mini game (<see cref="DungeonRun.CommentateMinigame"/> works it out), at <paramref name="At"/>
 /// (an opening: when its intro starts). <paramref name="Asked"/>: in the pop quiz, the question the press just answered.
+/// <paramref name="Holder"/>: in the hot potato, who's holding the bomb (once it's gone off, who it went off on).
 /// </summary>
-public sealed record MinigameScene(string OwnerId, string Name, Minigames.MinigameKind Kind, MinigameBeat Beat, Minigames.PopQuizQuestion? Asked, DateTimeOffset At);
+public sealed record MinigameScene(string OwnerId, string Name, Minigames.MinigameKind Kind, MinigameBeat Beat, Minigames.PopQuizQuestion? Asked, DateTimeOffset At,
+    string? Holder = null);
 
 /// <summary>
 /// What Q.U.E.R.I.E. knows about an answer when deciding whether to say something (<see cref="DungeonRun.Commentate"/>

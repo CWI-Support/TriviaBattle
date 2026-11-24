@@ -13,9 +13,16 @@ public sealed class DungeonPlan
     /// <exception cref="ArgumentException">The dungeon isn't valid (every problem is spelled out).</exception>
     /// <param name="minigameChance">How likely each floor reached is to have a mini game between two of its rooms (0 = never, 1 = always).</param>
     /// <param name="minigameEvery">At least one mini game every this many floors (0 = the rolls alone; see DungeonMap.MinigameOn).</param>
+    /// <param name="affixChance">From <paramref name="affixFromFloor"/> on, how likely a monster that isn't a boss is to have an affix (see DungeonMap.AffixFromFloor).</param>
+    /// <param name="affixFromFloor">The first floor with affixed monsters (0 = none).</param>
+    /// <param name="affixes">The affixes in play (null: all of them).</param>
     public DungeonPlan(IReadOnlyList<DepthDef> depths, IReadOnlyList<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
-        double minigameChance = 0, int minigameEvery = 0, int loopQuestionShift = 10)
+        double minigameChance = 0, int minigameEvery = 0, int loopQuestionShift = 10, double affixChance = 0, int affixFromFloor = 0,
+        IReadOnlyList<Affix>? affixes = null)
     {
+        Affixes = affixes;
+        AffixChance = affixChance;
+        AffixFromFloor = affixFromFloor;
         MinigameChance = minigameChance;
         MinigameEvery = minigameEvery;
         LoopQuestionShift = loopQuestionShift;
@@ -45,14 +52,26 @@ public sealed class DungeonPlan
     /// <summary>At least one mini game every this many floors (config/dungeon.json's <c>MinigameEvery</c>; 0 = the rolls alone).</summary>
     public int MinigameEvery { get; }
 
+    /// <summary>From <see cref="AffixFromFloor"/> on, how likely a monster that isn't a boss is to have an affix (config/dungeon.json's <c>AffixChance</c>).</summary>
+    public double AffixChance { get; }
+
+    /// <summary>The first floor with affixed monsters, loops included (config/dungeon.json's <c>AffixFromFloor</c>; 0 = none).</summary>
+    public int AffixFromFloor { get; }
+
+    /// <summary>The affixes in play (config/dungeon.json's <c>Affixes</c>); null: all of them.</summary>
+    public IReadOnlyList<Affix>? Affixes { get; }
+
     /// <summary>One match's dungeon: every made-up floor laid out with <paramref name="random"/>.</summary>
     public DungeonMap Build(Random random)
     {
         var depths = Depths
             .Select(depth => depth with { Floors = depth.Floors.Select(floor => floor.IsMadeUp ? LayOut(floor, random) : floor).ToList() })
             .ToList();
-        // Mini games are rolled floor by floor as they're reached (DungeonMap.MinigameOn), loops included.
-        return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus, MinigameChance, random.Next(), MinigameEvery, LoopQuestionShift);
+        // Mini games are rolled floor by floor as they're reached (DungeonMap.MinigameOn), loops included; so are affixes,
+        // room by room (DungeonMap.RoomAt). Each from its own seed.
+        var minigameSeed = random.Next();
+        return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus, MinigameChance, minigameSeed, MinigameEvery, LoopQuestionShift,
+            AffixChance, AffixFromFloor, random.Next(), Affixes);
     }
 
     /// <summary>A made-up floor, written out: <see cref="FloorDef.RoomCount"/> rooms filled from the pool, then the boss's.</summary>
@@ -107,5 +126,7 @@ public sealed class DungeonPlan
             foreach (var floor in depth.Floors.Where(f => f.Questions != null && (f.Questions.Values.Any(w => w < 0) || f.Questions.Values.Sum() <= 0)))
                 yield return $"A floor of '{depth.Name}' has Questions weights that don't add up to more than zero.";
         }
+        if (AffixChance is < 0 or > 1 || AffixFromFloor < 0)
+            yield return "AffixChance needs to be between 0 and 1, and AffixFromFloor 0 (none) or more.";
     }
 }

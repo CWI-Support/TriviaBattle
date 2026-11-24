@@ -16,6 +16,9 @@
     --dg-hero-hp: #3ec94a;
     --dg-hourglass: #f0b429;
     --dg-poison: #8bd63a;             /* a Healer's poison: badges, a poisoned monster's HP */
+    --dg-affix-speedy: #ffe23a;       /* a monster's affix (deeper down): its badge, its hint, its tint */
+    --dg-affix-armored: #c9d6e3;
+    --dg-affix-vampiric: #ff4a63;
     --dg-patron: #b56bff;             /* a Warlock's patron: the answer it shows, its price */
     --dg-splash: #7fd4ff;             /* a Wizard's splash on the pack */
     --dg-ranger: #b5d94a;             /* a Ranger's early look at the next question */
@@ -192,6 +195,47 @@
     text-transform: none;
 }
 .dg-poison-icon { width: 1.2em; height: auto; }
+
+/* ---------- A monster's affix (deeper down: Speedy, Armored, Vampiric) ---------- */
+
+/* The badge beside its name: its icon and name in its colour, sized by the text it sits by (em), like the poison's.
+   Short (a pack's mini strip): the icon alone. */
+.dg-affix {
+    --affix: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    margin-left: 0.6em;
+    padding: 0.15em 0.4em;
+    vertical-align: middle;
+    background: rgba(10, 8, 12, 0.85);
+    border: 0.3vmin solid var(--affix);
+    color: var(--affix);
+    font-family: var(--dg-font-pixel);
+    font-size: 0.8em;
+    line-height: 1;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+.dg-affix.is-short { margin: 0; padding: 0.1em; border-width: 0.2vmin; }
+.dg-affix-icon { width: 1.2em; height: auto; }
+.dg-affix.is-speedy, .dg-affix-hint.is-speedy { --affix: var(--dg-affix-speedy); }
+.dg-affix.is-armored, .dg-affix-hint.is-armored { --affix: var(--dg-affix-armored); }
+.dg-affix.is-vampiric, .dg-affix-hint.is-vampiric { --affix: var(--dg-affix-vampiric); }
+/* What it does, under its HP bar on the question screen's plate (where a boss's charge meter goes). */
+.dg-affix-hint {
+    margin-top: 0.6vh;
+    font-family: var(--dg-font-pixel);
+    font-size: 2.3vmin;
+    color: var(--affix);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.dg-foe-plate.has-affix { border-color: var(--affix, var(--dg-frame-edge)); }
+.dg-foe-plate.is-speedy { --affix: var(--dg-affix-speedy); }
+.dg-foe-plate.is-armored { --affix: var(--dg-affix-armored); }
+.dg-foe-plate.is-vampiric { --affix: var(--dg-affix-vampiric); }
 /* A poisoned monster's HP is poison green. */
 .dg-hp.is-enemy.is-poisoned .dg-bar-fill { background: var(--dg-poison); }
 .dg-slain.is-poison { color: var(--dg-poison); }

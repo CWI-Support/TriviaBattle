@@ -379,6 +379,10 @@
 .dg-note.is-poison { --note: var(--dg-poison); }
 .dg-note.is-patron { --note: var(--dg-patron); font-size: 3.4vmin; }
 .dg-note.is-armour { --note: #c9d6e3; font-size: 3.4vmin; }
+.dg-note.is-dice { --note: #ffd23f; font-size: 3.4vmin; }
+.dg-note.is-armored { --note: var(--dg-affix-armored); font-size: 3.4vmin; }
+.dg-note.is-mirror { --note: #b8e6ff; font-size: 3.4vmin; }
+.dg-note.is-drain { --note: var(--dg-affix-vampiric); font-size: 3.4vmin; }
 @keyframes dg-note-out { to { opacity: 0; transform: translateY(-30%); } }
 @keyframes dg-note {
     0% { opacity: 0; transform: scale(0.3) translateY(40%); }

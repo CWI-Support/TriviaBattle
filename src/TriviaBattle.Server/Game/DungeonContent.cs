@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TriviaBattle.Core.Dungeon;
 
 namespace TriviaBattle.Server.Game;
@@ -13,6 +14,7 @@ public static class DungeonContent
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter() }, // "Affixes": ["Speedy"], a floor's "Minigame": "RuneLock"
     };
 
     /// <summary>
@@ -28,7 +30,7 @@ public static class DungeonContent
         try
         {
             return new DungeonPlan(file.Depths ?? [], file.Monsters ?? [], file.LoopHpBonus, file.LoopDamageBonus, file.MinigameChance, file.MinigameEvery,
-                file.LoopQuestionShift);
+                file.LoopQuestionShift, file.AffixChance, file.AffixFromFloor, file.Affixes);
         }
         catch (ArgumentException ex)
         {
@@ -37,5 +39,5 @@ public static class DungeonContent
     }
 
     private sealed record DungeonFile(double LoopHpBonus, List<DepthDef>? Depths, List<MonsterDef>? Monsters, double LoopDamageBonus = 0, double MinigameChance = 0,
-        int MinigameEvery = 0, int LoopQuestionShift = 10);
+        int MinigameEvery = 0, int LoopQuestionShift = 10, double AffixChance = 0, int AffixFromFloor = 0, List<Affix>? Affixes = null);
 }

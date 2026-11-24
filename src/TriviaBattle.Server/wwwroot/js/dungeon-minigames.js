@@ -19,10 +19,16 @@
 //     there together. Each bar sinks as a CSS animation from its last press, so it moves without a redraw.
 //   - the pop quiz (popQuiz): questions about your own run (your floor, the last monster, your name...); 3 right wins,
 //     3 wrong loses. The right answer shows a moment after each, then the next question comes in by itself.
+//   - the hot potato (hotPotato): the party's game, played together. A lit bomb goes round the table; holding it, press
+//     the runes shown to throw it on. Whoever holds it when the secret fuse runs out takes the blast. The fuse shows
+//     instead of the time limit (the limit is the fuse, and the screen never learns it until it goes off).
 // On the main screen a lane shows when its player is in one, and a win gets a banner.
 // Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js and dungeon-battle.js. Styles: css/dungeon-minigames.css.
 
 const DungeonMinigames = {
+    /** The hot potato: how long its blast plays over the table before the result comes up (of the result's 3.2 s). */
+    BOOM_MS: 1100,
+
     /** The game's name, in the theme's words. Literal keys, so ThemeFilesTests can check them. */
     name(kind) {
         switch (kind) {
@@ -32,6 +38,7 @@ const DungeonMinigames = {
             case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzle');
             case 'Tuner': return Theme.text('dungeon.minigameTuner');
             case 'PopQuiz': return Theme.text('dungeon.minigamePopQuiz');
+            case 'HotPotato': return Theme.text('dungeon.minigameHotPotato');
             case 'Minigame': return Theme.text('dungeon.minigameGeneric'); // which one isn't known
             default: return UI.escape(kind);
         }
@@ -46,12 +53,13 @@ const DungeonMinigames = {
             case 'RingPuzzle': return Theme.text('dungeon.minigameRingPuzzleHow', { rounds: minigame.ringPuzzle.rounds });
             case 'Tuner': return Theme.text('dungeon.minigameTunerHow');
             case 'PopQuiz': return Theme.text('dungeon.minigamePopQuizHow', { right: minigame.popQuiz.rightNeeded, strikes: minigame.popQuiz.strikes });
+            case 'HotPotato': return Theme.text('dungeon.minigameHotPotatoHow', { runes: minigame.hotPotato.sequence.length });
             default: return '';
         }
     },
 
     /** The game itself, by kind. */
-    body(game, you, serverNow, seed) {
+    body(game, match, you, serverNow, seed) {
         switch (game.kind) {
             case 'RuneLock': return DungeonMinigames.runeLock(game, you, serverNow, seed);
             case 'RuneEcho': return DungeonMinigames.runeEcho(game, you, serverNow, seed);
@@ -59,6 +67,7 @@ const DungeonMinigames = {
             case 'RingPuzzle': return DungeonMinigames.ringPuzzle(game, you, serverNow, seed);
             case 'Tuner': return DungeonMinigames.tuner(game, serverNow, seed);
             case 'PopQuiz': return DungeonMinigames.popQuiz(game, serverNow, seed);
+            case 'HotPotato': return DungeonMinigames.hotPotato(game, match, you, serverNow, seed);
             default: return '';
         }
     },
@@ -73,9 +82,11 @@ const DungeonMinigames = {
         const game = you.minigame;
         const seed = `${match.matchId}:${you.stationId}:minigame:${game.introAtMs}`;
         const toPlay = Math.round(game.playsFromMs - serverNow);
-        const body = DungeonMinigames.body(game, you, serverNow, seed);
+        const body = DungeonMinigames.body(game, match, you, serverNow, seed);
         // The result from resultFromMs: when it finished, or a moment later for a win that holds its picture (the ring puzzle).
-        const result = game.finishedAtMs ? DungeonMinigames.result(game, seed, Math.round((game.resultFromMs ?? game.finishedAtMs) - serverNow)) : '';
+        // The hot potato's blast plays over the table first (BOOM_MS), then its result.
+        const resultAt = (game.resultFromMs ?? game.finishedAtMs) + (game.kind === 'HotPotato' ? DungeonMinigames.BOOM_MS : 0);
+        const result = game.finishedAtMs ? DungeonMinigames.result(game, seed, Math.round(resultAt - serverNow)) : '';
         // Q.U.E.R.I.E.'s remark, in its own slot (always there, so the game doesn't move when he speaks), over the intro and
         // result too. One due shortly (the opening's, said as the intro starts) is drawn now and shows itself then (--said0).
         const querie = DungeonView.querie(you, serverNow, '', true);
@@ -117,8 +128,24 @@ const DungeonMinigames = {
             </div>`;
     },
 
-    /** How it went: won (a reward to pick next) or out of time. Timed from when it finished (r0: minus how long ago, in ms). */
+    /**
+     * How it went: won (a reward to pick next) or out of time. Timed from when it finished (r0: minus how long ago, in ms).
+     * The hot potato's says who it went off on: SAFE! (it was someone else), or BOOM! and what the blast took.
+     */
     result(game, seed, r0) {
+        if (game.kind === 'HotPotato') {
+            const hp = game.hotPotato;
+            const blasted = hp.seats.find(s => s.ownerId === hp.blastOwnerId)?.name || '';
+            return game.won
+                ? `<div class="dg-minigame-result is-won" style="--r0: ${r0}ms">
+                       <div class="dg-minigame-result-title">${Theme.text('dungeon.minigameHotPotatoSafe', {}, seed)}</div>
+                       <div class="dg-minigame-result-sub">${Theme.text('dungeon.minigameHotPotatoSafeSub', { name: blasted })}</div>
+                   </div>`
+                : `<div class="dg-minigame-result is-lost" style="--r0: ${r0}ms">
+                       <div class="dg-minigame-result-title">${Theme.text('dungeon.minigameHotPotatoBlasted', {}, seed)}</div>
+                       <div class="dg-minigame-result-sub">${Theme.text('dungeon.minigameHotPotatoBlastedSub', { amount: hp.blastDamage })}</div>
+                   </div>`;
+        }
         return game.won
             ? `<div class="dg-minigame-result is-won" style="--r0: ${r0}ms">
                    <div class="dg-minigame-result-title">${Theme.text('dungeon.minigameWon', {}, seed)}</div>
@@ -415,6 +442,78 @@ const DungeonMinigames = {
             </div>`;
     },
 
+    /**
+     * The hot potato (the party's game): everyone round the table (their faces, in the order it goes round), the lit
+     * bomb at whoever holds it (flying over from the last holder at each throw: --from, --to, from --catch), and the
+     * fuse burning. When it goes off is a secret: the fuse burns down over the longest it could take, and past the
+     * shortest it sparks wildly ("ANY SECOND NOW!", from --any). Holding it, you get the runes to press to throw it on
+     * (dimmed until you've caught it: --ready; a fumble's buttons-dead moment: --unfumble); otherwise, who's got it,
+     * and "Get ready!" when you're next. Once it's gone off: BOOM! on whoever held it.
+     */
+    hotPotato(game, match, you, serverNow, seed) {
+        const hp = game.hotPotato;
+        const over = !!game.finishedAtMs;
+        const at = ms => Math.round(ms - serverNow);
+        const count = hp.seats.length;
+        const mine = !over && hp.holder === hp.you;
+        const holder = hp.seats[hp.holder];
+        const blasted = hp.blastOwnerId ? hp.seats.findIndex(s => s.ownerId === hp.blastOwnerId) : -1;
+        const key = `hp:${you.stationId}:${game.introAtMs}`;
+        // A fumble since the last draw: the runes shake red (each once, like the rune echo's presses).
+        const fumbledBefore = DungeonView.seen[`${key}:fumbles`];
+        DungeonView.seen[`${key}:fumbles`] = hp.fumbles;
+        const fumble = DungeonView.lasting(`${key}:fumble`, fumbledBefore !== undefined && hp.fumbles > fumbledBefore ? 'is-fumble' : null, 600);
+        const fumbledFor = hp.fumbledUntilMs && hp.fumbledUntilMs > serverNow ? at(hp.fumbledUntilMs) : 0;
+
+        const seats = hp.seats.map((s, i) => {
+            // As it goes off, the one holding it winces and the rest cheer.
+            const react = over && blasted >= 0 ? { kind: i === blasted ? 'hurt' : 'cheer', t0: at(game.finishedAtMs) } : null;
+            return `
+                <div class="dg-potato-seat ${i === hp.holder && !over ? 'is-holding' : ''} ${i === hp.you ? 'is-you' : ''} ${i === blasted ? 'is-blasted' : ''}">
+                    ${HeroPhoto.portrait(match, s.stationId, 'dg-potato-face', '', react)}
+                    <b class="dg-potato-name">${i === hp.you ? Theme.text('dungeon.minigameHotPotatoYou') : UI.escape(s.name)}</b>
+                </div>`;
+        }).join('');
+        // The bomb flies from the last holder to this one (the first holder just has it).
+        const from = hp.passes > 0 ? (hp.holder - 1 + count) % count : hp.holder;
+        const bomb = `
+            <div class="dg-potato-bomb ${over ? 'is-gone' : ''}" style="--n: ${count}; --from: ${from}; --to: ${hp.holder}; --catch: ${at(hp.caughtAtMs)}ms">
+                <div class="dg-potato-bomb-arc">${PixelSprites.html('icon-bomb', 'dg-potato-bomb-sprite')}<i class="dg-potato-spark"></i></div>
+            </div>`;
+        const boom = over && blasted >= 0 ? `
+            <div class="dg-potato-boom" style="--n: ${count}; --at: ${blasted}; --r0: ${at(game.finishedAtMs)}ms"><i class="dg-potato-boom-ring"></i></div>
+            <b class="dg-potato-boom-word" style="--r0: ${at(game.finishedAtMs)}ms">${Theme.text('dungeon.minigameHotPotatoBoom', {}, seed)}</b>` : '';
+        const fuse = `
+            <div class="dg-potato-fuse ${over ? 'is-out' : ''}" style="--lit: ${at(game.playsFromMs)}ms; --longest: ${hp.fuseLongestMs}ms">
+                ${PixelSprites.html('icon-bomb', 'dg-potato-fuse-bomb')}
+                <div class="dg-potato-fuse-cord"><i class="dg-potato-fuse-burn"></i></div>
+            </div>
+            ${over ? '' : `<div class="dg-potato-any" style="--any: ${at(game.playsFromMs + hp.fuseShortestMs)}ms">${Theme.text('dungeon.minigameHotPotatoAny', {}, seed)}</div>`}`;
+
+        const letter = rune => UI.ANSWER_LETTERS[rune];
+        const runes = hp.sequence.map((rune, i) => `
+            <span class="dg-potato-rune ${i < hp.entered ? 'is-done' : i === hp.entered ? 'is-next' : ''}" data-letter="${letter(rune)}"><b>${letter(rune)}</b></span>`).join('');
+        const next = hp.seats[(hp.holder + 1) % count];
+        const panel = over ? ''
+            : mine ? `
+                <div class="dg-potato-panel is-mine ${fumble.cls}" style="--ready: ${at(hp.throwFromMs)}ms; --flash0: ${fumble.t0}ms">
+                    <div class="dg-potato-call">${Theme.text('dungeon.minigameHotPotatoThrow', { name: next.name }, `${seed}:${hp.passes}`)}</div>
+                    <div class="dg-potato-runes">${runes}</div>
+                    ${fumbledFor ? `<div class="dg-potato-fumble" style="--unfumble: ${fumbledFor}ms">${Theme.text('dungeon.minigameHotPotatoFumble', {}, `${seed}:${hp.fumbles}`)}</div>` : ''}
+                </div>`
+            : `
+                <div class="dg-potato-panel ${next === hp.seats[hp.you] ? 'is-next' : ''}">
+                    <div class="dg-potato-call">${Theme.text('dungeon.minigameHotPotatoHolding', { name: holder.name }, `${seed}:${hp.passes}`)}</div>
+                    ${next === hp.seats[hp.you] ? `<div class="dg-potato-ready">${Theme.text('dungeon.minigameHotPotatoNext', {}, seed)}</div>` : ''}
+                </div>`;
+        return `
+            <div class="dg-potato ${mine ? 'is-mine' : ''} ${over ? 'is-over' : ''}">
+                ${fuse}
+                <div class="dg-potato-table" style="--n: ${count}">${seats}${bomb}${boom}</div>
+                ${panel}
+            </div>`;
+    },
+
     /** A pop quiz answer: as it comes, except heroes (class names, "Ranger"), shown in the theme's words as in the lobby. */
     popQuizAnswer(topic, text) {
         return topic === 'Hero' && window.ArcadeLobby ? ArcadeLobby.heroName(text.toLowerCase()) : UI.escape(text);
@@ -496,8 +595,13 @@ const DungeonMinigames = {
     },
 };
 
-// The chest shuffle's coin (a placeholder, like every sprite in pixel-sprites.js). The chests are the rewards' icon-chest.
+// The chest shuffle's coin and the hot potato's bomb (placeholders, like every sprite in pixel-sprites.js). The chests
+// are the rewards' icon-chest.
 Object.assign(PixelSprites.SPRITES, {
+    'icon-bomb': {
+        palette: { k: '#000000', b: '#2a2833', B: '#4a4658', w: '#9a94ad', f: '#c98a12', y: '#ffd23f' },
+        rows: ['.......yy.', '......yfy.', '.....kf...', '...kkkk...', '..kBBbbk..', '.kBwBbbbk.', '.kBBbbbbk.', '.kbbbbbbk.', '..kbbbbk..', '...kkkk...'],
+    },
     'icon-coin': {
         palette: { k: '#000000', y: '#ffd23f', o: '#c98a12', w: '#fff6c8' },
         rows: ['..kkkkk..', '.kyyyyyk.', 'kywwyyyok', 'kywyyyyok', 'kyyyyyyok', 'kyyyyyook', '.kyyyook.', '..kkkkk..'],

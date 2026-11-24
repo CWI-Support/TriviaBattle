@@ -33,6 +33,8 @@ public enum HitReason
 /// <param name="MinigameAhead">This kill emptied a room that leads to the floor's mini game: it's played before the next room.</param>
 /// <param name="RoomCleared">This kill emptied the room and the party walks on to the floor's next room (not a floor cleared). With no
 /// boss or mini game ahead, the screens walk them there (<see cref="DungeonSettings.RoomBeatSeconds"/>).</param>
+/// <param name="Dice">Lucky Dice were behind it: true, they came up good (more damage); false, they didn't (no damage at all).</param>
+/// <param name="Armored">A slow answer on an Armored monster: its armour took some of the damage (<see cref="AffixSettings.ArmoredShare"/>).</param>
 public sealed record DealtHit(
     int Number,
     int Damage,
@@ -59,7 +61,9 @@ public sealed record DealtHit(
     bool BossAhead = false,
     bool Staggered = false,
     MinigameKind? MinigameAhead = null,
-    bool RoomCleared = false)
+    bool RoomCleared = false,
+    bool? Dice = null,
+    bool Armored = false)
 {
     /// <summary>All the damage the hit did: the monster in front, plus any splash on the others.</summary>
     public int TotalDamage => Damage + (Splashes?.Sum(s => s.Damage) ?? 0);
@@ -81,8 +85,11 @@ public sealed record SplashHit(string MonsterName, string MonsterSprite, int Dam
 /// <param name="Charged">A boss at full charge landed its big blow (a miss, or too slow, when it was strongest).</param>
 /// <param name="LastStand">It would have downed them, but a Last Stand reward left them on 1 HP.</param>
 /// <param name="Out">It downed them on their last life: they're out (until a continue).</param>
+/// <param name="Mirrored">A Mirror Shield took it (it's <paramref name="Blocked"/> too) and bounced it back: the monster took <paramref name="Reflected"/>.</param>
+/// <param name="Drained">A Vampiric monster: the HP it healed by, drinking what the hit took.</param>
 public sealed record TakenHit(int Number, int Damage, HitReason Reason, bool Downed, string MonsterName, string MonsterSprite, int HpLeft,
-    bool Blocked = false, int PatronPrice = 0, bool Charged = false, bool LastStand = false, bool Out = false);
+    bool Blocked = false, int PatronPrice = 0, bool Charged = false, bool LastStand = false, bool Out = false, bool Mirrored = false,
+    int Reflected = 0, int Drained = 0);
 
 /// <summary>
 /// One monster in the room a party is in: its hit points and any poison on it. The room's monsters
@@ -96,6 +103,17 @@ public sealed class Foe(Encounter encounter, int maxHp)
     public int MaxHp { get; } = maxHp;
     public int Hp { get; private set; } = maxHp;
     public bool IsDead => Hp == 0;
+
+    /// <summary>Its twist, if it has one (deeper down: see <see cref="Dungeon.Affix"/>).</summary>
+    public Affix? Affix => Encounter.Affix;
+
+    /// <summary>Heals up to <paramref name="amount"/>, never past its max. Returns how much it healed.</summary>
+    public int Heal(int amount)
+    {
+        var healed = Math.Clamp(amount, 0, MaxHp - Hp);
+        Hp += healed;
+        return healed;
+    }
 
     /// <summary>A Healer's poison: every stack does its damage each tick, until it dies.</summary>
     public int PoisonStacks { get; private set; }
@@ -279,6 +297,19 @@ public sealed class Delve
 
     /// <summary>Keeps a party-numbered copy of a hit a member took, so the party lane can animate each one once.</summary>
     public void RecordTaken(TakenHit hit) => LastTaken = hit with { Number = (LastTaken?.Number ?? 0) + 1 };
+
+    /// <summary>
+    /// A Mirror Shield bounced the monster in front's blow back at it: it takes up to <paramref name="damage"/>, but
+    /// never its last HP (kills come from answers: they earn the time, the drops and the beat). Returns what it took.
+    /// </summary>
+    public int Reflect(int damage)
+    {
+        var front = _foes[0];
+        var taken = Math.Clamp(damage, 0, front.Hp - 1);
+        front.TakeDamage(taken);
+        DamageDealt += taken;
+        return taken;
+    }
 
     /// <summary>The whole party is down, so the room's monsters get their breath back (and the poison wears off).</summary>
     public void HealRoom()

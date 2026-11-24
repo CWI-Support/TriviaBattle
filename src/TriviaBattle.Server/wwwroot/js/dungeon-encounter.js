@@ -128,21 +128,23 @@ const DungeonEncounter = {
     },
 
     /**
-     * The monster's nameplate: floor and time at the corners, its name (and a Healer's poison on it), its HP
-     * bar between two gems (green while poisoned), and in a pack the ones waiting their turn underneath.
+     * The monster's nameplate: floor and time at the corners, its name (with its affix, deeper down, and a Healer's
+     * poison on it), its HP bar between two gems (green while poisoned), what its affix does (where a boss's charge
+     * meter goes: bosses never have one), and in a pack the ones waiting their turn underneath.
      */
     foePlate(match, delve, clockKey, hideCharge = false) {
         const m = delve.monster;
         const percent = m.maxHp > 0 ? Math.max(0, Math.min(100, (m.hp / m.maxHp) * 100)) : 0;
         const charge = hideCharge ? null : DungeonEncounter.chargeOf(delve);
         return `
-            <div class="dg-foe-plate ${m.isBoss ? 'is-boss' : ''} ${m.poisonStacks ? 'is-poisoned' : ''}">
+            <div class="dg-foe-plate ${m.isBoss ? 'is-boss' : ''} ${m.poisonStacks ? 'is-poisoned' : ''} ${m.affix ? `has-affix is-${m.affix.toLowerCase()}` : ''}">
                 <div class="dg-foe-corners">
                     <span class="dg-floor-badge">${Theme.text('dungeon.floorShort', { floor: delve.floor })}</span>
                     <span class="dg-clock"><small>${Theme.text('dungeon.time')}</small><span ${UI.matchClock(match, 10)}></span>${DungeonView.activeEffects(clockKey)}</span>
                 </div>
                 <div class="dg-foe-name-line">
                     <div class="dg-foe-name">${UI.escape(m.name)}</div>
+                    ${DungeonView.affixBadge(m.affix)}
                     ${DungeonView.poisonBadge(m.poisonStacks)}
                 </div>
                 <div class="dg-foe-hp">
@@ -151,6 +153,7 @@ const DungeonEncounter = {
                     <i class="dg-gem is-violet"></i>
                 </div>
                 ${charge ? DungeonEncounter.chargeMeter(charge) : ''}
+                ${m.affix ? `<div class="dg-affix-hint is-${m.affix.toLowerCase()}">${DungeonView.affixHint(m.affix)}</div>` : ''}
                 ${DungeonView.packStrip(delve.foes?.slice(1) || [])}
             </div>`;
     },

@@ -64,6 +64,15 @@ public enum QuerieMoment
 
     /// <summary>The pop quiz asked their name and they got it wrong ({answer}: their name): always.</summary>
     PopQuizForgotName,
+
+    /// <summary>The hot potato opens (the whole party's game): now and then, like any other.</summary>
+    HotPotatoStart,
+
+    /// <summary>The hot potato went off in their hands: always.</summary>
+    HotPotatoBlast,
+
+    /// <summary>The hot potato went off in someone else's hands ({holder}: whose): always.</summary>
+    HotPotatoSafe,
 }
 
 /// <summary>
@@ -80,9 +89,9 @@ public sealed class QuerieLines(IReadOnlyDictionary<QuerieMoment, IReadOnlyList<
 {
     /// <summary>
     /// {name}: who it's said about; {monster}: the monster they're fighting; {floor}: their floor; {rival}: the rival ahead;
-    /// {answer}: in the pop quiz, the right answer they missed.
+    /// {answer}: in the pop quiz, the right answer they missed; {holder}: in the hot potato, who it went off on.
     /// </summary>
-    public static readonly IReadOnlyList<string> Placeholders = ["name", "monster", "floor", "rival", "answer"];
+    public static readonly IReadOnlyList<string> Placeholders = ["name", "monster", "floor", "rival", "answer", "holder"];
 
     /// <summary>No lines at all: Q.U.E.R.I.E. stays quiet at the stations (the tests' default).</summary>
     public static readonly QuerieLines None = new(new Dictionary<QuerieMoment, IReadOnlyList<QuerieLine>>());

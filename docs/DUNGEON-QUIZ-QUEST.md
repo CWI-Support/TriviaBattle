@@ -114,9 +114,11 @@ damage, more time (solo), or a power-up. The clock pauses; after 8 seconds one i
    35% of the time (a boss always), a streak of 5 earns one; one slot; the action button lights while
    you hold one. Done (Nov 2026): Phone a Friend (co-op), Fog Bomb and Tiny Hourglass (aimed at the leading rival in
    a race or team battle; a Shield soaks them); Heal Ally and Revive are the Potion, which already goes to the teammate
-   who needs it most; Time Crystal drops in solo games only. Not yet: the rest of the sabotage list (Shuffle Hex, Goblin
-   Raid...)
-   and Mirror Shield.
+   who needs it most; Time Crystal drops in solo games only. Done (24 Nov 2026): Mirror Shield (a Shield that bounces the
+   next hit back: a monster's blow into the monster, never its last HP; a rival's Fog Bomb or Tiny Hourglass back at the
+   thrower) and Lucky Dice (the next right answer does double damage or none); drops cut to 10% a kill and a streak of
+   10, about 3-4 a session. Second Wind left out: there are 3 lives. Not yet: the rest of the sabotage list (Shuffle Hex,
+   Goblin Raid...).
 8. Boons and doors by party vote.
 
 **Hardware to build:** a fifth button with an LED on each podium, and a card reader at each station.
@@ -279,6 +281,8 @@ On the main screen it reads like a Slay the Spire map. Door types:
 - **Wheel of Misfortune:** spin for a curse or a blessing for the next room.
 - **Riddle of the Sphinx:** one riddle, the whole party confers out loud, one answer.
 - **Hot Potato Bomb:** the bomb passes station to station on each correct answer; whoever holds it at zero takes the damage.
+  Done (24 Nov 2026) as a mini game for party games: the holder presses the runes shown to throw it on, the fuse is a
+  secret, and the blast takes a quarter of the holder's HP (never the last of it).
 - **Name That Tune:** audio clip questions through the podium speakers.
 - **Mimic Chest:** one of the four answers is a mimic that bites; the right answer is safe, the mimic hurts more than a normal miss.
 - **Higher or Lower:** numbers questions on two buttons.
@@ -287,6 +291,8 @@ On the main screen it reads like a Slay the Spire map. Door types:
 
 - **Speedy:** half the hourglass. **Armored:** only streaks do damage. **Vampiric:** heals on your
   wrong answers. **Shapeshifter:** changes category every hit.
+  Done (24 Nov 2026), from floor 4 on, on about a third of the monsters that aren't bosses: Speedy (60% of the
+  hourglass), Armored (slow right answers do half: fast ones get through) and Vampiric (heals by what its hits take).
 - **Darkness floor:** the question shows briefly, then fades. **Fog:** the question types out letter by
   letter; answer early to crit. **Chaos floor:** random realm every question. **Silence:** the Host is
   muted (a reward, frankly).

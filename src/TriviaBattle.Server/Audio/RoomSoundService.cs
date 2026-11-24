@@ -56,6 +56,7 @@ public sealed class RoomSoundService(
     private const double MonsterBursts = 1.0;
     private const double CurtainFalls = 1.3;
     private const double BossLandsAt = 3.75; // the boss beat: it leaps into the room after its curtain (BOSS_LANDS in beats.js)
+    private const double MirrorBounce = 0.18; // after the claws land, a Mirror Shield's bounce hits the monster (MIRROR_BOUNCE in beats.js)
 
     /// <summary>When the LOOT! card comes up (DungeonBattle.loot): after a kill, over the curtain on a floor cleared, soon after a plain hit.</summary>
     private static double LootShows(DealtHit hit) => hit.FloorCleared || hit.BossAhead ? 1.45 : hit.Killed ? 1.25 : 0.6;
@@ -225,6 +226,8 @@ public sealed class RoomSoundService(
             case AdventurerHit { OwnerId: var ownerId, Hit: var taken }:
                 var hurt = StationsOf(match, ownerId);
                 room.PlayEffect(hurt, taken.Blocked ? _settings.Dungeon.Block : _settings.Dungeon.Hurt, ClawsLand);
+                if (taken.Reflected > 0) // a Mirror Shield: the blow bounces back into the monster
+                    room.PlayEffect(hurt, _settings.Dungeon.Hit, ClawsLand + MirrorBounce);
                 if (taken.Charged) // a boss's full-charge blow: its roar with it
                     room.PlayEffect(hurt, _settings.Dungeon.Boss, ClawsLand);
                 if (taken.Downed)
@@ -232,9 +235,12 @@ public sealed class RoomSoundService(
                 break;
 
             case PowerUpUsed { OwnerId: var ownerId, Use: { PowerUp: PowerUp.FogBomb or PowerUp.TinyHourglass } use }:
-                // Thrown at a rival: the thrower hears it go, the rival hears it land (or bounce off their Shield).
+                // Thrown at a rival: the thrower hears it go, the rival hears it land (or bounce off their Shield). Off a
+                // Mirror Shield it comes back: the rival hears it bounce, and the thrower hears it land on them.
                 room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.PowerUp);
-                room.PlayEffect(StationsOf(match, use.TargetOwnerId), use.Blocked ? _settings.Dungeon.Block : _settings.Dungeon.Hurt);
+                room.PlayEffect(StationsOf(match, use.TargetOwnerId), use.Blocked || use.Reflected ? _settings.Dungeon.Block : _settings.Dungeon.Hurt);
+                if (use.Reflected)
+                    room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Hurt, MirrorBounce);
                 break;
 
             case PowerUpUsed { OwnerId: var ownerId, Use: var use }:
@@ -278,6 +284,8 @@ public sealed class RoomSoundService(
 
             case MinigameLost { OwnerId: var ownerId }:
                 room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Hurt);
+                if (match.Dungeon?.FindAdventurer(ownerId)?.Minigame is HotPotato) // it went off in their hands: the boom
+                    room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Kill);
                 break;
 
             case RewardOffered { OwnerId: var ownerId, Offer: var offer }:

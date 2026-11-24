@@ -71,7 +71,9 @@ public sealed record DepthDef(string Id, string Name, IReadOnlyList<FloorDef> Fl
 /// <param name="MonstersInRoom">How many monsters the room started with.</param>
 /// <param name="MaxHp">Its HP on this floor (more on each loop through the dungeon; a party's are tougher still, see <see cref="Foe"/>).</param>
 /// <param name="Damage">What its hit takes off an adventurer on this floor (more on each loop), before their class's share.</param>
-public sealed record Encounter(MonsterDef Monster, int MaxHp, int Damage, DepthDef Depth, int Floor, int Room, int RoomsOnFloor, int Slot = 1, int MonstersInRoom = 1);
+/// <param name="Affix">Its twist, deeper down (see <see cref="DungeonMap.AffixFromFloor"/>); null for most.</param>
+public sealed record Encounter(MonsterDef Monster, int MaxHp, int Damage, DepthDef Depth, int Floor, int Room, int RoomsOnFloor, int Slot = 1, int MonstersInRoom = 1,
+    Affix? Affix = null);
 
 /// <summary>
 /// The whole dungeon for one match: every Depth's floors, top to bottom, and the monsters in their rooms.
@@ -93,9 +95,18 @@ public sealed class DungeonMap
     /// <param name="minigameEvery">At least one mini game every this many floors: after that many less one without, the next floor
     /// that can hold one has one whatever its roll (0 = no such promise, the rolls alone).</param>
     /// <param name="loopQuestionShift">Past the last floor, how much harder each floor's questions get (see <see cref="QuestionsOn"/>).</param>
+    /// <param name="affixChance">From <paramref name="affixFromFloor"/> on, how likely each monster that isn't a boss is to have an affix.</param>
+    /// <param name="affixFromFloor">The first floor (1-based) with affixed monsters; 0 = none anywhere.</param>
+    /// <param name="affixSeed">Makes this match's rolls for them (the same for every party, so a race is fair).</param>
+    /// <param name="affixes">The affixes in play, each as likely (null: all of them).</param>
     public DungeonMap(IReadOnlyList<DepthDef> depths, IEnumerable<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
-        double minigameChance = 0, int minigameSeed = 0, int minigameEvery = 0, int loopQuestionShift = 10)
+        double minigameChance = 0, int minigameSeed = 0, int minigameEvery = 0, int loopQuestionShift = 10,
+        double affixChance = 0, int affixFromFloor = 0, int affixSeed = 0, IReadOnlyList<Affix>? affixes = null)
     {
+        Affixes = affixes is { Count: > 0 } ? affixes : Enum.GetValues<Affix>();
+        AffixChance = affixChance;
+        AffixFromFloor = affixFromFloor;
+        _affixSeed = affixSeed;
         MinigameEvery = minigameEvery;
         LoopQuestionShift = loopQuestionShift;
         _monsters = monsters.ToDictionary(m => m.Id);
@@ -223,6 +234,45 @@ public sealed class DungeonMap
         return (MinigameCatalog.Pick(roll, first), roll.Next(1, lastAfter + 1));
     }
 
+    /// <summary>
+    /// A floor's mini game for a party that can't play the one it has (<paramref name="kind"/>), or that one: a game for
+    /// a group (<see cref="MinigameCatalog.GroupOnly"/>) needs at least two players, so a solo player, a racer or a
+    /// party with only one left to play gets another instead. Fixed by the match's seed, like the floor's own, so
+    /// every solo racer meets the same one.
+    /// </summary>
+    public MinigameKind MinigameFor(int floor, MinigameKind kind, int players)
+    {
+        if (players >= 2 || !MinigameCatalog.GroupOnly.Contains(kind))
+            return kind;
+        return MinigameCatalog.StandIn(new Random(unchecked(_minigameSeed * 7919 + floor) ^ 0x2f6b));
+    }
+
+    /// <summary>How likely each monster that isn't a boss is to have an affix, from <see cref="AffixFromFloor"/> on (config/dungeon.json's <c>AffixChance</c>).</summary>
+    public double AffixChance { get; }
+
+    /// <summary>The first floor (1-based) with affixed monsters, loops included (config/dungeon.json's <c>AffixFromFloor</c>); 0 = none anywhere.</summary>
+    public int AffixFromFloor { get; }
+
+    /// <summary>The affixes in play (config/dungeon.json's <c>Affixes</c>; all of them when it doesn't say).</summary>
+    public IReadOnlyList<Affix> Affixes { get; }
+
+    private readonly int _affixSeed;
+
+    /// <summary>
+    /// A monster's affix, by its place in the dungeon (floor, room and slot, all 1-based): from <see cref="AffixFromFloor"/>
+    /// on, a monster that isn't a boss has one <see cref="AffixChance"/> of the time, each of <see cref="Affixes"/> as likely as the others.
+    /// Each place has its own roll, fixed by the match's seed, so every party in a race meets the same ones.
+    /// </summary>
+    private Affix? AffixAt(MonsterDef monster, int floor, int room, int slot)
+    {
+        if (AffixFromFloor <= 0 || floor < AffixFromFloor || monster.IsBoss || AffixChance <= 0)
+            return null;
+        var roll = new Random(unchecked(((_affixSeed * 7919 + floor) * 131 + room) * 17 + slot));
+        if (roll.NextDouble() >= AffixChance)
+            return null;
+        return Affixes[roll.Next(Affixes.Count)];
+    }
+
     /// <summary>The monsters in a given room of a given floor (both 1-based), the one in front first.</summary>
     public IReadOnlyList<Encounter> RoomAt(int floor, int room)
     {
@@ -235,7 +285,8 @@ public sealed class DungeonMap
             var monster = _monsters[id];
             var maxHp = (int)Math.Round(monster.Hp * (1 + LoopHpBonus * loop));
             var damage = (int)Math.Round(monster.Damage * (1 + LoopDamageBonus * loop));
-            return new Encounter(monster, maxHp, damage, depth, floor, room, rooms.Count, Slot: i + 1, MonstersInRoom: ids.Count);
+            return new Encounter(monster, maxHp, damage, depth, floor, room, rooms.Count, Slot: i + 1, MonstersInRoom: ids.Count,
+                Affix: AffixAt(monster, floor, room, i + 1));
         }).ToList();
     }
 

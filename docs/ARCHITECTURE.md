@@ -242,7 +242,15 @@ The rules:
   floor, the monster whose death led to it, their name, hero, kills, lives, their last question's answer, the boss of the
   floor above, each with three of the same kind to mix it up with; `RightNeeded` right wins, `Strikes` wrong loses, and
   presses wait out each answer's reveal until `AskedAt`. The snapshot's `PopQuizView` never carries the right answer to
-  the question up, only to the last one answered). `HandlePress` sends
+  the question up, only to the last one answered) and `HotPotato`, the one game the party plays together
+  (`MinigameCatalog.GroupOnly`): `HotPotato.Deal` gives each player a seat (a `HotPotato`, the timing every game has)
+  round one shared `HotPotatoBomb` (who holds it, the runes they press to throw it on to the next seat, a fumble's dead
+  buttons). The fuse is a random time between `FuseShortest` and `FuseLongest` and is every seat's time limit, so the
+  holder's go is lost by the limit (`MinigamesDue` takes `BlastShare` of their max HP, never the last of it:
+  `Adventurer.Blast`) and the others' are won then (`HotPotato.WonAt`). The snapshot never sends the fuse before it goes:
+  `MinigameView.EndsAtMs` is the longest it could be until then, and `HotPotatoView` has the shortest and longest. With
+  fewer than two in the party to play it (a solo game, a racer, a party down to one), `DungeonMap.MinigameFor` swaps in
+  a stand-in, fixed per floor by the match's seed (`MinigameCatalog.StandIn`: never the pop quiz). `HandlePress` sends
   answer buttons to `PlayMinigame` (`MinigamePlayed`); the tick's `MinigamesDue` loses those out of time (`MinigameLost`)
   and ends those whose result has shown (`MinigameOver`): a winner gets a reward offer (`RewardOffer.ForMinigame`), the
   others their question back. **The clock:** while `Adventurer.IsAway` (a mini game, or a reward to pick) for anyone
@@ -254,6 +262,13 @@ The rules:
   each game's part, `RuneLockView`), `DelveView.Minigame`/`MinigamesWon` for the main screen, and
   `MatchSnapshot.ClockStoppedLeftMs`/`ClockHeldMs` (`UI.matchClock` shows a stopped clock; the "+10s" pop leaves the held
   time out). Screens: `js/dungeon-minigames.js`, `css/dungeon-minigames.css`; sounds in `RoomSoundService`.
+- **Affixes** (`Affix`, numbers in `AffixSettings`, `"Game:Dungeon:Affixes"`). From `AffixFromFloor` (4) on, loops
+  included, each monster that isn't a boss has `AffixChance` (35%) of a twist (config/dungeon.json; `Affixes` lists the
+  ones in play, all by default): `DungeonMap.RoomAt` rolls each place (floor, room, slot) from the match's seed, so every
+  party meets the same ones, and puts it on the `Encounter` (`Foe.Affix`). Speedy: a shorter hourglass
+  (`DungeonRun.HourglassSecondsOf`, `SpeedyHourglass`). Armored: a slow right answer does `ArmoredShare` (`DealtHit.Armored`).
+  Vampiric: it heals by `VampiricShare` of what its hit took (`TakenHit.Drained`). Screens: `MonsterView.Affix`, the badge
+  (`DungeonView.affixBadge`), a hint on the question screen's plate, the beat's notes and a tint in 3D (`affixGlow`).
 - **Each floor's questions.** A floor's `Questions` weights (`{ "Easy": 80, "Medium": 20 }`) pick each next
   question's difficulty (`DungeonRun.NextDifficulty`, by the adventurer's floor); `QuestionStream.Record` takes it
   and gives the first question of that difficulty not yet asked (any, if none is left), and `QuestionStream.Prefer`
@@ -262,7 +277,8 @@ The rules:
   `LoopQuestionShift` points of the last floor's mix a step harder), rather than going back to the first floor's easy mix.
   Without weights the match's chosen difficulty comes first, as in Classic
   (the kiosk's difficulty only matters there now).
-- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal, Phone a Friend, Fog Bomb, Tiny Hourglass. Each
+- **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal, Phone a Friend, Fog Bomb, Tiny Hourglass,
+  Mirror Shield, Lucky Dice. Each
   adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (10%; a boss
   always) and every `PowerUpStreak` (10) right answers in a row earn one, only with empty hands: about 3-4 a
   session, one every 10 or so answers (`DungeonPacingTests` checks it)
@@ -272,8 +288,11 @@ The rules:
   multiplies the next right answer (`FireballMultiplier`); a Freeze holds the hourglass (`FreezeSeconds`,
   then it starts over); a 50/50 hides two wrong answers of the current question, which the snapshot
   sends as `QuestionView.Hidden` (wrong ones only) and presses on them are ignored; a Shield blocks the
-  next hit (`TakenHit.Blocked`, no damage, the streak survives); a Time Crystal adds `TimeCrystalSeconds`
-  to the clock (solo games only). Between players (`DungeonRun.CanFind` keeps each to the games it fits): Phone a
+  next hit (`TakenHit.Blocked`, no damage, the streak survives); a Mirror Shield does too, before a Shield when both are
+  up (`TakenHit.Mirrored`), and bounces the blow back: the monster takes `MirrorShare` of it (`Delve.Reflect`, never its
+  last HP, so kills still come from answers; `TakenHit.Reflected`); Lucky Dice roll on the next right answer
+  (`LuckyDiceChance`: `LuckyDiceMultiplier` times the damage, otherwise none; `DealtHit.Dice`); a Time Crystal adds
+  `TimeCrystalSeconds` to the clock (solo games only). Between players (`DungeonRun.CanFind` keeps each to the games it fits): Phone a
   Friend (with teammates) puts the caller's question on a free teammate's screen (`Adventurer.CalledFriend` /
   `AnsweringFor`, `YouView.Helping` with `Phoned`); `HandlePress` sends that teammate's answer buttons to the caller's
   stream (`DungeonRun.CallerFor`: their answer is the caller's), their own hourglass waits, and the call ends on an answer or
@@ -281,7 +300,9 @@ The rules:
   or a team battle) go to the leading rival the engine picks by score (`MatchEngine.LeadingRivalOf`, among those
   `DungeonRun.CanBeSabotaged`): their answers blur for `FogBombSeconds` from when their question is up
   (`DelveView.FogFromMs`), or their hourglass runs out in half the time it had left (`Adventurer.HalveHourglass`, the
-  next one if it was stopped). A Shield soaks either (`PowerUpUse.Blocked`, `Adventurer.LastSabotage`). The target's
+  next one if it was stopped). A Shield soaks either (`PowerUpUse.Blocked`, `Adventurer.LastSabotage`); a Mirror Shield
+  sends it back to land on the thrower (`Adventurer.MeetSabotage`, `PowerUpUse.Reflected`, `Sabotage.Reflected` on the
+  rival and `Bounced` on the thrower; a bounced one lands whatever the thrower has up). The target's
   screen pops, the main screen shows a banner and the Host comments. With nobody to call or aim at, it stays in hand.
   The screens show the slot, the armed effects and a pop per use (`js/dungeon-powerups.js`).
   `POST /api/dev/powerup/{stationId}/{powerUp}` hands one out for testing (the dev buttons page has buttons).
@@ -455,7 +476,8 @@ snapshots carry it as `YouView.Quip` (`AboutYou` false for a remark about a team
 it in place of the feedback line for `QUIP_MS`. In the mini games `MatchEngine` asks `DungeonRun.CommentateMinigame` at
 each moment (its opening, said as the intro starts; a press's `MinigameBeat`; the time running out), and
 `Querie.ReactToMinigame` decides (openings by `MinigameStartChance`, wins and losses always, misses like ordinary
-moments; in the pop quiz every wrong answer, with `{answer}` the right one, and a name forgotten its own moment). The
+moments; in the pop quiz every wrong answer, with `{answer}` the right one, and a name forgotten its own moment; the hot
+potato has its own opening, its blast, and the others' escape, with `{holder}` who it went off on). The
 station shows it in the mini game's own slot (`.dg-mg-querie`, a fixed height so the game never moves), over the intro
 and result veils. Lines are content in `config/querie.json`, loaded at startup by
 `Server/Game/QuerieContent.cs` as `QuerieLines` (a missing file: he keeps quiet; tests pass `querie:` to hear him).

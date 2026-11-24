@@ -24,6 +24,8 @@
 .dg-armed .dg-icon { width: 2.6vmin; height: auto; }
 .dg-armed.is-fireball { color: #ff9a1f; }
 .dg-armed.is-shield { color: #bfe4ff; }
+.dg-armed.is-mirror { color: #b8e6ff; }
+.dg-armed.is-dice { color: #ffd23f; }
 
 /* ---------- Used: a pop over the monster strip ---------- */
 
@@ -99,3 +101,19 @@
 .is-fireball .dg-bignum { color: #ff9a1f; --num-size: 15vmin; text-shadow: 0.6vmin 0.6vmin 0 #000, 0 0 4vmin #ff5a1f; }
 .is-blocked .dg-stamp.is-early { color: #bfe4ff; }
 .is-blocked .dg-battle-flash { background: radial-gradient(ellipse at center, transparent 40%, rgba(150, 210, 255, 0.6)); }
+
+/* Lucky Dice: good, the number burns gold (DOUBLE!); bad, the blow whiffs (SNAKE EYES!, no number). */
+.is-lucky .dg-stamp.is-early { color: #ffd23f; text-shadow: 0.7vmin 0.7vmin 0 #000, 0 0 5vmin #ffb01f; }
+.is-lucky .dg-bignum { color: #ffd23f; --num-size: 15vmin; }
+.is-snake-eyes .dg-stamp.is-early { color: #d8cbb0; }
+.is-snake-eyes .dg-fx-slash { opacity: 0.35; }
+
+/* A Mirror Shield: the blow bounces back into the monster, a moment after the claws land (MIRROR_BOUNCE in beats.js). */
+.is-mirrored .dg-stamp.is-early { color: #b8e6ff; text-shadow: 0.7vmin 0.7vmin 0 #000, 0 0 5vmin #5fa8d8; }
+/* On the sprite: the actor itself is lunging (dg-foe-lunge), so the recoil rides on top of it. */
+.is-mirrored .dg-actor.is-foe .dg-actor-sprite { animation: dg-mirror-recoil 520ms ease-out calc(var(--t0) + 420ms) both; }
+@keyframes dg-mirror-recoil {
+    0% { transform: none; filter: none; }
+    15% { transform: translateX(6vmin) rotate(8deg); filter: brightness(2.2) drop-shadow(0 0 2vmin #b8e6ff); }
+    100% { transform: none; filter: none; }
+}

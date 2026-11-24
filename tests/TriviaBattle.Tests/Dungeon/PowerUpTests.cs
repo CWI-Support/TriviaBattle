@@ -137,6 +137,96 @@ public class PowerUpTests
     }
 
     [Fact]
+    public void A_mirror_shield_takes_the_next_hit_and_bounces_it_into_the_monster()
+    {
+        var match = Solo();
+        match.Press("A1", 0, afterSeconds: 4);
+        match.Engine.GivePowerUp("A1", PowerUp.MirrorShield);
+        PressAction(match, "A1");
+        Assert.True(match.AdventurerOf("A1").Mirrored);
+
+        match.Press("A1", 1, afterSeconds: 4); // wrong: the rat's blow (10) goes back into the rat
+
+        var adventurer = match.AdventurerOf("A1");
+        var taken = adventurer.LastTaken!;
+        Assert.Equal((true, true, 0, 10), (taken.Blocked, taken.Mirrored, taken.Damage, taken.Reflected));
+        Assert.Equal(100, adventurer.Hp);
+        Assert.Equal(1, adventurer.Streak); // the streak survives, as with a Shield
+        Assert.Equal(10, match.DelveOf("A1").MonsterHp); // 40 - 20 - 10
+        Assert.False(adventurer.Mirrored);
+
+        match.Press("A1", 1, afterSeconds: 4);
+        Assert.Equal(90, adventurer.Hp); // gone: the next one lands
+    }
+
+    [Fact]
+    public void A_mirror_shield_never_finishes_the_monster()
+    {
+        var match = Solo(s => s.Dungeon.MirrorShare = 5); // a 50 HP bounce, at a rat on 20
+        match.Press("A1", 0, afterSeconds: 4);
+        match.Engine.GivePowerUp("A1", PowerUp.MirrorShield);
+        PressAction(match, "A1");
+
+        match.Press("A1", 1, afterSeconds: 4);
+
+        Assert.Equal(19, match.AdventurerOf("A1").LastTaken!.Reflected);
+        Assert.Equal(1, match.DelveOf("A1").MonsterHp);
+        Assert.Equal(0, match.DelveOf("A1").Kills);
+    }
+
+    [Fact]
+    public void A_mirror_shield_goes_before_a_shield()
+    {
+        var match = Solo();
+        match.Engine.GivePowerUp("A1", PowerUp.Shield);
+        PressAction(match, "A1");
+        match.Engine.GivePowerUp("A1", PowerUp.MirrorShield);
+        PressAction(match, "A1");
+
+        match.Press("A1", 1, afterSeconds: 4);
+
+        var adventurer = match.AdventurerOf("A1");
+        Assert.True(adventurer.LastTaken!.Mirrored);
+        Assert.Equal((false, true), (adventurer.Mirrored, adventurer.Shielded)); // the Shield's still up for the next
+    }
+
+    [Fact]
+    public void Lucky_dice_that_come_up_good_double_the_next_right_answer_only()
+    {
+        var match = Solo(s => s.Dungeon.LuckyDiceChance = 1);
+        match.Engine.GivePowerUp("A1", PowerUp.LuckyDice);
+        PressAction(match, "A1");
+        Assert.True(match.AdventurerOf("A1").DiceReady);
+
+        match.Press("A1", 1, afterSeconds: 4); // a wrong answer doesn't roll them
+        Assert.True(match.AdventurerOf("A1").DiceReady);
+        match.Press("A1", 0, afterSeconds: 4);
+
+        var rolled = match.AdventurerOf("A1").LastDealt!;
+        Assert.Equal((40, true, true), (rolled.Damage, rolled.Dice, rolled.Killed));
+        Assert.False(match.AdventurerOf("A1").DiceReady);
+        match.Press("A1", 0, afterSeconds: 4);
+        Assert.Equal((20, null), (match.AdventurerOf("A1").LastDealt!.Damage, match.AdventurerOf("A1").LastDealt!.Dice));
+    }
+
+    [Fact]
+    public void Lucky_dice_that_come_up_bad_do_nothing_but_it_still_counts_as_right()
+    {
+        var match = Solo(s => s.Dungeon.LuckyDiceChance = 0);
+        match.Engine.GivePowerUp("A1", PowerUp.LuckyDice);
+        PressAction(match, "A1");
+
+        match.Press("A1", 0, afterSeconds: 4);
+
+        var adventurer = match.AdventurerOf("A1");
+        Assert.Equal((0, false), (adventurer.LastDealt!.Damage, adventurer.LastDealt.Dice));
+        Assert.Equal(40, match.DelveOf("A1").MonsterHp);
+        Assert.Equal(1, adventurer.Streak);
+        Assert.True(match.StreamOf("A1").LastAnswer!.IsCorrect);
+        Assert.Equal(0, match.ScoreOf("A1"));
+    }
+
+    [Fact]
     public void A_freeze_holds_the_hourglass_then_it_starts_over()
     {
         var match = Solo();

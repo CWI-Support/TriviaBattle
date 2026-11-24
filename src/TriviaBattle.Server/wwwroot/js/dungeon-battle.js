@@ -15,7 +15,9 @@
 //           charge (taken.charged) lands its big blow: CRUSHING BLOW!, a heavier slam, shake and flash
 // A right answer at a boss's full charge (hit.staggered) gets STAGGERED!, and the boss reels.
 // A Fireball hit gets its own stamp, and a power-up found with the hit (dropped, or earned by the
-// streak) is held up as LOOT!.
+// streak) is held up as LOOT!. Lucky Dice: DOUBLE! (a bigger number), or SNAKE EYES! (no number at all). A Mirror
+// Shield's block is REFLECTED!: the monster recoils as its own blow bounces back (a note says what it took).
+// Affixes add notes too: an Armored monster's armour taking half a slow hit, a Vampiric one drinking its hit.
 //   downed  the same, and your knight falls
 //   enter   the game's opening, after the intro's countdown (opening(), 3.5 s): out of the dark, your knight runs into
 //           the first room and the first monster makes its entrance under FLOOR 1 and the depth's name, then FIGHT!
@@ -99,8 +101,10 @@ const DungeonBattle = {
             hit?.fireball ? 'is-fireball' : '',
             hit?.splashes?.length ? 'is-splash' : '',
             taken?.blocked ? 'is-blocked' : '',
+            taken?.mirrored ? 'is-mirrored' : '',                  // a Mirror Shield: the blow bounces back into the monster
             taken?.charged && !taken.blocked ? 'is-charged' : '',  // a boss's full-charge blow
             hit?.staggered ? 'is-staggered' : '',                  // a right answer at a boss's full charge
+            hit?.dice === true ? 'is-lucky' : hit?.dice === false ? 'is-snake-eyes' : '', // Lucky Dice: double, or nothing
         ].join(' ');
 
         // The monster in the fight: the one you hit (it may already be dead), or the one hitting you.
@@ -132,7 +136,7 @@ const DungeonBattle = {
                     ${hit?.staggered && !hit.killed ? '<div class="dg-fx-daze"><i></i><i></i><i></i></div>' : ''}
                     ${DungeonBattle.sparks(hurt ? 10 : 14, 'is-impact')}
                     ${beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.sparks(22, 'is-death') : ''}
-                    ${taken?.blocked || byPoison ? '' : DungeonBattle.bigNumber(hit, taken)}
+                    ${taken?.blocked || byPoison || hit?.dice === false ? '' : DungeonBattle.bigNumber(hit, taken)}
                     ${DungeonBattle.stamps(beat, hit, taken, delve, seed)}
                     ${DungeonBattle.notes(hit, taken, delve, you, seed)}
                     ${hurt ? DungeonBattle.reveal(you.lastAnswer, seed) : ''}
@@ -186,7 +190,7 @@ const DungeonBattle = {
      * stands over the monster or the hero wherever the camera has them (js/battle3d/battle3d.js pins it there).
      */
     bigNumber(hit, taken) {
-        const big = hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || taken?.charged;
+        const big = hit?.crit || hit?.partyCombo || hit?.fireball || hit?.staggered || hit?.dice || taken?.charged;
         const text = `-${hit ? hit.damage : taken?.damage || 0}${big ? '!' : ''}`;
         return `<div class="dg-bignum" style="--chars: ${text.length}">${text}</div>`;
     },
@@ -242,6 +246,15 @@ const DungeonBattle = {
             note('is-patron', 560, Theme.text('dungeon.patronPrice', { amount: price }, seed));
         if (taken && !taken.blocked && delve.heroClass === 'tank')
             note('is-armour', 300, `${DungeonPowerUps.icon('Shield')}${Theme.text('dungeon.armour')}`);
+        // Power-ups and affixes (a Mirror Shield's bounce lands a moment after the claws: MIRROR_BOUNCE in beats.js).
+        if (hit?.dice !== undefined && hit?.dice !== null)
+            note('is-dice', 260, `${DungeonPowerUps.icon('LuckyDice')}${Theme.text(hit.dice ? 'dungeon.diceGood' : 'dungeon.diceBad', {}, seed)}`);
+        if (hit?.armored)
+            note('is-armored', 260, `${DungeonView.affixIcon('Armored')}${Theme.text('dungeon.armoredGlance', {}, seed)}`);
+        if (taken?.reflected)
+            note('is-mirror', 420, `${DungeonPowerUps.icon('MirrorShield')}${Theme.text('dungeon.mirrorBounced', { amount: taken.reflected, monster: taken.monsterName })}`);
+        if (taken?.drained)
+            note('is-drain', 420, `${DungeonView.affixIcon('Vampiric')}${Theme.text('dungeon.vampiricDrank', { amount: taken.drained, monster: taken.monsterName }, seed)}`);
 
         return notes.length ? `<div class="dg-beat-notes">${notes.join('')}</div>` : '';
     },
@@ -313,7 +326,10 @@ const DungeonBattle = {
             early = Theme.text('dungeon.stampRevived', { name }, seed);
         }
         else if (hit?.staggered) early = Theme.text('dungeon.stampStaggered', {}, seed);
+        else if (hit?.dice === false) early = Theme.text('dungeon.stampSnakeEyes', {}, seed);
+        else if (hit?.dice) early = Theme.text('dungeon.stampLucky', {}, seed);
         else if (hit?.fireball) early = Theme.text('dungeon.stampFireball', {}, seed);
+        else if (taken?.mirrored) early = Theme.text('dungeon.stampReflected', {}, seed);
         else if (taken?.blocked) early = Theme.text('dungeon.stampBlocked', {}, seed);
         else if (taken?.charged) early = Theme.text('dungeon.stampCharged', {}, seed);
         else if (hit?.partyCombo) early = Theme.text('dungeon.partyComboShort');

@@ -7,6 +7,9 @@
   "LoopQuestionShift": 10,
   "MinigameChance": 0.4,
   "MinigameEvery": 3,
+  "_AffixFromFloor": "From this floor on (loops included), each monster that isn't a boss has AffixChance of an affix: Speedy (a shorter hourglass), Armored (slow right answers do half) or Vampiric (heals by what its hits take), each as likely. Every party in a match meets the same ones. 0 = none. To play only some, list them: \"Affixes\": [\"Speedy\", \"Vampiric\"]. Their numbers: Game:Dungeon:Affixes.",
+  "AffixFromFloor": 4,
+  "AffixChance": 0.35,
 
   "Depths": [
     {

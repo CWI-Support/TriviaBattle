@@ -23,6 +23,9 @@ public enum MinigameKind
 
     /// <summary>A quiz about their own run (their floor, the last monster, their name...): 3 right wins (<see cref="PopQuiz"/>). Never the first.</summary>
     PopQuiz,
+
+    /// <summary>A lit bomb goes round the party; whoever's holding it when it goes off takes the blast (<see cref="HotPotato"/>). Groups only.</summary>
+    HotPotato,
 }
 
 /// <summary>What a press did in a mini game.</summary>

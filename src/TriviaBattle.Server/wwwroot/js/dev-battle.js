@@ -52,7 +52,13 @@
 // ringpuzzle-solved (round 1's picture whole, then round 2 starts), ringpuzzle-won (the last one whole).
 // tuner (the intro, then the four bars sinking: A and C already in their zones), tuner-won (all four held in).
 // popquiz (the intro, then a question about your run), popquiz-wrong (a wrong answer's reveal, then the next question),
-// popquiz-won (the third right answer, then the win).
+// popquiz-won (the third right answer, then the win). hotpotato (the party's game: the intro, then Cat throws you the bomb and
+// your runes light up), hotpotato-wait (Cat has it, you're next), hotpotato-boom (it went off on Bob: you're safe),
+// hotpotato-blasted (it went off on you).
+// Power-ups: mirror (a Mirror Shield takes the hit and bounces it into the monster), dice (Lucky Dice come up good: double),
+// snakeeyes (they don't: no damage). ?armed: the plate shows a Mirror Shield up and Lucky Dice ready.
+// Affixes (deeper down): armored (a slow hit on an Armored monster does half), vampire (a Vampiric monster drinks its hit);
+// ?affix=Speedy (Armored, Vampiric): the monster in front has that affix (its badge, its hint, its tint in 3D).
 // out: downed on the last life (OUT!; the plate's hearts all dark).
 // opening: the game's opening after the intro (out of the dark, the hero runs into the first room, FIGHT!); ?next=skeleton
 // (rat, slime, bat, goblin) for another first monster's entrance.
@@ -60,7 +66,7 @@
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', 'teamkill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'popquiz', 'popquiz-wrong', 'popquiz-won', 'out', 'opening'];
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'popquiz', 'popquiz-wrong', 'popquiz-won', 'hotpotato', 'hotpotato-wait', 'hotpotato-boom', 'hotpotato-blasted', 'mirror', 'dice', 'snakeeyes', 'armored', 'vampire', 'out', 'opening'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
 // ?long: a long question and long answers (the admin editor allows 250 and 80 letters), to check they shrink to fit.
@@ -68,7 +74,7 @@ const LONG_QUESTION = {
     text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
     answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
 };
-const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, popquiz: 9000, 'popquiz-wrong': 4000, 'popquiz-won': 4600, opening: 3500, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, popquiz: 9000, 'popquiz-wrong': 4000, 'popquiz-won': 4600, hotpotato: 10000, 'hotpotato-wait': 5000, 'hotpotato-boom': 3600, 'hotpotato-blasted': 3600, mirror: 1700, vampire: 1700, opening: 3500, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
 const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
@@ -185,7 +191,7 @@ function showMoment(kind) {
 
 /** A match and "you" for one kind of beat, shaped like the server's snapshot. */
 function fakeState(kind, startedAt, question) {
-    const striking = !['hurt', 'slow', 'downed', 'out', 'blocked', 'armour', 'charged'].includes(kind);
+    const striking = !['hurt', 'slow', 'downed', 'out', 'blocked', 'armour', 'charged', 'mirror', 'vampire'].includes(kind);
     // Against the boss (a boss kind, or any kind with ?charge=): it's the one fought, and its charge shows.
     const vsBoss = BOSS_KINDS.includes(kind) || params.has('charge');
     // ?boss=skeleton: another model as the boss (its entrance in the boss beat: a skeleton climbs out of the ground).
@@ -210,7 +216,8 @@ function fakeState(kind, startedAt, question) {
         : { name: 'Goblin Bandit', sprite: 'goblin', maxHp: 100 };
     const fast = ['crit', 'splash', 'heal', 'poison'].includes(kind);
     // A stagger does half again (Game:Dungeon:StaggerBonus).
-    const damage = fast ? 30 : kind === 'combo' ? 45 : kind === 'party' || kind === 'fireball' || kind === 'stagger' ? 60 : 20;
+    const damage = fast ? 30 : kind === 'combo' ? 45 : kind === 'party' || kind === 'fireball' || kind === 'stagger' ? 60
+        : kind === 'dice' ? 40 : kind === 'snakeeyes' ? 0 : kind === 'armored' ? 10 : 20;
     const hpLeft = killed ? 0 : vsBoss ? 180 : 55;
     // boss: the kill emptied the room before the boss's, so the boss is in front now (at full HP).
     const current = vsBoss && !killed ? { ...boss, hp: striking ? hpLeft : 240 }
@@ -221,6 +228,8 @@ function fakeState(kind, startedAt, question) {
         : killed ? { name: 'Skeleton Intern', sprite: 'skeleton', hp: 120, maxHp: 120, isBoss: false }
         : { name: struck.name, sprite: struck.sprite, hp: striking ? hpLeft : 55, maxHp: 100, isBoss: false };
     current.poisonStacks = poisonStacks;
+    // An affix on the one in front (?affix=Speedy; the armored and vampire kinds have their own).
+    current.affix = kind === 'armored' ? 'Armored' : kind === 'vampire' ? 'Vampiric' : params.get('affix') || null;
 
     const hit = striking ? {
         number: 7, damage, crit: fast, combo: kind === 'combo', killed, floorCleared: kind === 'floor', bossAhead: kind === 'boss',
@@ -233,6 +242,7 @@ function fakeState(kind, startedAt, question) {
         healedOwnerId: kind === 'heal' ? 'A3' : null, healed: kind === 'heal' ? 15 : 0,
         poisonStacks, poison: kind === 'poisonkill',
         patronPrice: kind === 'patron' ? 8 : 0,
+        dice: kind === 'dice' ? true : kind === 'snakeeyes' ? false : null, armored: kind === 'armored',
     } : null;
     if (hit) hit.totalDamage = damage + (hit.splashes?.reduce((sum, s) => sum + s.damage, 0) ?? 0);
     const taken = striking ? null : {
@@ -240,8 +250,10 @@ function fakeState(kind, startedAt, question) {
         number: 3, damage: kind === 'blocked' ? 0 : kind === 'armour' ? 9 : kind === 'charged' ? 38 : 15, reason: kind === 'slow' ? 'TooSlow' : 'WrongAnswer',
         downed: kind === 'downed', monsterName: struck.name, monsterSprite: struck.sprite,
         hpLeft: kind === 'downed' ? 0 : kind === 'blocked' ? 85 : kind === 'armour' ? 91 : kind === 'charged' ? 47 : 45,
-        blocked: kind === 'blocked', patronPrice: 0, charged: kind === 'charged',
+        blocked: kind === 'blocked' || kind === 'mirror', patronPrice: 0, charged: kind === 'charged',
+        mirrored: kind === 'mirror', reflected: kind === 'mirror' ? 15 : 0, drained: kind === 'vampire' ? 15 : 0,
     };
+    if (kind === 'mirror') Object.assign(taken, { damage: 0, hpLeft: 85 });
     const hp = taken ? taken.hpLeft : kind === 'patron' ? 77 : 85;
     const floor = kind === 'floor' ? 2 : kind === 'boss' || vsBoss ? 5 : 1;
     // The boss's charge for the question now: ?charge=N, or 0 (a stagger or the big blow starts it over; a
@@ -265,6 +277,7 @@ function fakeState(kind, startedAt, question) {
             .map(([sprite, f, room, slot]) => ({ floor: f, room, slot, name: sprite, sprite, isBoss: sprite === 'goblin-boss' })),
         reviveProgress: 0, reviveNeeded: 3,
         powerUp: 'Shield', fireballReady: false, shielded: false, frozenUntilMs: null, lastPowerUp: null,
+        mirrored: params.has('armed'), diceReady: params.has('armed'),
         party: party
             ? [{ ownerId: 'A1', name: 'Ann', hp, maxHp: 100, downedUntilMs: null, reviveProgress: 0 },
                { ownerId: 'A3', name: 'Cat', hp: kind === 'revive' ? 100 : kind === 'heal' ? 85 : 70, maxHp: 100, downedUntilMs: null, reviveProgress: 0 }]
@@ -294,7 +307,8 @@ function fakeState(kind, startedAt, question) {
         beat: { kind: { crit: 'hit', combo: 'hit', party: 'hit', revive: 'hit', fireball: 'hit', slow: 'hurt', blocked: 'hurt', loot: 'kill', poisonkill: 'kill',
                         roomclear: 'kill', teamkill: 'kill',
                         splash: 'hit', heal: 'hit', poison: 'hit', patron: 'hit', reveal: 'hit', peek: 'hit', armour: 'hurt',
-                        charged: 'hurt', stagger: 'hit', rewarded: 'reward' }[kind] || kind,
+                        charged: 'hurt', stagger: 'hit', rewarded: 'reward',
+                        mirror: 'hurt', vampire: 'hurt', dice: 'hit', snakeeyes: 'hit', armored: 'hit' }[kind] || kind,
                 startedAtMs: startedAt, endsAtMs: startedAt + length },
     };
     // Power-ups between players, on the question after the beat (they start when it comes up):
@@ -418,6 +432,25 @@ function fakeState(kind, startedAt, question) {
                                     topic: won ? 'Name' : asked.topic, answers: won ? answered.answers : asked.answers,
                                     askedAtMs: won ? startedAt : wrong ? startedAt + 1400 : playsFromMs, last: answered } };
     }
+    if (kind.startsWith('hotpotato')) {
+        // The party's game, round a table of three (Ann: you, Bob, Cat). hotpotato: the intro now, then 1.5 s into play Cat
+        // throws you the bomb, and your runes light up as you catch it. wait: Cat has it, you're next. boom: it went off on
+        // Bob (you're safe); blasted: on you.
+        you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt };
+        you.question = null;
+        const over = kind === 'hotpotato-boom' || kind === 'hotpotato-blasted';
+        const playsFromMs = kind === 'hotpotato' ? startedAt + 3500 : startedAt - 15000;
+        const holder = kind === 'hotpotato-wait' ? 2 : kind === 'hotpotato-boom' ? 1 : 0;
+        const caughtAtMs = kind === 'hotpotato' ? playsFromMs + 1500 : startedAt - 2000;
+        const seats = [{ ownerId: 'A1', name: 'Ann', stationId: 'A1' }, { ownerId: 'A2', name: 'Bob', stationId: 'A2' }, { ownerId: 'A3', name: 'Cat', stationId: 'A3' }];
+        you.minigame = { kind: 'HotPotato', introAtMs: playsFromMs - 3500, playsFromMs, endsAtMs: over ? startedAt : playsFromMs + 24000,
+                         finishedAtMs: over ? startedAt : null, won: kind === 'hotpotato-boom', resultFromMs: over ? startedAt : null,
+                         resultEndsAtMs: over ? startedAt + 3200 : null, runeLock: null,
+                         hotPotato: { seats, you: 0, holder, caughtAtMs, throwFromMs: caughtAtMs + 600, sequence: [2, 0, 3],
+                                      entered: kind === 'hotpotato-blasted' ? 1 : 0, passes: 5, fumbles: 0, fumbledUntilMs: null,
+                                      fuseShortestMs: 14000, fuseLongestMs: 24000,
+                                      blastOwnerId: over ? seats[holder].ownerId : null, blastDamage: over ? 25 : 0 } };
+    }
     if (kind.startsWith('ringpuzzle')) {
         // ringpuzzle: the intro now, then round 2 (four rings, the second lit). solved: round 1's last ring was just
         // turned into place (its outside ring turns in), it shows whole 1 s later, and round 2 starts 1.5 s after that.
@@ -441,11 +474,13 @@ function fakeState(kind, startedAt, question) {
     }
 
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
-                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') || kind.startsWith('tuner') || kind.startsWith('popquiz') ? 74000 : null,
+                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') || kind.startsWith('tuner') || kind.startsWith('popquiz') || kind.startsWith('hotpotato') ? 74000 : null,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') || params.get('face') === 'drawn' ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),
                         ...(params.has('rival') || params.has('cameo') ? [{ stationId: 'A2', name: 'Bob', photo: params.has('rival') ? 1 : 0, hero: 'rogue' }] : []),
+                        // The hot potato's table: Bob and Cat round it with you.
+                        ...(kind.startsWith('hotpotato') ? [{ stationId: 'A2', name: 'Bob', photo: 0, hero: 'pugilist' }, { stationId: 'A3', name: 'Cat', photo: 0, hero: 'wizard' }] : []),
                         ...TEAM.map((hero, i) => ({
                             stationId: `A${i + 3}`, name: ['Cat', 'Dan', 'Eve'][i], teamId: 'side1', photo: 0, hero,
                             delve: { lastDealt: { number: teamHits }, lastTaken: null, downedUntilMs: kind === 'downed' && i === 1 ? Date.now() + 5000 : null },

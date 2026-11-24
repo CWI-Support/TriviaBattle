@@ -175,6 +175,20 @@ public sealed class DungeonSettings
     public double TimeCrystalSeconds { get; set; } = 20;
 
     /// <summary>
+    /// A Mirror Shield bounces the monster's blow back: the monster takes this share of what the blow would have done
+    /// (before the adventurer's class share; a boss's charged blow counts in full). It never takes the monster's last HP.
+    /// </summary>
+    public double MirrorShare { get; set; } = 1;
+
+    /// <summary>Lucky Dice: how often the roll comes up good (the hit does <see cref="LuckyDiceMultiplier"/> times the damage; otherwise none).</summary>
+    public double LuckyDiceChance { get; set; } = 0.5;
+
+    public double LuckyDiceMultiplier { get; set; } = 2;
+
+    /// <summary>What monsters with an affix do (Speedy, Armored, Vampiric). Which have one is content: config/dungeon.json. Bound from "Game:Dungeon:Affixes".</summary>
+    public AffixSettings Affixes { get; set; } = new();
+
+    /// <summary>
     /// Hero photos: the station's camera puts your face on your hero during the intro. Off for a venue without
     /// station cameras, or one that doesn't want photos.
     /// </summary>
@@ -197,6 +211,7 @@ public sealed class DungeonSettings
         copy.Rewards = Rewards.Copy();
         copy.Minigames = Minigames.Copy();
         copy.Querie = Querie.Copy();
+        copy.Affixes = Affixes.Copy();
         return copy;
     }
 }

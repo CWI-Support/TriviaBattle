@@ -24,7 +24,8 @@ when it clears (`DungeonRun.OpenRewards`) you pick one of `Choices` with the ans
 holds your question and hourglass; rewards stack and are read live where the numbers are used (`DamageShare`, `FastSecondsOf`...).
 Tests have rewards off unless they pass `rewards: true` (like battle beats).
 Mini games (`Core/Dungeon/Minigames`: a `Minigame` base for the shared timing, one class per game, `MinigameCatalog`):
-every floor reached may have one between two rooms (the pop quiz, questions about your own run, never as the match's first), loops included (`MinigameChance` in `config/dungeon.json`, at least one every `MinigameEvery` floors, `DungeonMap.MinigameOn`);
+every floor reached may have one between two rooms (the pop quiz, questions about your own run, never as the match's first; the hot potato,
+the whole party's at once, a stand-in for anyone playing alone: `DungeonMap.MinigameFor`), loops included (`MinigameChance` in `config/dungeon.json`, at least one every `MinigameEvery` floors, `DungeonMap.MinigameOn`);
 the kill that empties the room before it is `DealtHit.MinigameAhead` and the party plays (`DungeonRun.StartMinigames`). Rules
 stay on the server (the rune lock's needle angle comes from the press time; the chest shuffle's action button is its
 fifth chest, so mini games get the action button before power-ups do). While anyone `IsAway` (a mini game or a reward
@@ -36,6 +37,8 @@ class (`HeroClass`, key = class name in lower case, numbers in `ClassSettings` /
 `CritWithinSeconds` (3 s), longer for the Tank. Only the Pugilist combos. Tests play `TestMatch.PlainHero` (the Ranger, whose
 only power is on screen) unless they pass `heroes:`.
 Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
+Deeper down (`AffixFromFloor` in `config/dungeon.json`, floor 4) some monsters have an `Affix` (Speedy, Armored, Vampiric;
+`Encounter.Affix`, rolled per place from the match's seed so every party meets the same ones; rules in `DungeonRun`).
 Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any button or swipe, pick one of seven heroes (classes),
 have the hero photo taken, pick solo / party / race / team battle or join the one forming, pick a category) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
 a game to `LobbyHost`; `js/arcade-lobby.js` draws it. The kiosk can still start games. Heroes: `Core/Arcade/Heroes.cs`,

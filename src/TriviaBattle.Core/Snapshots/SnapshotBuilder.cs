@@ -121,15 +121,18 @@ public static class SnapshotBuilder
             player.PhotoAt == null && !player.PhotoDeclined && !player.PhotoFromLobby ? ToUnixMs(match.PhotoOfferEndsAt) : null,
             ToUnixMs(player.PhotoAt),
             ToRewardOffer(match, adventurer),
-            match.Phase == MatchPhase.Playing ? ToMinigame(adventurer?.Minigame) : null,
+            match.Phase == MatchPhase.Playing ? ToMinigame(match, adventurer?.Minigame) : null,
             adventurer?.CalledFriend is { } friend ? NameOf(match, friend) : null,
             adventurer?.LastQuip is { } quip
                 ? new QuipView(quip.Number, quip.Moment.ToString(), quip.Text, quip.At.ToUnixTimeMilliseconds(), quip.AboutOwnerId == stream.OwnerId)
                 : null);
     }
 
-    /// <summary>Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one.</summary>
-    private static MinigameView? ToMinigame(Dungeon.Minigames.Minigame? game)
+    /// <summary>
+    /// Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one. The hot
+    /// potato's fuse is a secret until it goes off: its time limit says the longest it could be until then.
+    /// </summary>
+    private static MinigameView? ToMinigame(MatchEngine match, Dungeon.Minigames.Minigame? game)
     {
         if (game == null)
             return null;
@@ -149,15 +152,44 @@ public static class SnapshotBuilder
             ? new RingPuzzleView(r.Round, r.Rounds, r.Rings, r.Steps, r.Offsets.ToList(), r.Selected, r.RoundStartsAt.ToUnixTimeMilliseconds(),
                 r.SolvedRings, r.Presses, ToUnixMs(r.WholeAt))
             : null;
+        var potato = game is Dungeon.Minigames.HotPotato p ? ToHotPotato(match, p) : null;
+        var endsAt = potato != null && game.FinishedAt == null ? game.PlaysFrom.ToUnixTimeMilliseconds() + potato.FuseLongestMs : game.EndsAt.ToUnixTimeMilliseconds();
         return new MinigameView(game.Kind.ToString(), game.IntroAt.ToUnixTimeMilliseconds(), game.PlaysFrom.ToUnixTimeMilliseconds(),
-            game.EndsAt.ToUnixTimeMilliseconds(), ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle,
+            endsAt, ToUnixMs(game.FinishedAt), game.Won, ToUnixMs(game.ResultEndsAt), runeLock, runeEcho, chestShuffle,
             ringPuzzle, ToUnixMs(game.ResultFrom),
             game is Dungeon.Minigames.Tuner t
                 ? new TunerView(t.BarList.Select(b => new TunerBarView(b.Level, b.At.ToUnixTimeMilliseconds(), b.Rate, b.ZoneLow, b.ZoneHigh, b.InSince?.ToUnixTimeMilliseconds())).ToList(),
                     Ms(t.HoldSeconds), t.Presses)
                 : null,
-            game is Dungeon.Minigames.PopQuiz q ? ToPopQuiz(q) : null);
+            game is Dungeon.Minigames.PopQuiz q ? ToPopQuiz(q) : null,
+            potato);
     }
+
+    /// <summary>The hot potato, from one seat: everyone round the table, the bomb, and (once it's gone off) the blast.</summary>
+    private static HotPotatoView ToHotPotato(MatchEngine match, Dungeon.Minigames.HotPotato seat)
+    {
+        var bomb = seat.Bomb;
+        var rules = match.Settings.Dungeon.Minigames.HotPotato;
+        return new HotPotatoView(
+            bomb.Seats.Select(ownerId => new HotPotatoSeatView(ownerId, NameOf(match, ownerId), StationOf(match, ownerId))).ToList(),
+            seat.Seat,
+            bomb.Holder,
+            bomb.CaughtAt.ToUnixTimeMilliseconds(),
+            bomb.ThrowFrom.ToUnixTimeMilliseconds(),
+            bomb.Sequence,
+            bomb.Entered,
+            bomb.Passes,
+            bomb.Fumbles,
+            ToUnixMs(bomb.FumbledUntil),
+            Ms(rules.FuseShortest),
+            Ms(Math.Max(rules.FuseShortest, rules.FuseLongest)),
+            bomb.Blast?.OwnerId,
+            bomb.Blast?.Damage ?? 0);
+    }
+
+    /// <summary>The station an answer owner plays at (a 2v2 Group team: its first player's).</summary>
+    private static string StationOf(MatchEngine match, string ownerId) =>
+        match.Roster.Players.FirstOrDefault(p => match.Mode.GetAnswerOwnerId(p) == ownerId)?.StationId ?? ownerId;
 
     /// <summary>The pop quiz. The question up goes without its right answer; the last one answered goes with it.</summary>
     private static PopQuizView ToPopQuiz(Dungeon.Minigames.PopQuiz quiz)
@@ -385,11 +417,16 @@ public static class SnapshotBuilder
             CountdownFrom(match, adventurer),
             ToUnixMs(adventurer.FogFrom),
             ToUnixMs(adventurer.FogUntil),
-            adventurer.LastSabotage is { } s ? new SabotageView(s.Number, s.PowerUp, NameOf(match, s.FromOwnerId), s.Blocked, s.At.ToUnixTimeMilliseconds()) : null,
+            adventurer.LastSabotage is { } s ? ToSabotage(match, s) : null,
             ToUnixMs(sideClock?.EndsAt),
             sideClock?.StoppedLeft is { } stoppedLeft ? (long)stoppedLeft.TotalMilliseconds : null,
-            sideClock?.IsDone == true);
+            sideClock?.IsDone == true,
+            adventurer.Mirrored,
+            adventurer.DiceReady);
     }
+
+    private static SabotageView ToSabotage(MatchEngine match, Dungeon.Sabotage s) =>
+        new(s.Number, s.PowerUp, NameOf(match, s.FromOwnerId), s.Blocked, s.At.ToUnixTimeMilliseconds(), s.Reflected, s.Bounced);
 
     /// <summary>Where the hourglass's last seconds start (the station winds up for the attack from then), or null.</summary>
     private static long? CountdownFrom(MatchEngine match, Dungeon.Adventurer adventurer)
@@ -399,7 +436,7 @@ public static class SnapshotBuilder
     }
 
     private static MonsterView ToMonster(Dungeon.Foe foe) =>
-        new(foe.Monster.Name, foe.Monster.Sprite, foe.Hp, foe.MaxHp, foe.Monster.IsBoss, foe.PoisonStacks);
+        new(foe.Monster.Name, foe.Monster.Sprite, foe.Hp, foe.MaxHp, foe.Monster.IsBoss, foe.PoisonStacks, foe.Affix);
 
     /// <summary>
     /// A whole party's fight, for its lane on the main screen when teammates are separate adventurers
@@ -424,9 +461,7 @@ public static class SnapshotBuilder
             LastDealt = delve.LastHit,
             LastTaken = delve.LastTaken,
             // The newest rival's Fog Bomb or Tiny Hourglass that came at any of them (the room's banner shows it).
-            LastSabotage = party.Where(a => a.LastSabotage != null).MaxBy(a => a.LastSabotage!.At) is { LastSabotage: { } s }
-                ? new SabotageView(s.Number, s.PowerUp, NameOf(match, s.FromOwnerId), s.Blocked, s.At.ToUnixTimeMilliseconds())
-                : null,
+            LastSabotage = party.Where(a => a.LastSabotage != null).MaxBy(a => a.LastSabotage!.At) is { LastSabotage: { } s } ? ToSabotage(match, s) : null,
         };
     }
 

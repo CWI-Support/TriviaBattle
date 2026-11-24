@@ -37,6 +37,13 @@
 //             and sways (to ~1350), dazed stars circling its head 420-1370
 //   While a question is up (showIdle) a boss glows and crackles with its charge, more with each step, and
 //   burns red, trembling, at full charge.
+// Power-ups and affixes:
+//   mirrored  a Mirror Shield (a hurt beat, blocked): the blow glances off the shield, then 420 (HURT_IMPACT +
+//             MIRROR_BOUNCE) it bounces back into the monster: it's thrown back, flashing ice blue
+//   drained   a Vampiric monster's blow (a hurt beat): from the impact it pulses blood red, drinking it
+//   dice      Lucky Dice: good, the blow is a big one; bad (snake eyes), it whiffs: barely a flinch, no sparks
+//   armored   a slow answer on an Armored monster: the blow glances off (a small flinch, a shower of sparks)
+//   A monster with an affix glows its colour, faintly, all the time (affixGlow), under any stronger tint.
 //
 // Hit-stop: on impact everything but the camera shake freezes for a moment (60-110 ms). It's the cheapest
 // way to make a blow feel heavy. The freeze is built into the timeline (see stopped()), so it seeks too.
@@ -65,6 +72,11 @@ const CHARGE_RED = 0xff1a10;      // at full charge, and its charged blow
 const CHARGED_SECOND_SHAKE = 620; // the charged blow's aftershock (the CSS shakes again then too)
 const DAZE_FROM = 420;            // a stagger: the dazed stars appear (effects.js's Daze lasts 0.95 s: to ~1370)
 const STUMBLE_BACK = 0.8;         // how far a staggered boss stumbles back (world units)
+export const MIRROR_BOUNCE = 180; // after the claws land, a Mirror Shield's bounce hits the monster (RoomSoundService.MirrorBounce)
+const MIRROR_BLUE = 0xb8e6ff;
+const VAMPIRE_RED = 0xd0152f;     // a Vampiric monster drinking
+// A monster's affix, glowing faintly on it (the colours of its badge: css/dungeon.css's --dg-affix-*).
+const AFFIX_COLOURS = { Speedy: 0xffe23a, Armored: 0xc9d6e3, Vampiric: 0xff4a63 };
 
 /**
  * One frame of a beat. beat = { kind, hurt, crit, combo, comboCount, partyCombo, fireball, blocked, tank,
@@ -121,7 +133,7 @@ export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, 
     foe.apply({
         x: homes.foe + 0.3 * foeFlinch + tremble, tilt: -0.15 * foeFlinch + (fidget?.tilt || 0), flash: foeFlinch, flashColor: 0xffffff,
         lift: fidget?.lift || 0, squash: fidget?.squash || 0,
-        ...strongerGlow(poisonGlow(cast.foePoison, seconds), chargeGlow(charge, seconds)),
+        ...strongerGlow(foeGlow(cast.foePoison, cast.foeAffix, seconds), chargeGlow(charge, seconds)),
         ...(fidget?.pose || idle),
     });
     fx.showPoison(0, foe, seconds, cast.foePoison);
@@ -135,7 +147,7 @@ export function showIdle(cast, { heroDown, foeEntranceMs = null, foeFlinch = 0, 
  * the same moments): the monster draws back into the start of its attack, rears up, trembles harder and harder and
  * burns red, pulsing faster, while the camera creeps in. The attack itself is the hurt beat that follows.
  */
-function showWindUp(foe, p, { fx, seconds, homes, foePoison }, charge) {
+function showWindUp(foe, p, { fx, seconds, homes, foePoison, foeAffix }, charge) {
     const attack = foe.spec.attack;
     const idle = { clip: foe.spec.idle, time: seconds + 0.37 };
     // The first part of its attack clip, up to a little short of the blow, played slowly over the countdown.
@@ -148,7 +160,7 @@ function showWindUp(foe, p, { fx, seconds, homes, foePoison }, charge) {
     const glow = { glow: (0.04 + 0.22 * p) * (0.5 + 0.5 * throb), glowColor: CHARGE_RED };
     foe.apply({
         x: homes.foe + tremble, squash: -0.07 * easeInOut(p), lift: 0.06 * easeInOut(p),
-        ...strongerGlow(poisonGlow(foePoison, seconds), strongerGlow(chargeGlow(charge, seconds), glow)),
+        ...strongerGlow(foeGlow(foePoison, foeAffix, seconds), strongerGlow(chargeGlow(charge, seconds), glow)),
         ...pose,
     });
     fx.showPoison(0, foe, seconds, foePoison);
@@ -503,6 +515,18 @@ function poisonGlow(stacks, seconds) {
     return { glow: Math.min(0.55, 0.15 + 0.08 * stacks) * (0.8 + 0.2 * Math.sin(seconds * 4)), glowColor: POISON_GREEN };
 }
 
+/** An affix's tint: faint, slowly breathing, so the monster reads as different without looking poisoned or charged. */
+function affixGlow(affix, seconds) {
+    const colour = AFFIX_COLOURS[affix];
+    if (!colour) return {};
+    return { glow: 0.16 + 0.07 * Math.sin(seconds * 2.6), glowColor: colour };
+}
+
+/** The monster in front's own tint, between beats and in them: its poison, or (fainter) its affix. */
+function foeGlow(stacks, affix, seconds) {
+    return strongerGlow(poisonGlow(stacks, seconds), affixGlow(affix, seconds));
+}
+
 /**
  * The monsters waiting in the room. beat null: between beats, they idle (dropping in when they've just
  * arrived). In a beat: a Wizard's splash reaches each at the impact (and kills the ones it says), and after
@@ -582,7 +606,8 @@ function patronGlow(beat, ms) {
 /** How long the hit-stop holds: longer for a big blow. */
 function hitStop(beat) {
     const killed = beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss';
-    return beat.crit || beat.combo || beat.partyCombo || beat.fireball || beat.staggered || killed ? 110 : 60;
+    if (beat.dice === false) return 30; // snake eyes: nothing to stop for
+    return beat.crit || beat.combo || beat.partyCombo || beat.fireball || beat.staggered || beat.dice === true || killed ? 110 : 60;
 }
 
 /** Where a hit lands on a waiting monster drawn at this size and place. */
@@ -620,9 +645,10 @@ function poisonKills(beat, ms, { hero, foe, fx, stage, homes, seconds }) {
     return { zoom: 1 - 0.06 * easeInOut(Math.min(1, Math.max(0, ms - KILL_FALLS) / 400)), focus: 0 };
 }
 
-function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison }) {
+function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison, foeAffix }) {
     const killed = beat.kind === 'kill' || beat.kind === 'floor' || beat.kind === 'boss';
-    const big = beat.crit || beat.combo || beat.partyCombo || beat.fireball || beat.staggered;
+    const whiff = beat.dice === false;  // snake eyes: the blow comes to nothing
+    const big = !whiff && (beat.crit || beat.combo || beat.partyCombo || beat.fireball || beat.staggered || beat.dice === true);
     // A Pugilist's combo grows with the streak: 2 a little bigger, every answer more, up to nearly twice.
     const power = beat.comboCount >= 2 ? Math.min(1.8, 1 + 0.15 * (beat.comboCount - 1)) : 1;
     const bigCombo = beat.comboCount >= 3;
@@ -669,7 +695,9 @@ function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison
     // Poisoned by this hit: the new stack shows from the impact, with a green puff.
     let foePose = foeIdle, squash = 0, tilt = 0, scale = 1;
     // Staggered: it stumbles well back and sways there, dazed, before it squares up again.
-    let foeX = beat.staggered ? homes.foe + STUMBLE_BACK * stumble(t) : homes.foe + (big ? 0.8 : 0.45) * power * kick(t, 60, 520);
+    // Snake eyes barely moves it; an Armored one's armour takes some of the blow.
+    const knock = whiff ? 0.1 : beat.armored ? 0.25 : big ? 0.8 : 0.45;
+    let foeX = beat.staggered ? homes.foe + STUMBLE_BACK * stumble(t) : homes.foe + knock * power * kick(t, 60, 520);
     const stacks = beat.poisoned && t < 0 ? foePoison - 1 : foePoison;
     if (t >= 0) {
         const hurt = foe.spec.hurt;
@@ -679,7 +707,7 @@ function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison
         else foePose = { ...foeIdle, from: { clip: hurt, time: hurtMs / 1000 }, fade: Math.min(1, (t - hurtMs) / 200) };
         tilt = beat.staggered ? -0.32 * Math.exp(-t / 650) * Math.sin(t / 110 + 1.2) : -0.2 * Math.exp(-t / 260) * Math.cos(t / 90);
     }
-    let flash = pulse(t, beat.staggered ? 260 : 150);
+    let flash = (whiff ? 0.25 : 1) * pulse(t, beat.staggered ? 260 : 150);
     if (killed && ms >= KILL_FALLS) {
         const d = ms - KILL_FALLS;
         if (foe.has(foe.spec.death)) foePose = { clip: foe.spec.death, time: d / 1000, from: foeIdle, fade: Math.min(1, d / 100) };
@@ -690,28 +718,31 @@ function heroStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison
             scale = b < 60 ? 1 + 0.3 * (b / 60) : Math.max(0, 1.3 * (1 - (b - 60) / 100));  // swells, then pops
         }
     }
-    foe.apply({ x: foeX, tilt, squash, scale, visible: scale > 0.01, flash, flashColor: 0xffffff, ...poisonGlow(stacks, seconds), ...foePose });
+    foe.apply({ x: foeX, tilt, squash, scale, visible: scale > 0.01, flash, flashColor: 0xffffff, ...foeGlow(stacks, foeAffix, seconds), ...foePose });
 
     const chest = foe.chest();
     const tiltSlash = beat.seed % 2 ? 0.3 : -0.3;
-    fx.showSlash(chest, (a - (HIT_IMPACT - 40)) / 1000, tiltSlash, (big ? 1.35 : 1) * power);
+    fx.showSlash(chest, (a - (HIT_IMPACT - 40)) / 1000, tiltSlash, (big ? 1.35 : whiff ? 0.7 : 1) * power);
     if (bigCombo) fx.showSlash(chest, (a - COMBO_CROSS) / 1000, tiltSlash, 1.35 * power, true);
-    fx.showSparks(chest, t / 1000, beat.seed, big || killed);
-    fx.showShockwave(foe.root.position, t / 1000, big || killed, power);
+    if (!whiff) {
+        // Glancing off armour: a big shower of sparks, but no shockwave behind it.
+        fx.showSparks(chest, t / 1000, beat.seed, big || killed || beat.armored);
+        if (!beat.armored || killed) fx.showShockwave(foe.root.position, t / 1000, big || killed, power);
+    }
     fx.showPoison(0, foe, seconds, stacks);
     if (beat.poisoned) fx.showPoisonPuff(chest, t / 1000, beat.seed + 5);
     if (killed) fx.showDeath(chest, (ms - KILL_BURSTS) / 1000, beat.seed);
     if (beat.staggered && !killed) fx.showDaze(headOf(foe), (ms - DAZE_FROM) / 1000);
 
     // The camera: a jolt on the blow (and on the burst), a punch in for a big hit, a lean in for the kill.
-    shake(stage, ms, jolt(ms - HIT_IMPACT, (big || killed ? 0.16 : 0.07) * power) + (killed ? jolt(ms - KILL_BURSTS, 0.14) : 0));
+    shake(stage, ms, jolt(ms - HIT_IMPACT, (big || killed ? 0.16 : whiff ? 0.02 : 0.07) * power) + (killed ? jolt(ms - KILL_BURSTS, 0.14) : 0));
     let zoom = 1 - (big ? 0.12 : 0.04) * power * punch(ms - HIT_IMPACT, 600);
     if (killed && ms > KILL_FALLS)
         zoom -= 0.06 * easeInOut(Math.min(1, (ms - KILL_FALLS) / 400));
     return { zoom, focus: 0 };
 }
 
-function monsterStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison }) {
+function monsterStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoison, foeAffix }) {
     const charged = beat.charged;  // a boss's full-charge blow: everything about it is heavier
     const a = stopped(ms, HURT_IMPACT, charged ? 130 : 70);
     const t = a - HURT_IMPACT;
@@ -727,6 +758,12 @@ function monsterStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoi
     else if (a < 650) foeX = strikeX;
     else if (a < 1100) foeX = mix(strikeX, homes.foe, easeInOut((a - 650) / 450));
     if (!attack) tilt = 0.35 * pulse(t + 120, 400);  // no attack clip: it throws itself forward
+    // A Mirror Shield: the blow bounces back into it a moment after it lands, throwing it back.
+    const bounce = beat.mirrored ? t - MIRROR_BOUNCE : -1;
+    if (beat.mirrored) {
+        foeX += 0.9 * kick(bounce, 60, 600);
+        tilt -= 0.3 * pulse(bounce, 500);
+    }
     // Charged: it leaps (up and down again by the impact) and lands with a squash, burning red until the
     // blow is spent.
     let lift = 0, squash = 0, glow = {};
@@ -735,12 +772,21 @@ function monsterStrikes(beat, ms, { hero, foe, fx, stage, homes, seconds, foePoi
         else squash = 0.28 * Math.exp(-t / 110) * Math.cos(t / 40);
         glow = { glow: t < 0 ? 0.5 + 0.4 * (a / HURT_IMPACT) : 0.9 * pulse(t, 450), glowColor: CHARGE_RED };
     }
+    if (beat.drained) glow = strongerGlow(glow, { glow: 0.75 * pulse(t, 750), glowColor: VAMPIRE_RED }); // drinking it
+    if (beat.mirrored) glow = strongerGlow(glow, { glow: 0.85 * pulse(bounce, 350), glowColor: MIRROR_BLUE });
     let foePose;
     if (a < 100) foePose = { ...attackAt(a), from: foeIdle, fade: a / 100 };
     else if (a < 800) foePose = attackAt(a);
     else foePose = { ...foeIdle, from: attackAt(800), fade: Math.min(1, (a - 800) / 200) };
-    foe.apply({ x: foeX, tilt, lift, squash, ...strongerGlow(poisonGlow(foePoison, seconds), glow), ...foePose });
+    foe.apply({
+        x: foeX, tilt, lift, squash, flash: beat.mirrored ? pulse(bounce, 220) : 0, flashColor: MIRROR_BLUE,
+        ...strongerGlow(foeGlow(foePoison, foeAffix, seconds), glow), ...foePose,
+    });
     fx.showPoison(0, foe, seconds, foePoison);
+    if (beat.mirrored) {
+        fx.showSparks(foe.chest(), bounce / 1000, beat.seed + 3, true);
+        fx.showShockwave(foe.root.position, bounce / 1000, false, 1);
+    }
 
     // The knight: reels back, flashing red (or, behind a Shield, takes it on the shield). A Tank takes every
     // hit on the shield (it takes less of it), still flashing red. Downed: falls, and stays down.
