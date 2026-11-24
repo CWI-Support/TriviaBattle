@@ -38,7 +38,7 @@ public class PowerUpTests
     [Fact]
     public void Five_right_answers_in_a_row_earn_a_power_up()
     {
-        var match = Solo();
+        var match = Solo(s => s.Dungeon.PowerUpStreak = 5); // fewer than the default (10), so no boss drops one first
 
         for (var i = 0; i < 4; i++)
             match.Press("A1", 0, afterSeconds: 4);

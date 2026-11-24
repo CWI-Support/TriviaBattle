@@ -153,10 +153,11 @@ public sealed class DungeonSettings
     public double PartyHpPerMember { get; set; } = 0.75;
 
     // Power-ups (see PowerUp). One held at a time, used with the action button. A kill drops one
-    // PowerUpDropChance of the time (a boss always), and every PowerUpStreak right answers in a row earn one.
+    // PowerUpDropChance of the time (a boss always), and every PowerUpStreak right answers in a row earn one: about
+    // 3-4 a session for an average player who uses them (DungeonPacingTests). Any more and one is nearly always in hand.
 
-    public double PowerUpDropChance { get; set; } = 0.35;
-    public int PowerUpStreak { get; set; } = 5;
+    public double PowerUpDropChance { get; set; } = 0.1;
+    public int PowerUpStreak { get; set; } = 10;
 
     /// <summary>The HP a Potion heals.</summary>
     public int PotionHeal { get; set; } = 50;

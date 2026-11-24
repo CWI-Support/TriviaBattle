@@ -263,8 +263,9 @@ The rules:
   Without weights the match's chosen difficulty comes first, as in Classic
   (the kiosk's difficulty only matters there now).
 - **Power-ups** (`PowerUp`): Potion, Fireball, Freeze, 50/50, Shield, Time Crystal, Phone a Friend, Fog Bomb, Tiny Hourglass. Each
-  adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (a boss
-  always) and every `PowerUpStreak` right answers in a row earn one, only with empty hands
+  adventurer holds one (`Adventurer.Held`). A kill drops one `PowerUpDropChance` of the time (10%; a boss
+  always) and every `PowerUpStreak` (10) right answers in a row earn one, only with empty hands: about 3-4 a
+  session, one every 10 or so answers (`DungeonPacingTests` checks it)
   (`DungeonRun.FindPowerUp`; it's recorded on the hit as `DealtHit.Found`). The action button (the fifth
   button, `ButtonPress.Action`) uses it: `MatchEngine.HandlePress` hands it to `DungeonRun.UsePowerUp`. A
   Potion goes to whoever in the party needs it most (a downed teammate gets straight up); a Fireball

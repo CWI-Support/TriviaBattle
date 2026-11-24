@@ -62,6 +62,20 @@ public class DungeonPacingTests(ITestOutputHelper output)
         Assert.True(good.Average(g => g.Seconds) > goodNoRewards.Average(g => g.Seconds) + 60);
     }
 
+    [Fact]
+    public void Power_ups_turn_up_now_and_then_not_every_other_answer()
+    {
+        var plan = DungeonContent.Load(Path.Combine(RepoRoot(), "src", "TriviaBattle.Server"));
+
+        // A player who uses each power-up as soon as they have it, so their hands are always free for the next.
+        var games = Enumerable.Range(1, 40).Select(seed => Play(plan.Build(new Random(seed)), new Random(seed), Average, usePowerUps: true)).ToList();
+
+        var found = games.Average(g => g.PowerUps);
+        var answersPerFind = games.Sum(g => g.Answers) / (double)Math.Max(1, games.Sum(g => g.PowerUps));
+        output.WriteLine($"Power-ups found {found:0.0} a session (one every {answersPerFind:0.0} answers), bosses {games.Average(g => g.Bosses):0.0}, kills {games.Average(g => g.Kills):0.0}");
+        Assert.InRange(found, 2.5, 4.5);
+    }
+
     /// <summary>How a simulated player plays: seconds to answer (from, plus up to span more), and how often they're right.</summary>
     /// <param name="OnTheMark">In a rune lock (a mini game): how often they stop the needle on the mark.</param>
     private sealed record Player(double ThinkFrom, double ThinkSpan, IReadOnlyDictionary<Difficulty, double> RightOften, double OnTheMark);
@@ -73,7 +87,7 @@ public class DungeonPacingTests(ITestOutputHelper output)
     /// <param name="WallSeconds">How long they were really at the station: the clock time plus the time it was stopped.</param>
     /// <param name="Rewards">Rewards picked: for a floor answered well, and for each mini game won (<paramref name="LocksOpened"/>).</param>
     private sealed record Game(double Seconds, int Bosses, int Floor, int Answers, int Right, int TimedOut, int Damage, int Kills, int Downed, int Rewards,
-        double WallSeconds = 0, int LocksOpened = 0, bool OutOfLives = false)
+        double WallSeconds = 0, int LocksOpened = 0, bool OutOfLives = false, int PowerUps = 0)
     {
         public int FloorRewards => Rewards - LocksOpened;
     }
@@ -172,7 +186,8 @@ public class DungeonPacingTests(ITestOutputHelper output)
         match.Press("A1", 0, afterSeconds: (((ahead % 360) + 360) % 360) / Math.Abs(game.DegreesPerSecond));
     }
 
-    private static Game Play(DungeonMap map, Random player, Player how, bool rewardsOn = true)
+    /// <param name="usePowerUps">Use each power-up found right away (otherwise they're never used, so once one's held, none drop).</param>
+    private static Game Play(DungeonMap map, Random player, Player how, bool rewardsOn = true, bool usePowerUps = false)
     {
         var questions = new[] { Difficulty.Easy, Difficulty.Medium, Difficulty.Hard }
             .SelectMany((difficulty, d) => TestMatch.MakeQuestions(80, difficulty, firstId: 1 + d * 100))
@@ -182,7 +197,7 @@ public class DungeonPacingTests(ITestOutputHelper output)
         match.StartPlaying();
         var started = match.Now;
         var endsAt = match.Engine.PhaseEndsAt;
-        var (bosses, downed, rewards) = (0, 0, 0);
+        var (bosses, downed, rewards, powerUps) = (0, 0, 0, 0);
 
         while (match.Engine.Phase == MatchPhase.Playing)
         {
@@ -213,6 +228,9 @@ public class DungeonPacingTests(ITestOutputHelper output)
                 continue;
             }
 
+            if (usePowerUps && match.AdventurerOf("A1").Held != null)
+                match.Press("A1", ButtonPress.Action, afterSeconds: 0);
+
             var number = stream.CurrentNumber;
             match.Wait(how.ThinkFrom + player.NextDouble() * how.ThinkSpan);
             if (match.Engine.Phase != MatchPhase.Playing || stream.CurrentNumber != number)
@@ -222,6 +240,7 @@ public class DungeonPacingTests(ITestOutputHelper output)
             var events = match.Press("A1", right ? 0 : 1, afterSeconds: 0);
             bosses += events.OfType<MonsterHit>().Count(e => e.Hit.Killed && e.Hit.IsBoss);
             downed += events.OfType<AdventurerHit>().Count(e => e.Hit.Downed);
+            powerUps += events.OfType<PowerUpFound>().Count();
         }
 
         var answers = match.StreamOf("A1").Answers;
@@ -231,7 +250,7 @@ public class DungeonPacingTests(ITestOutputHelper output)
         var wall = (endedAt - started).TotalSeconds;
         return new Game(wall - match.Engine.ClockHeldFor.TotalSeconds, bosses, delve.Floor, answers.Count, answers.Count(a => a.IsCorrect),
             answers.Count(a => a.TimedOut), delve.DamageDealt, delve.Kills, downed, rewards, wall, match.AdventurerOf("A1").MinigamesWon,
-            match.AdventurerOf("A1").IsOut);
+            match.AdventurerOf("A1").IsOut, powerUps);
     }
 
     private static string RepoRoot()
