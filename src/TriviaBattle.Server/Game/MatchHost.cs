@@ -1,4 +1,5 @@
 using TriviaBattle.Core.Dungeon;
+using TriviaBattle.Core.Dungeon.Minigames;
 using TriviaBattle.Core.Input;
 using TriviaBattle.Core.Matches;
 using TriviaBattle.Core.Modes;
@@ -32,6 +33,7 @@ public sealed class MatchHost(
     LeaderboardService leaderboards,
     DungeonPlan dungeon,
     QuerieLines querie,
+    HighStakesQuestions highStakes,
     ILogger<MatchHost> logger)
 {
     private readonly object _lock = new();
@@ -75,7 +77,8 @@ public sealed class MatchHost(
                 clock.GetUtcNow(),
                 Random.Shared,
                 dungeon.Build(Random.Shared), // this match's own layout of the made-up floors, the same for every party in it
-                querie);                      // Q.U.E.R.I.E.'s lines for the stations
+                querie,                       // Q.U.E.R.I.E.'s lines for the stations
+                highStakes);                  // High Stakes' brutal questions (the match's categories first)
 
             _matches.Add(match.MatchId, match);
             logger.LogInformation("Match {Id} started: {Format} {Mode}, {Players} players, {Seconds}s{Clock}, {Questions} questions in the pool, wrong answers: {Penalty}",

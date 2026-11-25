@@ -26,6 +26,18 @@ public enum MinigameKind
 
     /// <summary>A lit bomb goes round the party; whoever's holding it when it goes off takes the blast (<see cref="HotPotato"/>). Groups only.</summary>
     HotPotato,
+
+    // The special rooms (MinigameCatalog.Rooms): only ever behind a door at a fork before a boss (see Fork), never
+    // rolled between two rooms. They ask trivia questions, taken from the player's own question stream.
+
+    /// <summary>A treasure room: a lightning round of easy questions; enough right in time opens the chest, a power-up (<see cref="TreasureRoom"/>).</summary>
+    Treasure,
+
+    /// <summary>A trap room: a true/false sprint; each miss hurts, and all of them right is a full heal (<see cref="TrapRoom"/>).</summary>
+    Trap,
+
+    /// <summary>High Stakes: bet HP on one brutal question (right, a reward pick; wrong, it hurts) or pass (<see cref="HighStakesRoom"/>).</summary>
+    HighStakes,
 }
 
 /// <summary>What a press did in a mini game.</summary>
@@ -47,6 +59,9 @@ public enum MinigamePress
 
     /// <summary>A press that only nudges something along (a tuner bar), many a second: no sound of its own.</summary>
     Nudge,
+
+    /// <summary>They chose to leave (passed on High Stakes' bet): it's over, nothing won and nothing lost.</summary>
+    Left,
 }
 
 /// <summary>
@@ -114,10 +129,36 @@ public abstract class Minigame
             return MinigamePress.Ignored;
 
         var result = Play(answerIndex, at);
-        if (result is MinigamePress.Won or MinigamePress.Lost)
+        if (result is MinigamePress.Won or MinigamePress.Lost or MinigamePress.Left)
             Finish(at, won: result == MinigamePress.Won);
         return result;
     }
+
+    /// <summary>
+    /// A game with clocks of its own inside its time limit (the trap's statements, High Stakes' choice and question):
+    /// whatever of them has run out by <paramref name="now"/>, as if it were a press (a miss, the last one losing it...).
+    /// Checked every tick, again while it says something happened (a slow tick may be past more than one). Ignored
+    /// when nothing ran out, as for most games.
+    /// </summary>
+    public MinigamePress Due(DateTimeOffset now)
+    {
+        if (FinishedAt != null || now < PlaysFrom || Overdue(now) is not { } overdue)
+            return MinigamePress.Ignored;
+
+        var (result, at) = overdue;
+        if (result is MinigamePress.Won or MinigamePress.Lost or MinigamePress.Left)
+            Finish(at, won: result == MinigamePress.Won);
+        return result;
+    }
+
+    /// <summary>What one of the game's own clocks did if one has run out by <paramref name="now"/>, and when it ran out; null for most games.</summary>
+    protected virtual (MinigamePress Result, DateTimeOffset At)? Overdue(DateTimeOffset now) => null;
+
+    /// <summary>
+    /// A win earns a pick of the floor rewards (when <see cref="MinigameSettings.WinEarnsReward"/> is on). Not the
+    /// treasure room's (its chest is the prize) or the trap's (a full heal).
+    /// </summary>
+    public virtual bool WinEarnsReward => true;
 
     /// <summary>
     /// A game won by how things stand rather than by a press (the tuner: every bar held in its zone, which can happen

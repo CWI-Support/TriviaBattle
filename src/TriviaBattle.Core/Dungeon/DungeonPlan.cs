@@ -16,10 +16,12 @@ public sealed class DungeonPlan
     /// <param name="affixChance">From <paramref name="affixFromFloor"/> on, how likely a monster that isn't a boss is to have an affix (see DungeonMap.AffixFromFloor).</param>
     /// <param name="affixFromFloor">The first floor with affixed monsters (0 = none).</param>
     /// <param name="affixes">The affixes in play (null: all of them).</param>
+    /// <param name="forkChance">How likely each floor reached that ends in a boss is to have a fork before it (0 = never, 1 = always; see DungeonMap.ForkOn).</param>
     public DungeonPlan(IReadOnlyList<DepthDef> depths, IReadOnlyList<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
         double minigameChance = 0, int minigameEvery = 0, int loopQuestionShift = 10, double affixChance = 0, int affixFromFloor = 0,
-        IReadOnlyList<Affix>? affixes = null)
+        IReadOnlyList<Affix>? affixes = null, double forkChance = 0)
     {
+        ForkChance = forkChance;
         Affixes = affixes;
         AffixChance = affixChance;
         AffixFromFloor = affixFromFloor;
@@ -61,6 +63,9 @@ public sealed class DungeonPlan
     /// <summary>The affixes in play (config/dungeon.json's <c>Affixes</c>); null: all of them.</summary>
     public IReadOnlyList<Affix>? Affixes { get; }
 
+    /// <summary>How likely each floor reached that ends in a boss is to have a fork before it (config/dungeon.json's <c>ForkChance</c>; see DungeonMap.ForkOn).</summary>
+    public double ForkChance { get; }
+
     /// <summary>One match's dungeon: every made-up floor laid out with <paramref name="random"/>.</summary>
     public DungeonMap Build(Random random)
     {
@@ -68,10 +73,13 @@ public sealed class DungeonPlan
             .Select(depth => depth with { Floors = depth.Floors.Select(floor => floor.IsMadeUp ? LayOut(floor, random) : floor).ToList() })
             .ToList();
         // Mini games are rolled floor by floor as they're reached (DungeonMap.MinigameOn), loops included; so are affixes,
-        // room by room (DungeonMap.RoomAt). Each from its own seed.
+        // room by room (DungeonMap.RoomAt), and forks (DungeonMap.ForkOn). Each from its own seed, taken in this order so
+        // adding one doesn't change the others.
         var minigameSeed = random.Next();
+        var affixSeed = random.Next();
+        var forkSeed = random.Next();
         return new DungeonMap(depths, Monsters, LoopHpBonus, LoopDamageBonus, MinigameChance, minigameSeed, MinigameEvery, LoopQuestionShift,
-            AffixChance, AffixFromFloor, random.Next(), Affixes);
+            AffixChance, AffixFromFloor, affixSeed, Affixes, ForkChance, forkSeed);
     }
 
     /// <summary>A made-up floor, written out: <see cref="FloorDef.RoomCount"/> rooms filled from the pool, then the boss's.</summary>
@@ -128,5 +136,7 @@ public sealed class DungeonPlan
         }
         if (AffixChance is < 0 or > 1 || AffixFromFloor < 0)
             yield return "AffixChance needs to be between 0 and 1, and AffixFromFloor 0 (none) or more.";
+        if (ForkChance is < 0 or > 1)
+            yield return "ForkChance needs to be between 0 and 1.";
     }
 }

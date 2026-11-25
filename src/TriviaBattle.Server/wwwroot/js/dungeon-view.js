@@ -368,6 +368,10 @@ const DungeonView = {
                 return { html: Theme.text('dungeon.revived', { ...values, name }, s), tone: 'is-great' };
             }
             if (hit.floorCleared) return { html: Theme.text('dungeon.floorClearedLine', values, s), tone: 'is-great' };
+            // Doors before the boss: while they're at the fork; once through it, the boss's door (its entrance has played).
+            if (hit.forkAhead) return delve.minigame === 'Fork'
+                ? { html: Theme.text('dungeon.forkAheadLine', values, s), tone: 'is-great' }
+                : { html: Theme.text('dungeon.bossEntranceLine', { ...values, monster: delve.monster.name }, s), tone: 'is-great' };
             if (hit.bossAhead) return { html: Theme.text('dungeon.bossAheadLine', values, s), tone: 'is-great' }; // the room before the boss's
             if (hit.partyCombo) return { html: Theme.text('dungeon.partyCombo', values, s), tone: 'is-great' };
             if (hit.killed) return { html: Theme.text('dungeon.kill', values, s), tone: 'is-great' };
@@ -514,6 +518,10 @@ const DungeonView = {
             || match.players?.find(p => p.stationId === ownerId)?.name || you.name, popWaits);
         DungeonPowerUps.noticeSabotage(powerUpKey, delve, popWaits); // a rival's that came at you
 
+        // Before a boss: the fork, a door to vote for (js/dungeon-rooms.js); the room behind it is a mini game.
+        if (DungeonRooms.forkShowing(you, serverNow))
+            return DungeonRooms.fork(match, you, serverNow, plate);
+
         // Between two rooms: the floor's mini game (js/dungeon-minigames.js).
         if (DungeonMinigames.showing(you, serverNow))
             return DungeonMinigames.station(match, you, serverNow, plate);
@@ -643,7 +651,11 @@ const DungeonView = {
         const sabotageBefore = DungeonView.seen[`sabotage:${memo}`];
         DungeonView.seen[`sabotage:${memo}`] = sabotage?.atMs || 0;
         const sabotaged = sabotageBefore !== undefined && sabotage && sabotage.atMs !== sabotageBefore ? sabotage : null;
-        if (!hit && !picked && !lockWon && !sabotaged) return;
+        // After the room behind a fork's door, the boss's entrance: announced then, not at the kill before the doors.
+        const entranceBefore = DungeonView.seen[`entrance:${memo}`];
+        DungeonView.seen[`entrance:${memo}`] = delve.bossEntranceAtMs || 0;
+        const bossEntered = entranceBefore !== undefined && !!delve.bossEntranceAtMs && delve.bossEntranceAtMs !== entranceBefore;
+        if (!hit && !picked && !lockWon && !sabotaged && !bossEntered) return;
 
         const lanePlayers = match.players.filter(p => p.stationId === key || p.teamId === key);
         // The lane's faces cheer with the banner (wince at a rival's sabotage), timed from it (its wrapper's --t0).
@@ -669,6 +681,10 @@ const DungeonView = {
             banner('reward', Theme.text('dungeon.momentReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }), `icon-rw-${picked.reward}`);
             DungeonHost.say(Theme.text('dungeon.hostReward', { name: who, reward: Theme.raw(DungeonRewards.name(picked.reward)) }, `${memo}:reward:${picked.number}`));
         }
+        if (bossEntered) {
+            banner('boss', Theme.text('dungeon.momentBoss', { name: who, monster: delve.monster.name }), delve.monster.sprite);
+            DungeonHost.say(Theme.text('dungeon.hostBoss', { name: who, monster: delve.monster.name }, `${memo}:entrance:${delve.bossEntranceAtMs}`));
+        }
         if (!hit) return;
 
         const seed = `${memo}:${hit.number}`;
@@ -678,7 +694,7 @@ const DungeonView = {
             banner('slain', Theme.text('dungeon.momentBossSlain', { name: who, monster: hit.monsterName }), hit.monsterSprite);
             host('dungeon.hostBossSlain', { name: who, monster: hit.monsterName });
         }
-        else if (hit.bossAhead || (hit.floorCleared && delve.monster.isBoss)) { // a boss steps up (bossAhead: its room is next)
+        else if ((hit.bossAhead && !hit.forkAhead) || (hit.floorCleared && delve.monster.isBoss)) { // a boss steps up (bossAhead: its room is next; with a fork first, after its room)
             banner('boss', Theme.text('dungeon.momentBoss', { name: who, monster: delve.monster.name }), delve.monster.sprite);
             host('dungeon.hostBoss', { name: who, monster: delve.monster.name });
         }

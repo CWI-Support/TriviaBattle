@@ -152,6 +152,38 @@ public class DungeonPacingTests(ITestOutputHelper output)
                 var correct = quiz.Current.CorrectIndex;
                 match.Press("A1", player.NextDouble() < how.OnTheMark ? correct : (correct + 1) % 4, afterSeconds: 2);
                 break;
+            // The special rooms behind a fork's doors: trivia again, answered about as well as in the fight.
+            case TreasureRoom treasure when treasure.LockedUntil > match.Now:
+                match.Wait((treasure.LockedUntil!.Value - match.Now).TotalSeconds + 0.05); // a wrong answer's dead buttons
+                break;
+            case TreasureRoom treasure:
+                // Easy questions as fast as they can: half their usual thinking time.
+                var key = treasure.Current.CorrectIndex;
+                match.Press("A1", player.NextDouble() < how.RightOften[Difficulty.Easy] ? key : (key + 1) % 4,
+                    afterSeconds: (how.ThinkFrom + player.NextDouble() * how.ThinkSpan) / 2);
+                break;
+            case TrapRoom trap when trap.AskedAt > match.Now:
+                match.Wait((trap.AskedAt - match.Now).TotalSeconds + 0.05); // the last one's truth
+                break;
+            case TrapRoom trap:
+                // True or false: they know it as often as a medium question, and guess the rest (right half the time).
+                var saysTrue = player.NextDouble() < how.RightOften[Difficulty.Medium] ? trap.Current.IsTrue : player.Next(2) == 0;
+                match.Press("A1", saysTrue ? 0 : 1, afterSeconds: Math.Min(3.5, how.ThinkFrom + player.NextDouble() * how.ThinkSpan));
+                break;
+            case HighStakesRoom bet when bet.BetAt == null:
+                // They bet while they're above half their HP, and pass otherwise.
+                var hero = match.AdventurerOf("A1");
+                match.Press("A1", hero.Hp * 2 > hero.MaxHp ? 0 : 3, afterSeconds: 1.5);
+                break;
+            case HighStakesRoom bet when bet.AskedAt > match.Now:
+                match.Wait((bet.AskedAt!.Value - match.Now).TotalSeconds + 0.05); // reading it
+                break;
+            case HighStakesRoom bet:
+                // A brutal question (its own bank, harder than the hardest): right less often than a hard one.
+                var answer = bet.Question.CorrectIndex;
+                match.Press("A1", player.NextDouble() < how.RightOften[Difficulty.Hard] * 0.6 ? answer : (answer + 1) % 4,
+                    afterSeconds: how.ThinkFrom + player.NextDouble() * how.ThinkSpan);
+                break;
             case RingPuzzle puzzle when puzzle.RoundStartsAt > match.Now:
                 match.Wait((puzzle.RoundStartsAt - match.Now).TotalSeconds + 0.05); // the solved picture
                 break;
@@ -202,6 +234,15 @@ public class DungeonPacingTests(ITestOutputHelper output)
         while (match.Engine.Phase == MatchPhase.Playing)
         {
             endsAt = match.Engine.PhaseEndsAt;
+            if (match.AdventurerOf("A1").Fork is { } fork)
+            {
+                // A fork before a boss: a moment to read the doors, then either one; then the door opens.
+                if (fork.IsDecided || fork.VotesFrom > match.Now)
+                    match.Wait(fork.IsDecided ? 0.2 : (fork.VotesFrom - match.Now).TotalSeconds + 0.05);
+                else
+                    match.Press("A1", player.Next(2), afterSeconds: 1 + player.NextDouble() * 2);
+                continue;
+            }
             if (match.AdventurerOf("A1").Minigame is { } minigame)
             {
                 PlayTheMinigame(match, minigame, player, how);

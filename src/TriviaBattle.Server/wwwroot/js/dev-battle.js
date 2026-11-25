@@ -55,6 +55,12 @@
 // popquiz-won (the third right answer, then the win). hotpotato (the party's game: the intro, then Cat throws you the bomb and
 // your runes light up), hotpotato-wait (Cat has it, you're next), hotpotato-boom (it went off on Bob: you're safe),
 // hotpotato-blasted (it went off on you).
+// The fork before a boss: fork (two doors to vote for, nobody knows what's behind them), fork-party (Bob and Cat have
+// voted), fork-open (door B taken: it swings open on a trap), bossentrance (after the room: the boss's entrance on its
+// own, from its curtain, then its first question; the kill before the doors was a plain kill). Its rooms: treasure (the lightning round), treasure-wrong (a
+// jammed lock), treasure-won (the chest springs open), trap (true or false), trap-miss (it sprang), trap-won (a perfect
+// run: a full heal), highstakes (bet or pass), highstakes-bet (its brutal question), highstakes-won, highstakes-lost,
+// highstakes-passed.
 // Power-ups: mirror (a Mirror Shield takes the hit and bounces it into the monster), dice (Lucky Dice come up good: double),
 // snakeeyes (they don't: no damage). ?armed: the plate shows a Mirror Shield up and Lucky Dice ready.
 // Affixes (deeper down): armored (a slow hit on an Armored monster does half), vampire (a Vampiric monster drinks its hit);
@@ -66,7 +72,7 @@
 //                                    boss's charge at that step (0-based, of 3; 2 = full charge)
 
 const KINDS = ['hit', 'crit', 'combo', 'party', 'revive', 'kill', 'roomclear', 'teamkill', 'floor', 'boss', 'hurt', 'slow', 'downed', 'fireball', 'loot', 'blocked',
-    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'popquiz', 'popquiz-wrong', 'popquiz-won', 'hotpotato', 'hotpotato-wait', 'hotpotato-boom', 'hotpotato-blasted', 'mirror', 'dice', 'snakeeyes', 'armored', 'vampire', 'out', 'opening'];
+    'splash', 'heal', 'poison', 'poisonkill', 'patron', 'reveal', 'peek', 'armour', 'charged', 'stagger', 'reward', 'rewarded', 'runelock', 'runelock-won', 'runelock-lost', 'runeecho', 'chestshuffle', 'chestshuffle-found', 'chestshuffle-lost', 'ringpuzzle', 'ringpuzzle-solved', 'ringpuzzle-won', 'tuner', 'tuner-won', 'popquiz', 'popquiz-wrong', 'popquiz-won', 'hotpotato', 'hotpotato-wait', 'hotpotato-boom', 'hotpotato-blasted', 'fork', 'fork-party', 'fork-open', 'treasure', 'treasure-wrong', 'treasure-won', 'trap', 'trap-miss', 'trap-won', 'bossentrance', 'highstakes', 'highstakes-bet', 'highstakes-won', 'highstakes-lost', 'highstakes-passed', 'mirror', 'dice', 'snakeeyes', 'armored', 'vampire', 'out', 'opening'];
 const CLASS_KINDS = { splash: 'wizard', heal: 'healer', poison: 'healer', poisonkill: 'healer', patron: 'warlock', reveal: 'warlock', peek: 'ranger', armour: 'tank', combo: 'pugilist' };
 const RANGER_PEEK_MS = 1500;
 // ?long: a long question and long answers (the admin editor allows 250 and 80 letters), to check they shrink to fit.
@@ -74,8 +80,8 @@ const LONG_QUESTION = {
     text: 'In the 1985 film Back to the Future, what speed in miles per hour does the DeLorean have to reach before it travels through time?',
     answers: ['Eighty-eight miles per hour', 'One hundred and twenty-one', 'Sixty-six, like the highway', 'It depends entirely on how much plutonium the flux capacitor gets'],
 };
-const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, popquiz: 9000, 'popquiz-wrong': 4000, 'popquiz-won': 4600, hotpotato: 10000, 'hotpotato-wait': 5000, 'hotpotato-boom': 3600, 'hotpotato-blasted': 3600, mirror: 1700, vampire: 1700, opening: 3500, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
-const BOSS_KINDS = ['charged', 'stagger'];  // fought against the boss (so is any kind with ?charge=)
+const BEAT_MS = { out: 1700, kill: 2000, roomclear: 3000, teamkill: 2000, loot: 2000, poisonkill: 2000, floor: 3000, boss: 5000, hurt: 1700, slow: 1700, downed: 1700, blocked: 1700, charged: 1700, reward: 4000, rewarded: 2800, runelock: 9000, runeecho: 9000, chestshuffle: 10000, 'chestshuffle-found': 8000, 'chestshuffle-lost': 3600, ringpuzzle: 9000, 'ringpuzzle-solved': 5000, 'ringpuzzle-won': 4600, tuner: 12000, 'tuner-won': 3600, popquiz: 9000, 'popquiz-wrong': 4000, 'popquiz-won': 4600, hotpotato: 10000, 'hotpotato-wait': 5000, 'hotpotato-boom': 3600, 'hotpotato-blasted': 3600, fork: 10000, 'fork-party': 10000, 'fork-open': 4000, treasure: 14000, 'treasure-wrong': 4000, 'treasure-won': 4600, trap: 9000, 'trap-miss': 4000, 'trap-won': 4200, bossentrance: 3720, highstakes: 12000, 'highstakes-bet': 8000, 'highstakes-won': 4600, 'highstakes-lost': 3600, 'highstakes-passed': 3600, mirror: 1700, vampire: 1700, opening: 3500, 'runelock-won': 3600, 'runelock-lost': 3600 }; // others (hits) 1500
+const BOSS_KINDS = ['charged', 'stagger', 'bossentrance'];  // fought against the boss (so is any kind with ?charge=)
 const BOSS_CHARGE_STEPS = 3;                // the server's default (Game:Dungeon:BossChargeSteps)
 const QUESTION_MS = 1500; // the question shown between two beats in the loop
 const GLASS_MS = (Number(new URLSearchParams(location.search).get('glass')) || 10) * 1000; // the question's hourglass (?glass=5)
@@ -473,14 +479,93 @@ function fakeState(kind, startedAt, question) {
                                  roundStartsAtMs: intro ? playsFromMs : wholeAtMs + 1500, solvedRings: intro ? null : 3, presses: intro ? 0 : 14, wholeAtMs } };
     }
 
+    // The fork before a boss, and the special rooms behind its doors (js/dungeon-rooms.js).
+    if (kind.startsWith('fork')) {
+        // fork: the boss's entrance has played; two doors, nobody knows what's behind them, 8 s to vote. party: Bob's voted A,
+        // Cat B, you not yet. open: you took door B (the trap): it swings open now, the trap's intro 2 s later.
+        you.beat = { kind: 'kill', startedAtMs: startedAt - 2000, endsAtMs: startedAt }; // a plain kill: the boss isn't seen yet
+        you.question = null;
+        const open = kind === 'fork-open';
+        const opensAtMs = open ? startedAt - 3000 : startedAt;
+        you.fork = { floor: 2, doors: 2, opensAtMs, votesFromMs: opensAtMs + 1000, endsAtMs: opensAtMs + 8000,
+                     voters: [{ ownerId: 'A1', name: 'Ann', stationId: 'A1', door: open ? 1 : null },
+                              ...(kind === 'fork-party' ? [{ ownerId: 'A2', name: 'Bob', stationId: 'A2', door: 0 }, { ownerId: 'A3', name: 'Cat', stationId: 'A3', door: 1 }] : [])],
+                     yourVote: open ? 1 : null, taken: open ? 1 : null, takenAtMs: open ? startedAt : null,
+                     roomFromMs: open ? startedAt + 2000 : null, room: open ? 'Trap' : null };
+    }
+    if (kind === 'bossentrance') {
+        // After the room behind a fork's door: the boss beat from its curtain (as if it began 1.28 s ago), then its question.
+        you.beat = { kind: 'boss', entrance: true, startedAtMs: startedAt - 1280, endsAtMs: startedAt + length };
+        delve.bossEntranceAtMs = startedAt - 1280;
+    }
+    if (kind.startsWith('treasure')) {
+        // treasure: the intro now, then the lightning round (two right so far). wrong: a wrong answer just jammed the lock
+        // (1 s). won: the fifth right one: the chest springs open with a Shield in it, the result 1.2 s later.
+        you.beat = { kind: 'boss', startedAtMs: startedAt - 8000, endsAtMs: startedAt - 6000 };
+        you.question = null;
+        const won = kind === 'treasure-won';
+        const wrong = kind === 'treasure-wrong';
+        const playsFromMs = kind === 'treasure' ? startedAt + 3500 : startedAt - 4000;
+        you.minigame = { kind: 'Treasure', introAtMs: playsFromMs - 3500, playsFromMs, endsAtMs: playsFromMs + 10000,
+                         finishedAtMs: won ? startedAt : null, won, resultFromMs: won ? startedAt + 1200 : null, resultEndsAtMs: won ? startedAt + 4400 : null,
+                         runeLock: null,
+                         treasure: { rightNeeded: 5, right: won ? 5 : 2, wrong: wrong ? 1 : 0, number: won ? 6 : wrong ? 4 : 3, category: 'Movies',
+                                     text: 'Which wizard school does Harry Potter attend?', answers: ['Hogwarts', 'Durmstrang', 'Beauxbatons', 'Ilvermorny'],
+                                     lockedUntilMs: wrong ? startedAt + 1000 : null, lastWasRight: !wrong, lastAtMs: kind === 'treasure' ? null : startedAt,
+                                     prize: won ? 'Shield' : null, healed: 0 } };
+    }
+    if (kind.startsWith('trap')) {
+        // trap: the intro now, then statement 1. miss: statement 3 was just answered wrong (it cost 8 HP): its truth shows, then
+        // statement 4 comes in 1.4 s later. won: the sixth right, every one of them: a full heal (+15 HP), the result 1.4 s later.
+        you.beat = { kind: 'boss', startedAtMs: startedAt - 8000, endsAtMs: startedAt - 6000 };
+        you.question = null;
+        const miss = kind === 'trap-miss';
+        const won = kind === 'trap-won';
+        const playsFromMs = kind === 'trap' ? startedAt + 3500 : startedAt - 12000;
+        const askedAtMs = miss ? startedAt + 1400 : won ? startedAt - 4000 : playsFromMs;
+        const last = miss ? { number: 3, text: 'Which planet is known as the Red Planet?', shown: 'Jupiter', correct: 'Mars', wasTrue: false, said: true, wasRight: false, atMs: startedAt, damage: 8 }
+            : won ? { number: 6, text: 'How many legs does a spider have?', shown: '8', correct: '8', wasTrue: true, said: true, wasRight: true, atMs: startedAt, damage: 0 }
+            : null;
+        you.minigame = { kind: 'Trap', introAtMs: playsFromMs - 3500, playsFromMs, endsAtMs: playsFromMs + 60000,
+                         finishedAtMs: won ? startedAt : null, won, resultFromMs: won ? startedAt + 1400 : null, resultEndsAtMs: won ? startedAt + 4600 : null,
+                         runeLock: null,
+                         trap: { statements: 6, right: won ? 6 : 1, misses: miss ? 2 : 0, number: won ? 6 : miss ? 4 : 1,
+                                 category: 'Movies', text: 'Which wizard school does Harry Potter attend?', shown: 'Durmstrang',
+                                 askedAtMs, answerByMs: askedAtMs + 4000, last, damage: miss ? 16 : 0, healed: won ? 15 : 0 } };
+    }
+    if (kind.startsWith('highstakes')) {
+        // highstakes: the intro now, then the bet (8 s). bet: they've bet: its brutal question. won: answered right, the
+        // result 1.2 s later. lost: answered wrong (25 HP). passed: they passed.
+        you.beat = { kind: 'boss', startedAtMs: startedAt - 8000, endsAtMs: startedAt - 6000 };
+        you.question = null;
+        const answered = kind === 'highstakes-won' || kind === 'highstakes-lost';
+        const bet = kind === 'highstakes-bet' || answered;
+        const won = kind === 'highstakes-won';
+        const over = answered || kind === 'highstakes-passed';
+        const playsFromMs = kind === 'highstakes' ? startedAt + 3500 : startedAt - 6000;
+        const betAtMs = bet ? startedAt - 3000 : null;
+        you.minigame = { kind: 'HighStakes', introAtMs: playsFromMs - 3500, playsFromMs, endsAtMs: playsFromMs + 22000,
+                         finishedAtMs: over ? startedAt : null, won, resultFromMs: over ? startedAt + (won ? 1200 : 0) : null,
+                         resultEndsAtMs: over ? startedAt + (won ? 4400 : 3200) : null, runeLock: null,
+                         highStakes: { decideByMs: playsFromMs + 8000, penaltyHp: 25, passed: kind === 'highstakes-passed', betAtMs,
+                                       askedAtMs: bet ? betAtMs + 1000 : null, answerByMs: bet ? betAtMs + 13000 : null,
+                                       category: bet ? 'American History' : null, text: bet ? "Who was Abraham Lincoln's vice president during his first term?" : null,
+                                       answers: bet ? ['Andrew Johnson', 'Hannibal Hamlin', 'Schuyler Colfax', 'John C. Breckinridge'] : null,
+                                       chosen: answered ? (won ? 1 : 0) : null, correct: answered ? 1 : null, answeredAtMs: answered ? startedAt : null,
+                                       penalty: kind === 'highstakes-lost' ? 25 : 0 } };
+    }
+
     const match = { matchId: 'dev', category: 'Movies', earnsTime: true, phaseEndsAtMs: Date.now() + 75000,
-                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') || kind.startsWith('tuner') || kind.startsWith('popquiz') || kind.startsWith('hotpotato') ? 74000 : null,
+                    clockStoppedLeftMs: kind.startsWith('runelock') || kind === 'runeecho' || kind.startsWith('chestshuffle') || kind.startsWith('ringpuzzle') || kind.startsWith('tuner') || kind.startsWith('popquiz') || kind.startsWith('hotpotato')
+                        || /^(fork|treasure|trap|highstakes)/.test(kind) ? 74000 : null,
                     players: [
                         { stationId: 'A1', name: 'Ann', photo: params.has('photo') || params.get('face') === 'drawn' ? 1 : 0, hero },
                         ...(party ? [{ stationId: 'A3', name: 'Cat', teamId: 'side1', photo: 0, hero: 'rogue' }] : []),
                         ...(params.has('rival') || params.has('cameo') ? [{ stationId: 'A2', name: 'Bob', photo: params.has('rival') ? 1 : 0, hero: 'rogue' }] : []),
                         // The hot potato's table: Bob and Cat round it with you.
                         ...(kind.startsWith('hotpotato') ? [{ stationId: 'A2', name: 'Bob', photo: 0, hero: 'pugilist' }, { stationId: 'A3', name: 'Cat', photo: 0, hero: 'wizard' }] : []),
+                        // The fork's party: Bob and Cat vote too.
+                        ...(kind === 'fork-party' ? [{ stationId: 'A2', name: 'Bob', photo: 0, hero: 'pugilist' }, { stationId: 'A3', name: 'Cat', photo: 0, hero: 'wizard' }] : []),
                         ...TEAM.map((hero, i) => ({
                             stationId: `A${i + 3}`, name: ['Cat', 'Dan', 'Eve'][i], teamId: 'side1', photo: 0, hero,
                             delve: { lastDealt: { number: teamHits }, lastTaken: null, downedUntilMs: kind === 'downed' && i === 1 ? Date.now() + 5000 : null },

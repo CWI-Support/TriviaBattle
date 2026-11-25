@@ -104,6 +104,30 @@ public sealed class QuestionStream(string ownerId, IReadOnlyList<Question> quest
         return fallback;
     }
 
+    /// <summary>
+    /// Questions for something outside the stream (a Dungeon special room asks its own), counted as asked so the stream
+    /// won't ask them again: ones not asked yet, of the wanted difficulty first, then any other, then (a small set of
+    /// questions) ones asked before. Never the one up now, unless it's the only question there is. Doesn't change
+    /// what's up now.
+    /// </summary>
+    public IReadOnlyList<Question> TakeExtra(Difficulty wanted, int count)
+    {
+        var others = Enumerable.Range(0, questionOrder.Count).Where(i => i != _current).ToList();
+        var order = others.Where(i => !_asked[i] && questionOrder[i].Difficulty == wanted)
+            .Concat(others.Where(i => !_asked[i] && questionOrder[i].Difficulty != wanted))
+            .Concat(others.Where(i => _asked[i]))
+            .DefaultIfEmpty(_current) // the only question there is
+            .ToList();
+        var taken = new List<Question>();
+        for (var i = 0; i < count; i++)
+        {
+            var index = order[i % order.Count]; // fewer than asked for: they come round again
+            _asked[index] = true;
+            taken.Add(questionOrder[index]);
+        }
+        return taken;
+    }
+
     public void LockOut(DateTimeOffset until) => LockedOutUntil = until;
 
     public void EndLockout() => LockedOutUntil = null;

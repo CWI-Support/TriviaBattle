@@ -72,8 +72,32 @@ public sealed record PatronRevealed(string OwnerId) : MatchEvent;
 /// <summary>Dungeon format: a floor's boss died and this adventurer answered enough of the floor right: they're choosing a reward (see <see cref="Reward"/>).</summary>
 public sealed record RewardOffered(string OwnerId, RewardOffer Offer) : MatchEvent;
 
-/// <summary>Dungeon format: a kill emptied the room before the floor's mini game, and this adventurer's go at it begins (its intro first).</summary>
+/// <summary>
+/// Dungeon format: this adventurer's go at a mini game begins (its intro first): a kill emptied the room before the floor's
+/// mini game, or (a special room) the door they took at a fork has opened (raised by Tick).
+/// </summary>
 public sealed record MinigameStarted(string OwnerId, MinigameKind Kind) : MatchEvent;
+
+/// <summary>
+/// Dungeon format: a kill brought a floor's boss up and there's a fork before it: this adventurer is at it, and its doors
+/// come up once the boss's entrance has played (<see cref="Fork.OpensAt"/>).
+/// </summary>
+public sealed record ForkOpened(string OwnerId, Fork Fork) : MatchEvent;
+
+/// <summary>
+/// Dungeon format: the room behind a fork's door is over, and the boss makes its entrance on this adventurer's screen
+/// (raised by Tick): a boss beat from its curtain on (<see cref="Adventurer.BossEntranceAt"/>), then its first question.
+/// </summary>
+public sealed record BossEntered(string OwnerId) : MatchEvent;
+
+/// <summary>Dungeon format: a vote for one of a fork's doors counted (0-based: A the first, B the second).</summary>
+public sealed record DoorVoted(string OwnerId, int Door) : MatchEvent;
+
+/// <summary>
+/// Dungeon format: a party's fork is decided (everyone voted, or time was up, raised by Tick): the door taken (0-based:
+/// A the first) opens on the room behind it.
+/// </summary>
+public sealed record ForkDecided(string PartyId, int Door, MinigameKind Room) : MatchEvent;
 
 /// <summary>Dungeon format: a press in a mini game counted (a hit, a miss, a round won, or the hit that won it).</summary>
 /// <param name="ShowsInSeconds">A win (or a round won): how long until the screen shows it (<see cref="Minigame.WinPauseSeconds"/>), so its sound lands then.</param>

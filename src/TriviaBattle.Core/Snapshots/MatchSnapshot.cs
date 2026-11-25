@@ -153,7 +153,9 @@ public sealed record YourAnswerView(
 /// <param name="PhotoAtMs">A hero photo is coming (or was taken): the station takes it at this time, after a countdown. The action button in the intro says no.</param>
 /// <param name="Reward">Dungeon format, after a floor's boss: the rewards they're choosing between with their answer buttons (their question waits: <paramref name="Question"/> is null meanwhile).</param>
 /// <param name="Minigame">Dungeon format, between two rooms: the mini game they're playing with their answer buttons (their question waits:
-/// <paramref name="Question"/> is null meanwhile), from its intro until the moment after it ends.</param>
+/// <paramref name="Question"/> is null meanwhile), from its intro until the moment after it ends. A special room behind a fork's door is one.</param>
+/// <param name="Fork">Dungeon format, before a boss: the fork they're at, voting for a door with their answer buttons (their question
+/// waits), from the boss's entrance until the room behind the door taken starts.</param>
 public sealed record YouView(
     string StationId,
     string Name,
@@ -172,7 +174,22 @@ public sealed record YouView(
     RewardOfferView? Reward = null,
     MinigameView? Minigame = null,
     string? CallingName = null,
-    QuipView? Quip = null);
+    QuipView? Quip = null,
+    ForkView? Fork = null);
+
+/// <summary>
+/// A fork before a boss (Core/Dungeon/Fork.cs): <see cref="Doors"/> doors that look the same, up from <see cref="OpensAtMs"/>,
+/// after the boss's entrance. Votes count from <see cref="VotesFromMs"/> (A for the first door, B for the second) until
+/// <see cref="EndsAtMs"/>; <see cref="Voters"/> is everyone at it, with their votes so far. Once it's decided (<see cref="Taken"/>,
+/// at <see cref="TakenAtMs"/>) that door opens, and the room behind it (<see cref="Room"/>: "Treasure", "Trap" or "HighStakes",
+/// sent only then: what's behind the doors is a secret) starts at <see cref="RoomFromMs"/>.
+/// </summary>
+/// <param name="YourVote">The door this screen's player voted for (0-based), or null.</param>
+public sealed record ForkView(int Floor, int Doors, long OpensAtMs, long VotesFromMs, long EndsAtMs, IReadOnlyList<ForkVoterView> Voters,
+    int? YourVote, int? Taken, long? TakenAtMs, long? RoomFromMs, string? Room);
+
+/// <summary>Someone at a fork: their answer owner id, name, station (for their face: HeroPhoto) and the door they voted for (null: not yet).</summary>
+public sealed record ForkVoterView(string OwnerId, string Name, string StationId, int? Door);
 
 /// <summary>
 /// Dungeon format: Q.U.E.R.I.E.'s latest remark on this station (Core/Dungeon/Querie.cs picks them), from
@@ -186,12 +203,16 @@ public sealed record QuipView(int Number, string Moment, string Text, long AtMs,
 /// <see cref="EndsAtMs"/>, when the next question appears. What exactly happened is in the delve's
 /// LastDealt (your hit) or LastTaken (the monster's).
 /// </summary>
-/// <param name="Kind">"hit", "kill", "floor" (a floor cleared: its boss died), "boss" (the room before a boss's cleared: the boss steps up), "hurt", "downed", "reward" (a reward just picked: what it gives), or "enter" (the opening after the intro: the hero runs into the first room, before the first question).</param>
+/// <param name="Kind">"hit", "kill", "floor" (a floor cleared: its boss died), "boss" (the room before a boss's cleared: the boss steps up; with a fork first, a plain "kill", and the boss's entrance after the room: <paramref name="Entrance"/>), "hurt", "downed", "reward" (a reward just picked: what it gives), or "enter" (the opening after the intro: the hero runs into the first room, before the first question).</param>
 /// <param name="ByPoison">The party's poison killed the monster (a "kill", "floor" or "boss" beat nobody answered for).</param>
 /// <param name="Hit">A kill they watched rather than landed (by poison, or <paramref name="By"/>): the killing hit. Null on
 /// their own beats, whose hit is <see cref="DelveView.LastDealt"/>.</param>
 /// <param name="By">A teammate's answer killed it: their name (every screen in the party plays the kill together).</param>
-public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs, bool ByPoison = false, DealtHit? Hit = null, string? By = null);
+/// <param name="Entrance">A "boss" beat that's only the boss's entrance, after the room behind a fork's door (the kill
+/// before it played as a plain kill): from its curtain on. It started that far back (DungeonSettings.BossCurtainSeconds),
+/// so the screens play it on the boss beat's usual timing, without the kill.</param>
+public sealed record BeatView(string Kind, long StartedAtMs, long EndsAtMs, bool ByPoison = false, DealtHit? Hit = null, string? By = null,
+    bool Entrance = false);
 
 /// <summary>
 /// The rewards a player is choosing between after a floor's boss (see <see cref="Reward"/>): answer button A picks
@@ -228,7 +249,46 @@ public sealed record MinigameView(string Kind, long IntroAtMs, long PlaysFromMs,
     long? ResultFromMs = null,
     TunerView? Tuner = null,
     PopQuizView? PopQuiz = null,
-    HotPotatoView? HotPotato = null);
+    HotPotatoView? HotPotato = null,
+    TreasureView? Treasure = null,
+    TrapView? Trap = null,
+    HighStakesView? HighStakes = null);
+
+/// <summary>
+/// The treasure room's lightning round: the question up (question <see cref="Number"/>: its <see cref="Category"/>, <see cref="Text"/>
+/// and four <see cref="Answers"/>, never which is right), <see cref="Right"/> of <see cref="RightNeeded"/> so far and <see cref="Wrong"/>,
+/// the buttons dead until <see cref="LockedUntilMs"/> after a wrong one. The last answer was right or not (<see cref="LastWasRight"/>,
+/// at <see cref="LastAtMs"/>: the screen flashes it). Once the chest's open, what was in it: <see cref="Prize"/>, or with their
+/// hands full a potion that healed <see cref="Healed"/>.
+/// </summary>
+public sealed record TreasureView(int RightNeeded, int Right, int Wrong, int Number, string Category, string Text, IReadOnlyList<string> Answers,
+    long? LockedUntilMs, bool? LastWasRight, long? LastAtMs, PowerUp? Prize, int Healed);
+
+/// <summary>
+/// The trap room's true/false sprint: statement <see cref="Number"/> of <see cref="Statements"/> is up from <see cref="AskedAtMs"/>
+/// (until then, the last one's reveal) until <see cref="AnswerByMs"/>: a question (<see cref="Category"/>, <see cref="Text"/>) with
+/// one answer shown (<see cref="Shown"/>), never whether it's the right one. A says true, B false. <see cref="Right"/> and
+/// <see cref="Misses"/> so far (none at all: a full heal, <see cref="Healed"/> HP); <see cref="Damage"/>: all the HP it's taken.
+/// </summary>
+/// <param name="Last">The last one answered, with the truth (it's been answered); null before the first.</param>
+public sealed record TrapView(int Statements, int Right, int Misses, int Number, string Category, string Text, string Shown,
+    long AskedAtMs, long AnswerByMs, TrapAnswerView? Last, int Damage, int Healed);
+
+/// <summary>
+/// A trap statement answered: its question, the answer shown and the right one, whether it was true, what they said
+/// (<see cref="Said"/>: true or false; null, too slow), whether that was right, when, and the HP the trap took for it (0 when right).
+/// </summary>
+public sealed record TrapAnswerView(int Number, string Text, string Shown, string Correct, bool WasTrue, bool? Said, bool WasRight, long AtMs, int Damage);
+
+/// <summary>
+/// High Stakes: the choice until <see cref="DecideByMs"/> (A bets, D passes; <see cref="Passed"/> once they have), and what's at
+/// stake (<see cref="PenaltyHp"/>: the HP a wrong answer would take). Once they've bet (<see cref="BetAtMs"/>), its brutal
+/// question (<see cref="Category"/>, <see cref="Text"/>, <see cref="Answers"/>), answered from <see cref="AskedAtMs"/> to
+/// <see cref="AnswerByMs"/>; once it's been answered, the button pressed (<see cref="Chosen"/>: null, too slow, at
+/// <see cref="AnsweredAtMs"/>), the right one (<see cref="Correct"/>), and the HP a wrong one cost (<see cref="Penalty"/>).
+/// </summary>
+public sealed record HighStakesView(long DecideByMs, int PenaltyHp, bool Passed, long? BetAtMs, long? AskedAtMs, long? AnswerByMs,
+    string? Category, string? Text, IReadOnlyList<string>? Answers, int? Chosen, int? Correct, long? AnsweredAtMs, int Penalty);
 
 /// <summary>
 /// The hot potato: the party round the table (<see cref="Seats"/>, in the order the bomb goes round; <see cref="You"/> is
@@ -347,7 +407,8 @@ public sealed record HelpView(string Name, QuestionView Question, bool Phoned = 
 /// <param name="RewardAccuracy">The share of a floor's questions to get right for its reward (0 with rewards off).</param>
 /// <param name="Rewards">Every reward they've picked, in order (Number counts up, so screens can show each pick once).</param>
 /// <param name="LastStands">Last Stand rewards still to come.</param>
-/// <param name="Minigame">The mini game they're playing now ("RuneLock"...), null when they aren't (the main screen shows they're in one).</param>
+/// <param name="Minigame">The mini game they're playing now ("RuneLock"...; "Fork" while they're at one, choosing a door), null when they
+/// aren't (the main screen shows they're in one).</param>
 /// <param name="MinigamesWon">Mini games they've won so far.</param>
 /// <param name="Lives">Lives left, of <paramref name="MaxLives"/> (0 there: no limit). Each downing costs one.</param>
 /// <param name="Out">Downed on their last life: out until a continue (they don't get up; <paramref name="DownedUntilMs"/> is null).</param>
@@ -357,6 +418,8 @@ public sealed record HelpView(string Name, QuestionView Question, bool Phoned = 
 /// <param name="LastSabotage">The last rival's Fog Bomb or Tiny Hourglass that came at them (null before the first).</param>
 /// <param name="Mirrored">A Mirror Shield is up: the next hit they take bounces back.</param>
 /// <param name="DiceReady">Lucky Dice are ready: their next right answer rolls them.</param>
+/// <param name="BossEntranceAtMs">After the room behind a fork's door, when the boss's entrance began (the main screen announces the
+/// boss then, not at the kill before the doors); null when there's been none.</param>
 /// <param name="ClockEndsAtMs">A race or a team battle (a clock per side): when their side's time runs out (null with one clock for the match);
 /// <paramref name="ClockStoppedLeftMs"/> while it's held still. <paramref name="TimeUp"/>: their side's done, waiting for the others.</param>
 public sealed record DelveView(
@@ -407,7 +470,8 @@ public sealed record DelveView(
     long? ClockStoppedLeftMs = null,
     bool TimeUp = false,
     bool Mirrored = false,
-    bool DiceReady = false);
+    bool DiceReady = false,
+    long? BossEntranceAtMs = null);
 
 /// <summary>
 /// A rival's Fog Bomb or Tiny Hourglass that came at them (Number counts up: the screen shows each once), from FromName; Blocked: their

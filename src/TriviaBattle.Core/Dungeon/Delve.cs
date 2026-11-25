@@ -35,6 +35,8 @@ public enum HitReason
 /// boss or mini game ahead, the screens walk them there (<see cref="DungeonSettings.RoomBeatSeconds"/>).</param>
 /// <param name="Dice">Lucky Dice were behind it: true, they came up good (more damage); false, they didn't (no damage at all).</param>
 /// <param name="Armored">A slow answer on an Armored monster: its armour took some of the damage (<see cref="AffixSettings.ArmoredShare"/>).</param>
+/// <param name="ForkAhead">This kill brought the floor's boss up, and there's a fork before it (<see cref="Fork"/>): after its entrance,
+/// the party picks a door and plays the special room behind it, then fights the boss.</param>
 public sealed record DealtHit(
     int Number,
     int Damage,
@@ -63,7 +65,8 @@ public sealed record DealtHit(
     MinigameKind? MinigameAhead = null,
     bool RoomCleared = false,
     bool? Dice = null,
-    bool Armored = false)
+    bool Armored = false,
+    bool ForkAhead = false)
 {
     /// <summary>All the damage the hit did: the monster in front, plus any splash on the others.</summary>
     public int TotalDamage => Damage + (Splashes?.Sum(s => s.Damage) ?? 0);
@@ -225,12 +228,13 @@ public sealed class Delve
 
         front.TakeDamage(damage);
         DamageDealt += damage;
-        var (killed, floorCleared, roomCleared, bossAhead, minigame) = ClearTheDead();
+        var (killed, floorCleared, roomCleared, bossAhead, minigame, forkAhead) = ClearTheDead();
 
         LastHit = new DealtHit((LastHit?.Number ?? 0) + 1, damage, crit, combo, killed, floorCleared, front.Monster.Name, front.Monster.Sprite,
             front.Monster.IsBoss, front.Hp, front.MaxHp, partyCombo, revivedOwnerId, Splashes: splashes.Count > 0 ? splashes : null, BossAhead: bossAhead,
             RoomCleared: roomCleared,
-            MinigameAhead: minigame);
+            MinigameAhead: minigame,
+            ForkAhead: forkAhead);
         return LastHit;
     }
 
@@ -286,12 +290,12 @@ public sealed class Delve
         if (!_foes.Any(f => f.IsDead))
             return (total, null);
 
-        var (killed, floorCleared, roomCleared, bossAhead, minigame) = ClearTheDead();
+        var (killed, floorCleared, roomCleared, bossAhead, minigame, forkAhead) = ClearTheDead();
         if (!killed)
             return (total, null);
         LastHit = new DealtHit((LastHit?.Number ?? 0) + 1, 0, false, false, true, floorCleared, front.Monster.Name, front.Monster.Sprite,
             front.Monster.IsBoss, 0, front.MaxHp, false, null, Poison: true, BossAhead: bossAhead, MinigameAhead: minigame,
-            RoomCleared: roomCleared);
+            RoomCleared: roomCleared, ForkAhead: forkAhead);
         return (total, LastHit);
     }
 
@@ -322,15 +326,16 @@ public sealed class Delve
     /// Clears the dead away, counting the kills. When nobody's left in the room, the party moves on to the
     /// next room, or the next floor after the last one. Returns whether the one in front died, whether the floor was
     /// cleared, whether they walked on to the floor's next room, whether the room they've just walked into is a boss's
-    /// (its entrance plays), and the floor's mini game if the room they've just cleared leads to it.
+    /// (its entrance plays), the floor's mini game if the room they've just cleared leads to it, and whether there's a
+    /// fork between them and the boss they've just walked up to (<see cref="DungeonMap.ForkOn"/>).
     /// </summary>
-    private (bool FrontDied, bool FloorCleared, bool RoomCleared, bool BossAhead, MinigameKind? Minigame) ClearTheDead()
+    private (bool FrontDied, bool FloorCleared, bool RoomCleared, bool BossAhead, MinigameKind? Minigame, bool ForkAhead) ClearTheDead()
     {
         var room = Encounter;
         var frontDied = _foes[0].IsDead;
         Kills += _foes.RemoveAll(f => f.IsDead);
         if (_foes.Count > 0)
-            return (frontDied, false, false, false, null);
+            return (frontDied, false, false, false, null, false);
 
         var floorCleared = room.Room == room.RoomsOnFloor;
         var minigame = floorCleared ? null : _map.MinigameAfter(room.Floor, room.Room);
@@ -338,7 +343,9 @@ public sealed class Delve
             EnterRoom(room.Floor + 1, 1);
         else
             EnterRoom(room.Floor, room.Room + 1);
-        return (frontDied, floorCleared, !floorCleared, _foes[0].Monster.IsBoss, minigame);
+        var bossAhead = _foes[0].Monster.IsBoss;
+        var forkAhead = bossAhead && !floorCleared && _map.ForkOn(room.Floor) != null;
+        return (frontDied, floorCleared, !floorCleared, bossAhead, minigame, forkAhead);
     }
 
     private void EnterRoom(int floor, int room)

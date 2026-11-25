@@ -1,0 +1,48 @@
+{
+  "_about": "High Stakes: the room behind some of a fork's doors where a player bets HP on one brutal question (right: a reward pick; wrong: a quarter of their max HP). These are its own questions, harder than the hardest in the question database and kept apart from it, so the fight never asks them. Each is { Category, Text, Right, Wrong: [three] } (the answers are shuffled when it's asked). A match asks the ones whose Category matches one of its categories (the names on the admin page: \"Music\", \"TV & Movies\"...) when there are any, and any of them when not. Read at startup: a question that breaks the admin editor's rules (250 letters for a question, 80 for an answer, four different answers) stops the server with the problem spelled out. Add freely.",
+  "Questions": [
+    { "Category": "American Geography", "Text": "What is the highest point in Texas?", "Right": "Guadalupe Peak", "Wrong": ["Mount Livermore", "Emory Peak", "Baldy Peak"] },
+    { "Category": "American Geography", "Text": "Which state capital sits at the highest elevation?", "Right": "Santa Fe", "Wrong": ["Denver", "Cheyenne", "Salt Lake City"] },
+    { "Category": "American Geography", "Text": "Which river forms much of the border between Texas and Oklahoma?", "Right": "Red River", "Wrong": ["Canadian River", "Arkansas River", "Brazos River"] },
+    { "Category": "American Geography", "Text": "What is the largest county by area in the lower 48 states?", "Right": "San Bernardino County", "Wrong": ["Coconino County", "Nye County", "Elko County"] },
+    { "Category": "American Geography", "Text": "How many counties does Texas have?", "Right": "254", "Wrong": ["159", "221", "302"] },
+    { "Category": "American Geography", "Text": "Which is the only US state that borders exactly one other state?", "Right": "Maine", "Wrong": ["Florida", "Washington", "Rhode Island"] },
+    { "Category": "American Geography", "Text": "Four states meet at the Four Corners. Which of these is NOT one of them?", "Right": "Nevada", "Wrong": ["Utah", "Colorado", "New Mexico"] },
+
+    { "Category": "American History", "Text": "Which president later served as Chief Justice of the United States?", "Right": "William Howard Taft", "Wrong": ["John Quincy Adams", "Herbert Hoover", "Andrew Johnson"] },
+    { "Category": "American History", "Text": "Who was the first US president born after the Declaration of Independence?", "Right": "Martin Van Buren", "Wrong": ["Andrew Jackson", "John Quincy Adams", "William Henry Harrison"] },
+    { "Category": "American History", "Text": "In what year did the United States make the Louisiana Purchase?", "Right": "1803", "Wrong": ["1798", "1812", "1819"] },
+    { "Category": "American History", "Text": "Which of the original 13 states was the last to ratify the Constitution?", "Right": "Rhode Island", "Wrong": ["North Carolina", "New York", "Virginia"] },
+    { "Category": "American History", "Text": "Who was Abraham Lincoln's vice president during his first term?", "Right": "Hannibal Hamlin", "Wrong": ["Andrew Johnson", "Schuyler Colfax", "John C. Breckinridge"] },
+    { "Category": "American History", "Text": "The Gadsden Purchase of 1853 bought land from which country?", "Right": "Mexico", "Wrong": ["Spain", "France", "Great Britain"] },
+    { "Category": "American History", "Text": "Which treaty ended the Mexican-American War?", "Right": "Treaty of Guadalupe Hidalgo", "Wrong": ["Treaty of Ghent", "Adams-Onis Treaty", "Treaty of Paris"] },
+
+    { "Category": "Sports", "Text": "Who holds Major League Baseball's record for most career hits?", "Right": "Pete Rose", "Wrong": ["Ty Cobb", "Hank Aaron", "Derek Jeter"] },
+    { "Category": "Sports", "Text": "Who holds the NBA record for most career assists?", "Right": "John Stockton", "Wrong": ["Magic Johnson", "Jason Kidd", "Steve Nash"] },
+    { "Category": "Sports", "Text": "What is the inside diameter of a regulation basketball rim?", "Right": "18 inches", "Wrong": ["16 inches", "20 inches", "24 inches"] },
+    { "Category": "Sports", "Text": "Before 2016, in what year did the Chicago Cubs last win the World Series?", "Right": "1908", "Wrong": ["1918", "1929", "1945"] },
+    { "Category": "Sports", "Text": "Which pitcher holds Major League Baseball's record for career strikeouts?", "Right": "Nolan Ryan", "Wrong": ["Randy Johnson", "Roger Clemens", "Walter Johnson"] },
+    { "Category": "Sports", "Text": "How long is overtime in an NHL regular-season game?", "Right": "5 minutes", "Wrong": ["3 minutes", "10 minutes", "20 minutes"] },
+
+    { "Category": "Millennial Trivia", "Text": "In the original Pokemon Red and Blue, what is Mew's number in the Pokedex?", "Right": "151", "Wrong": ["150", "152", "1"] },
+    { "Category": "Millennial Trivia", "Text": "What was the name of the family dog on \"Full House\"?", "Right": "Comet", "Wrong": ["Buddy", "Max", "Rusty"] },
+    { "Category": "Millennial Trivia", "Text": "In \"Rugrats\", what is the name of Tommy Pickles's dog?", "Right": "Spike", "Wrong": ["Rex", "Buster", "Champ"] },
+    { "Category": "Millennial Trivia", "Text": "How many Power Stars are there in all in \"Super Mario 64\"?", "Right": "120", "Wrong": ["70", "100", "150"] },
+    { "Category": "Millennial Trivia", "Text": "On \"The Fresh Prince of Bel-Air\", what is the name of the Banks family's butler?", "Right": "Geoffrey", "Wrong": ["Alfred", "Jeeves", "Niles"] },
+    { "Category": "Millennial Trivia", "Text": "In \"Hey Arnold!\", what is Arnold's grandfather's first name?", "Right": "Phil", "Wrong": ["Oskar", "Ernie", "Harold"] },
+
+    { "Category": "Music", "Text": "Which composer wrote the ballet \"The Rite of Spring\"?", "Right": "Igor Stravinsky", "Wrong": ["Sergei Rachmaninoff", "Sergei Prokofiev", "Claude Debussy"] },
+    { "Category": "Music", "Text": "What was Freddie Mercury's birth name?", "Right": "Farrokh Bulsara", "Wrong": ["Frederick Bailey", "Farid Mansour", "Frank Merriman"] },
+    { "Category": "Music", "Text": "How many symphonies did Beethoven complete?", "Right": "9", "Wrong": ["5", "7", "12"] },
+    { "Category": "Music", "Text": "Who was the Beatles' drummer before Ringo Starr?", "Right": "Pete Best", "Wrong": ["Stuart Sutcliffe", "Brian Epstein", "Tony Sheridan"] },
+    { "Category": "Music", "Text": "Which singer was born Stefani Joanne Angelina Germanotta?", "Right": "Lady Gaga", "Wrong": ["Gwen Stefani", "Madonna", "Katy Perry"] },
+    { "Category": "Music", "Text": "Which 1959 Miles Davis album is often called the best-selling jazz record of all time?", "Right": "Kind of Blue", "Wrong": ["A Love Supreme", "Time Out", "Giant Steps"] },
+
+    { "Category": "TV & Movies", "Text": "What is the name of the hotel in \"The Shining\"?", "Right": "The Overlook Hotel", "Wrong": ["The Stanley Hotel", "The Bates Motel", "The Grand Budapest Hotel"] },
+    { "Category": "TV & Movies", "Text": "Which 1927 film was the first feature-length movie with synchronized dialogue?", "Right": "The Jazz Singer", "Wrong": ["Wings", "Metropolis", "Sunrise"] },
+    { "Category": "TV & Movies", "Text": "In \"Casablanca\", what is the name of the piano player at Rick's?", "Right": "Sam", "Wrong": ["Louis", "Victor", "Ugarte"] },
+    { "Category": "TV & Movies", "Text": "On \"Seinfeld\", what is Kramer's first name?", "Right": "Cosmo", "Wrong": ["Martin", "Stanley", "Arthur"] },
+    { "Category": "TV & Movies", "Text": "In \"Star Wars\", what is Han Solo's home planet?", "Right": "Corellia", "Wrong": ["Tatooine", "Alderaan", "Naboo"] },
+    { "Category": "TV & Movies", "Text": "Which film won the Academy Award for Best Picture over \"Pulp Fiction\" and \"The Shawshank Redemption\"?", "Right": "Forrest Gump", "Wrong": ["Quiz Show", "Four Weddings and a Funeral", "The Lion King"] }
+  ]
+}

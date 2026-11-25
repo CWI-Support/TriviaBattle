@@ -130,10 +130,41 @@ public sealed class Adventurer
     public int MinigamesWon { get; private set; }
 
     /// <summary>
-    /// Away from the fight: choosing a reward or playing a mini game. Their question waits, the monster's hourglass
-    /// stops, and the arcade clock stops for everyone (DungeonRun.ClockStopped).
+    /// The fork they're at, before a boss (their party's: <see cref="Dungeon.Fork"/>), from the doors coming up until the
+    /// room behind the one taken starts; null otherwise.
     /// </summary>
-    public bool IsAway => IsChoosing || Minigame != null;
+    public Fork? Fork { get; private set; }
+
+    /// <summary>
+    /// Away from the fight: choosing a reward, at a fork, or playing a mini game (a special room is one). Their question
+    /// waits, the monster's hourglass stops, and the arcade clock stops for everyone (DungeonRun.ClockStopped).
+    /// </summary>
+    public bool IsAway => IsChoosing || Minigame != null || Fork != null;
+
+    public void ArriveAtFork(Fork fork) => Fork = fork;
+
+    /// <summary>On through the door taken, into the room behind it; the boss waits after it.</summary>
+    public void LeaveFork()
+    {
+        Fork = null;
+        BossAfterRoom = true;
+    }
+
+    /// <summary>They went through a fork's door: the boss's entrance plays when the room behind it is over (DungeonRun.MinigamesDue).</summary>
+    public bool BossAfterRoom { get; private set; }
+
+    /// <summary>
+    /// When the boss's entrance after a fork's room began, as a boss beat does (BossCurtainSeconds before it was shown:
+    /// the snapshot's beat starts then); null when there's been none (or battle beats are off).
+    /// </summary>
+    public DateTimeOffset? BossEntranceAt { get; private set; }
+
+    /// <summary>The room's over and the boss makes its entrance: a boss beat that began at <paramref name="beatStart"/> (null: no beat).</summary>
+    public void BossEnters(DateTimeOffset? beatStart)
+    {
+        BossAfterRoom = false;
+        BossEntranceAt = beatStart;
+    }
 
     public void StartMinigame(Minigame minigame) => Minigame = minigame;
 

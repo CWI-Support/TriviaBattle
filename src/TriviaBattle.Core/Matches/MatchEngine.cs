@@ -54,7 +54,8 @@ public sealed class MatchEngine
         DateTimeOffset now,
         Random random,
         DungeonMap? dungeon = null,
-        QuerieLines? querie = null)
+        QuerieLines? querie = null,
+        HighStakesQuestions? highStakes = null)
     {
         if (questions.Count == 0)
             throw new ArgumentException("A match needs at least one question.", nameof(questions));
@@ -81,7 +82,9 @@ public sealed class MatchEngine
         {
             if (dungeon == null)
                 throw new ArgumentException("Dungeon format needs the dungeon map.", nameof(dungeon));
-            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon, random, querie);
+            // High Stakes' bank: its questions in this match's categories, if it has any (HighStakesQuestions.For).
+            var brutal = highStakes?.For(questions.Select(q => q.Category).Distinct());
+            _dungeon = new DungeonRun(Roster, Mode, _streams, dungeon, settings.Dungeon, random, querie, brutal);
         }
 
         EarnsTime = _dungeon != null;
@@ -229,6 +232,7 @@ public sealed class MatchEngine
                     AddTime(partyId, _dungeon.SecondsEarnedBy(partyId, kill), now);
                     _dungeon.PartyKilled(partyId, kill, killerId: null, now); // a kill beat for the party, as for any kill
                     events.AddRange(StartMinigames(partyId, kill, now));
+                    events.AddRange(OpenFork(partyId, kill, now));
                 }
                 if (kill?.FloorCleared == true)
                     events.AddRange(OfferRewards(partyId, now));
@@ -238,8 +242,29 @@ public sealed class MatchEngine
             foreach (var chooser in _dungeon.RewardsDue(now))
                 events.AddRange(ChooseReward(chooser.OwnerId, choice: null, now));
 
+            // Forks before a boss: decided when time's up to vote; once the door taken has opened, the room behind it starts.
+            _dungeon.ForksDue(now, out var decided, out var entered);
+            foreach (var fork in decided)
+            {
+                Version++;
+                events.Add(new ForkDecided(fork.PartyId, fork.Taken!.Value, fork.Room!.Value));
+            }
+            foreach (var player in entered)
+            {
+                Version++;
+                events.Add(new MinigameStarted(player.OwnerId, player.Minigame!.Kind));
+                events.AddRange(QuerieOnMinigame(player.OwnerId, MinigameBeat.Start, now));
+            }
+
+            // A special room's own clocks (a trap's statement, High Stakes' choice or question) running out: as if pressed.
+            foreach (var (adventurer, result) in _dungeon.MinigameClocksDue(now))
+            {
+                Version++;
+                events.AddRange(MinigamePressEvents(adventurer.OwnerId, result, now));
+            }
+
             // Mini games: lost when their time runs out; over once their result has been shown.
-            _dungeon.MinigamesDue(now, out var wonNow, out var lost, out var over);
+            _dungeon.MinigamesDue(now, out var wonNow, out var lost, out var over, out var bossEntrances);
             foreach (var winner in wonNow)
             {
                 events.Add(new MinigamePlayed(winner.OwnerId, MinigamePress.Won)); // won by how things stand (the tuner), heard like a winning press
@@ -257,6 +282,8 @@ public sealed class MatchEngine
                 if (done.Offer is { } offer)
                     events.Add(new RewardOffered(done.OwnerId, offer)); // won: a reward to pick
             }
+            foreach (var bossNext in bossEntrances)
+                events.Add(new BossEntered(bossNext.OwnerId)); // after a fork's room: the boss's entrance, then its question
             if (lost.Count > 0 || wonNow.Count > 0)
                 Version++;
         }
@@ -311,6 +338,8 @@ public sealed class MatchEngine
         // though the tick that finishes the side hasn't come yet.
         if (ClockOf(stream.OwnerId) is { } side && (side.IsDone || press.PressedAt > side.EndsAt))
             return NothingHappened;
+        if (_dungeon?.FindAdventurer(stream.OwnerId) is { Fork: not null })
+            return VoteDoor(stream.OwnerId, press); // at a fork before a boss: the answer buttons vote for a door
         if (_dungeon?.FindAdventurer(stream.OwnerId) is { Minigame: not null })
             return PlayMinigame(stream.OwnerId, press); // between two rooms: the buttons play the mini game (the action button too)
         if (press.IsAction)
@@ -381,6 +410,7 @@ public sealed class MatchEngine
             if (dealt.FloorCleared)
                 events.AddRange(OfferRewards(partyId, now));
             events.AddRange(StartMinigames(partyId, dealt, now));
+            events.AddRange(OpenFork(partyId, dealt, now));
         }
         TakenHit? taken = null;
         if (dealt == null)
@@ -418,18 +448,60 @@ public sealed class MatchEngine
         if (result == MinigamePress.Ignored)
             return NothingHappened;
         Version++;
-        var showsIn = result is MinigamePress.Won or MinigamePress.Cleared ? _dungeon.FindAdventurer(ownerId)?.Minigame?.WinPauseSeconds ?? 0 : 0;
+        return MinigamePressEvents(ownerId, result, press.PressedAt);
+    }
+
+    /// <summary>
+    /// What a mini game press (or one of a special room's own clocks running out, at <paramref name="at"/>) is heard as:
+    /// its sound, a chest's power-up found, and Q.U.E.R.I.E.'s remark if he has one.
+    /// </summary>
+    private List<MatchEvent> MinigamePressEvents(string ownerId, MinigamePress result, DateTimeOffset at)
+    {
+        var game = _dungeon!.FindAdventurer(ownerId)?.Minigame;
+        var showsIn = result is MinigamePress.Won or MinigamePress.Cleared ? game?.WinPauseSeconds ?? 0 : 0;
         MinigameBeat? beat = result switch
         {
             MinigamePress.Won => MinigameBeat.Won,
             MinigamePress.Lost => MinigameBeat.Lost,
+            MinigamePress.Left => MinigameBeat.Left,
             MinigamePress.Hit or MinigamePress.Cleared => MinigameBeat.Hit,
             MinigamePress.Miss => MinigameBeat.Miss,
             _ => null, // a nudge (a tuner bar): nothing to say
         };
+        List<MatchEvent> events = [new MinigamePlayed(ownerId, result, showsIn)];
+        if (result == MinigamePress.Won && game is TreasureRoom { Prize: { } prize })
+            events.Add(new PowerUpFound(ownerId, prize)); // the chest's power-up, in their hands now
         // A win's remark lands with the win showing (a moment after the press, for some games).
-        var at = beat == MinigameBeat.Won ? press.PressedAt + TimeSpan.FromSeconds(showsIn) : press.PressedAt;
-        return [new MinigamePlayed(ownerId, result, showsIn), .. beat is { } said ? QuerieOnMinigame(ownerId, said, at) : []];
+        var saidAt = beat == MinigameBeat.Won ? at + TimeSpan.FromSeconds(showsIn) : at;
+        if (beat is { } said)
+            events.AddRange(QuerieOnMinigame(ownerId, said, saidAt));
+        return events;
+    }
+
+    /// <summary>A kill brought up a boss with a fork before it: everyone in the party there is at the fork, its doors up after the boss's entrance.</summary>
+    private IEnumerable<MatchEvent> OpenFork(string partyId, DealtHit kill, DateTimeOffset now)
+    {
+        var events = new List<MatchEvent>();
+        foreach (var voter in _dungeon!.OpenFork(partyId, kill, now))
+        {
+            events.Add(new ForkOpened(voter.OwnerId, voter.Fork!));
+            if (_dungeon.CommentateFork(voter.OwnerId, voter.Fork!.OpensAt) is { } quip)
+                events.Add(new QuerieSpoke(quip)); // said as the doors come up
+        }
+        return events;
+    }
+
+    /// <summary>An answer button at a fork: a vote for the door it's under (A the first, B the second). Everyone's voted: it's decided.</summary>
+    private IReadOnlyList<MatchEvent> VoteDoor(string ownerId, ButtonPress press)
+    {
+        var fork = _dungeon!.FindAdventurer(ownerId)!.Fork!;
+        if (press.IsAction || !_dungeon.VoteDoor(ownerId, press.AnswerIndex, press.PressedAt))
+            return NothingHappened;
+        Version++;
+        List<MatchEvent> events = [new DoorVoted(ownerId, press.AnswerIndex)];
+        if (fork.Taken is { } taken)
+            events.Add(new ForkDecided(fork.PartyId, taken, fork.Room!.Value));
+        return events;
     }
 
     /// <summary>

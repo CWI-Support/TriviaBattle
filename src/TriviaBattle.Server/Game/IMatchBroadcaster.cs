@@ -53,6 +53,16 @@ public class LoggingMatchBroadcaster(ILogger<LoggingMatchBroadcaster> logger) : 
                 case MinigameLost m:
                     logger.LogInformation("Match {Id}: {Owner} ran out of time in the mini game", match.MatchId, m.OwnerId);
                     break;
+                case MinigamePlayed { Result: MinigamePress.Left } m:
+                    logger.LogInformation("Match {Id}: {Owner} passed on the bet", match.MatchId, m.OwnerId);
+                    break;
+                case ForkOpened f:
+                    logger.LogInformation("Match {Id}: {Owner} is at a fork before floor {Floor}'s boss (behind its doors: {Rooms})", match.MatchId,
+                        f.OwnerId, f.Fork.Floor, string.Join(" or ", f.Fork.Plan.Rooms));
+                    break;
+                case ForkDecided f:
+                    logger.LogInformation("Match {Id}: party {Party} took door {Door}: {Room}", match.MatchId, f.PartyId, ButtonMap.AnswerIndexToLetter(f.Door), f.Room);
+                    break;
                 case RewardOffered r:
                     logger.LogInformation("Match {Id}: {Owner} earned a reward on floor {Floor}: {Choices}", match.MatchId, r.OwnerId, r.Offer.Floor,
                         string.Join(", ", r.Offer.Choices));

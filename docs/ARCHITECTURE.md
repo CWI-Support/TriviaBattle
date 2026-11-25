@@ -262,6 +262,38 @@ The rules:
   each game's part, `RuneLockView`), `DelveView.Minigame`/`MinigamesWon` for the main screen, and
   `MatchSnapshot.ClockStoppedLeftMs`/`ClockHeldMs` (`UI.matchClock` shows a stopped clock; the "+10s" pop leaves the held
   time out). Screens: `js/dungeon-minigames.js`, `css/dungeon-minigames.css`; sounds in `RoomSoundService`.
+- **Forks and special rooms** (room types: `Fork`, numbers in `MinigameSettings.Fork`/`Treasure`/`Trap`/`HighStakes`).
+  `DungeonMap.ForkOn` rolls each floor reached that ends in a boss by `ForkChance` (config/dungeon.json, 50%), loops
+  included, from its own seed (taken after the affixes', so adding it changed no layouts): a `ForkPlan`, the two different
+  rooms behind doors A and B, the same for every party. The doors look the same: nothing says which room is where until
+  one opens. `Delve.ClearTheDead` marks the kill that brings
+  that boss up `DealtHit.ForkAhead`, and `MatchEngine` calls `DungeonRun.OpenFork`: everyone in the party not away or out
+  shares one `Fork` (`Adventurer.Fork`, so `IsAway`: the clock stops, the hourglass waits), its doors up once the kill beat
+  ends (`ForkOpened`). The boss isn't seen before the doors: that kill is a plain "kill" beat (`BeatSecondsAfter`, `ToBeat`;
+  no walk, no NEXT UP, no boss sounds or main screen banner), and when the room's over `MinigamesDue` plays the boss's
+  entrance on its own (`DungeonRun.BossEnters`, `Adventurer.BossEntranceAt`, `BossEntered`): a "boss" beat with
+  `BeatView.Entrance`, started `BossCurtainSeconds` back, so the 2D curtain (`DungeonBattle.entrance`), the 3D leap
+  (`showBoss`) and the sounds keep the boss beat's timing without its kill; a reward won in the room comes up after it
+  (`DelveView.BossEntranceAtMs` tells the main screen when to announce the boss). `HandlePress` sends their answer buttons to `DungeonRun.VoteDoor` (`DoorVoted`): A the
+  first door, B the second, once each, from `VotesFrom`. It's decided when everyone's voted or at `EndsAt` (`Fork.Decide`:
+  most votes, a tie to the door voted for first, none at random; `ForkDecided`), and at `RoomFrom` (the door's opened)
+  `DungeonRun.ForksDue` starts the room behind it for each of them (`MinigameStarted`). The rooms are mini games that are
+  never rolled (`MinigameCatalog.Rooms`, made by `CreateRoom` with questions the player's own stream gives up:
+  `QuestionStream.TakeExtra`, so the fight won't ask them again): `TreasureRoom` (a lightning round; a win opens the chest,
+  `DungeonRun.OpenChest`: a power-up in their hands, or a potion with their hands full; `WinEarnsReward` false),
+  `TrapRoom` (true/false statements made from four-answer questions: one answer shown, true half the time; each miss
+  `Blast`s `MissShare` of their HP, and none at all wins it: a full heal, `WinEarnsReward` false) and `HighStakesRoom`
+  (bet or pass: `MinigamePress.Left`, over with nothing won or lost; a wrong answer `Blast`s `PenaltyShare`). High Stakes
+  asks its own bank of brutal questions, kept out of the database (`HighStakesQuestions`, config/high-stakes.json, loaded
+  by `HighStakesContent` and checked by `QuestionRules`; `MatchHost` hands it to each `MatchEngine`, which keeps the
+  ones in the match's categories when there are any: `HighStakesQuestions.For`), in a shuffled order per match, answers
+  shuffled; with none, a hard one from the stream. The trap's statements and High Stakes' choice and question run clocks of
+  their own inside the time limit: `Minigame.Due` (from `Overdue`), checked every tick by `DungeonRun.MinigameClocksDue`
+  and heard like presses. `DungeonRun.AfterRoomPlay` does what a room does to the player. After the room, the fight goes
+  on with the boss. Snapshots: `YouView.Fork` (`ForkView`: how many doors, and the room only once it's decided),
+  `MinigameView.Treasure`/`Trap`/`HighStakes` (never a right answer, or a statement's truth, before it's answered),
+  `DelveView.Minigame` "Fork" for the main screen. Screens: `js/dungeon-rooms.js`, `css/dungeon-rooms.css`; Q.U.E.R.I.E. has
+  `ForkOpen` and the rooms' moments.
 - **Affixes** (`Affix`, numbers in `AffixSettings`, `"Game:Dungeon:Affixes"`). From `AffixFromFloor` (4) on, loops
   included, each monster that isn't a boss has `AffixChance` (35%) of a twist (config/dungeon.json; `Affixes` lists the
   ones in play, all by default): `DungeonMap.RoomAt` rolls each place (floor, room, slot) from the match's seed, so every
@@ -477,7 +509,9 @@ it in place of the feedback line for `QUIP_MS`. In the mini games `MatchEngine` 
 each moment (its opening, said as the intro starts; a press's `MinigameBeat`; the time running out), and
 `Querie.ReactToMinigame` decides (openings by `MinigameStartChance`, wins and losses always, misses like ordinary
 moments; in the pop quiz every wrong answer, with `{answer}` the right one, and a name forgotten its own moment; the hot
-potato has its own opening, its blast, and the others' escape, with `{holder}` who it went off on). The
+potato has its own opening, its blast, and the others' escape, with `{holder}` who it went off on; each special room has
+its own opening, the trap a line now and then as it springs, High Stakes one for each way it ends; the doors of a fork
+get one as they come up, `DungeonRun.CommentateFork`). The
 station shows it in the mini game's own slot (`.dg-mg-querie`, a fixed height so the game never moves), over the intro
 and result veils. Lines are content in `config/querie.json`, loaded at startup by
 `Server/Game/QuerieContent.cs` as `QuerieLines` (a missing file: he keeps quiet; tests pass `querie:` to hear him).

@@ -89,6 +89,13 @@ public sealed class DungeonSettings
     /// </summary>
     public double BossBeatSeconds { get; set; } = 5;
 
+    /// <summary>
+    /// How far into the boss beat its curtain covers the kill (css/dungeon-battle.css, js/battle3d/beats.js). With a fork
+    /// before the boss, the kill before it is a plain kill (the boss isn't seen before the doors), and the boss's
+    /// entrance plays on its own after the room: the boss beat from here on, so every screen and sound keeps its timing.
+    /// </summary>
+    public double BossCurtainSeconds { get; set; } = 1.28;
+
     // In a party of two or more, a downed adventurer waits for their teammates: ReviveAnswers right
     // answers from them bring them back. PartyDownedSeconds is the safety net if nobody manages it.
     // When the whole party is down, everyone gets up after DownedSeconds.

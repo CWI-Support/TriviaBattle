@@ -132,6 +132,9 @@ class Battle {
      */
     wantFoe(you, now, playing, died) {
         const beat = you.beat;
+        // The boss's entrance on its own (after a fork's room): it leaps in as the arrival (showBoss), welcomed at the end.
+        // (With nothing in front yet, a screen opened just now, it loads the boss to stand hidden meanwhile.)
+        if (playing && beat?.entrance && died !== 'beat' && (this.foe || this.foeLoadingKey)) return;
         const delve = you.delve;
         const hurt = beat?.kind === 'hurt' || beat?.kind === 'downed';
         const key = !playing ? delve.monster.sprite
@@ -300,7 +303,8 @@ class Battle {
         // Off at a mini game (from the end of the kill beat that led to it): the screen shows the game, not the fight.
         // The next room's monsters aren't brought in meanwhile (they'd show for a moment before the game's screen takes
         // over); once the question's back they make their entrance.
-        const atMinigame = !!you?.minigame && !(you.beat && now < you.beat.endsAtMs);
+        // A fork's doors too: the boss waits behind them, unseen until its entrance after the room.
+        const atMinigame = (!!you?.minigame || !!you?.fork) && !(you.beat && now < you.beat.endsAtMs);
         if (you?.delve && atMinigame) {
             if (this.foe) this.foe.root.visible = false;
             this.pack.sync([], now);
@@ -333,6 +337,15 @@ class Battle {
                     // The game's opening: the hero runs in and the first monster makes its entrance.
                     lean = showOpening(now - beat.startedAtMs, cast);
                     this.foeTravel = !!lean.travel;
+                } else if (playing && beat.entrance) {
+                    // The boss's entrance on its own, after a fork's room: the knight waits in the empty room (whoever was
+                    // in front is gone) until the curtain lifts and the boss leaps in (showBoss), shocked as it lands.
+                    lean = showIdle(cast, { heroDown: false });
+                    this.foe.root.visible = false;
+                    if (this.arrival?.boss) lean = this.showBoss(now - beat.startedAtMs, cast, lean);
+                    const ms = now - beat.startedAtMs;
+                    heroFace = ms >= BOSS_LANDS && ms < BOSS_LANDS + 1100 ? 'shock' : null;
+                    this.foeTravel = false;
                 } else if (playing) {
                     const info = beatInfo(beat, you, stepUp);
                     lean = showBeat(info, now - beat.startedAtMs, cast);

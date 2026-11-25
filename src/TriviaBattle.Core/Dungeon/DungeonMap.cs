@@ -99,10 +99,15 @@ public sealed class DungeonMap
     /// <param name="affixFromFloor">The first floor (1-based) with affixed monsters; 0 = none anywhere.</param>
     /// <param name="affixSeed">Makes this match's rolls for them (the same for every party, so a race is fair).</param>
     /// <param name="affixes">The affixes in play, each as likely (null: all of them).</param>
+    /// <param name="forkChance">How likely each floor reached that ends in a boss is to have a fork before it (see <see cref="ForkOn"/>).</param>
+    /// <param name="forkSeed">Makes this match's rolls for them (the same for every party, so a race is fair).</param>
     public DungeonMap(IReadOnlyList<DepthDef> depths, IEnumerable<MonsterDef> monsters, double loopHpBonus = 0.5, double loopDamageBonus = 0,
         double minigameChance = 0, int minigameSeed = 0, int minigameEvery = 0, int loopQuestionShift = 10,
-        double affixChance = 0, int affixFromFloor = 0, int affixSeed = 0, IReadOnlyList<Affix>? affixes = null)
+        double affixChance = 0, int affixFromFloor = 0, int affixSeed = 0, IReadOnlyList<Affix>? affixes = null,
+        double forkChance = 0, int forkSeed = 0)
     {
+        ForkChance = forkChance;
+        _forkSeed = forkSeed;
         Affixes = affixes is { Count: > 0 } ? affixes : Enum.GetValues<Affix>();
         AffixChance = affixChance;
         AffixFromFloor = affixFromFloor;
@@ -245,6 +250,28 @@ public sealed class DungeonMap
         if (players >= 2 || !MinigameCatalog.GroupOnly.Contains(kind))
             return kind;
         return MinigameCatalog.StandIn(new Random(unchecked(_minigameSeed * 7919 + floor) ^ 0x2f6b));
+    }
+
+    /// <summary>How likely each floor reached that ends in a boss is to have a fork before it (config/dungeon.json's <c>ForkChance</c>).</summary>
+    public double ForkChance { get; }
+
+    private readonly int _forkSeed;
+
+    /// <summary>
+    /// A floor's fork (1-based floor), right before its boss: the special rooms behind its two doors; null if it has none.
+    /// Every floor reached that ends in a boss rolls for one by <see cref="ForkChance"/>, loops included. Behind the doors
+    /// are two different ones of <see cref="MinigameCatalog.Rooms"/>, each as likely. Fixed by the match's seed, so every
+    /// party in a race meets the same doors, with the same rooms behind them.
+    /// </summary>
+    public ForkPlan? ForkOn(int floor)
+    {
+        var (_, _, rooms) = _floors[(floor - 1) % _floors.Count];
+        if (ForkChance <= 0 || !rooms[^1].Any(id => _monsters[id].IsBoss))
+            return null;
+        var roll = new Random(unchecked(_forkSeed * 7919 + floor)); // this floor's own roll, whoever gets there first
+        if (roll.NextDouble() >= ForkChance)
+            return null;
+        return new ForkPlan(MinigameCatalog.Rooms.OrderBy(_ => roll.Next()).Take(2).ToList());
     }
 
     /// <summary>How likely each monster that isn't a boss is to have an affix, from <see cref="AffixFromFloor"/> on (config/dungeon.json's <c>AffixChance</c>).</summary>

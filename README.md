@@ -255,6 +255,37 @@ two to play one of `MinigameCatalog.GroupOnly` (the hot potato) gets a stand-in.
 `chestshuffle-lost`, `ringpuzzle` (also `ringpuzzle-solved`, `ringpuzzle-won`), `tuner` (also `tuner-won`), `popquiz` (also `popquiz-wrong`, `popquiz-won`),
 `hotpotato` (also `hotpotato-wait`, `hotpotato-boom`, `hotpotato-blasted`).
 
+**Forks before a boss** (room types: trivia mini games, not skill ones). Some floors (`ForkChance` in
+`config/dungeon.json`, 50%, loops included) have a fork right before the boss. The boss isn't seen first: the kill that
+empties the room before it plays as an ordinary kill (no WARNING!, no "next up"), and two doors come up that look the same. Nobody knows what's behind them: it's a gamble. **A** takes the first, **B** the second:
+votes count after a second, with 8 seconds to choose. In a party everyone votes, each door shows the faces of who voted
+for it, and the most votes wins (a tie goes to the door voted for first; nobody voting, one is picked). The door taken
+swings open on its room, everyone who voted plays it (each their own go, like a mini game, with the arcade clock
+stopped), and then the boss makes its entrance (WARNING!, it slams down, its name card; a reward won in the room is
+picked once it has landed) and the fight starts. Behind the two doors are two different rooms, the same for every party in a
+match.
+
+| Room | How it plays |
+| --- | --- |
+| **Treasure** | A lightning round of easy questions from your own stream: 5 right in 10 seconds opens the chest. A wrong answer jams the lock for a second and moves on (so mashing doesn't work). The chest holds a **power-up**. You can only carry one power-up at a time, so if you're already carrying one, the chest's is a potion instead, drunk on the spot (+50 HP). |
+| **Trap** | A true/false sprint made from the questions you already have: a question with one answer shown, right half the time. **A** says true, **B** false, 4 seconds each, 6 of them. Every miss (or a slow one) springs it: 8% of your max HP, never your last. Get **every one right** and you're **fully healed**. |
+| **High Stakes** | A bet: **A** bets, **D** passes (8 seconds to choose; not choosing is passing, and passing costs nothing). Betting asks one **brutal** question from High Stakes' own bank, harder than anything in the question database: right earns a **reward pick**, wrong or out of time loses a quarter of your max HP (never your last). |
+
+High Stakes' questions are their own bank, `src/TriviaBattle.Server/config/high-stakes.json`, kept apart from the
+question database so the fight never asks them: each is `{ "Category", "Text", "Right", "Wrong": [three] }`, the answers
+shuffled when it's asked. A match asks the ones in its own categories (the names on the admin page) when there are any,
+and any of them when not; with no file at all, a hard question from the player's own stream. It's read at startup
+(restart after editing), checked by the admin editor's rules. It ships with about 40, a handful per seeded category
+(none for Current Events, which goes out of date). The numbers are `"Game:Dungeon:Minigames"`: `Fork` (`ReadSeconds`,
+`VoteSeconds`, `RevealSeconds`), `Treasure` (`RightNeeded`, `Seconds`, `LockoutSeconds`, `Difficulty`,
+`OpenSeconds`), `Trap` (`Statements`, `StatementSeconds`, `RevealSeconds`, `MissShare`, `Difficulty`) and
+`HighStakes` (`DecideSeconds`, `AnswerSeconds`, `ReadSeconds`, `PenaltyShare`, `RevealSeconds`). `DungeonPacingTests`
+plays them too: at 50% the average session stays about 3:55 (the clock's stopped in them; at the station each fork
+adds about 20 seconds). Set `ForkChance` to 1 to meet one before every boss. Preview: `/dev/battle?kind=fork` (also
+`fork-party`, `fork-open`), `treasure` (also `treasure-wrong`, `treasure-won`), `trap` (also `trap-miss`,
+`trap-won`), `highstakes` (also `highstakes-bet`, `highstakes-won`, `highstakes-lost`, `highstakes-passed`), and the boss's
+entrance after a room, `bossentrance` (also on `/dev/battle3d`).
+
 **Q.U.E.R.I.E. talks at the stations.** After an answer (or the hourglass running out) the dungeon's host may have
 something to say to that player: he chirps at a miss or a slow answer, and greets right answers with more and more
 sarcastic enthusiasm the closer the player gets to death (hurt, badly hurt, last life, a boss, deep down). His face
@@ -267,7 +298,8 @@ answer after two misses, or a teammate going down (no more than one party-wide r
 He's in the mini games too, in a slot above their time limit: often as one opens, always when it's won or lost, now
 and then on a miss. The Pop Quiz is his own game: every wrong answer gets the right one rubbed in ("It was Cellar Rat.
 You were THERE."), and forgetting your own name gets a moment of its own. The Hot Potato gets its own lines too: as it
-opens, for whoever it goes off on, and for everyone who got away with it.
+opens, for whoever it goes off on, and for everyone who got away with it. So do the forks: as the doors come up, as
+each room opens, now and then as the trap springs, and always at High Stakes (won, lost, or passed).
 
 His lines are in `src/TriviaBattle.Server/config/querie.json`, about eight per moment, picked in a shuffled order
 so they don't repeat soon. Each line is `{ "text": "...", "audio": null }`: `{name}`, `{monster}`, `{floor}` and

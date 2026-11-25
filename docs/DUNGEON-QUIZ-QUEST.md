@@ -276,6 +276,15 @@ On the main screen it reads like a Slay the Spire map. Door types:
 | Mystery | A Host game-show segment (below). |
 | Realm door | "Next room: Movies." Bring the fight to your best category. |
 
+Done (24 Nov 2026), the lighter version first: no map of doors after every room, but on some floors (50%) one fork
+right before the boss (it isn't seen until after the room: its entrance plays then), with two doors that look the same (the party votes A or B: a gamble). The
+rooms are trivia mini games, not skill ones: Treasure (5 easy questions right in 10 seconds opens a chest: a power-up),
+Trap (a true/false sprint made from the four-answer questions we have: one answer shown, true or not; each miss costs 8%
+of max HP, all of them right is a full heal) and High Stakes (no gold yet, so it bets HP: one brutal question from its
+own bank, config/high-stakes.json, harder than the database's hard ones; right a reward pick, wrong a quarter of max HP;
+or pass). Replacing a boss with a room was ruled out: bosses carry the pacing and the best moments.
+Not yet: forks after other rooms, Monster/Elite/Merchant/Campfire doors, the main screen's map.
+
 ### Host game-show segments (Mystery rooms)
 
 - **Wheel of Misfortune:** spin for a curse or a blessing for the next room.

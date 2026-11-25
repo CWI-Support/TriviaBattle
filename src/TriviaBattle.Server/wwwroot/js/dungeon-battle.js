@@ -9,7 +9,9 @@
 //   walk    a kill that emptied the room (walks(); the room beat, 3 s): the kill, then your knight runs on and the
 //           dungeon scrolls past until the next room's monster is in front of you
 //   floor   the kill, then the screen goes dark: down the stairs to the next floor
-//   boss    the kill emptied the room before the boss's: WARNING!, the boss slams down with its name card
+//   boss    the kill emptied the room before the boss's: WARNING!, the boss slams down with its name card. With a fork
+//           before the boss, the kill is a plain kill (no NEXT UP: the boss isn't seen before the doors), and after the
+//           room the boss beat plays on its own from its curtain (beat.entrance: no kill in it)
 //   hurt    the monster lunges at you and claws you (a wrong answer, or too slow), then the right
 //           answer flips over like a card. A Shield blocks it: BLOCKED!, no damage. A boss at full
 //           charge (taken.charged) lands its big blow: CRUSHING BLOW!, a heavier slam, shake and flash
@@ -49,31 +51,33 @@ const DungeonBattle = {
      */
     beatHit(you) {
         const beat = you.beat;
-        // No hit in these: the monster hit you, the game's opening, a reward just picked (its fight was the beat before).
-        if (!beat || ['hurt', 'downed', 'enter', 'reward'].includes(beat.kind)) return null;
+        // No hit in these: the monster hit you, the game's opening, a reward just picked (its fight was the beat before), the
+        // boss's entrance on its own (after a fork's room).
+        if (!beat || ['hurt', 'downed', 'enter', 'reward'].includes(beat.kind) || beat.entrance) return null;
         return beat.hit || (beat.byPoison ? you.delve.lastHit : you.delve.lastDealt);
     },
 
     /**
      * After a kill (not a floor cleared or the boss's entrance: they have their curtains), the monster that's up
      * next, for the end of the beat: { monster (delve.monster, already the next one), newRoom (the kill emptied its
-     * room), room, rooms }. Null on other beats, and when a mini game comes next instead.
+     * room), room, rooms }. Null on other beats, and when a mini game or a fork comes next instead (a fork's boss isn't
+     * seen until after its room).
      */
     upNext(you) {
         const hit = DungeonBattle.beatHit(you);
         const delve = you.delve;
-        if (you.beat?.kind !== 'kill' || !hit?.killed || you.minigame) return null;
+        if (you.beat?.kind !== 'kill' || !hit?.killed || you.minigame || you.fork || hit.forkAhead) return null;
         return { monster: delve.monster, newRoom: !!hit.roomCleared, room: delve.room, rooms: delve.roomsOnFloor };
     },
 
     /**
      * The walk: a kill beat whose kill emptied the room, with the floor's next room ahead (not the boss's, which has
-     * its entrance, nor a mini game). The hero runs on and the dungeon scrolls past until the next room's monsters
-     * are in front (the server makes it the longer room beat, DungeonSettings.RoomBeatSeconds).
+     * its entrance, nor a mini game or a fork). The hero runs on and the dungeon scrolls past until the next room's
+     * monsters are in front (the server makes it the longer room beat, DungeonSettings.RoomBeatSeconds).
      */
     walks(you) {
         const hit = DungeonBattle.beatHit(you);
-        return you.beat?.kind === 'kill' && !!hit?.roomCleared && !hit.minigameAhead && !you.minigame;
+        return you.beat?.kind === 'kill' && !!hit?.roomCleared && !hit.minigameAhead && !hit.forkAhead && !you.minigame && !you.fork;
     },
 
     /** The whole fight for the beat. It fills the space between the top line and the player plate. */
@@ -82,6 +86,8 @@ const DungeonBattle = {
         const delve = you.delve;
         const hurt = beat.kind === 'hurt' || beat.kind === 'downed';
         const hit = DungeonBattle.beatHit(you);
+        // The boss's entrance on its own (after a fork's room): only its curtain and name card, over the empty room.
+        if (beat.entrance) return DungeonBattle.entrance(match, you, stationColor, serverNow);
         const byPoison = !!beat.byPoison; // the Healer's poison killed it: no blow, it chokes and bursts
         const byTeammate = !!beat.by;     // a teammate's blow killed it: your knight stays put and cheers
         const next = DungeonBattle.upNext(you);
@@ -154,6 +160,30 @@ const DungeonBattle = {
                 ${beat.kind === 'floor' || beat.kind === 'boss' ? DungeonBattle.curtain(beat.kind, delve, seed) : ''}
                 ${beat.kind === 'boss' ? `<div class="dg-boss-intro">${DungeonBattle.bar(delve.monster.name, delve.monster.maxHp, delve.monster.maxHp, delve.monster.maxHp, 'for-foe is-boss')}</div>` : ''}
                 ${DungeonBattle.peek(you.question, serverNow, seed)}
+            </div>`;
+    },
+
+    /**
+     * The boss's entrance on its own, after the room behind a fork's door (a "boss" beat with entrance set: the kill
+     * before the doors was a plain kill, so the boss wasn't seen). The beat started its curtain's offset back
+     * (DungeonSettings.BossCurtainSeconds), so the curtain, WARNING!, the boss's slam and its name card keep the boss
+     * beat's timing (css/dungeon-battle.css), and in 3D the boss leaps in when the curtain lifts.
+     */
+    entrance(match, you, stationColor, serverNow) {
+        const beat = you.beat;
+        const delve = you.delve;
+        const seed = `${match.matchId}:${you.stationId}:${beat.startedAtMs}`;
+        const feedback = DungeonView.querie(you, serverNow)
+            ?? { html: Theme.text('dungeon.bossEntranceLine', { monster: delve.monster.name }, seed), tone: 'is-great' };
+        return `
+            <div class="dg-battle is-boss is-entrance" data-stage="fight" style="--t0: ${Math.round(beat.startedAtMs - serverNow)}ms; --t1: ${Math.round(beat.endsAtMs - serverNow)}ms">
+                ${DungeonBattle.room()}
+                <div class="dg-arena" data-focus>
+                    <div class="dg-actor is-hero">${PixelSprites.html('hero', 'dg-actor-sprite', { r: stationColor })}<i class="dg-shadow"></i></div>
+                </div>
+                <div class="dg-battle-line dg-feedback ${feedback.tone}">${feedback.html}</div>
+                ${DungeonBattle.curtain('boss', delve, seed)}
+                <div class="dg-boss-intro">${DungeonBattle.bar(delve.monster.name, delve.monster.maxHp, delve.monster.maxHp, delve.monster.maxHp, 'for-foe is-boss')}</div>
             </div>`;
     },
 

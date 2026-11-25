@@ -73,6 +73,32 @@ public enum QuerieMoment
 
     /// <summary>The hot potato went off in someone else's hands ({holder}: whose): always.</summary>
     HotPotatoSafe,
+
+    // The fork before a boss, and the special rooms behind its doors.
+
+    /// <summary>The doors of a fork come up, before a boss: always.</summary>
+    ForkOpen,
+
+    /// <summary>A treasure room opens (its intro): now and then, like any mini game. Won or lost: the mini games' lines.</summary>
+    TreasureStart,
+
+    /// <summary>A trap room opens (its intro): now and then, like any mini game.</summary>
+    TrapStart,
+
+    /// <summary>The trap sprang (a wrong answer, or too slow): now and then. All right (a full heal) or not: the mini games' lines.</summary>
+    TrapSprung,
+
+    /// <summary>High Stakes opens (its intro): now and then, like any mini game.</summary>
+    HighStakesStart,
+
+    /// <summary>They bet and got its brutal question right (a reward pick): always.</summary>
+    HighStakesWon,
+
+    /// <summary>They bet and got it wrong, or ran out of time (it took their HP): always.</summary>
+    HighStakesLost,
+
+    /// <summary>They passed on the bet: always.</summary>
+    HighStakesPassed,
 }
 
 /// <summary>

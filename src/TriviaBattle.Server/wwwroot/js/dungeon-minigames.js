@@ -22,6 +22,8 @@
 //   - the hot potato (hotPotato): the party's game, played together. A lit bomb goes round the table; holding it, press
 //     the runes shown to throw it on. Whoever holds it when the secret fuse runs out takes the blast. The fuse shows
 //     instead of the time limit (the limit is the fuse, and the screen never learns it until it goes off).
+//   - the special rooms behind a fork's doors (Treasure, Trap, HighStakes): mini games too, framed here, their bodies drawn
+//     by js/dungeon-rooms.js (with the fork itself).
 // On the main screen a lane shows when its player is in one, and a win gets a banner.
 // Needs ui.js, theme.js, pixel-sprites.js, dungeon-view.js and dungeon-battle.js. Styles: css/dungeon-minigames.css.
 
@@ -39,6 +41,10 @@ const DungeonMinigames = {
             case 'Tuner': return Theme.text('dungeon.minigameTuner');
             case 'PopQuiz': return Theme.text('dungeon.minigamePopQuiz');
             case 'HotPotato': return Theme.text('dungeon.minigameHotPotato');
+            case 'Treasure': return Theme.text('dungeon.minigameTreasure');
+            case 'Trap': return Theme.text('dungeon.minigameTrap');
+            case 'HighStakes': return Theme.text('dungeon.minigameHighStakes');
+            case 'Fork': return Theme.text('dungeon.minigameFork'); // at a fork before a boss, choosing a door (a lane on the main screen)
             case 'Minigame': return Theme.text('dungeon.minigameGeneric'); // which one isn't known
             default: return UI.escape(kind);
         }
@@ -54,6 +60,7 @@ const DungeonMinigames = {
             case 'Tuner': return Theme.text('dungeon.minigameTunerHow');
             case 'PopQuiz': return Theme.text('dungeon.minigamePopQuizHow', { right: minigame.popQuiz.rightNeeded, strikes: minigame.popQuiz.strikes });
             case 'HotPotato': return Theme.text('dungeon.minigameHotPotatoHow', { runes: minigame.hotPotato.sequence.length });
+            case 'Treasure': case 'Trap': case 'HighStakes': return DungeonRooms.howTo(minigame);
             default: return '';
         }
     },
@@ -68,8 +75,14 @@ const DungeonMinigames = {
             case 'Tuner': return DungeonMinigames.tuner(game, serverNow, seed);
             case 'PopQuiz': return DungeonMinigames.popQuiz(game, serverNow, seed);
             case 'HotPotato': return DungeonMinigames.hotPotato(game, match, you, serverNow, seed);
+            case 'Treasure': case 'Trap': case 'HighStakes': return DungeonRooms.body(game, you, serverNow, seed); // the special rooms: js/dungeon-rooms.js
             default: return '';
         }
+    },
+
+    /** One of the special rooms behind a fork's doors (drawn by js/dungeon-rooms.js, which the main screen doesn't load). */
+    isRoom(kind) {
+        return kind === 'Treasure' || kind === 'Trap' || kind === 'HighStakes';
     },
 
     /** True while the station should show the mini game: from the end of the kill beat that led to it. */
@@ -116,14 +129,19 @@ const DungeonMinigames = {
             </div>`;
     },
 
-    /** The intro veil: what the game is and how to play, and the 3, 2, 1. It lifts by itself when play starts. */
+    /**
+     * The intro veil: what the game is and how to play, and the 3, 2, 1. It lifts by itself when play starts. A special
+     * room has its own stamp and says what's to be won there.
+     */
     intro(game, seed) {
+        const room = DungeonMinigames.isRoom(game.kind);
+        const chars = room ? DungeonRooms.stampChars(game.kind, seed) : Theme.plain('dungeon.minigameStamp', {}, seed).length;
         return `
             <div class="dg-minigame-intro">
-                <div class="dg-minigame-intro-stamp" style="--chars: ${Theme.plain('dungeon.minigameStamp', {}, seed).length}">${Theme.text('dungeon.minigameStamp', {}, seed)}</div>
+                <div class="dg-minigame-intro-stamp" style="--chars: ${chars}">${room ? DungeonRooms.stamp(game.kind, seed) : Theme.text('dungeon.minigameStamp', {}, seed)}</div>
                 <div class="dg-minigame-intro-name">${DungeonMinigames.name(game.kind)}</div>
                 <div class="dg-minigame-intro-how">${DungeonMinigames.howTo(game)}</div>
-                <div class="dg-minigame-intro-prize">${Theme.text('dungeon.minigamePrize')}</div>
+                <div class="dg-minigame-intro-prize">${room ? DungeonRooms.prize(game) : Theme.text('dungeon.minigamePrize')}</div>
                 ${UI.introCountdown(game.playsFromMs)}
             </div>`;
     },
@@ -133,6 +151,8 @@ const DungeonMinigames = {
      * The hot potato's says who it went off on: SAFE! (it was someone else), or BOOM! and what the blast took.
      */
     result(game, seed, r0) {
+        if (DungeonMinigames.isRoom(game.kind))
+            return DungeonRooms.result(game, seed, r0);
         if (game.kind === 'HotPotato') {
             const hp = game.hotPotato;
             const blasted = hp.seats.find(s => s.ownerId === hp.blastOwnerId)?.name || '';

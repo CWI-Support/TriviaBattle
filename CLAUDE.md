@@ -39,6 +39,11 @@ only power is on screen) unless they pass `heroes:`.
 Power-ups (`PowerUp`) are found by kills and streaks and used with the action button (`js/dungeon-powerups.js` draws them).
 Deeper down (`AffixFromFloor` in `config/dungeon.json`, floor 4) some monsters have an `Affix` (Speedy, Armored, Vampiric;
 `Encounter.Affix`, rolled per place from the match's seed so every party meets the same ones; rules in `DungeonRun`).
+Some floors (`ForkChance`) have a fork before the boss (`Fork`, `DungeonMap.ForkOn`): after its entrance the party votes A or
+B for one of two doors that look the same (the boss isn't seen first: the kill before the doors is a plain kill, and the boss's
+entrance plays after the room, `BeatView.Entrance`) and plays the special room behind it (`MinigameCatalog.Rooms`: Treasure, Trap,
+HighStakes; trivia mini games never rolled, asking questions from the player's own stream, `QuestionStream.TakeExtra`, except
+High Stakes, whose brutal questions are their own bank: `config/high-stakes.json`), then fights the boss (`js/dungeon-rooms.js`).
 Games start at the stations, arcade style: `Core/Arcade/Lobby.cs` (press any button or swipe, pick one of seven heroes (classes),
 have the hero photo taken, pick solo / party / race / team battle or join the one forming, pick a category) builds the `MatchSetup`; `ButtonRouter` sends presses from stations not in
 a game to `LobbyHost`; `js/arcade-lobby.js` draws it. The kiosk can still start games. Heroes: `Core/Arcade/Heroes.cs`,

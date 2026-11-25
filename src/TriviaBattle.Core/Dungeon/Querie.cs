@@ -58,13 +58,18 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
             return null;
         var quiz = scene.Kind == Minigames.MinigameKind.PopQuiz;
         var potato = scene.Kind == Minigames.MinigameKind.HotPotato;
+        var bet = scene.Kind == Minigames.MinigameKind.HighStakes;
         var forgotName = scene.Asked?.Topic == Minigames.PopQuizTopic.Name;
         (QuerieMoment Moment, double Chance, double Gap)? what = scene.Beat switch
         {
-            MinigameBeat.Start => (quiz ? QuerieMoment.PopQuizStart : potato ? QuerieMoment.HotPotatoStart : QuerieMoment.MinigameStart, settings.MinigameStartChance, 0),
-            MinigameBeat.Won => (potato ? QuerieMoment.HotPotatoSafe : QuerieMoment.MinigameWon, 1, 0),
-            MinigameBeat.Lost => (quiz && forgotName ? QuerieMoment.PopQuizForgotName : potato ? QuerieMoment.HotPotatoBlast : QuerieMoment.MinigameLost, 1, 0),
+            MinigameBeat.Start => (StartOf(scene.Kind), settings.MinigameStartChance, 0),
+            MinigameBeat.Won => (potato ? QuerieMoment.HotPotatoSafe : bet ? QuerieMoment.HighStakesWon : QuerieMoment.MinigameWon, 1, 0),
+            MinigameBeat.Lost => (quiz && forgotName ? QuerieMoment.PopQuizForgotName : potato ? QuerieMoment.HotPotatoBlast
+                : bet ? QuerieMoment.HighStakesLost : QuerieMoment.MinigameLost, 1, 0),
+            MinigameBeat.Left => (QuerieMoment.HighStakesPassed, 1, 0), // passed on High Stakes' bet
             MinigameBeat.Miss when quiz => (forgotName ? QuerieMoment.PopQuizForgotName : QuerieMoment.PopQuizWrong, 1, forgotName ? 0 : settings.BigGapSeconds),
+            MinigameBeat.Miss when scene.Kind == Minigames.MinigameKind.Trap => (QuerieMoment.TrapSprung, settings.Chance, settings.QuipEverySeconds),
+            MinigameBeat.Miss when scene.Kind == Minigames.MinigameKind.Treasure => null, // a wrong answer in the lightning round: no time to talk
             MinigameBeat.Miss => (QuerieMoment.MinigameMiss, settings.Chance, settings.QuipEverySeconds),
             MinigameBeat.Hit when quiz => (QuerieMoment.PopQuizRight, settings.Chance, settings.QuipEverySeconds),
             _ => null, // a hit in any other game: the game says it
@@ -79,6 +84,21 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
         var answer = scene.Asked is { } asked ? asked.Answers[asked.CorrectIndex] : "";
         return Say(moment, scene.OwnerId, partyWide: false, scene.At, scene.Name, answer: answer, holder: scene.Holder ?? "");
     }
+
+    /// <summary>The moment a mini game's opening is: most share one, some games (and each special room) have their own.</summary>
+    private static QuerieMoment StartOf(Minigames.MinigameKind kind) => kind switch
+    {
+        Minigames.MinigameKind.PopQuiz => QuerieMoment.PopQuizStart,
+        Minigames.MinigameKind.HotPotato => QuerieMoment.HotPotatoStart,
+        Minigames.MinigameKind.Treasure => QuerieMoment.TreasureStart,
+        Minigames.MinigameKind.Trap => QuerieMoment.TrapStart,
+        Minigames.MinigameKind.HighStakes => QuerieMoment.HighStakesStart,
+        _ => QuerieMoment.MinigameStart,
+    };
+
+    /// <summary>His remark as the doors of a fork before a boss come up (always, if he has lines for it): just for them.</summary>
+    public Quip? ReactToFork(string ownerId, string name, DateTimeOffset at) =>
+        settings.Enabled ? Say(QuerieMoment.ForkOpen, ownerId, partyWide: false, at, name) : null;
 
     /// <summary>The moment's next line, filled in and counted as their latest remark (null with no lines for it).</summary>
     private Quip? Say(QuerieMoment moment, string ownerId, bool partyWide, DateTimeOffset at,
@@ -163,8 +183,8 @@ public sealed class Querie(QuerieLines lines, QuerieSettings settings, Random ra
 
 }
 
-/// <summary>What happened in a mini game, for Q.U.E.R.I.E.: it opened, a press hit or missed, or it was won or lost.</summary>
-public enum MinigameBeat { Start, Hit, Miss, Won, Lost }
+/// <summary>What happened in a mini game, for Q.U.E.R.I.E.: it opened, a press hit or missed, it was won or lost, or they left it (passed on High Stakes' bet).</summary>
+public enum MinigameBeat { Start, Hit, Miss, Won, Lost, Left }
 
 /// <summary>
 /// A moment in someone's mini game (<see cref="DungeonRun.CommentateMinigame"/> works it out), at <paramref name="At"/>

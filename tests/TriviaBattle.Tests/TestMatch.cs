@@ -41,11 +41,12 @@ public sealed class TestMatch
     /// </param>
     /// <param name="teams">Team modes: the teams, instead of Red = A1 + A3 and Blue = A2 + A4 (e.g. one party of four).</param>
     /// <param name="querie">Dungeon format: Q.U.E.R.I.E.'s lines at the stations. None by default, so he stays quiet.</param>
+    /// <param name="highStakes">Dungeon format: High Stakes' own questions. None by default: it asks a hard one from the stream.</param>
     public TestMatch(GameModeKind mode, MatchSettings? settings = null, int questionCount = 10, IReadOnlyList<Question>? questions = null,
         IReadOnlyList<string>? stations = null, string matchId = "test-match", bool battleBeats = false,
         IReadOnlyDictionary<string, bool>? lobbyPhotos = null, IReadOnlyDictionary<string, string>? heroes = null,
         DungeonMap? dungeon = null, bool rewards = false, int? hitDamage = 20, bool opening = false,
-        IReadOnlyList<TeamSetup>? teams = null, QuerieLines? querie = null)
+        IReadOnlyList<TeamSetup>? teams = null, QuerieLines? querie = null, Core.Dungeon.Minigames.HighStakesQuestions? highStakes = null)
     {
         Settings = settings ?? new MatchSettings();
         if (!battleBeats)
@@ -93,7 +94,8 @@ public sealed class TestMatch
             Now,
             new Random(1), // seeded, so question orders are the same every run
             Settings.Format == GameFormat.Dungeon ? dungeon ?? Dungeon : null,
-            querie);
+            querie,
+            highStakes);
     }
 
     /// <summary>

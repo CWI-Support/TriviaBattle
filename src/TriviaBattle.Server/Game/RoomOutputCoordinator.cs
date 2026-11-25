@@ -88,6 +88,8 @@ public class RoomOutputCoordinator(
         var adventurer = match.Dungeon?.FindAdventurer(ownerId);
         if (match.Phase != MatchPhase.Playing || adventurer == null || match.ClockOf(ownerId) is { IsDone: true })
             return LedState.Off;
+        if (adventurer.Fork != null)
+            return LedState.Off; // at a fork before a boss: only A and B (the doors) do anything
         if (adventurer.Minigame is { } game)
             return game.UsesActionButton && game.FinishedAt == null ? LedState.On : LedState.Off;
         return adventurer is { Held: not null, IsDowned: false } ? LedState.On : LedState.Off;

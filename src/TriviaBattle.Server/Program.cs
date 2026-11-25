@@ -87,6 +87,7 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton(DungeonContent.Load(builder.Environment.ContentRootPath)); // config/dungeon.json
     builder.Services.AddSingleton(QuerieContent.Load(builder.Environment.ContentRootPath)); // config/querie.json: Q.U.E.R.I.E.'s lines
+    builder.Services.AddSingleton(HighStakesContent.Load(builder.Environment.ContentRootPath)); // config/high-stakes.json: High Stakes' brutal questions
     builder.Services.AddSingleton<MatchHost>();
     builder.Services.Configure<LobbySettings>(builder.Configuration.GetSection("Game:Arcade"));
     builder.Services.AddSingleton<Lobbies>();     // the arcade lobby at the stations (Core/Arcade)

@@ -10,6 +10,8 @@
   "_AffixFromFloor": "From this floor on (loops included), each monster that isn't a boss has AffixChance of an affix: Speedy (a shorter hourglass), Armored (slow right answers do half) or Vampiric (heals by what its hits take), each as likely. Every party in a match meets the same ones. 0 = none. To play only some, list them: \"Affixes\": [\"Speedy\", \"Vampiric\"]. Their numbers: Game:Dungeon:Affixes.",
   "AffixFromFloor": 4,
   "AffixChance": 0.35,
+  "_ForkChance": "How likely each floor (loops included) is to have a fork right before its boss: after the boss's entrance the party picks one of two doors that look the same (A or B; a party votes) and plays the special room behind it, then fights the boss. Behind the doors, two different ones of: a Treasure room (a lightning round of easy questions opens a chest: a power-up), a Trap (a true/false sprint; each miss costs HP, all of them right is a full heal) and High Stakes (bet HP on one brutal question from config/high-stakes.json: right, a reward pick; wrong, a quarter of max HP; or pass). Every party in a match meets the same doors. 0 = none, 1 = before every boss. Their numbers: Game:Dungeon:Minigames (Fork, Treasure, Trap, HighStakes).",
+  "ForkChance": 0.5,
 
   "Depths": [
     {

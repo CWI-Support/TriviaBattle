@@ -121,18 +121,37 @@ public static class SnapshotBuilder
             player.PhotoAt == null && !player.PhotoDeclined && !player.PhotoFromLobby ? ToUnixMs(match.PhotoOfferEndsAt) : null,
             ToUnixMs(player.PhotoAt),
             ToRewardOffer(match, adventurer),
-            match.Phase == MatchPhase.Playing ? ToMinigame(match, adventurer?.Minigame) : null,
+            match.Phase == MatchPhase.Playing ? ToMinigame(match, adventurer?.Minigame, adventurer) : null,
             adventurer?.CalledFriend is { } friend ? NameOf(match, friend) : null,
             adventurer?.LastQuip is { } quip
                 ? new QuipView(quip.Number, quip.Moment.ToString(), quip.Text, quip.At.ToUnixTimeMilliseconds(), quip.AboutOwnerId == stream.OwnerId)
-                : null);
+                : null,
+            match.Phase == MatchPhase.Playing && adventurer?.Fork is { } fork ? ToFork(match, fork, stream.OwnerId) : null);
     }
 
     /// <summary>
-    /// Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one. The hot
-    /// potato's fuse is a secret until it goes off: its time limit says the longest it could be until then.
+    /// Dungeon format: the fork they're at before a boss, as the station draws it: the doors, everyone's votes, and once it's
+    /// decided the door taken and the room behind it (only then: what's behind the doors is a secret until one opens).
     /// </summary>
-    private static MinigameView? ToMinigame(MatchEngine match, Dungeon.Minigames.Minigame? game)
+    private static ForkView ToFork(MatchEngine match, Dungeon.Fork fork, string ownerId) => new(
+        fork.Floor,
+        fork.Doors,
+        fork.OpensAt.ToUnixTimeMilliseconds(),
+        fork.VotesFrom.ToUnixTimeMilliseconds(),
+        fork.EndsAt.ToUnixTimeMilliseconds(),
+        fork.Voters.Select(id => new ForkVoterView(id, NameOf(match, id), StationOf(match, id), fork.VoteOf(id))).ToList(),
+        fork.VoteOf(ownerId),
+        fork.Taken,
+        ToUnixMs(fork.TakenAt),
+        ToUnixMs(fork.RoomFrom),
+        fork.Room?.ToString());
+
+    /// <summary>
+    /// Dungeon format: the mini game they're playing, as the station draws it. Null when they aren't in one. The hot
+    /// potato's fuse is a secret until it goes off: its time limit says the longest it could be until then. A special
+    /// room's questions go without their right answers until they've been answered.
+    /// </summary>
+    private static MinigameView? ToMinigame(MatchEngine match, Dungeon.Minigames.Minigame? game, Dungeon.Adventurer? adventurer)
     {
         if (game == null)
             return null;
@@ -162,7 +181,52 @@ public static class SnapshotBuilder
                     Ms(t.HoldSeconds), t.Presses)
                 : null,
             game is Dungeon.Minigames.PopQuiz q ? ToPopQuiz(q) : null,
-            potato);
+            potato,
+            game is Dungeon.Minigames.TreasureRoom treasure ? ToTreasure(treasure) : null,
+            game is Dungeon.Minigames.TrapRoom trap ? ToTrap(trap) : null,
+            game is Dungeon.Minigames.HighStakesRoom bet ? ToHighStakes(bet, adventurer) : null);
+    }
+
+    /// <summary>The treasure room: the question up goes without its right answer.</summary>
+    private static TreasureView ToTreasure(Dungeon.Minigames.TreasureRoom room)
+    {
+        var question = room.Current;
+        return new TreasureView(room.RightNeeded, room.Right, room.Wrong, room.Answered + 1, question.Category, question.Text, question.Answers,
+            ToUnixMs(room.LockedUntil), room.Last?.WasRight, room.Last?.At.ToUnixTimeMilliseconds(), room.Prize, room.Healed);
+    }
+
+    /// <summary>The trap room: the statement up goes without whether it's true; the last one answered goes with it.</summary>
+    private static TrapView ToTrap(Dungeon.Minigames.TrapRoom trap)
+    {
+        var up = trap.Current;
+        var last = trap.Last is { } a
+            ? new TrapAnswerView(a.Statement + 1, trap.Statements[a.Statement].Question.Text, trap.Statements[a.Statement].ShownAnswer,
+                trap.Statements[a.Statement].Question.Answers[trap.Statements[a.Statement].Question.CorrectIndex], trap.Statements[a.Statement].IsTrue,
+                a.Said, a.WasRight, a.At.ToUnixTimeMilliseconds(), a.WasRight ? 0 : trap.LastDamage)
+            : null;
+        return new TrapView(trap.Statements.Count, trap.Right, trap.Misses, trap.Asking + 1, up.Question.Category, up.Question.Text,
+            up.ShownAnswer, trap.AskedAt.ToUnixTimeMilliseconds(), trap.AnswerBy.ToUnixTimeMilliseconds(), last, trap.Damage, trap.Healed);
+    }
+
+    /// <summary>High Stakes: its question only once they've bet, and its right answer only once it's been answered.</summary>
+    private static HighStakesView ToHighStakes(Dungeon.Minigames.HighStakesRoom room, Dungeon.Adventurer? adventurer)
+    {
+        var bet = room.BetAt != null;
+        var question = room.Question;
+        return new HighStakesView(
+            room.DecideBy.ToUnixTimeMilliseconds(),
+            adventurer != null ? (int)Math.Round(adventurer.MaxHp * room.PenaltyShare) : 0,
+            room.Passed,
+            ToUnixMs(room.BetAt),
+            ToUnixMs(room.AskedAt),
+            ToUnixMs(room.AnswerBy),
+            bet ? question.Category : null,
+            bet ? question.Text : null,
+            bet ? question.Answers : null,
+            room.Answer?.Chosen,
+            room.Answer != null ? question.CorrectIndex : null,
+            room.Answer?.At.ToUnixTimeMilliseconds(),
+            room.Penalty);
     }
 
     /// <summary>The hot potato, from one seat: everyone round the table, the bomb, and (once it's gone off) the blast.</summary>
@@ -245,12 +309,18 @@ public static class SnapshotBuilder
         var answeredAt = stream.LastAnswer?.PressedAt ?? DateTimeOffset.MinValue;
         var reward = adventurer.LastReward;
 
+        // After the room behind a fork's door: the boss's entrance on its own (the kill before the doors was a plain kill,
+        // so it wasn't seen before them), until its first question. A reward picked after it has its own beat.
+        if (adventurer.BossEntranceAt is { } entrance && entrance >= answeredAt && shownAt > entrance && !(reward?.At > entrance)
+            && !(adventurer.WatchedKill?.At > entrance))
+            return new BeatView("boss", entrance.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds(), Entrance: true);
+
         // A teammate's blow or the party's poison killed the monster since they last answered (and since any reward):
         // its kill beat, the same one the killer's screen plays. The hit is the killer's, carried on the beat.
         if (adventurer.WatchedKill is { } watched && watched.At >= answeredAt && shownAt > watched.At && !(reward?.At > watched.At))
         {
             var kill = watched.Hit;
-            var killKind = kill.BossAhead ? "boss" : kill.FloorCleared ? "floor" : "kill";
+            var killKind = kill.BossAhead && !kill.ForkAhead ? "boss" : kill.FloorCleared ? "floor" : "kill"; // with a fork first, the boss waits
             return new BeatView(killKind, watched.At.ToUnixTimeMilliseconds(), shownAt.ToUnixTimeMilliseconds(),
                 ByPoison: watched.ByOwnerId == null, Hit: kill, By: watched.ByOwnerId is { } by ? NameOf(match, by) : null);
         }
@@ -268,7 +338,7 @@ public static class SnapshotBuilder
 
         var kind = !answer.IsCorrect ? (adventurer.LastTaken?.Downed == true ? "downed" : "hurt")
             : adventurer.LastDealt is not { } hit ? "hit"
-            : hit.BossAhead ? "boss" // the room it emptied leads to a boss's: its entrance
+            : hit.BossAhead && !hit.ForkAhead ? "boss" // the room it emptied leads to a boss's: its entrance (with a fork first: after its room)
             : hit.FloorCleared ? "floor"
             : hit.Killed ? "kill"
             : "hit";
@@ -409,7 +479,7 @@ public static class SnapshotBuilder
             match.Settings.Dungeon.Rewards.Enabled ? match.Settings.Dungeon.Rewards.Accuracy : 0,
             adventurer.Rewards.Select(r => ToRewardTaken(match, adventurer, r)).ToList(),
             adventurer.LastStands,
-            adventurer.Minigame?.Kind.ToString(),
+            adventurer.Minigame?.Kind.ToString() ?? (adventurer.Fork != null ? "Fork" : null),
             adventurer.MinigamesWon,
             adventurer.Lives,
             adventurer.MaxLives,
@@ -422,7 +492,8 @@ public static class SnapshotBuilder
             sideClock?.StoppedLeft is { } stoppedLeft ? (long)stoppedLeft.TotalMilliseconds : null,
             sideClock?.IsDone == true,
             adventurer.Mirrored,
-            adventurer.DiceReady);
+            adventurer.DiceReady,
+            ToUnixMs(adventurer.BossEntranceAt));
     }
 
     private static SabotageView ToSabotage(MatchEngine match, Dungeon.Sabotage s) =>

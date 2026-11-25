@@ -67,10 +67,13 @@ public sealed class DungeonRun
     /// from the first floor's mix.</param>
     /// <param name="random">Power-up drops and picks, and question difficulties. Tests pass a seeded one.</param>
     /// <param name="querie">Q.U.E.R.I.E.'s lines for the stations (config/querie.json); none, and he keeps quiet there.</param>
+    /// <param name="highStakes">High Stakes' brutal questions for this match (its own bank, the match's categories first:
+    /// <see cref="HighStakesQuestions.For"/>), asked in a shuffled order; none, and it asks a hard one from the player's stream.</param>
     public DungeonRun(MatchRoster roster, IGameMode mode, IReadOnlyDictionary<string, QuestionStream> streams, DungeonMap map, DungeonSettings settings, Random random,
-        QuerieLines? querie = null)
+        QuerieLines? querie = null, IReadOnlyList<Question>? highStakes = null)
     {
         _settings = settings;
+        _highStakes = (highStakes ?? []).OrderBy(_ => random.Next()).ToList();
         _streams = streams;
         _map = map;
         _random = random;
@@ -560,8 +563,81 @@ public sealed class DungeonRun
     }
 
     /// <summary>An answer button in a mini game (pressed at <paramref name="at"/>). What it did; nothing outside one.</summary>
-    public MinigamePress PlayMinigame(string ownerId, int answerIndex, DateTimeOffset at) =>
-        _adventurers[ownerId].Minigame?.Press(answerIndex, at) ?? MinigamePress.Ignored;
+    public MinigamePress PlayMinigame(string ownerId, int answerIndex, DateTimeOffset at)
+    {
+        var adventurer = _adventurers[ownerId];
+        if (adventurer.Minigame is not { } game)
+            return MinigamePress.Ignored;
+        var trapMisses = (game as TrapRoom)?.Misses ?? 0;
+        var result = game.Press(answerIndex, at);
+        AfterRoomPlay(adventurer, game, result, trapMisses);
+        return result;
+    }
+
+    /// <summary>
+    /// The mini games' own clocks inside their time limits (a trap's statement, High Stakes' choice or question) that have
+    /// run out by <paramref name="now"/>: each counts as a press would (a miss, walking on, a loss), and what it did.
+    /// </summary>
+    public IReadOnlyList<(Adventurer Adventurer, MinigamePress Result)> MinigameClocksDue(DateTimeOffset now)
+    {
+        var due = new List<(Adventurer, MinigamePress)>();
+        foreach (var adventurer in _adventurers.Values.Where(a => a.Minigame != null))
+        {
+            var game = adventurer.Minigame!;
+            while (true) // a slow tick may be past more than one (a trap's statements)
+            {
+                var trapMisses = (game as TrapRoom)?.Misses ?? 0;
+                var result = game.Due(now);
+                if (result == MinigamePress.Ignored)
+                    break;
+                AfterRoomPlay(adventurer, game, result, trapMisses);
+                due.Add((adventurer, result));
+            }
+        }
+        return due;
+    }
+
+    /// <summary>
+    /// What a special room does to the player as it's played: each time a trap springs it hurts, and getting through it
+    /// without a miss heals them fully; a lost bet at High Stakes hurts more (neither ever takes their last HP); an opened
+    /// chest puts its prize in their hands.
+    /// </summary>
+    /// <param name="trapMissesBefore">A trap's misses before this press (or clock): one more means it sprang.</param>
+    private void AfterRoomPlay(Adventurer adventurer, Minigame game, MinigamePress result, int trapMissesBefore)
+    {
+        switch (game)
+        {
+            case TrapRoom trap when trap.Misses > trapMissesBefore:
+                trap.Hurt(adventurer.Blast((int)Math.Round(adventurer.MaxHp * MinigameRules.Trap.MissShare)));
+                break;
+            case TrapRoom trap when result == MinigamePress.Won:
+                trap.Heal(adventurer.IsDowned ? 0 : adventurer.Heal(adventurer.MaxHp)); // every one right: a full heal
+                break;
+            case HighStakesRoom bet when result == MinigamePress.Lost:
+                bet.Punish(adventurer.Blast((int)Math.Round(adventurer.MaxHp * MinigameRules.HighStakes.PenaltyShare)));
+                break;
+            case TreasureRoom treasure when result == MinigamePress.Won:
+                OpenChest(adventurer, treasure);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The treasure room's chest opens: a power-up in their hands (any that can drop for them, each as likely), or, with
+    /// their hands already full, a potion drunk there and then (<see cref="DungeonSettings.PotionHeal"/>; nothing for the downed).
+    /// </summary>
+    private void OpenChest(Adventurer adventurer, TreasureRoom treasure)
+    {
+        if (adventurer.Held == null)
+        {
+            var choices = PowerUpsFor(adventurer.OwnerId);
+            var found = choices[_random.Next(choices.Count)];
+            adventurer.PickUp(found);
+            treasure.Award(found, 0);
+            return;
+        }
+        treasure.Award(null, adventurer.IsDowned ? 0 : adventurer.Heal(_settings.PotionHeal));
+    }
 
     /// <summary>
     /// Mini games moving on: the ones won by how things stand (the tuner's bars all held in place: <paramref name="wonByPlay"/>),
@@ -569,11 +645,15 @@ public sealed class DungeonRun
     /// result has been shown are over (<paramref name="over"/>): a winner is offered rewards (when that's on), everyone
     /// else gets their question back with a fresh hourglass.
     /// </summary>
-    public void MinigamesDue(DateTimeOffset now, out IReadOnlyList<Adventurer> wonByPlay, out IReadOnlyList<Adventurer> lost, out IReadOnlyList<Adventurer> over)
+    /// <param name="bossEntrances">Of those over, the ones whose game was the room behind a fork's door: the boss's entrance
+    /// plays now (<see cref="BossEnters"/>), then their question (or a winner's reward cards).</param>
+    public void MinigamesDue(DateTimeOffset now, out IReadOnlyList<Adventurer> wonByPlay, out IReadOnlyList<Adventurer> lost, out IReadOnlyList<Adventurer> over,
+        out IReadOnlyList<Adventurer> bossEntrances)
     {
         var wonNow = new List<Adventurer>();
         var timedOut = new List<Adventurer>();
         var finished = new List<Adventurer>();
+        var entrances = new List<Adventurer>();
         foreach (var adventurer in _adventurers.Values.Where(a => a.Minigame != null))
         {
             var game = adventurer.Minigame!;
@@ -592,23 +672,141 @@ public sealed class DungeonRun
             var won = game.Won;
             adventurer.EndMinigame();
             finished.Add(adventurer);
-            if (won && MinigameRules.WinEarnsReward && Rewards.Enabled)
+            var stream = _streams[adventurer.OwnerId];
+            // The room behind a fork's door: the boss is next, and it hasn't been seen yet. Its entrance plays first.
+            var backAt = now;
+            if (adventurer.BossAfterRoom)
             {
-                OfferRewardsTo(adventurer, DelveOf(adventurer).Floor, now, forMinigame: true);
+                backAt = BossEnters(adventurer, now);
+                entrances.Add(adventurer);
+            }
+            if (won && game.WinEarnsReward && MinigameRules.WinEarnsReward && Rewards.Enabled)
+            {
+                OfferRewardsTo(adventurer, DelveOf(adventurer).Floor, backAt, forMinigame: true); // the cards come up after any entrance
+                if (backAt > now)
+                    stream.Start(backAt); // the entrance's beat ends then
                 continue;
             }
-            var stream = _streams[adventurer.OwnerId];
-            stream.Start(now); // the question they were on comes back, fresh
+            stream.Start(backAt); // the question they were on comes back, fresh (after any entrance)
             AfterTurn(stream, now);
         }
         wonByPlay = wonNow;
         lost = timedOut;
         over = finished;
+        bossEntrances = entrances;
+    }
+
+    /// <summary>
+    /// The boss's entrance on its own, after the room behind a fork's door (the kill before the doors was a plain kill, so
+    /// it wasn't seen before them): the boss beat from its curtain on, as if it began <see cref="DungeonSettings.BossCurtainSeconds"/>
+    /// ago, so every screen and sound keeps the boss beat's timing. Returns when it's over (their question then).
+    /// </summary>
+    private DateTimeOffset BossEnters(Adventurer adventurer, DateTimeOffset now)
+    {
+        var seconds = _settings.BossBeatSeconds - _settings.BossCurtainSeconds;
+        if (seconds <= 0)
+        {
+            adventurer.BossEnters(null); // battle beats off (the tests): straight to the boss's question
+            return now;
+        }
+        adventurer.BossEnters(now - TimeSpan.FromSeconds(_settings.BossCurtainSeconds));
+        return now + TimeSpan.FromSeconds(seconds);
     }
 
     /// <summary>The adventurers whose time to pick a reward has run out: one is picked for them.</summary>
     public IReadOnlyList<Adventurer> RewardsDue(DateTimeOffset now) =>
         _adventurers.Values.Where(a => a.Offer?.EndsAt <= now).ToList();
+
+    // ------------------------------------------------------------------
+    // Forks: some floors have one right before the boss (DealtHit.ForkAhead, DungeonMap.ForkOn). Once the boss's entrance
+    // has played, the party votes for one of two doors (which room is behind which is a secret until one opens), and
+    // everyone who voted plays the special room behind it (a mini game: MinigameCatalog.Rooms), then fights the boss. The
+    // arcade clock stops meanwhile.
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// A kill brought a floor's boss up, and there's a fork before it (<paramref name="kill"/>'s <c>ForkAhead</c>): its doors
+    /// come up, once the boss's entrance has played, for everyone in the party not away (a mini game, a reward pick) or
+    /// out of lives. Their question and hourglass wait. Returns who's at the fork.
+    /// </summary>
+    public IReadOnlyList<Adventurer> OpenFork(string partyId, DealtHit kill, DateTimeOffset now)
+    {
+        var floor = _delves[partyId].Floor;
+        if (!MinigameRules.Enabled || !kill.ForkAhead || _map.ForkOn(floor) is not { } plan)
+            return [];
+
+        var voters = PartyOf(partyId).Where(a => !a.IsAway && !a.IsOut).ToList();
+        if (voters.Count == 0)
+            return [];
+        var opensAt = now + TimeSpan.FromSeconds(BeatSecondsAfter(kill));
+        var fork = new Fork(partyId, floor, plan, voters.Select(v => v.OwnerId).ToList(), opensAt, MinigameRules.Fork);
+        foreach (var voter in voters)
+        {
+            voter.ArriveAtFork(fork);
+            voter.StopHourglass();
+        }
+        return voters;
+    }
+
+    /// <summary>
+    /// A vote at a fork: an answer button, A for the first door and B for the second. Returns whether it counted. Once
+    /// everyone there has voted, it's decided (<see cref="Fork.Decide"/>).
+    /// </summary>
+    public bool VoteDoor(string ownerId, int answerIndex, DateTimeOffset at)
+    {
+        if (_adventurers[ownerId].Fork is not { } fork || !fork.Vote(ownerId, answerIndex, at))
+            return false;
+        if (fork.EveryoneVoted)
+            fork.Decide(at, _random);
+        return true;
+    }
+
+    /// <summary>
+    /// Forks moving on: the ones whose time to vote is up are decided by the votes so far (<paramref name="decided"/>), and
+    /// once the door taken has opened, everyone still at the fork goes through into the room behind it: their go at it
+    /// starts (<paramref name="entered"/>).
+    /// </summary>
+    public void ForksDue(DateTimeOffset now, out IReadOnlyList<Fork> decided, out IReadOnlyList<Adventurer> entered)
+    {
+        var decidedNow = new List<Fork>();
+        var enteredNow = new List<Adventurer>();
+        foreach (var fork in _adventurers.Values.Select(a => a.Fork).OfType<Fork>().Distinct().ToList())
+        {
+            if (!fork.IsDecided && now >= fork.EndsAt)
+            {
+                fork.Decide(fork.EndsAt, _random);
+                decidedNow.Add(fork);
+            }
+            if (fork.RoomFrom is not { } roomFrom || now < roomFrom)
+                continue;
+
+            foreach (var adventurer in PartyOf(fork.PartyId).Where(a => a.Fork == fork))
+            {
+                adventurer.LeaveFork();
+                StartRoom(adventurer, fork.Room!.Value, now);
+                enteredNow.Add(adventurer);
+            }
+        }
+        decided = decidedNow;
+        entered = enteredNow;
+    }
+
+    private readonly List<Question> _highStakes;
+    private int _highStakesAsked;
+
+    /// <summary>
+    /// An adventurer's go at a special room, its intro from <paramref name="introAt"/>, with questions from their own stream;
+    /// High Stakes' from its own bank (the next in this match's shuffled order, round again if they run out) when it has any.
+    /// </summary>
+    private void StartRoom(Adventurer adventurer, MinigameKind room, DateTimeOffset introAt)
+    {
+        var (difficulty, count) = MinigameCatalog.RoomQuestions(room, MinigameRules);
+        var questions = room == MinigameKind.HighStakes && _highStakes.Count > 0
+            ? [_highStakes[_highStakesAsked++ % _highStakes.Count].WithShuffledAnswers(_random)]
+            : _streams[adventurer.OwnerId].TakeExtra(difficulty, count);
+        adventurer.StartMinigame(MinigameCatalog.CreateRoom(room, introAt, MinigameRules, _random, questions));
+        adventurer.StopHourglass();
+    }
 
     /// <summary>Whoever standing in the healer's party (them included) is lowest on HP, for their share of their max. Null if nobody's hurt.</summary>
     private Adventurer? MostHurt(Adventurer healer) =>
@@ -1099,6 +1297,18 @@ public sealed class DungeonRun
         return quip;
     }
 
+    /// <summary>Q.U.E.R.I.E. as the doors of a fork come up (at <paramref name="at"/>): his remark for them, if he has one.</summary>
+    public Quip? CommentateFork(string ownerId, DateTimeOffset at)
+    {
+        var adventurer = _adventurers[ownerId];
+        if (_querie == null || adventurer.Fork == null)
+            return null;
+        var quip = _querie.ReactToFork(ownerId, _names.GetValueOrDefault(ownerId, ownerId), at);
+        if (quip != null)
+            adventurer.Hear(quip);
+        return quip;
+    }
+
     /// <summary>
     /// After an answer or an attack: a downed adventurer's buttons go dead until they get up, and the
     /// hourglass runs for the next question unless the buttons are dead (it restarts when they work again).
@@ -1157,9 +1367,9 @@ public sealed class DungeonRun
     /// </summary>
     public double BeatSecondsAfter(DealtHit? dealt) =>
         dealt == null ? _settings.HurtBeatSeconds
-        : dealt.BossAhead ? _settings.BossBeatSeconds // the boss's entrance
+        : dealt.BossAhead && !dealt.ForkAhead ? _settings.BossBeatSeconds // the boss's entrance (with a fork first: after its room)
         : dealt.FloorCleared ? _settings.FloorBeatSeconds
-        : dealt.RoomCleared && dealt.MinigameAhead == null ? _settings.RoomBeatSeconds // the walk to the next room
+        : dealt.RoomCleared && dealt.MinigameAhead == null && !dealt.ForkAhead ? _settings.RoomBeatSeconds // the walk to the next room
         : dealt.Killed ? _settings.KillBeatSeconds
         : _settings.HitBeatSeconds;
 

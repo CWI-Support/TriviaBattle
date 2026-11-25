@@ -251,7 +251,7 @@ public sealed class RoomSoundService(
                 // The Healer's poison killed it: the party's kill beat plays, so its burst (and the way on) is heard with it.
                 var poisoned = PartyStationsOf(match, match.Dungeon?.PartyOf(partyId).FirstOrDefault()?.OwnerId ?? partyId);
                 room.PlayEffect(poisoned, _settings.Dungeon.Kill, MonsterBursts);
-                if (kill.BossAhead)
+                if (kill.BossAhead && !kill.ForkAhead) // with a fork first, the boss's entrance comes after its room (BossEntered)
                 {
                     room.PlayEffect(poisoned, _settings.Dungeon.Boss, CurtainFalls);
                     room.PlayEffect(poisoned, _settings.Dungeon.BossLands, BossLandsAt);
@@ -260,21 +260,46 @@ public sealed class RoomSoundService(
                     room.PlayEffect(poisoned, _settings.Dungeon.Floor, CurtainFalls);
                 break;
 
-            // Mini games: a fanfare as the intro comes up (after the kill beat), then each press heard on the station.
-            case MinigameStarted { OwnerId: var ownerId }:
-                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Floor, match.Settings.Dungeon.KillBeatSeconds);
+            // Mini games: a fanfare as the intro comes up (after the kill beat; a special room's at once, as its door has
+            // opened), then each press heard on the station.
+            case MinigameStarted { OwnerId: var ownerId, Kind: var kind }:
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Floor,
+                    MinigameCatalog.Rooms.Contains(kind) ? 0 : match.Settings.Dungeon.KillBeatSeconds);
                 break;
 
             case MinigamePlayed { OwnerId: var ownerId, Result: var result, ShowsInSeconds: var showsIn }:
+                var game = match.Dungeon?.FindAdventurer(ownerId)?.Minigame;
                 room.PlayEffect(StationsOf(match, ownerId), result switch
                 {
                     // A win (or a round of one: a ring puzzle's picture back together) lands as the screen shows it.
                     MinigamePress.Won or MinigamePress.Cleared => _settings.Dungeon.PartyCombo,
                     MinigamePress.Hit => _settings.Dungeon.Hit,
-                    MinigamePress.Lost => _settings.Dungeon.Hurt, // the wrong chest
-                    MinigamePress.Nudge => null, // a tuner bar nudged up: many a second, so no sound of its own
+                    MinigamePress.Lost => _settings.Dungeon.Hurt, // the wrong chest, a lost bet
+                    MinigamePress.Miss when game is TrapRoom => _settings.Dungeon.Hurt, // the trap sprang
+                    MinigamePress.Nudge or MinigamePress.Left => null, // a tuner bar nudged up (many a second); passed on a bet
                     _ => _settings.Dungeon.Block,
                 }, showsIn);
+                break;
+
+            // A fork before a boss: a chime as its doors come up (after the boss's entrance), a tick for each vote, and
+            // the whole party hears the door taken open.
+            case ForkOpened { OwnerId: var ownerId }:
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot, match.Settings.Dungeon.KillBeatSeconds); // after the kill beat
+                break;
+
+            case BossEntered { OwnerId: var ownerId }:
+                // The boss's entrance after a fork's room: the boss beat's sounds, from its curtain (which is now).
+                var curtain = match.Settings.Dungeon.BossCurtainSeconds;
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Boss, Math.Max(0, CurtainFalls - curtain));
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.BossLands, BossLandsAt - curtain);
+                break;
+
+            case DoorVoted { OwnerId: var ownerId }:
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Countdown);
+                break;
+
+            case ForkDecided { PartyId: var partyId }:
+                room.PlayEffect(PartyStationsOf(match, match.Dungeon?.PartyOf(partyId).FirstOrDefault()?.OwnerId ?? partyId), _settings.Dungeon.PartyCombo);
                 break;
 
             case HourglassCountdown { OwnerId: var ownerId }:
@@ -299,6 +324,11 @@ public sealed class RoomSoundService(
 
             case PhotoCountdown { StationId: var stationId, SecondsLeft: var left }:
                 PlayPhotoCountdown(stationId, left);
+                break;
+
+            case PowerUpFound { OwnerId: var ownerId } when match.Dungeon?.FindAdventurer(ownerId)?.Minigame is TreasureRoom:
+                // The treasure room's chest opened: its power-up, there and then.
+                room.PlayEffect(StationsOf(match, ownerId), _settings.Dungeon.Loot);
                 break;
 
             case PowerUpFound { OwnerId: var ownerId } when match.Dungeon?.FindAdventurer(ownerId)?.LastDealt?.Found == null:
@@ -340,7 +370,7 @@ public sealed class RoomSoundService(
 
         if (hit.Killed) // every screen in the party plays the kill (DungeonRun.PartyKilled), so the whole party hears it
             room.PlayEffect(party, sounds.Kill, MonsterBursts);
-        if (hit.BossAhead) // the room it emptied leads to a boss: its entrance, for the whole party
+        if (hit.BossAhead && !hit.ForkAhead) // the room it emptied leads to a boss: its entrance, for the whole party (with a fork first: BossEntered)
         {
             room.PlayEffect(party, sounds.Boss, CurtainFalls);
             room.PlayEffect(party, sounds.BossLands, BossLandsAt);

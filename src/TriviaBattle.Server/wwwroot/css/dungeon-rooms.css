@@ -1,0 +1,330 @@
+/* The fork before a boss and the special rooms behind its doors (js/dungeon-rooms.js), inside the mini games' frame
+   (css/dungeon-minigames.css). Portrait only. Timed from the server's clock: --t0 (the doors come up), --taken (it's
+   decided: the door taken opens), --ask (a trap statement or High Stakes' question can be answered), --said (an answer),
+   --flash0 (the treasure room's flash), --unlock (its jammed lock frees), --r0 (a room's over). */
+
+.dg-station.is-minigame {
+    --dg-room-treasure: #ffd23f;
+    --dg-room-trap: #ff4a5a;
+    --dg-room-highstakes: #4ade80;
+    --dg-room-mystery: #6ff0de;
+}
+
+/* The trap and High Stakes time each statement and the bet themselves: no one time limit for the whole room. */
+.dg-minigame.is-trap .dg-minigame-limit,
+.dg-minigame.is-highstakes .dg-minigame-limit { display: none; }
+
+/* Passing on High Stakes' bet: neither won nor lost. */
+.dg-minigame-result.is-left .dg-minigame-result-title { color: var(--text); }
+
+/* ---------- The fork: two doors that look the same ---------- */
+
+/* The fork's title is longer than a game's name: a size that keeps it on one line beside the clock. */
+.dg-fork .dg-minigame-name { font-size: 3.6vmin; white-space: nowrap; }
+
+.dg-fork-sub {
+    width: 92%;
+    font-family: var(--dg-font-pixel);
+    font-size: 3vmin;
+    line-height: 1.35;
+    color: var(--text);
+    text-align: center;
+    text-transform: uppercase;
+}
+.dg-fork-doors {
+    flex: 1;
+    min-height: 0;
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4vw;
+    align-items: center;
+}
+.dg-fork-door {
+    --door: var(--answer-a);
+    --room: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.1vh;
+    min-width: 0;
+    text-align: center;
+    transition: opacity 250ms, filter 250ms;
+}
+.dg-fork-door[data-letter="B"] { --door: var(--answer-b); }
+.dg-fork-door.is-treasure, .dg-fork-light.is-treasure { --room: var(--dg-room-treasure); }
+.dg-fork-door.is-trap, .dg-fork-light.is-trap { --room: var(--dg-room-trap); }
+.dg-fork-door.is-highstakes, .dg-fork-light.is-highstakes { --room: var(--dg-room-highstakes); }
+.dg-fork-door.is-mystery, .dg-fork-light.is-mystery { --room: var(--dg-room-mystery); }
+
+/* The doorway: a stone arch round the dark of the room behind, ringed in its button's colour. */
+.dg-fork-arch {
+    position: relative;
+    /* As big as fits under the title and above the vote: the width, or the height on a short screen. */
+    width: min(34vw, 21vh);
+    aspect-ratio: 3 / 4.2;
+    border-radius: min(17vw, 10.5vh) min(17vw, 10.5vh) 0 0;
+    background: #0b0910;
+    border: 1.1vmin solid #4a4250;
+    outline: 0.7vmin solid var(--door);
+    outline-offset: 0.3vmin;
+    box-shadow: inset 0 0 0 0.5vmin #000, 0 0 3vmin color-mix(in srgb, var(--door) 45%, transparent), 0 1.2vmin 0 #000;
+    overflow: hidden;
+}
+/* Behind the door: a glow in the room's colour and its picture, seen as it opens. */
+.dg-fork-light {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--room) 60%, #fff) 0 10%,
+        color-mix(in srgb, var(--room) 45%, transparent) 38%, transparent 72%);
+}
+.dg-fork-behind { width: 58%; height: auto; filter: drop-shadow(0 0.8vmin 0 #000); }
+/* The door: planks and two iron bands, a "?" on it, a ring for a handle. It swings open on its left edge. */
+.dg-fork-leaf {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background:
+        linear-gradient(transparent 20%, #2b2026 20% 24%, transparent 24% 76%, #2b2026 76% 80%, transparent 80%),
+        repeating-linear-gradient(90deg, #7a4c24 0 6vw, #573417 6vw 6.6vw);
+    box-shadow: inset 0 0 3vmin rgba(0, 0, 0, 0.65);
+    transform-origin: left center;
+}
+.dg-fork-icon { width: 50%; height: auto; filter: drop-shadow(0 0.7vmin 0 #000) drop-shadow(0 0 2vmin color-mix(in srgb, var(--room) 60%, transparent)); }
+.dg-fork-handle {
+    position: absolute;
+    right: 11%;
+    top: 56%;
+    width: 2.6vmin;
+    height: 2.6vmin;
+    border-radius: 50%;
+    border: 0.6vmin solid #c9a43a;
+    box-shadow: 0 0 0 0.3vmin #000;
+}
+/* The button that votes for it, and its name ("Door A"); once it's opened, the room's name in its colour and what's in it. */
+.dg-fork-key {
+    margin-top: -0.4vh;
+    padding: 0.5vh 3vw;
+    font-family: var(--dg-font-pixel);
+    font-size: 5.5vmin;
+    font-weight: normal;
+    line-height: 1;
+    color: #fff;
+    background: var(--door);
+    border: 0.5vmin solid #000;
+    box-shadow: 0 0.6vmin 0 #000;
+}
+.dg-fork-name {
+    font-family: var(--dg-font-pixel);
+    font-size: 4.4vmin;
+    color: var(--room);
+    text-transform: uppercase;
+    text-shadow: 0 0.5vmin 0 #000;
+}
+.dg-fork-hint { min-height: 2.3em; font-family: var(--font-body); font-size: 3.2vmin; line-height: 1.15; color: var(--text-dim); }
+/* Who's voted for it: their faces, popping in as they vote. */
+.dg-fork-votes { display: flex; flex-wrap: wrap; justify-content: center; gap: 1vw; min-height: 9vmin; }
+.dg-fork-face {
+    width: 9vmin;
+    height: 9vmin;
+    border: 0.5vmin solid var(--door);
+    box-shadow: 0 0.5vmin 0 #000;
+    animation: dg-fork-vote 300ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes dg-fork-vote { from { opacity: 0; transform: scale(0.3); } }
+
+/* Your vote: your door glows, the other waits a little dimmer (until it's decided). */
+.dg-fork-door.is-yours .dg-fork-arch { box-shadow: inset 0 0 0 0.5vmin #000, 0 0 7vmin var(--door), 0 1.2vmin 0 #000; }
+.dg-fork:not(.is-decided) .dg-fork-doors:has(.is-yours) .dg-fork-door:not(.is-yours) { opacity: 0.55; }
+
+.dg-fork-status { min-height: 1.4em; font-family: var(--dg-font-pixel); font-size: 3.4vmin; color: var(--dg-mg-gold); text-align: center; text-transform: uppercase; }
+
+/* Decided: the door taken swings open (from --taken) on what's behind it, and the light blooms; the other fades back.
+   Then the room's stamp goes over the doors, and the room's own intro follows. */
+.dg-fork-door.is-taken .dg-fork-leaf { animation: dg-fork-open 750ms cubic-bezier(0.5, 0, 0.6, 1) var(--taken) forwards; }
+@keyframes dg-fork-open { to { transform: perspective(70vmin) rotateY(-82deg); filter: brightness(0.45); } }
+.dg-fork-door.is-taken .dg-fork-light { animation: dg-fork-bloom 900ms ease-out calc(var(--taken) + 250ms) both; }
+@keyframes dg-fork-bloom { from { filter: brightness(0.2); } 55% { filter: brightness(1.9); } }
+.dg-fork-door.is-taken .dg-fork-arch { animation: dg-fork-ring 1100ms ease-out var(--taken) both; }
+@keyframes dg-fork-ring { 40% { outline-color: var(--room); box-shadow: inset 0 0 0 0.5vmin #000, 0 0 9vmin var(--room), 0 1.2vmin 0 #000; } }
+.dg-fork-door.is-passed { animation: dg-fork-pass 450ms ease-in var(--taken) forwards; }
+@keyframes dg-fork-pass { to { opacity: 0.3; filter: grayscale(0.85); transform: scale(0.93); } }
+.dg-fork-reveal {
+    font-family: var(--dg-font-pixel);
+    font-size: min(8.5vmin, calc(80vmin / var(--chars, 10)));
+    white-space: nowrap;
+    color: var(--dg-mg-gold);
+    text-shadow: 0 1vmin 0 #000, 0 0 4vmin rgba(255, 210, 63, 0.6);
+    animation: dg-mg-stamp 600ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(var(--taken) + 650ms) both;
+}
+
+/* ---------- The treasure room ---------- */
+
+.dg-treasure { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; }
+.dg-treasure-chest { position: relative; display: grid; place-items: center; }
+.dg-treasure-sprite { width: 24vmin; height: auto; filter: drop-shadow(0 1vmin 0 #000) drop-shadow(0 0 3vmin rgba(255, 210, 63, 0.35)); }
+/* Each answer flashes the chest: a gold bump for a right one, a red rattle for a wrong one. */
+.dg-treasure.is-right .dg-treasure-sprite { animation: dg-tr-right 450ms ease-out var(--flash0) both; }
+@keyframes dg-tr-right { 30% { transform: scale(1.12); filter: drop-shadow(0 1vmin 0 #000) drop-shadow(0 0 6vmin #ffd23f) brightness(1.4); } }
+.dg-treasure.is-wrong .dg-treasure-sprite { animation: dg-tr-wrong 450ms linear var(--flash0) both; }
+@keyframes dg-tr-wrong {
+    20% { transform: translateX(-2vmin) rotate(-4deg); filter: drop-shadow(0 1vmin 0 #000) drop-shadow(0 0 4vmin var(--wrong)); }
+    45% { transform: translateX(2vmin) rotate(4deg); }
+    70% { transform: translateX(-1vmin); }
+}
+/* Opened: it bounces open, and what was in it floats up out of it. */
+.dg-treasure.is-open .dg-treasure-sprite { animation: dg-tr-open 700ms cubic-bezier(0.2, 1.6, 0.4, 1) var(--r0) both; }
+@keyframes dg-tr-open { from { transform: scale(0.85); } 50% { filter: drop-shadow(0 1vmin 0 #000) drop-shadow(0 0 9vmin #ffd23f) brightness(1.6); } }
+.dg-treasure-prize {
+    position: absolute;
+    width: 13vmin;
+    height: auto;
+    filter: drop-shadow(0 0.8vmin 0 #000) drop-shadow(0 0 3vmin #ffd23f);
+    animation: dg-tr-prize 900ms cubic-bezier(0.2, 1.3, 0.4, 1) calc(var(--r0) + 200ms) both;
+}
+@keyframes dg-tr-prize { from { opacity: 0; transform: translateY(3vh) scale(0.3); } to { transform: translateY(-11vh); } }
+.dg-treasure .dg-pq-card { width: 92%; }
+.dg-treasure-answers { position: relative; display: flex; justify-content: center; width: 100%; }
+.dg-treasure-answers .dg-pq-answers { width: 92%; }
+/* A wrong answer jams the lock: the answers grey out until it frees (--unlock), JAMMED! stamped over them. */
+.dg-treasure-answers.is-jammed .dg-pq-answers { animation: dg-tr-jam var(--unlock) steps(1, end) both; }
+@keyframes dg-tr-jam { from { opacity: 0.35; filter: grayscale(1); } to { opacity: 1; filter: none; } }
+.dg-treasure-jammed {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: var(--dg-font-pixel);
+    font-size: 9vmin;
+    color: var(--wrong);
+    text-shadow: 0 1vmin 0 #000;
+    transform: rotate(-6deg);
+    animation: dg-pq-stamp 260ms cubic-bezier(0.2, 1.6, 0.4, 1) both, dg-tr-unjam 1ms linear var(--unlock) forwards;
+}
+@keyframes dg-tr-unjam { to { visibility: hidden; } }
+
+/* ---------- The trap room ---------- */
+
+.dg-trap { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; }
+/* A row of spikes across the top: each one a narrow wedge, point up. */
+.dg-trap-spikes {
+    align-self: stretch;
+    height: 5vmin;
+    background: conic-gradient(from 153.4deg at 50% 0, #c9d3df 0 26.6deg, #7d8b9c 26.6deg 53.2deg, transparent 53.2deg) 0 0 / 5vmin 5vmin repeat-x;
+    transform: scaleY(-1);
+    filter: drop-shadow(0 -0.5vmin 0 #000);
+}
+/* A pip per statement: gold for each got right, red for each that sprang it. */
+.dg-trap-pips { display: flex; gap: 2vmin; }
+.dg-trap-pip {
+    width: 3.6vmin;
+    height: 3.6vmin;
+    transform: rotate(45deg);
+    background: #15121a;
+    border: 0.4vmin solid #000;
+    box-shadow: inset 0 0 0 0.3vmin #3a3440;
+}
+.dg-trap-pip.is-right { background: var(--dg-mg-gold); box-shadow: 0 0 1.6vmin var(--dg-mg-gold); }
+.dg-trap-pip.is-miss { background: var(--wrong); box-shadow: 0 0 1.6vmin var(--wrong); }
+/* The statement up, and the last one's reveal over it until --ask (the pop quiz's way). */
+.dg-trap-stage { display: grid; width: 100%; }
+.dg-trap-page { grid-area: 1 / 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 2.2vh; }
+.dg-trap-page.is-reveal { animation: dg-pq-out 200ms ease-in var(--ask) forwards; }
+.dg-trap-page.is-reveal.is-final { animation: none; }
+.dg-trap-page.is-next { opacity: 0; animation: dg-pq-in 300ms ease-out var(--ask) forwards; }
+.dg-trap-card { width: 92%; text-align: center; }
+.dg-trap-question { text-transform: uppercase; }
+.dg-trap-claim { display: flex; flex-direction: column; align-items: center; gap: 0.4vh; margin-top: 1.4vh; }
+.dg-trap-claim small { font-size: 0.6em; opacity: 0.75; text-transform: uppercase; }
+.dg-trap-claim b { font-size: 1.3em; color: #6a1408; text-transform: uppercase; }
+/* The buttons: A says true, B false (High Stakes': A bets, D passes), in their buttons' colours. */
+.dg-trap-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 4vw; width: 92%; }
+.dg-trap-key {
+    --answer-color: var(--answer-a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4vw;
+    padding: 2vh 2vw;
+    font-family: var(--dg-font-pixel);
+    font-size: 5.4vmin;
+    color: #fff;
+    text-transform: uppercase;
+    background: linear-gradient(rgba(33, 29, 39, 0.95), rgba(22, 19, 27, 0.95));
+    border: 0.7vmin solid var(--answer-color);
+    box-shadow: inset 0 0 0 0.4vmin #000, 0 0.8vmin 0 #000;
+    transition: opacity 200ms;
+}
+.dg-trap-key b { font-weight: normal; color: var(--answer-color); }
+.dg-trap-key[data-letter="B"] { --answer-color: var(--answer-b); }
+.dg-trap-key[data-letter="D"] { --answer-color: var(--answer-d); }
+/* The reveal: the truth lit gold, a wrong press red, the other dimmed. */
+.dg-trap-page.is-reveal .dg-trap-key { opacity: 0.4; }
+.dg-trap-page.is-reveal .dg-trap-key.is-truth { opacity: 1; border-color: var(--dg-mg-gold); box-shadow: inset 0 0 0 0.4vmin #000, 0 0 3vmin var(--dg-mg-gold); }
+.dg-trap-page.is-reveal .dg-trap-key.is-said:not(.is-truth) { opacity: 1; background: color-mix(in srgb, var(--wrong) 35%, #15121a); }
+.dg-trap-timer { width: 92%; }
+.dg-trap-timer .timer-bar-fill { background: var(--wrong); }
+/* SAFE! or OUCH!, the truth, and what a miss cost, stamped where the time was (from the answer: --said). */
+.dg-trap-verdict {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.6vh 3vw;
+    width: 92%;
+    padding: 0.8vh 2vw;
+    font-family: var(--dg-font-pixel);
+    text-align: center;
+    background: rgba(8, 5, 10, 0.94);
+    border: 0.6vmin solid currentColor;
+    animation: dg-pq-stamp 260ms cubic-bezier(0.2, 1.6, 0.4, 1) var(--said) both;
+}
+.dg-trap-verdict b { font-size: 5vmin; font-weight: normal; }
+.dg-trap-verdict span { font-size: 2.8vmin; color: var(--text); text-transform: uppercase; }
+.dg-trap-verdict .dg-trap-hurt { color: var(--wrong); font-size: 3.6vmin; }
+.dg-trap-page.is-safe .dg-trap-verdict { color: var(--dg-mg-gold); }
+.dg-trap-page.is-sprung .dg-trap-verdict { color: var(--wrong); }
+/* It sprang: the card shakes and the room flashes red. */
+.dg-trap-page.is-sprung .dg-trap-card { animation: dg-trap-shake 420ms linear var(--said) both; }
+@keyframes dg-trap-shake { 20% { transform: translateX(-2vmin); } 45% { transform: translateX(2vmin); } 70% { transform: translateX(-1vmin); } }
+.dg-trap-page.is-sprung::after {
+    content: '';
+    position: absolute;
+    inset: -2vh -3vw;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 35%, rgba(255, 40, 60, 0.55));
+    animation: dg-trap-flash 600ms ease-out var(--said) both;
+}
+@keyframes dg-trap-flash { from { opacity: 1; } to { opacity: 0; } }
+
+/* ---------- High Stakes ---------- */
+
+.dg-stakes { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; }
+/* The dice, on a pool of green felt, rocking as if about to be thrown. */
+.dg-stakes-dice {
+    display: grid;
+    place-items: center;
+    padding: 3vmin 6vmin;
+    background: radial-gradient(ellipse at center, rgba(34, 120, 70, 0.75), rgba(14, 60, 34, 0.55) 60%, transparent 72%);
+}
+.dg-stakes-sprite {
+    width: 30vmin;
+    height: auto;
+    filter: drop-shadow(0 1vmin 0 #000) drop-shadow(0 0 3vmin rgba(74, 222, 128, 0.5));
+    animation: dg-stakes-rock 1600ms ease-in-out infinite alternate;
+}
+@keyframes dg-stakes-rock { from { transform: rotate(-4deg); } to { transform: rotate(4deg) translateY(-0.6vh); } }
+.dg-stakes-dice.is-small { padding: 1vmin 3vmin; }
+.dg-stakes-dice.is-small .dg-stakes-sprite { width: 14vmin; }
+.dg-stakes-keys .dg-trap-key { font-size: 4.8vmin; white-space: nowrap; }
+.dg-stakes-stake { width: 88%; font-family: var(--font-body); font-size: 4.4vmin; line-height: 1.2; color: var(--text); text-align: center; }
+.dg-stakes.is-passed { opacity: 0.5; }
+.dg-stakes .dg-pq-card { width: 92%; }
+.dg-stakes-answers { display: flex; justify-content: center; width: 100%; }
+.dg-stakes-answers .dg-pq-answers { width: 92%; }
+/* Just bet: the answers wait a moment, dimmed, until they can be pressed (--ask). */
+.dg-stakes.is-betting:not(.is-answered) .dg-stakes-answers { animation: dg-stakes-read 300ms ease-out var(--ask) both; }
+@keyframes dg-stakes-read { from { opacity: 0.3; filter: grayscale(0.8); } }

@@ -257,5 +257,77 @@
     { "text": "You passed it just in time. Or {holder} was just slow. Either way: prize!", "audio": null },
     { "text": "It went off on {holder}! Someone get {holder} a bucket of water.", "audio": null },
     { "text": "Not a scratch on you, {name}. {holder}, on the other hand...", "audio": null }
+  ],
+  "_forkOpen": "The doors of a fork come up, right before a boss (after its entrance): two doors that look the same, nobody knows what's behind them. Always.",
+  "forkOpen": [
+    { "text": "Two doors. One of them is probably fine. Probably.", "audio": null },
+    { "text": "Pick a door, {name}! The boss will wait. It's very patient. And hungry.", "audio": null },
+    { "text": "A fork in the road! One of them has spikes. Probably. Maybe both.", "audio": null },
+    { "text": "Before the boss, a little shopping. Pick a door. No refunds.", "audio": null },
+    { "text": "Door A or door B? I know what's behind both. I'm not telling. I am smiling, though.", "audio": null },
+    { "text": "Choose wisely, {name}. Or don't. It's more fun for me if you don't.", "audio": null }
+  ],
+  "_treasureStart": "A treasure room opens (a lightning round: enough right in time opens the chest). Now and then. Won or lost uses minigameWon / minigameLost.",
+  "treasureStart": [
+    { "text": "A treasure chest! Answer fast and it's yours. Answer slow and it's mine.", "audio": null },
+    { "text": "Lightning round! Get enough right and the chest opens. Easy ones, even. I'm feeling generous.", "audio": null },
+    { "text": "Ooh, shiny. Quick answers, {name}, and it's yours. Quick being the important word.", "audio": null },
+    { "text": "A chest! It's not a mimic. I checked. Mostly.", "audio": null },
+    { "text": "Speed round for loot! Think fast. Or just think. Either would be new.", "audio": null },
+    { "text": "Ticking clock, one chest, all yours if you hurry. Go, {name}, go!", "audio": null }
+  ],
+  "_trapStart": "A trap room opens (a true/false sprint: every one right is a full heal). Now and then.",
+  "trapStart": [
+    { "text": "It's a trap! Who could have seen that coming? Everyone. Everyone could.", "audio": null },
+    { "text": "True or false: you're about to get hurt. Let's find out!", "audio": null },
+    { "text": "Spikes, blades, a slightly damp floor. Answer right and you'll be fine. Ish.", "audio": null },
+    { "text": "A trap! True or false, {name}. Two buttons. How hard can it be?", "audio": null },
+    { "text": "Every wrong answer springs it. I've oiled the blades specially.", "audio": null },
+    { "text": "Watch your step, {name}. Actually, watch the questions. The step will hurt either way.", "audio": null }
+  ],
+  "_trapSprung": "The trap sprang: a wrong answer, or too slow. Now and then. Got through or not uses minigameWon / minigameLost.",
+  "trapSprung": [
+    { "text": "Ouch! That one had spikes.", "audio": null },
+    { "text": "Wrong! The trap thanks you for your donation.", "audio": null },
+    { "text": "Snap! That's going to leave a mark, {name}.", "audio": null },
+    { "text": "Swish! You didn't need that HP anyway.", "audio": null },
+    { "text": "Ooh. The blades liked that answer. You shouldn't.", "audio": null },
+    { "text": "That's false. Also painful.", "audio": null }
+  ],
+  "_highStakesStart": "High Stakes opens: bet HP on one brutal question, or pass. Now and then.",
+  "highStakesStart": [
+    { "text": "High Stakes! One brutal question. Bet your health on it, {name}. I would. On you losing.", "audio": null },
+    { "text": "Place your bets! The house always wins. I'm the house.", "audio": null },
+    { "text": "Feeling lucky, {name}? These questions are NOT from the easy pile.", "audio": null },
+    { "text": "Double or nothing! Well. Reward or ouch. Same thing, really.", "audio": null },
+    { "text": "This one's hard. Like, MY favourite kind of hard.", "audio": null },
+    { "text": "Bet or pass, {name}. There's no shame in passing. There's just less fun.", "audio": null }
+  ],
+  "_highStakesWon": "They bet and got High Stakes' brutal question right: a reward pick. Always.",
+  "highStakesWon": [
+    { "text": "You actually knew that? Fine. Collect your winnings.", "audio": null },
+    { "text": "Jackpot! I'm checking your sleeves for notes, {name}.", "audio": null },
+    { "text": "The house loses! I hate when the house loses.", "audio": null },
+    { "text": "Correct! That question has ruined better adventurers than you. Allegedly.", "audio": null },
+    { "text": "Big winner! Spend it before the boss takes it off you.", "audio": null },
+    { "text": "Well, well. Somebody reads. Pick your prize.", "audio": null }
+  ],
+  "_highStakesLost": "They bet and got it wrong, or ran out of time: it took their HP. Always.",
+  "highStakesLost": [
+    { "text": "Busted! The house thanks you for your generous donation.", "audio": null },
+    { "text": "Wrong! That's going to cost you, {name}. It just did, actually.", "audio": null },
+    { "text": "Bad bet. Great entertainment, though.", "audio": null },
+    { "text": "The house wins! The house always wins. I keep telling people.", "audio": null },
+    { "text": "Ooh. Nobody gets that one. Well, YOU didn't.", "audio": null },
+    { "text": "All in, all out. Off to the boss, a little lighter.", "audio": null }
+  ],
+  "_highStakesPassed": "They passed on the bet (pressed D, or didn't choose in time). Always.",
+  "highStakesPassed": [
+    { "text": "Passing? Sensible. Boring, but sensible.", "audio": null },
+    { "text": "No bet? The house is disappointed in you, {name}.", "audio": null },
+    { "text": "Playing it safe. Very mature. Very dull.", "audio": null },
+    { "text": "Folding before the cards are even dealt. Bold strategy.", "audio": null },
+    { "text": "Fine, keep your HP. You'll need it for the boss anyway.", "audio": null },
+    { "text": "Coward. I mean that respectfully. Mostly.", "audio": null }
   ]
 }

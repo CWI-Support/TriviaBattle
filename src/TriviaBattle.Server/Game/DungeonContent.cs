@@ -30,7 +30,7 @@ public static class DungeonContent
         try
         {
             return new DungeonPlan(file.Depths ?? [], file.Monsters ?? [], file.LoopHpBonus, file.LoopDamageBonus, file.MinigameChance, file.MinigameEvery,
-                file.LoopQuestionShift, file.AffixChance, file.AffixFromFloor, file.Affixes);
+                file.LoopQuestionShift, file.AffixChance, file.AffixFromFloor, file.Affixes, file.ForkChance);
         }
         catch (ArgumentException ex)
         {
@@ -39,5 +39,6 @@ public static class DungeonContent
     }
 
     private sealed record DungeonFile(double LoopHpBonus, List<DepthDef>? Depths, List<MonsterDef>? Monsters, double LoopDamageBonus = 0, double MinigameChance = 0,
-        int MinigameEvery = 0, int LoopQuestionShift = 10, double AffixChance = 0, int AffixFromFloor = 0, List<Affix>? Affixes = null);
+        int MinigameEvery = 0, int LoopQuestionShift = 10, double AffixChance = 0, int AffixFromFloor = 0, List<Affix>? Affixes = null,
+        double ForkChance = 0);
 }

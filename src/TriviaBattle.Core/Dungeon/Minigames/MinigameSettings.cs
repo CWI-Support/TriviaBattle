@@ -1,3 +1,5 @@
+using TriviaBattle.Core.Questions;
+
 namespace TriviaBattle.Core.Dungeon.Minigames;
 
 /// <summary>
@@ -26,6 +28,12 @@ public sealed class MinigameSettings
     public PopQuizSettings PopQuiz { get; set; } = new();
     public HotPotatoSettings HotPotato { get; set; } = new();
 
+    /// <summary>The fork before a boss: its doors, and the vote (<see cref="Dungeon.Fork"/>). How often a floor has one is content: <c>ForkChance</c>.</summary>
+    public ForkSettings Fork { get; set; } = new();
+    public TreasureSettings Treasure { get; set; } = new();
+    public TrapSettings Trap { get; set; } = new();
+    public HighStakesSettings HighStakes { get; set; } = new();
+
     public MinigameSettings Copy()
     {
         var copy = (MinigameSettings)MemberwiseClone();
@@ -36,8 +44,90 @@ public sealed class MinigameSettings
         copy.Tuner = Tuner.Copy();
         copy.PopQuiz = PopQuiz.Copy();
         copy.HotPotato = HotPotato.Copy();
+        copy.Fork = Fork.Copy();
+        copy.Treasure = Treasure.Copy();
+        copy.Trap = Trap.Copy();
+        copy.HighStakes = HighStakes.Copy();
         return copy;
     }
+}
+
+/// <summary>The fork before a boss: two doors, and the party's vote on which to take (<see cref="Dungeon.Fork"/>).</summary>
+public sealed class ForkSettings
+{
+    /// <summary>Presses count this long after the doors come up, so they can be read first.</summary>
+    public double ReadSeconds { get; set; } = 1;
+
+    /// <summary>How long they have to vote, from the doors coming up. Everyone voted: it's decided at once.</summary>
+    public double VoteSeconds { get; set; } = 8;
+
+    /// <summary>The door taken opens (a "?" shows what it hid) this long before the room behind it starts.</summary>
+    public double RevealSeconds { get; set; } = 2;
+
+    public ForkSettings Copy() => (ForkSettings)MemberwiseClone();
+}
+
+/// <summary>The treasure room: a lightning round of questions opens the chest (<see cref="TreasureRoom"/>).</summary>
+public sealed class TreasureSettings
+{
+    /// <summary>Right answers that open the chest.</summary>
+    public int RightNeeded { get; set; } = 5;
+
+    /// <summary>The time limit for all of them.</summary>
+    public double Seconds { get; set; } = 10;
+
+    /// <summary>After a wrong answer, the buttons are dead this long (so mashing them doesn't open it).</summary>
+    public double LockoutSeconds { get; set; } = 1;
+
+    /// <summary>How hard its questions are.</summary>
+    public Difficulty Difficulty { get; set; } = Difficulty.Easy;
+
+    /// <summary>Opened: the chest springs open and what was in it shows this long before the result comes up.</summary>
+    public double OpenSeconds { get; set; } = 1.2;
+
+    public TreasureSettings Copy() => (TreasureSettings)MemberwiseClone();
+}
+
+/// <summary>The trap room: a true/false sprint where each miss hurts, and all of them right is a full heal (<see cref="TrapRoom"/>).</summary>
+public sealed class TrapSettings
+{
+    /// <summary>How many statements to get through.</summary>
+    public int Statements { get; set; } = 6;
+
+    /// <summary>The time for each: not answered by then, the trap springs (a miss).</summary>
+    public double StatementSeconds { get; set; } = 4;
+
+    /// <summary>After each, whether it was true (and what a miss cost) shows this long before the next.</summary>
+    public double RevealSeconds { get; set; } = 1.4;
+
+    /// <summary>Each miss takes this share of their max HP (never the last of it).</summary>
+    public double MissShare { get; set; } = 0.08;
+
+    /// <summary>How hard the questions its statements are made from are.</summary>
+    public Difficulty Difficulty { get; set; } = Difficulty.Medium;
+
+    public TrapSettings Copy() => (TrapSettings)MemberwiseClone();
+}
+
+/// <summary>High Stakes: bet HP on one brutal question (from config/high-stakes.json), or pass (<see cref="HighStakesRoom"/>).</summary>
+public sealed class HighStakesSettings
+{
+    /// <summary>How long they have to choose: not choosing is passing.</summary>
+    public double DecideSeconds { get; set; } = 8;
+
+    /// <summary>Once they bet, how long they have to answer.</summary>
+    public double AnswerSeconds { get; set; } = 12;
+
+    /// <summary>A wrong answer (or none) takes this share of their max HP (never the last of it).</summary>
+    public double PenaltyShare { get; set; } = 0.25;
+
+    /// <summary>A right answer shows this long before the reward cards come up.</summary>
+    public double RevealSeconds { get; set; } = 1.2;
+
+    /// <summary>Once they bet, presses count after this long, so the press that bet can't answer it too (and it can be read).</summary>
+    public double ReadSeconds { get; set; } = 1;
+
+    public HighStakesSettings Copy() => (HighStakesSettings)MemberwiseClone();
 }
 
 /// <summary>The hot potato: a lit bomb passed round the party (<see cref="HotPotato"/>).</summary>
